@@ -1,8 +1,8 @@
 <svg width="450" height="254" viewBox="0 0 450 254" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M0 0H450V254H0V0Z" fill="url(#grid)" fill-opacity="0.15"/>
+  <path d="M0 0H450V254H0V0Z" fill="url(#grid)" fill-opacity="0.12"/>
   <defs>
     <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
-      <path d="M32 0H0V32" stroke="white" stroke-opacity="0.2"/>
+      <path d="M32 0H0V32" stroke="#E5E7EB" stroke-opacity="0.35"/>
     </pattern>
   </defs>
 </svg>

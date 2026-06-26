@@ -21,28 +21,43 @@ layer(base);
   --color-current: currentColor;
   --color-transparent: transparent;
   --color-white: #ffffff;
-  --color-black: #101828;
+  --color-black: #1f2937;
 
-  --color-brand-300: #9cb9ff;
-  --color-brand-400: #7592ff;
-  --color-brand-500: #465fff;
-  --color-brand-600: #3641f5;
-  --color-brand-800: #252dae;
-  --color-brand-950: #161950;
+  /* Azul Oxígeno — acciones primarias, enlaces, panel lateral */
+  --color-brand-50: #e3f2fd;
+  --color-brand-100: #bbdefb;
+  --color-brand-300: #64b5f6;
+  --color-brand-400: #1976d2;
+  --color-brand-500: #1565c0;
+  --color-brand-600: #0d47a1;
+  --color-brand-800: #0d47a1;
+  --color-brand-950: #0a3069;
 
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f2f4f7;
-  --color-gray-200: #e4e7ec;
-  --color-gray-300: #d0d5dd;
-  --color-gray-400: #98a2b3;
-  --color-gray-500: #667085;
-  --color-gray-700: #344054;
-  --color-gray-800: #1d2939;
-  --color-gray-900: #101828;
+  /* Rojo Sarita — acentos y errores */
+  --color-sarita-500: #e53935;
+  --color-sarita-600: #c62828;
 
-  --color-error-500: #f04438;
+  /* Verde Oxígeno — éxito y estados positivos */
+  --color-success-50: #e8f5e9;
+  --color-success-500: #0b9444;
+  --color-success-600: #087a38;
 
-  --shadow-theme-xs: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
+  --color-error-500: #e53935;
+  --color-error-600: #c62828;
+
+  /* Grises del logo */
+  --color-gray-50: #fafafa;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-700: #4b5563;
+  --color-gray-800: #374151;
+  --color-gray-900: #1f2937;
+
+  --shadow-theme-xs: 0px 1px 2px 0px rgba(75, 85, 99, 0.08);
+  --shadow-focus-ring: 0px 0px 0px 4px rgba(21, 101, 192, 0.15);
 
   --z-index-1: 1;
 }
@@ -62,6 +77,14 @@ layer(base);
   }
 
   body {
-    @apply relative font-normal font-outfit z-1 bg-gray-50;
+    @apply relative font-normal font-outfit z-1 bg-white text-gray-800;
   }
+}
+
+@utility brand-panel-gradient {
+  background:
+    radial-gradient(ellipse 70% 55% at 15% 85%, rgba(11, 148, 68, 0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 90% 10%, rgba(229, 57, 53, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 35% at 75% 75%, rgba(21, 101, 192, 0.4) 0%, transparent 50%),
+    linear-gradient(145deg, #0a3069 0%, #0d47a1 42%, #1565c0 100%);
 }
