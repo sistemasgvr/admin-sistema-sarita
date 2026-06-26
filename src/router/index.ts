@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { authRoutes } from '@/modules/auth/routes'
+import { adminRoutes } from '@/modules/admin/routes'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior(_to, _from, savedPosition) {
     return savedPosition || { left: 0, top: 0 }
   },
-  routes: [...authRoutes],
+  routes: [...authRoutes, ...adminRoutes],
 })
 
 router.beforeEach((to, _from, next) => {
