@@ -18,8 +18,7 @@
         Bienvenido al panel de administración
       </h3>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        Desde aquí podrás gestionar clientes, inventario, pedidos y más módulos del sistema Oxígeno
-        Sarita.
+        Desde aquí podrás gestionar clientes y más módulos del sistema Oxígeno Sarita.
       </p>
     </div>
   </div>

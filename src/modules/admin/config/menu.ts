@@ -36,26 +36,6 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         name: 'Clientes',
         path: '/admin/clientes',
       },
-      {
-        icon: ICONS.package,
-        name: 'Inventario',
-        path: '/admin/inventario',
-      },
-      {
-        icon: ICONS.clipboardList,
-        name: 'Pedidos',
-        path: '/admin/pedidos',
-      },
-    ],
-  },
-  {
-    title: 'Sistema',
-    items: [
-      {
-        icon: ICONS.settings,
-        name: 'Configuración',
-        path: '/admin/configuracion',
-      },
     ],
   },
 ]

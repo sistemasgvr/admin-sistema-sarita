@@ -1,21 +1,8 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { dashboardRoutes } from '@/modules/dashboard/routes'
+import { clientesRoutes } from '@/modules/clientes/routes'
 
-/** Rutas del menú que aún no tienen módulo propio → página en desarrollo */
-const developmentPages = [
-  { path: 'clientes', title: 'Clientes' },
-  { path: 'inventario', title: 'Inventario' },
-  { path: 'pedidos', title: 'Pedidos' },
-  { path: 'configuracion', title: 'Configuración' },
-] as const
-
-const developmentRoutes: RouteRecordRaw[] = developmentPages.map(({ path, title }) => ({
-  path,
-  name: `admin-${path}`,
-  component: () => import('@/modules/admin/views/UnderDevelopmentView.vue'),
-  props: { pageTitle: title },
-  meta: { title, status: 'development' },
-}))
+const moduleRoutes: RouteRecordRaw[] = [...dashboardRoutes, ...clientesRoutes]
 
 export const adminRoutes: RouteRecordRaw[] = [
   {
@@ -26,8 +13,7 @@ export const adminRoutes: RouteRecordRaw[] = [
         path: '',
         redirect: '/admin/dashboard',
       },
-      ...dashboardRoutes,
-      ...developmentRoutes,
+      ...moduleRoutes,
       {
         path: ':pathMatch(.*)*',
         name: 'admin-not-found',
