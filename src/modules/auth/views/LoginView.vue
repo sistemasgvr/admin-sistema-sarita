@@ -111,25 +111,24 @@
       </div>
     </div>
 
-    <!-- Panel marca — altura completa -->
+    <!-- Panel marca — imagen de fondo con blur -->
     <div
-      class="relative hidden h-full w-full shrink-0 brand-panel-gradient lg:flex lg:w-1/2 lg:items-center lg:justify-center"
+      class="relative hidden h-full w-full shrink-0 overflow-hidden lg:flex lg:w-1/2 lg:items-center lg:justify-center"
     >
-      <div class="pointer-events-none absolute inset-0 opacity-25">
-        <CommonGridShape />
-      </div>
-      <div class="relative z-10 flex max-w-sm flex-col items-center px-8 text-center">
-        <div class="mb-8 rounded-2xl bg-white/10 p-6 ring-1 ring-white/20 backdrop-blur-sm">
-          <img
-            width="300"
-            height="130"
-            src="/images/logo/logo-o-sarita.webp"
-            alt="Oxígeno Sarita"
-            class="drop-shadow-2xl"
-          />
-        </div>
-        <p class="text-base font-medium text-white/90">Panel de administración</p>
-        <p class="mt-1 text-sm text-white/60">Sistema Sarita</p>
+      <div class="login-brand-panel-bg" aria-hidden="true" />
+      <div class="absolute inset-0 bg-brand-900/25" aria-hidden="true" />
+      <div class="relative z-10 flex max-w-md flex-col items-center px-8 text-center">
+        <img
+          width="300"
+          height="130"
+          src="/images/logo/logo-o-sarita.webp"
+          alt="Oxígeno Sarita"
+          class="drop-shadow-lg"
+        />
+        <p class="mt-8 text-base font-medium text-white drop-shadow-sm">
+          Panel de administración
+        </p>
+        <p class="mt-1 text-sm text-white/80 drop-shadow-sm">Sistema Sarita</p>
       </div>
     </div>
   </div>
@@ -140,7 +139,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import ThemeToggler from '@/shared/components/ThemeToggler.vue'
-import CommonGridShape from '@/shared/components/CommonGridShape.vue'
 import { ICONS } from '@/shared/constants/icons'
 
 const router = useRouter()

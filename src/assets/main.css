@@ -116,12 +116,9 @@ layer(base);
   @apply h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-brand-400;
 }
 
-@utility brand-panel-gradient {
-  background:
-    radial-gradient(ellipse 70% 55% at 15% 85%, rgba(11, 148, 68, 0.55) 0%, transparent 60%),
-    radial-gradient(ellipse 55% 45% at 90% 10%, rgba(229, 57, 53, 0.28) 0%, transparent 55%),
-    radial-gradient(ellipse 40% 35% at 75% 75%, rgba(21, 101, 192, 0.4) 0%, transparent 50%),
-    linear-gradient(145deg, #0a3069 0%, #0d47a1 42%, #1565c0 100%);
+@utility login-brand-panel-bg {
+  @apply absolute inset-0 scale-105 bg-cover bg-center bg-no-repeat blur-sm;
+  background-image: url('/images/movilidad_sarita.webp');
 }
 
 @utility menu-item {
