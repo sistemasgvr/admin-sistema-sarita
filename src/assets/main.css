@@ -113,7 +113,27 @@ layer(base);
 }
 
 @utility login-input {
-  @apply h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-brand-400;
+  @apply form-control;
+}
+
+@utility form-control {
+  @apply h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 disabled:cursor-not-allowed disabled:border-gray-100 disabled:bg-gray-50 disabled:text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-brand-400 dark:disabled:border-gray-800 dark:disabled:bg-white/[0.03] dark:disabled:text-white/30;
+}
+
+@utility form-control-error {
+  @apply border-error-500 focus:border-error-500 focus:ring-error-500/10 dark:border-error-600;
+}
+
+@utility form-control-success {
+  @apply border-success-500 focus:border-success-500 focus:ring-success-500/10 dark:border-success-600;
+}
+
+@utility form-textarea {
+  @apply min-h-[120px] h-auto resize-y py-3;
+}
+
+@utility form-file {
+  @apply h-11 overflow-hidden text-gray-500 transition-colors file:mr-5 file:cursor-pointer file:rounded-l-lg file:border-0 file:border-r file:border-solid file:border-gray-200 file:bg-gray-50 file:px-3.5 file:py-3 file:text-sm file:text-gray-700 hover:file:bg-gray-100 dark:text-gray-400 dark:file:border-gray-800 dark:file:bg-white/[0.03] dark:file:text-gray-400;
 }
 
 @utility login-brand-panel-bg {
