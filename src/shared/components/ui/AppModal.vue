@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div
       v-if="modelValue"
-      class="fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
+      class="fixed inset-0 z-99999 flex items-center justify-center p-4 sm:p-6"
     >
       <div
         class="fixed inset-0 h-full w-full bg-gray-900/20 backdrop-blur-[2px] dark:bg-gray-950/40"
@@ -14,7 +14,7 @@
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
-        class="no-scrollbar relative w-full overflow-y-auto rounded-3xl bg-white p-4 dark:bg-gray-900 lg:p-8"
+        class="relative flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-3xl bg-white dark:bg-gray-900"
         :class="panelSizeClass"
         @click.stop
       >
@@ -28,34 +28,44 @@
           <AppIcon :name="ICONS.x" :size="22" />
         </button>
 
-        <div v-if="$slots.header || title || subtitle" class="px-1 pr-12 lg:pr-14">
-          <slot name="header">
-            <h4
-              :id="titleId"
-              class="mb-1 text-xl font-semibold text-gray-800 dark:text-white/90 lg:text-2xl"
-            >
-              {{ title }}
-            </h4>
-            <p v-if="subtitle" class="text-sm text-gray-500 dark:text-gray-400">
-              {{ subtitle }}
-            </p>
-          </slot>
+        <div
+          v-if="$slots.header || title || subtitle"
+          class="shrink-0 border-b border-gray-100 px-4 pb-4 pt-4 dark:border-gray-800 lg:px-8 lg:pb-5 lg:pt-8"
+        >
+          <div class="px-1 pr-12 lg:pr-14">
+            <slot name="header">
+              <h4
+                :id="titleId"
+                class="mb-1 text-xl font-semibold text-gray-800 dark:text-white/90 lg:text-2xl"
+              >
+                {{ title }}
+              </h4>
+              <p v-if="subtitle" class="text-sm text-gray-500 dark:text-gray-400">
+                {{ subtitle }}
+              </p>
+            </slot>
+          </div>
         </div>
 
         <div
           :class="[
-            $slots.header || title || subtitle ? 'mt-5 lg:mt-6' : 'pr-10',
+            'min-h-0 flex-1 overflow-y-auto px-4 lg:px-8',
+            $slots.header || title || subtitle ? 'py-5 lg:py-6' : 'py-4 pr-14 lg:py-8',
             contentClass,
           ]"
         >
-          <slot />
+          <div class="px-1">
+            <slot />
+          </div>
         </div>
 
         <div
           v-if="$slots.footer"
-          class="mt-6 flex flex-col-reverse gap-3 px-1 sm:flex-row sm:justify-end"
+          class="shrink-0 border-t border-gray-100 px-4 py-4 dark:border-gray-800 lg:px-8 lg:py-6"
         >
-          <slot name="footer" />
+          <div class="flex flex-col-reverse gap-3 px-1 sm:flex-row sm:justify-end">
+            <slot name="footer" />
+          </div>
         </div>
       </div>
     </div>

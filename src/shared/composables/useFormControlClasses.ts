@@ -12,8 +12,7 @@ export function useFormControlClasses(
     const { textarea = false, file = false, hasTrailingIcon = false } = toValue(options) ?? {}
 
     return [
-      file ? 'form-control form-file' : 'form-control',
-      textarea ? 'form-textarea' : '',
+      file ? 'form-control form-file' : textarea ? 'app-form-textarea' : 'form-control',
       currentState === 'error' ? 'form-control-error' : '',
       currentState === 'success' ? 'form-control-success' : '',
       hasTrailingIcon ? 'pr-11' : '',

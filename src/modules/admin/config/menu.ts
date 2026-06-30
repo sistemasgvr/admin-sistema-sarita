@@ -51,6 +51,18 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         path: '/admin/usuarios',
         permission: PermisoBanderas.USUARIOS_LISTAR,
       },
+      {
+        icon: ICONS.shield,
+        name: 'Roles',
+        path: '/admin/roles',
+        permission: PermisoBanderas.ROLES_LISTAR,
+      },
+      {
+        icon: ICONS.keyRound,
+        name: 'Permisos',
+        path: '/admin/permisos',
+        permission: PermisoBanderas.PERMISOS_LISTAR,
+      },
     ],
   },
 ]

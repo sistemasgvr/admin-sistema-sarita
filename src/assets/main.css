@@ -128,8 +128,8 @@ layer(base);
   @apply border-success-500 focus:border-success-500 focus:ring-success-500/10 dark:border-success-600;
 }
 
-@utility form-textarea {
-  @apply min-h-[120px] h-auto resize-y py-3;
+@utility app-form-textarea {
+  @apply w-full min-h-[120px] resize-y rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 disabled:cursor-not-allowed disabled:border-gray-100 disabled:bg-gray-50 disabled:text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-brand-400 dark:disabled:border-gray-800 dark:disabled:bg-white/[0.03] dark:disabled:text-white/30;
 }
 
 @utility form-file {
