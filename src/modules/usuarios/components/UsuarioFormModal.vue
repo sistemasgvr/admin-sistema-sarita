@@ -9,7 +9,12 @@
     "
     @close="handleClose"
   >
-    <form id="usuario-form" class="space-y-4" @submit.prevent="handleSubmit">
+    <form
+      id="usuario-form"
+      class="space-y-4"
+      autocomplete="off"
+      @submit.prevent="handleSubmit"
+    >
       <AppInput
         v-model="form.nombre"
         label="Nombre"
@@ -24,7 +29,8 @@
         type="email"
         label="Correo"
         placeholder="correo@ejemplo.com"
-        autocomplete="email"
+        name="usuario-correo"
+        autocomplete="off"
         required
         :disabled="isSubmitting"
         :error="errors.correo"
@@ -35,6 +41,8 @@
         type="password"
         :label="mode === 'create' ? 'Contraseña' : 'Nueva contraseña'"
         :placeholder="mode === 'create' ? 'Mínimo 6 caracteres' : 'Dejar vacío para no cambiar'"
+        name="usuario-contrasena"
+        autocomplete="new-password"
         :required="mode === 'create'"
         :disabled="isSubmitting"
         :error="errors.contrasena"

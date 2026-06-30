@@ -5,7 +5,7 @@
       class="fixed inset-0 z-99999 flex items-center justify-center overflow-y-auto p-4 sm:p-6"
     >
       <div
-        class="fixed inset-0 h-full w-full bg-gray-400/50 backdrop-blur-[32px]"
+        class="fixed inset-0 h-full w-full bg-gray-900/20 backdrop-blur-[2px] dark:bg-gray-950/40"
         aria-hidden="true"
         @click="onBackdropClick"
       />

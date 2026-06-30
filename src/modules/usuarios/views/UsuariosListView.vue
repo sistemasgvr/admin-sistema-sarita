@@ -31,16 +31,7 @@
       </template>
 
       <template #cell-roles="{ row }">
-        <div class="flex flex-wrap gap-1.5">
-          <span
-            v-for="rol in row.roles"
-            :key="rol.id"
-            class="rounded-full bg-brand-50 px-2.5 py-0.5 text-theme-xs font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
-          >
-            {{ rol.nombre }}
-          </span>
-          <span v-if="!row.roles?.length" class="text-theme-sm text-gray-400">Sin roles</span>
-        </div>
+        <AppBadgeList :items="row.roles" empty-text="Sin roles" />
       </template>
 
       <template #actions="{ row }">
@@ -131,6 +122,7 @@ import type {
 } from '@/modules/usuarios/interfaces/usuario.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
+  AppBadgeList,
   AppInput,
   AppModal,
   AppPagination,
