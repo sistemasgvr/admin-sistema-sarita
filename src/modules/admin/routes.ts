@@ -1,8 +1,13 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { dashboardRoutes } from '@/modules/dashboard/routes'
 import { clientesRoutes } from '@/modules/clientes/routes'
+import { usuariosRoutes } from '@/modules/usuarios/routes'
 
-const moduleRoutes: RouteRecordRaw[] = [...dashboardRoutes, ...clientesRoutes]
+const moduleRoutes: RouteRecordRaw[] = [
+  ...dashboardRoutes,
+  ...clientesRoutes,
+  ...usuariosRoutes,
+]
 
 export const adminRoutes: RouteRecordRaw[] = [
   {

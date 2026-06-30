@@ -99,7 +99,7 @@
   </div>
 </template>
 
-<script setup lang="ts" generic="T extends Record<string, unknown>">
+<script setup lang="ts" generic="T extends object">
 import { computed } from 'vue'
 import type { TableColumn, TableRowKey } from '@/shared/interfaces/table.interface'
 import {

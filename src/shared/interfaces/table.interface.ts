@@ -1,6 +1,6 @@
 export type TableColumnAlign = 'left' | 'center' | 'right'
 
-export interface TableColumn<T = Record<string, unknown>> {
+export interface TableColumn<T = object> {
   key: string
   label: string
   align?: TableColumnAlign

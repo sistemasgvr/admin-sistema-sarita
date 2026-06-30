@@ -42,4 +42,15 @@ export const adminMenuGroups: AdminMenuGroup[] = [
       },
     ],
   },
+  {
+    title: 'Sistema',
+    items: [
+      {
+        icon: ICONS.userCircle,
+        name: 'Usuarios',
+        path: '/admin/usuarios',
+        permission: PermisoBanderas.USUARIOS_LISTAR,
+      },
+    ],
+  },
 ]

@@ -1,9 +1,6 @@
 import type { TableColumnAlign, TableRowKey } from '@/shared/interfaces/table.interface'
 
-export function getTableCellValue<T extends Record<string, unknown>>(
-  row: T,
-  key: string,
-): unknown {
+export function getTableCellValue<T extends object>(row: T, key: string): unknown {
   return key.split('.').reduce<unknown>((value, part) => {
     if (value && typeof value === 'object' && part in value) {
       return (value as Record<string, unknown>)[part]
@@ -12,7 +9,7 @@ export function getTableCellValue<T extends Record<string, unknown>>(
   }, row)
 }
 
-export function formatTableCellValue<T extends Record<string, unknown>>(
+export function formatTableCellValue<T extends object>(
   row: T,
   column: { key: string; formatter?: (value: unknown, row: T) => string },
 ): string {
@@ -29,7 +26,7 @@ export function formatTableCellValue<T extends Record<string, unknown>>(
   return String(value)
 }
 
-export function resolveTableRowKey<T extends Record<string, unknown>>(
+export function resolveTableRowKey<T extends object>(
   row: T,
   index: number,
   rowKey?: TableRowKey<T>,
@@ -38,12 +35,14 @@ export function resolveTableRowKey<T extends Record<string, unknown>>(
     return rowKey(row)
   }
 
-  if (rowKey && row[rowKey as string] !== undefined) {
-    return row[rowKey as string] as string | number
+  const record = row as Record<string, unknown>
+
+  if (rowKey && record[rowKey as string] !== undefined) {
+    return record[rowKey as string] as string | number
   }
 
-  if (row.id !== undefined) {
-    return row.id as string | number
+  if (record.id !== undefined) {
+    return record.id as string | number
   }
 
   return index

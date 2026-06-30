@@ -9,6 +9,11 @@ export interface ApiResponse<T> {
   meta?: PaginationMeta
 }
 
+export interface PaginatedResult<T> {
+  data: T
+  meta: PaginationMeta
+}
+
 export interface ApiErrorResponse {
   success: false
   message: string

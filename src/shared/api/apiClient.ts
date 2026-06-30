@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ApiError } from '@/shared/api/errors/api.error'
-import type { ApiErrorResponse, ApiResponse } from '@/shared/api/interfaces/api.interface'
+import type { ApiErrorResponse, ApiResponse, PaginatedResult } from '@/shared/api/interfaces/api.interface'
+import type { PaginationMeta } from '@/shared/interfaces/pagination.interface'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
@@ -67,6 +68,21 @@ function unwrapResponse<T>(response: { data: ApiResponse<T> }): T {
 export async function apiGet<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
   const response = await apiClient.get<ApiResponse<T>>(url, config)
   return unwrapResponse(response)
+}
+
+export async function apiGetPaginated<T>(
+  url: string,
+  config?: AxiosRequestConfig,
+): Promise<PaginatedResult<T[]>> {
+  const response = await apiClient.get<ApiResponse<T[]>>(url, config)
+  const data = response.data.data ?? ([] as T[])
+  const meta: PaginationMeta = response.data.meta ?? {
+    pagina: 1,
+    limite: data.length,
+    total: data.length,
+  }
+
+  return { data, meta }
 }
 
 export async function apiPost<T>(
