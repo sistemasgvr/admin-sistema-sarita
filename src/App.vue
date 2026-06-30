@@ -3,6 +3,7 @@
     <SidebarProvider>
       <RouterView />
     </SidebarProvider>
+    <AppToaster position="top-right" rich-colors close-button />
   </ThemeProvider>
 </template>
 

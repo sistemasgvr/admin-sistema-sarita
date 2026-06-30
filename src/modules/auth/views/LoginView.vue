@@ -39,6 +39,8 @@
               autocomplete="email"
               placeholder="correo@ejemplo.com"
               class="login-input"
+              :disabled="loginMutation.isPending.value"
+              required
             />
           </div>
 
@@ -58,6 +60,8 @@
                 autocomplete="current-password"
                 placeholder="Ingresa tu contraseña"
                 class="login-input pr-11"
+                :disabled="loginMutation.isPending.value"
+                required
               />
               <button
                 type="button"
@@ -103,9 +107,10 @@
 
           <button
             type="submit"
-            class="flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+            class="flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+            :disabled="loginMutation.isPending.value"
           >
-            Iniciar sesión
+            {{ loginMutation.isPending.value ? 'Iniciando sesión...' : 'Iniciar sesión' }}
           </button>
         </form>
       </div>
@@ -136,12 +141,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useLoginMutation } from '@/modules/auth/composables/useLoginMutation'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import ThemeToggler from '@/shared/components/ThemeToggler.vue'
 import { ICONS } from '@/shared/constants/icons'
 
-const router = useRouter()
+const loginMutation = useLoginMutation()
 
 const email = ref('')
 const password = ref('')
@@ -153,6 +158,12 @@ const togglePasswordVisibility = () => {
 }
 
 const handleSubmit = () => {
-  router.push('/admin/dashboard')
+  if (!email.value.trim() || !password.value) return
+
+  loginMutation.mutate({
+    correo: email.value.trim(),
+    contrasena: password.value,
+    keepLoggedIn: keepLoggedIn.value,
+  })
 }
 </script>
