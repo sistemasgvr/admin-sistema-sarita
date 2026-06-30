@@ -14,38 +14,42 @@
       id="almacen-form"
       class="space-y-4"
       autocomplete="off"
-      @submit.prevent="handleSubmit"
+      @submit="onSubmit"
     >
       <AppSelect
-        v-model="form.id_sucursal"
+        v-model="id_sucursal"
         label="Sucursal"
         placeholder="Selecciona una sucursal"
         :options="sucursalOptions"
         required
+        v-bind="idSucursalAttrs"
         :disabled="isSubmitting || isLoadingSucursales"
         :error="errors.id_sucursal"
       />
 
       <AppInput
-        v-model="form.nombre"
+        v-model="nombre"
         label="Nombre"
         placeholder="Almacén Central"
         required
+        v-bind="nombreAttrs"
         :disabled="isSubmitting"
         :error="errors.nombre"
       />
 
       <AppInput
-        v-model="form.ubicacion"
+        v-model="ubicacion"
         label="Ubicación"
         placeholder="Piso 2, sector A"
+        v-bind="ubicacionAttrs"
         :disabled="isSubmitting"
       />
 
       <AppInput
-        v-model="form.descripcion"
+        v-model="descripcion"
         label="Descripción"
         placeholder="Descripción del almacén"
+        v-bind="descripcionAttrs"
         :disabled="isSubmitting"
       />
     </form>
@@ -72,7 +76,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import {
   useCreateAlmacenMutation,
   useUpdateAlmacenMutation,
@@ -84,6 +91,7 @@ import type {
 import { sucursalesService } from '@/modules/configuracion/sucursales/services/sucursales.service'
 import type { Sucursal } from '@/modules/configuracion/sucursales/interfaces/sucursal.interface'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { optionalString, requiredSelect, requiredString } from '@/shared/validation'
 
 interface AlmacenFormModalProps {
   mode: AlmacenFormMode
@@ -101,21 +109,30 @@ const emit = defineEmits<{
 const createMutation = useCreateAlmacenMutation()
 const updateMutation = useUpdateAlmacenMutation()
 
-const form = reactive({
-  id_sucursal: '' as string | number,
-  nombre: '',
-  ubicacion: '',
-  descripcion: '',
-})
-
-const errors = reactive({
-  id_sucursal: '',
-  nombre: '',
-})
-
-const isSubmitting = ref(false)
 const isLoadingSucursales = ref(false)
 const sucursales = ref<Sucursal[]>([])
+
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      id_sucursal: requiredSelect('La sucursal'),
+      nombre: requiredString('El nombre'),
+      ubicacion: optionalString(),
+      descripcion: optionalString(),
+    }),
+  ),
+  initialValues: {
+    id_sucursal: '' as string | number,
+    nombre: '',
+    ubicacion: '',
+    descripcion: '',
+  },
+})
+
+const [id_sucursal, idSucursalAttrs] = defineField('id_sucursal')
+const [nombre, nombreAttrs] = defineField('nombre')
+const [ubicacion, ubicacionAttrs] = defineField('ubicacion')
+const [descripcion, descripcionAttrs] = defineField('descripcion')
 
 const sucursalOptions = computed(() =>
   sucursales.value.map((sucursal) => ({
@@ -135,45 +152,28 @@ const loadSucursales = async () => {
   }
 }
 
-const resetForm = () => {
-  form.id_sucursal = props.almacen?.id_sucursal ?? ''
-  form.nombre = props.almacen?.nombre ?? ''
-  form.ubicacion = props.almacen?.ubicacion ?? ''
-  form.descripcion = props.almacen?.descripcion ?? ''
-  errors.id_sucursal = ''
-  errors.nombre = ''
-}
-
-const validate = () => {
-  errors.id_sucursal = ''
-  errors.nombre = ''
-
-  if (!form.id_sucursal) {
-    errors.id_sucursal = 'La sucursal es obligatoria'
-  }
-
-  if (!form.nombre.trim()) {
-    errors.nombre = 'El nombre es obligatorio'
-  }
-
-  return !errors.id_sucursal && !errors.nombre
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      id_sucursal: props.almacen?.id_sucursal ?? '',
+      nombre: props.almacen?.nombre ?? '',
+      ubicacion: props.almacen?.ubicacion ?? '',
+      descripcion: props.almacen?.descripcion ?? '',
+    },
+  })
 }
 
 const handleClose = () => {
   open.value = false
 }
 
-const handleSubmit = async () => {
-  if (!validate()) return
-
-  isSubmitting.value = true
-
+const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
-      idSucursal: Number(form.id_sucursal),
-      nombre: form.nombre.trim(),
-      ubicacion: form.ubicacion.trim() || undefined,
-      descripcion: form.descripcion.trim() || undefined,
+      idSucursal: Number(values.id_sucursal),
+      nombre: values.nombre,
+      ubicacion: values.ubicacion || undefined,
+      descripcion: values.descripcion || undefined,
     }
 
     if (props.mode === 'create') {
@@ -191,16 +191,14 @@ const handleSubmit = async () => {
     open.value = false
   } catch {
     // toast en mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
-      resetForm()
+      syncFormValues()
       loadSucursales()
     }
   },
@@ -210,7 +208,7 @@ watch(
   () => props.almacen,
   () => {
     if (open.value) {
-      resetForm()
+      syncFormValues()
     }
   },
 )

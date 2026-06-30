@@ -14,32 +14,35 @@
       id="condicion-pago-form"
       class="space-y-4"
       autocomplete="off"
-      @submit.prevent="handleSubmit"
+      @submit="onSubmit"
     >
       <AppInput
-        v-model="form.codigo"
+        v-model="codigo"
         label="Código"
         placeholder="CONTADO"
         required
+        v-bind="codigoAttrs"
         :disabled="isSubmitting"
         :error="errors.codigo"
       />
 
       <AppInput
-        v-model="form.nombre"
+        v-model="nombre"
         label="Nombre"
         placeholder="Contado"
         required
+        v-bind="nombreAttrs"
         :disabled="isSubmitting"
         :error="errors.nombre"
       />
 
       <AppInput
-        v-model="form.dias_credito"
+        v-model="dias_credito"
         type="number"
         label="Días de crédito"
         placeholder="0"
         required
+        v-bind="diasCreditoAttrs"
         :disabled="isSubmitting"
         :error="errors.dias_credito"
       />
@@ -73,7 +76,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import {
   useCreateCondicionPagoMutation,
   useUpdateCondicionPagoMutation,
@@ -83,6 +89,7 @@ import type {
   CondicionPagoFormMode,
 } from '@/modules/configuracion/condiciones-pago/interfaces/condicion-pago.interface'
 import { AppInput, AppModal } from '@/shared/components'
+import { nonNegativeNumber, requiredString } from '@/shared/validation'
 
 interface CondicionPagoFormModalProps {
   mode: CondicionPagoFormMode
@@ -100,64 +107,45 @@ const emit = defineEmits<{
 const createMutation = useCreateCondicionPagoMutation()
 const updateMutation = useUpdateCondicionPagoMutation()
 
-const form = reactive({
-  codigo: '',
-  nombre: '',
-  dias_credito: '0',
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      codigo: requiredString('El código'),
+      nombre: requiredString('El nombre'),
+      dias_credito: nonNegativeNumber(),
+    }),
+  ),
+  initialValues: {
+    codigo: '',
+    nombre: '',
+    dias_credito: 0,
+  },
 })
 
-const errors = reactive({
-  codigo: '',
-  nombre: '',
-  dias_credito: '',
-})
+const [codigo, codigoAttrs] = defineField('codigo')
+const [nombre, nombreAttrs] = defineField('nombre')
+const [dias_credito, diasCreditoAttrs] = defineField('dias_credito')
 
-const isSubmitting = ref(false)
-
-const resetForm = () => {
-  form.codigo = props.condicionPago?.codigo ?? ''
-  form.nombre = props.condicionPago?.nombre ?? ''
-  form.dias_credito = String(props.condicionPago?.dias_credito ?? 0)
-  errors.codigo = ''
-  errors.nombre = ''
-  errors.dias_credito = ''
-}
-
-const validate = () => {
-  errors.codigo = ''
-  errors.nombre = ''
-  errors.dias_credito = ''
-
-  if (!form.codigo.trim()) {
-    errors.codigo = 'El código es obligatorio'
-  }
-
-  if (!form.nombre.trim()) {
-    errors.nombre = 'El nombre es obligatorio'
-  }
-
-  const dias = Number(form.dias_credito)
-  if (Number.isNaN(dias) || dias < 0) {
-    errors.dias_credito = 'Ingresa un número válido mayor o igual a 0'
-  }
-
-  return !errors.codigo && !errors.nombre && !errors.dias_credito
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      codigo: props.condicionPago?.codigo ?? '',
+      nombre: props.condicionPago?.nombre ?? '',
+      dias_credito: props.condicionPago?.dias_credito ?? 0,
+    },
+  })
 }
 
 const handleClose = () => {
   open.value = false
 }
 
-const handleSubmit = async () => {
-  if (!validate()) return
-
-  isSubmitting.value = true
-
+const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
-      codigo: form.codigo.trim(),
-      nombre: form.nombre.trim(),
-      diasCredito: Number(form.dias_credito),
+      codigo: values.codigo,
+      nombre: values.nombre,
+      diasCredito: values.dias_credito,
     }
 
     if (props.mode === 'create') {
@@ -175,16 +163,14 @@ const handleSubmit = async () => {
     open.value = false
   } catch {
     // toast en mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
-      resetForm()
+      syncFormValues()
     }
   },
 )
@@ -193,7 +179,7 @@ watch(
   () => props.condicionPago,
   () => {
     if (open.value) {
-      resetForm()
+      syncFormValues()
     }
   },
 )

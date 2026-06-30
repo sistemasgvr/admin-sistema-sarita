@@ -25,27 +25,31 @@
           </p>
         </div>
 
-        <form @submit.prevent="handleSubmit" class="space-y-5">
+        <form class="space-y-5" @submit="onSubmit">
           <AppInput
-            v-model="email"
+            v-model="correo"
             type="email"
             label="Correo"
             name="email"
             autocomplete="email"
             placeholder="correo@ejemplo.com"
             required
+            v-bind="correoAttrs"
             :disabled="loginMutation.isPending.value"
+            :error="errors.correo"
           />
 
           <AppInput
-            v-model="password"
+            v-model="contrasena"
             type="password"
             label="Contraseña"
             name="password"
             autocomplete="current-password"
             placeholder="Ingresa tu contraseña"
             required
+            v-bind="contrasenaAttrs"
             :disabled="loginMutation.isPending.value"
+            :error="errors.contrasena"
           />
 
           <div class="flex flex-wrap items-center justify-between gap-3">
@@ -62,7 +66,7 @@
           <button
             type="submit"
             class="flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-            :disabled="loginMutation.isPending.value"
+            :disabled="loginMutation.isPending.value || isSubmitting"
           >
             {{ loginMutation.isPending.value ? 'Iniciando sesión...' : 'Iniciar sesión' }}
           </button>
@@ -94,23 +98,38 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import { useLoginMutation } from '@/modules/auth/composables/useLoginMutation'
 import { AppCheckbox, AppInput } from '@/shared/components'
 import ThemeToggler from '@/shared/components/ThemeToggler.vue'
+import { requiredEmail, requiredString } from '@/shared/validation'
 
 const loginMutation = useLoginMutation()
-
-const email = ref('')
-const password = ref('')
 const keepLoggedIn = ref(false)
 
-const handleSubmit = () => {
-  if (!email.value.trim() || !password.value) return
+const { defineField, handleSubmit, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      correo: requiredEmail(),
+      contrasena: requiredString('La contraseña'),
+    }),
+  ),
+  initialValues: {
+    correo: '',
+    contrasena: '',
+  },
+})
 
+const [correo, correoAttrs] = defineField('correo')
+const [contrasena, contrasenaAttrs] = defineField('contrasena')
+
+const onSubmit = handleSubmit((values) => {
   loginMutation.mutate({
-    correo: email.value.trim(),
-    contrasena: String(password.value),
+    correo: values.correo,
+    contrasena: values.contrasena,
     keepLoggedIn: keepLoggedIn.value,
   })
-}
+})
 </script>

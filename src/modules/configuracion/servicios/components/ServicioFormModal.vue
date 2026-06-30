@@ -14,63 +14,71 @@
       id="servicio-form"
       class="space-y-4"
       autocomplete="off"
-      @submit.prevent="handleSubmit"
+      @submit="onSubmit"
     >
       <AppInput
-        v-model="form.codigo"
+        v-model="codigo"
         label="Código"
         placeholder="CORREO"
         required
+        v-bind="codigoAttrs"
         :disabled="isSubmitting"
         :error="errors.codigo"
       />
 
       <AppInput
-        v-model="form.nombre"
+        v-model="nombre"
         label="Nombre"
         placeholder="Correo SMTP"
         required
+        v-bind="nombreAttrs"
         :disabled="isSubmitting"
         :error="errors.nombre"
       />
 
       <AppInput
-        v-model="form.usuario"
+        v-model="usuario"
         label="Usuario"
         placeholder="usuario@servicio.com"
+        v-bind="usuarioAttrs"
         :disabled="isSubmitting"
       />
 
       <AppInput
-        v-model="form.contrasena"
+        v-model="contrasena"
         type="password"
         :label="mode === 'create' ? 'Contraseña' : 'Nueva contraseña'"
         :placeholder="mode === 'create' ? 'Contraseña del servicio' : 'Dejar vacío para no cambiar'"
         name="servicio-contrasena"
         autocomplete="new-password"
+        v-bind="contrasenaAttrs"
         :disabled="isSubmitting"
         :hint="mode === 'edit' ? 'Dejar vacío para mantener la contraseña actual.' : undefined"
       />
 
       <AppInput
-        v-model="form.email"
+        v-model="email"
         type="email"
         label="Correo"
         placeholder="smtp@empresa.com"
+        v-bind="emailAttrs"
         :disabled="isSubmitting"
+        :error="errors.email"
       />
 
       <AppInput
-        v-model="form.url"
+        v-model="url"
         label="URL"
         placeholder="https://api.servicio.com"
+        v-bind="urlAttrs"
         :disabled="isSubmitting"
       />
 
       <AppInput
-        v-model="form.observacion"
+        v-model="observacion"
         label="Observación"
         placeholder="Notas adicionales"
+        v-bind="observacionAttrs"
         :disabled="isSubmitting"
       />
     </form>
@@ -99,7 +107,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import {
   useCreateConfiguracionServicioMutation,
   useUpdateConfiguracionServicioMutation,
@@ -109,6 +120,7 @@ import type {
   ConfiguracionServicioFormMode,
 } from '@/modules/configuracion/servicios/interfaces/configuracion-servicio.interface'
 import { AppInput, AppModal } from '@/shared/components'
+import { optionalEmail, optionalPasswordMin, optionalString, requiredString } from '@/shared/validation'
 
 interface ServicioFormModalProps {
   mode: ConfiguracionServicioFormMode
@@ -126,73 +138,70 @@ const emit = defineEmits<{
 const createMutation = useCreateConfiguracionServicioMutation()
 const updateMutation = useUpdateConfiguracionServicioMutation()
 
-const form = reactive({
-  codigo: '',
-  nombre: '',
-  usuario: '',
-  contrasena: '',
-  email: '',
-  url: '',
-  observacion: '',
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      codigo: requiredString('El código'),
+      nombre: requiredString('El nombre'),
+      usuario: optionalString(),
+      contrasena: optionalPasswordMin(),
+      email: optionalEmail(),
+      url: optionalString(),
+      observacion: optionalString(),
+    }),
+  ),
+  initialValues: {
+    codigo: '',
+    nombre: '',
+    usuario: '',
+    contrasena: '',
+    email: '',
+    url: '',
+    observacion: '',
+  },
 })
 
-const errors = reactive({
-  codigo: '',
-  nombre: '',
-})
+const [codigo, codigoAttrs] = defineField('codigo')
+const [nombre, nombreAttrs] = defineField('nombre')
+const [usuario, usuarioAttrs] = defineField('usuario')
+const [contrasena, contrasenaAttrs] = defineField('contrasena')
+const [email, emailAttrs] = defineField('email')
+const [url, urlAttrs] = defineField('url')
+const [observacion, observacionAttrs] = defineField('observacion')
 
-const isSubmitting = ref(false)
-
-const resetForm = () => {
-  form.codigo = props.servicio?.codigo ?? ''
-  form.nombre = props.servicio?.nombre ?? ''
-  form.usuario = props.servicio?.usuario ?? ''
-  form.contrasena = ''
-  form.email = props.servicio?.email ?? ''
-  form.url = props.servicio?.url ?? ''
-  form.observacion = props.servicio?.observacion ?? ''
-  errors.codigo = ''
-  errors.nombre = ''
-}
-
-const validate = () => {
-  errors.codigo = ''
-  errors.nombre = ''
-
-  if (!form.codigo.trim()) {
-    errors.codigo = 'El código es obligatorio'
-  }
-
-  if (!form.nombre.trim()) {
-    errors.nombre = 'El nombre es obligatorio'
-  }
-
-  return !errors.codigo && !errors.nombre
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      codigo: props.servicio?.codigo ?? '',
+      nombre: props.servicio?.nombre ?? '',
+      usuario: props.servicio?.usuario ?? '',
+      contrasena: '',
+      email: props.servicio?.email ?? '',
+      url: props.servicio?.url ?? '',
+      observacion: props.servicio?.observacion ?? '',
+    },
+  })
 }
 
 const handleClose = () => {
   open.value = false
 }
 
-const handleSubmit = async () => {
-  if (!validate()) return
-
-  isSubmitting.value = true
-
+const onSubmit = handleSubmit(async (values) => {
   try {
     const basePayload = {
-      codigo: form.codigo.trim(),
-      nombre: form.nombre.trim(),
-      usuario: form.usuario.trim() || undefined,
-      email: form.email.trim() || undefined,
-      url: form.url.trim() || undefined,
-      observacion: form.observacion.trim() || undefined,
+      codigo: values.codigo,
+      nombre: values.nombre,
+      usuario: values.usuario || undefined,
+      email: values.email || undefined,
+      url: values.url || undefined,
+      observacion: values.observacion || undefined,
     }
 
     if (props.mode === 'create') {
       await createMutation.mutateAsync({
         ...basePayload,
-        contrasena: form.contrasena.trim() || undefined,
+        contrasena: values.contrasena || undefined,
       })
     } else if (props.servicio) {
       const payload: {
@@ -205,8 +214,8 @@ const handleSubmit = async () => {
         observacion?: string
       } = { ...basePayload }
 
-      if (form.contrasena.trim()) {
-        payload.contrasena = form.contrasena
+      if (values.contrasena) {
+        payload.contrasena = values.contrasena
       }
 
       await updateMutation.mutateAsync({
@@ -221,16 +230,14 @@ const handleSubmit = async () => {
     open.value = false
   } catch {
     // toast en mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
-      resetForm()
+      syncFormValues()
     }
   },
 )
@@ -239,7 +246,7 @@ watch(
   () => props.servicio,
   () => {
     if (open.value) {
-      resetForm()
+      syncFormValues()
     }
   },
 )

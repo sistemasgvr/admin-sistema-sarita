@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { configure } from 'vee-validate'
 import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import './assets/main.css'
@@ -9,6 +10,13 @@ import { pinia } from '@/shared/plugins/pinia'
 import { queryClient, VueQueryPlugin } from '@/shared/plugins/vueQuery'
 import { toastWarning } from '@/shared/composables/useToast'
 import router from './router'
+
+configure({
+  validateOnBlur: true,
+  validateOnChange: false,
+  validateOnInput: false,
+  validateOnModelUpdate: false,
+})
 
 const app = createApp(App)
 

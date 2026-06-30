@@ -9,21 +9,23 @@
     "
     @close="handleClose"
   >
-    <form id="permiso-form" class="space-y-4" @submit.prevent="handleSubmit">
+    <form id="permiso-form" class="space-y-4" @submit="onSubmit">
       <AppInput
-        v-model="form.nombre"
+        v-model="nombre"
         label="Nombre"
         placeholder="Ej. usuarios.crear"
         required
+        v-bind="nombreAttrs"
         :disabled="isSubmitting"
         :error="errors.nombre"
         hint="Usa el formato módulo.acción, por ejemplo clientes.listar."
       />
 
       <AppTextarea
-        v-model="form.descripcion"
+        v-model="descripcion"
         label="Descripción"
         placeholder="Describe qué permite este permiso"
+        v-bind="descripcionAttrs"
         :disabled="isSubmitting"
         :error="errors.descripcion"
       />
@@ -51,7 +53,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import {
   useCreatePermisoMutation,
   useUpdatePermisoMutation,
@@ -61,6 +66,7 @@ import type {
   PermisoFormMode,
 } from '@/modules/permisos/interfaces/permiso.interface'
 import { AppInput, AppModal, AppTextarea } from '@/shared/components'
+import { optionalString, requiredString } from '@/shared/validation'
 
 interface PermisoFormModalProps {
   mode: PermisoFormMode
@@ -78,75 +84,66 @@ const emit = defineEmits<{
 const createMutation = useCreatePermisoMutation()
 const updateMutation = useUpdatePermisoMutation()
 
-const form = reactive({
-  nombre: '',
-  descripcion: '',
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      nombre: requiredString('El nombre'),
+      descripcion: optionalString(),
+    }),
+  ),
+  initialValues: {
+    nombre: '',
+    descripcion: '',
+  },
 })
 
-const errors = reactive({
-  nombre: '',
-  descripcion: '',
-})
+const [nombre, nombreAttrs] = defineField('nombre')
+const [descripcion, descripcionAttrs] = defineField('descripcion')
 
-const isSubmitting = ref(false)
-
-const resetForm = () => {
-  form.nombre = props.permiso?.nombre ?? ''
-  form.descripcion = props.permiso?.descripcion ?? ''
-  errors.nombre = ''
-  errors.descripcion = ''
-}
-
-const validate = () => {
-  errors.nombre = ''
-  errors.descripcion = ''
-
-  if (!form.nombre.trim()) {
-    errors.nombre = 'El nombre es obligatorio'
-  }
-
-  return !errors.nombre
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      nombre: props.permiso?.nombre ?? '',
+      descripcion: props.permiso?.descripcion ?? '',
+    },
+  })
 }
 
 const handleClose = () => {
   open.value = false
 }
 
-const handleSubmit = async () => {
-  if (!validate()) return
-
-  isSubmitting.value = true
-
+const onSubmit = handleSubmit(async (values) => {
   try {
     if (props.mode === 'create') {
       await createMutation.mutateAsync({
-        nombre: form.nombre.trim(),
-        descripcion: form.descripcion.trim() || undefined,
+        nombre: values.nombre,
+        descripcion: values.descripcion || undefined,
       })
     } else if (props.permiso) {
       await updateMutation.mutateAsync({
         id: props.permiso.id,
         payload: {
-          nombre: form.nombre.trim(),
-          descripcion: form.descripcion.trim() || undefined,
+          nombre: values.nombre,
+          descripcion: values.descripcion || undefined,
         },
       })
+    } else {
+      return
     }
 
     emit('saved')
     open.value = false
   } catch {
     // toast en mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
-      resetForm()
+      syncFormValues()
     }
   },
 )
@@ -155,7 +152,7 @@ watch(
   () => props.permiso,
   () => {
     if (open.value) {
-      resetForm()
+      syncFormValues()
     }
   },
 )

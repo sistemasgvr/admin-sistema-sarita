@@ -55,53 +55,58 @@
         id="sunat-settings-form"
         class="space-y-4 px-6 py-5"
         autocomplete="off"
-        @submit.prevent="handleSubmit"
+        @submit="onSubmit"
       >
         <AppInput
-          v-model="form.usuario_sol"
+          v-model="usuario_sol"
           label="Usuario SOL"
           placeholder="MODDATOS"
           required
+          v-bind="usuarioSolAttrs"
           :disabled="!canSave || isSubmitting"
           :error="errors.usuario_sol"
         />
 
         <AppInput
-          v-model="form.clave_sol"
+          v-model="clave_sol"
           type="password"
           :label="isEditMode ? 'Nueva clave SOL' : 'Clave SOL'"
           :placeholder="isEditMode ? 'Dejar vacío para no cambiar' : 'Clave SOL'"
           name="sunat-clave-sol"
           autocomplete="new-password"
           :required="!isEditMode"
+          v-bind="claveSolAttrs"
           :disabled="!canSave || isSubmitting"
           :error="errors.clave_sol"
           :hint="isEditMode ? 'Dejar vacío para mantener la clave actual.' : undefined"
         />
 
         <AppInput
-          v-model="form.certificado_digital"
+          v-model="certificado_digital"
           label="Certificado digital"
           placeholder="Ruta o referencia del certificado"
+          v-bind="certificadoDigitalAttrs"
           :disabled="!canSave || isSubmitting"
         />
 
         <AppInput
-          v-model="form.clave_certificado"
+          v-model="clave_certificado"
           type="password"
           :label="isEditMode ? 'Nueva clave del certificado' : 'Clave del certificado'"
           placeholder="Clave del certificado"
           name="sunat-clave-certificado"
           autocomplete="new-password"
+          v-bind="claveCertificadoAttrs"
           :disabled="!canSave || isSubmitting"
           :hint="isEditMode ? 'Dejar vacío para mantener la clave actual.' : undefined"
         />
 
         <AppInput
-          v-model="form.id_ambiente"
+          v-model="id_ambiente"
           type="number"
           label="ID ambiente"
           placeholder="1"
+          v-bind="idAmbienteAttrs"
           :disabled="!canSave || isSubmitting"
         />
       </form>
@@ -141,7 +146,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import {
@@ -156,6 +164,12 @@ import { useConfiguracionSunatActualQuery } from '@/modules/configuracion/sunat/
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import {
+  optionalNumber,
+  optionalString,
+  requiredString,
+  validationMessages,
+} from '@/shared/validation'
 
 const authStore = useAuthStore()
 const breadcrumbItems = configuracionBreadcrumbItems('SUNAT')
@@ -164,27 +178,43 @@ const sunatQuery = useConfiguracionSunatActualQuery()
 const createMutation = useCreateConfiguracionSunatMutation()
 const updateMutation = useUpdateConfiguracionSunatMutation()
 
-const form = reactive({
-  usuario_sol: '',
-  clave_sol: '',
-  certificado_digital: '',
-  clave_certificado: '',
-  id_ambiente: '',
-})
-
-const errors = reactive({
-  usuario_sol: '',
-  clave_sol: '',
-})
-
-const isSubmitting = ref(false)
-
 const isLoading = computed(
   () => empresaQuery.isFetching.value || sunatQuery.isFetching.value,
 )
 const empresa = computed(() => empresaQuery.data.value ?? null)
 const configuracionSunat = computed(() => sunatQuery.data.value ?? null)
 const isEditMode = computed(() => configuracionSunat.value != null)
+
+const validationSchema = computed(() =>
+  toTypedSchema(
+    yup.object({
+      usuario_sol: requiredString('El usuario SOL'),
+      clave_sol: isEditMode.value
+        ? optionalString()
+        : yup.string().required(validationMessages.required('La clave SOL')),
+      certificado_digital: optionalString(),
+      clave_certificado: optionalString(),
+      id_ambiente: optionalNumber(),
+    }),
+  ),
+)
+
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema,
+  initialValues: {
+    usuario_sol: '',
+    clave_sol: '',
+    certificado_digital: '',
+    clave_certificado: '',
+    id_ambiente: undefined as number | undefined,
+  },
+})
+
+const [usuario_sol, usuarioSolAttrs] = defineField('usuario_sol')
+const [clave_sol, claveSolAttrs] = defineField('clave_sol')
+const [certificado_digital, certificadoDigitalAttrs] = defineField('certificado_digital')
+const [clave_certificado, claveCertificadoAttrs] = defineField('clave_certificado')
+const [id_ambiente, idAmbienteAttrs] = defineField('id_ambiente')
 
 const empresaLabel = computed(() => {
   if (!empresa.value) return ''
@@ -199,38 +229,20 @@ const canSave = computed(() => {
   return authStore.hasPermission(PermisoBanderas.CONFIGURACION_SUNAT_CREAR)
 })
 
-const resetForm = () => {
-  form.usuario_sol = configuracionSunat.value?.usuario_sol ?? ''
-  form.clave_sol = ''
-  form.certificado_digital = configuracionSunat.value?.certificado_digital ?? ''
-  form.clave_certificado = ''
-  form.id_ambiente =
-    configuracionSunat.value?.id_ambiente != null
-      ? String(configuracionSunat.value.id_ambiente)
-      : ''
-  errors.usuario_sol = ''
-  errors.clave_sol = ''
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      usuario_sol: configuracionSunat.value?.usuario_sol ?? '',
+      clave_sol: '',
+      certificado_digital: configuracionSunat.value?.certificado_digital ?? '',
+      clave_certificado: '',
+      id_ambiente: configuracionSunat.value?.id_ambiente ?? undefined,
+    },
+  })
 }
 
-const validate = () => {
-  errors.usuario_sol = ''
-  errors.clave_sol = ''
-
-  if (!form.usuario_sol.trim()) {
-    errors.usuario_sol = 'El usuario SOL es obligatorio'
-  }
-
-  if (!isEditMode.value && !form.clave_sol.trim()) {
-    errors.clave_sol = 'La clave SOL es obligatoria'
-  }
-
-  return !errors.usuario_sol && !errors.clave_sol
-}
-
-const handleSubmit = async () => {
-  if (!canSave.value || !empresa.value || !validate()) return
-
-  isSubmitting.value = true
+const onSubmit = handleSubmit(async (values) => {
+  if (!canSave.value || !empresa.value) return
 
   try {
     if (isEditMode.value && configuracionSunat.value) {
@@ -243,17 +255,17 @@ const handleSubmit = async () => {
         idAmbiente?: number
       } = {
         idEmpresa: empresa.value.id,
-        usuarioSol: form.usuario_sol.trim(),
-        certificadoDigital: form.certificado_digital.trim() || undefined,
-        idAmbiente: form.id_ambiente ? Number(form.id_ambiente) : undefined,
+        usuarioSol: values.usuario_sol,
+        certificadoDigital: values.certificado_digital || undefined,
+        idAmbiente: values.id_ambiente,
       }
 
-      if (form.clave_sol.trim()) {
-        payload.claveSol = form.clave_sol
+      if (values.clave_sol) {
+        payload.claveSol = values.clave_sol
       }
 
-      if (form.clave_certificado.trim()) {
-        payload.claveCertificado = form.clave_certificado
+      if (values.clave_certificado) {
+        payload.claveCertificado = values.clave_certificado
       }
 
       await updateMutation.mutateAsync({
@@ -261,26 +273,26 @@ const handleSubmit = async () => {
         payload,
       })
     } else {
+      if (!values.clave_sol) return
+
       await createMutation.mutateAsync({
         idEmpresa: empresa.value.id,
-        usuarioSol: form.usuario_sol.trim(),
-        claveSol: form.clave_sol,
-        certificadoDigital: form.certificado_digital.trim() || undefined,
-        claveCertificado: form.clave_certificado.trim() || undefined,
-        idAmbiente: form.id_ambiente ? Number(form.id_ambiente) : undefined,
+        usuarioSol: values.usuario_sol,
+        claveSol: values.clave_sol,
+        certificadoDigital: values.certificado_digital || undefined,
+        claveCertificado: values.clave_certificado || undefined,
+        idAmbiente: values.id_ambiente,
       })
     }
   } catch {
     // toast en mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   configuracionSunat,
   () => {
-    resetForm()
+    syncFormValues()
   },
   { immediate: true },
 )

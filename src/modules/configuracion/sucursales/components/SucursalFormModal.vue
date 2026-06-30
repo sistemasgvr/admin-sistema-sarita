@@ -14,37 +14,41 @@
       id="sucursal-form"
       class="space-y-4"
       autocomplete="off"
-      @submit.prevent="handleSubmit"
+      @submit="onSubmit"
     >
       <AppInput
-        v-model="form.codigo"
+        v-model="codigo"
         label="Código"
         placeholder="SUC-001"
         required
+        v-bind="codigoAttrs"
         :disabled="isSubmitting"
         :error="errors.codigo"
       />
 
       <AppInput
-        v-model="form.nombre"
+        v-model="nombre"
         label="Nombre"
         placeholder="Sucursal Principal"
         required
+        v-bind="nombreAttrs"
         :disabled="isSubmitting"
         :error="errors.nombre"
       />
 
       <AppInput
-        v-model="form.direccion"
+        v-model="direccion"
         label="Dirección"
         placeholder="Av. Principal 123"
+        v-bind="direccionAttrs"
         :disabled="isSubmitting"
       />
 
       <AppInput
-        v-model="form.telefono"
+        v-model="telefono"
         label="Teléfono"
         placeholder="999 999 999"
+        v-bind="telefonoAttrs"
         :disabled="isSubmitting"
       />
     </form>
@@ -71,7 +75,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import {
   useCreateSucursalMutation,
   useUpdateSucursalMutation,
@@ -81,6 +88,7 @@ import type {
   SucursalFormMode,
 } from '@/modules/configuracion/sucursales/interfaces/sucursal.interface'
 import { AppInput, AppModal } from '@/shared/components'
+import { optionalString, requiredString } from '@/shared/validation'
 
 interface SucursalFormModalProps {
   mode: SucursalFormMode
@@ -98,59 +106,50 @@ const emit = defineEmits<{
 const createMutation = useCreateSucursalMutation()
 const updateMutation = useUpdateSucursalMutation()
 
-const form = reactive({
-  codigo: '',
-  nombre: '',
-  direccion: '',
-  telefono: '',
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      codigo: requiredString('El código'),
+      nombre: requiredString('El nombre'),
+      direccion: optionalString(),
+      telefono: optionalString(),
+    }),
+  ),
+  initialValues: {
+    codigo: '',
+    nombre: '',
+    direccion: '',
+    telefono: '',
+  },
 })
 
-const errors = reactive({
-  codigo: '',
-  nombre: '',
-})
+const [codigo, codigoAttrs] = defineField('codigo')
+const [nombre, nombreAttrs] = defineField('nombre')
+const [direccion, direccionAttrs] = defineField('direccion')
+const [telefono, telefonoAttrs] = defineField('telefono')
 
-const isSubmitting = ref(false)
-
-const resetForm = () => {
-  form.codigo = props.sucursal?.codigo ?? ''
-  form.nombre = props.sucursal?.nombre ?? ''
-  form.direccion = props.sucursal?.direccion ?? ''
-  form.telefono = props.sucursal?.telefono ?? ''
-  errors.codigo = ''
-  errors.nombre = ''
-}
-
-const validate = () => {
-  errors.codigo = ''
-  errors.nombre = ''
-
-  if (!form.codigo.trim()) {
-    errors.codigo = 'El código es obligatorio'
-  }
-
-  if (!form.nombre.trim()) {
-    errors.nombre = 'El nombre es obligatorio'
-  }
-
-  return !errors.codigo && !errors.nombre
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      codigo: props.sucursal?.codigo ?? '',
+      nombre: props.sucursal?.nombre ?? '',
+      direccion: props.sucursal?.direccion ?? '',
+      telefono: props.sucursal?.telefono ?? '',
+    },
+  })
 }
 
 const handleClose = () => {
   open.value = false
 }
 
-const handleSubmit = async () => {
-  if (!validate()) return
-
-  isSubmitting.value = true
-
+const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
-      codigo: form.codigo.trim(),
-      nombre: form.nombre.trim(),
-      direccion: form.direccion.trim() || undefined,
-      telefono: form.telefono.trim() || undefined,
+      codigo: values.codigo,
+      nombre: values.nombre,
+      direccion: values.direccion || undefined,
+      telefono: values.telefono || undefined,
     }
 
     if (props.mode === 'create') {
@@ -168,16 +167,14 @@ const handleSubmit = async () => {
     open.value = false
   } catch {
     // toast en mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
-      resetForm()
+      syncFormValues()
     }
   },
 )
@@ -186,7 +183,7 @@ watch(
   () => props.sucursal,
   () => {
     if (open.value) {
-      resetForm()
+      syncFormValues()
     }
   },
 )

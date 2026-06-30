@@ -14,38 +14,41 @@
       id="usuario-form"
       class="space-y-5"
       autocomplete="off"
-      @submit.prevent="handleSubmit"
+      @submit="onSubmit"
     >
       <div class="space-y-4">
         <AppInput
-          v-model="form.nombre"
+          v-model="nombre"
           label="Nombre"
           placeholder="Nombre completo"
           required
+          v-bind="nombreAttrs"
           :disabled="isSubmitting"
           :error="errors.nombre"
         />
 
         <AppInput
-          v-model="form.correo"
+          v-model="correo"
           type="email"
           label="Correo"
           placeholder="correo@ejemplo.com"
           name="usuario-correo"
           autocomplete="off"
           required
+          v-bind="correoAttrs"
           :disabled="isSubmitting"
           :error="errors.correo"
         />
 
         <AppInput
-          v-model="form.contrasena"
+          v-model="contrasena"
           type="password"
           :label="mode === 'create' ? 'Contraseña' : 'Nueva contraseña'"
           :placeholder="mode === 'create' ? 'Mínimo 6 caracteres' : 'Dejar vacío para no cambiar'"
           name="usuario-contrasena"
           autocomplete="new-password"
           :required="mode === 'create'"
+          v-bind="contrasenaAttrs"
           :disabled="isSubmitting"
           :error="errors.contrasena"
           :hint="mode === 'edit' ? 'Solo completa si deseas cambiar la contraseña.' : undefined"
@@ -117,7 +120,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import {
   useAsignarUsuarioRolMutation,
   useQuitarUsuarioRolMutation,
@@ -136,6 +142,12 @@ import type { Rol } from '@/modules/roles/interfaces/rol.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import {
+  optionalPasswordMin,
+  requiredEmail,
+  requiredPasswordMin,
+  requiredString,
+} from '@/shared/validation'
 
 interface UsuarioFormModalProps {
   mode: UsuarioFormMode
@@ -156,19 +168,6 @@ const updateMutation = useUpdateUsuarioMutation()
 const asignarRolMutation = useAsignarUsuarioRolMutation()
 const quitarRolMutation = useQuitarUsuarioRolMutation()
 
-const form = reactive({
-  nombre: '',
-  correo: '',
-  contrasena: '',
-})
-
-const errors = reactive({
-  nombre: '',
-  correo: '',
-  contrasena: '',
-})
-
-const isSubmitting = ref(false)
 const isLoadingRoles = ref(false)
 const availableRoles = ref<Rol[]>([])
 const asignacionByRolId = ref<Map<number, number>>(new Map())
@@ -182,6 +181,30 @@ const rolesFilters = computed(() => ({
 }))
 
 const asignadosQuery = useUsuarioRolesAsignadosQuery(rolesFilters)
+
+const validationSchema = computed(() =>
+  toTypedSchema(
+    yup.object({
+      nombre: requiredString('El nombre'),
+      correo: requiredEmail(),
+      contrasena:
+        props.mode === 'create' ? requiredPasswordMin(6) : optionalPasswordMin(6),
+    }),
+  ),
+)
+
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema,
+  initialValues: {
+    nombre: '',
+    correo: '',
+    contrasena: '',
+  },
+})
+
+const [nombre, nombreAttrs] = defineField('nombre')
+const [correo, correoAttrs] = defineField('correo')
+const [contrasena, contrasenaAttrs] = defineField('contrasena')
 
 const showRolesSection = computed(() =>
   authStore.hasPermission(PermisoBanderas.USUARIOS_ROLES_LISTAR),
@@ -257,41 +280,18 @@ const toggleRol = (rolId: number, checked: boolean) => {
   selectedRolIds.value = next
 }
 
-const resetForm = () => {
-  form.nombre = props.usuario?.nombre ?? ''
-  form.correo = props.usuario?.correo ?? ''
-  form.contrasena = ''
-  errors.nombre = ''
-  errors.correo = ''
-  errors.contrasena = ''
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      nombre: props.usuario?.nombre ?? '',
+      correo: props.usuario?.correo ?? '',
+      contrasena: '',
+    },
+  })
 
   if (props.mode === 'edit') {
     initRolesFromUsuario()
   }
-}
-
-const validate = () => {
-  errors.nombre = ''
-  errors.correo = ''
-  errors.contrasena = ''
-
-  if (!form.nombre.trim()) {
-    errors.nombre = 'El nombre es obligatorio'
-  }
-
-  if (!form.correo.trim()) {
-    errors.correo = 'El correo es obligatorio'
-  }
-
-  if (props.mode === 'create' && form.contrasena.length < 6) {
-    errors.contrasena = 'La contraseña debe tener al menos 6 caracteres'
-  }
-
-  if (props.mode === 'edit' && form.contrasena && form.contrasena.length < 6) {
-    errors.contrasena = 'La contraseña debe tener al menos 6 caracteres'
-  }
-
-  return !errors.nombre && !errors.correo && !errors.contrasena
 }
 
 const syncRoles = async (usuarioId: number) => {
@@ -319,19 +319,17 @@ const handleClose = () => {
   open.value = false
 }
 
-const handleSubmit = async () => {
-  if (!validate()) return
-
-  isSubmitting.value = true
-
+const onSubmit = handleSubmit(async (values) => {
   try {
     let usuarioId: number
 
     if (props.mode === 'create') {
+      if (!values.contrasena) return
+
       const usuario = await createMutation.mutateAsync({
-        nombre: form.nombre.trim(),
-        correo: form.correo.trim(),
-        contrasena: form.contrasena,
+        nombre: values.nombre,
+        correo: values.correo,
+        contrasena: values.contrasena,
       })
       usuarioId = usuario.id
     } else if (props.usuario) {
@@ -340,12 +338,12 @@ const handleSubmit = async () => {
         correo: string
         contrasena?: string
       } = {
-        nombre: form.nombre.trim(),
-        correo: form.correo.trim(),
+        nombre: values.nombre,
+        correo: values.correo,
       }
 
-      if (form.contrasena.trim()) {
-        payload.contrasena = form.contrasena
+      if (values.contrasena) {
+        payload.contrasena = values.contrasena
       }
 
       await updateMutation.mutateAsync({
@@ -363,16 +361,14 @@ const handleSubmit = async () => {
     open.value = false
   } catch {
     // El toast lo maneja la mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
-      resetForm()
+      syncFormValues()
       loadRoles()
       return
     }
@@ -388,7 +384,7 @@ watch(
   () => props.usuario,
   () => {
     if (open.value) {
-      resetForm()
+      syncFormValues()
       if (props.mode === 'edit' && props.usuario) {
         asignadosQuery.refetch().then(() => syncAsignaciones())
       }

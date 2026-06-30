@@ -26,51 +26,57 @@
         id="empresa-settings-form"
         class="space-y-4 px-6 py-5"
         autocomplete="off"
-        @submit.prevent="handleSubmit"
+        @submit="onSubmit"
       >
         <AppInput
-          v-model="form.ruc"
+          v-model="ruc"
           label="RUC"
           placeholder="20123456789"
           required
+          v-bind="rucAttrs"
           :disabled="!canSave || isSubmitting"
           :error="errors.ruc"
         />
 
         <AppInput
-          v-model="form.razon_social"
+          v-model="razon_social"
           label="Razón social"
           placeholder="Empresa S.A.C."
+          v-bind="razonSocialAttrs"
           :disabled="!canSave || isSubmitting"
         />
 
         <AppInput
-          v-model="form.nombre_comercial"
+          v-model="nombre_comercial"
           label="Nombre comercial"
           placeholder="Mi Empresa"
+          v-bind="nombreComercialAttrs"
           :disabled="!canSave || isSubmitting"
         />
 
         <AppInput
-          v-model="form.direccion"
+          v-model="direccion"
           label="Dirección"
           placeholder="Av. Principal 123"
+          v-bind="direccionAttrs"
           :disabled="!canSave || isSubmitting"
         />
 
         <div class="grid gap-4 sm:grid-cols-2">
           <AppInput
-            v-model="form.telefono"
+            v-model="telefono"
             label="Teléfono"
             placeholder="999 999 999"
+            v-bind="telefonoAttrs"
             :disabled="!canSave || isSubmitting"
           />
 
           <AppInput
-            v-model="form.email"
+            v-model="email"
             type="email"
             label="Correo"
             placeholder="contacto@empresa.com"
+            v-bind="emailAttrs"
             :disabled="!canSave || isSubmitting"
             :error="errors.email"
           />
@@ -106,7 +112,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import {
   CONFIGURACION_HUB_PATH,
@@ -120,6 +129,7 @@ import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composab
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { optionalEmail, optionalString, requiredString } from '@/shared/validation'
 
 const authStore = useAuthStore()
 const breadcrumbItems = configuracionBreadcrumbItems('Empresa')
@@ -127,21 +137,33 @@ const empresaQuery = useEmpresaActualQuery()
 const createMutation = useCreateEmpresaMutation()
 const updateMutation = useUpdateEmpresaMutation()
 
-const form = reactive({
-  ruc: '',
-  razon_social: '',
-  nombre_comercial: '',
-  direccion: '',
-  telefono: '',
-  email: '',
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      ruc: requiredString('El RUC'),
+      razon_social: optionalString(),
+      nombre_comercial: optionalString(),
+      direccion: optionalString(),
+      telefono: optionalString(),
+      email: optionalEmail(),
+    }),
+  ),
+  initialValues: {
+    ruc: '',
+    razon_social: '',
+    nombre_comercial: '',
+    direccion: '',
+    telefono: '',
+    email: '',
+  },
 })
 
-const errors = reactive({
-  ruc: '',
-  email: '',
-})
-
-const isSubmitting = ref(false)
+const [ruc, rucAttrs] = defineField('ruc')
+const [razon_social, razonSocialAttrs] = defineField('razon_social')
+const [nombre_comercial, nombreComercialAttrs] = defineField('nombre_comercial')
+const [direccion, direccionAttrs] = defineField('direccion')
+const [telefono, telefonoAttrs] = defineField('telefono')
+const [email, emailAttrs] = defineField('email')
 
 const isLoading = computed(() => empresaQuery.isFetching.value)
 const empresa = computed(() => empresaQuery.data.value ?? null)
@@ -155,41 +177,30 @@ const canSave = computed(() => {
   return authStore.hasPermission(PermisoBanderas.EMPRESAS_CREAR)
 })
 
-const resetForm = () => {
-  form.ruc = empresa.value?.ruc ?? ''
-  form.razon_social = empresa.value?.razon_social ?? ''
-  form.nombre_comercial = empresa.value?.nombre_comercial ?? ''
-  form.direccion = empresa.value?.direccion ?? ''
-  form.telefono = empresa.value?.telefono ?? ''
-  form.email = empresa.value?.email ?? ''
-  errors.ruc = ''
-  errors.email = ''
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      ruc: empresa.value?.ruc ?? '',
+      razon_social: empresa.value?.razon_social ?? '',
+      nombre_comercial: empresa.value?.nombre_comercial ?? '',
+      direccion: empresa.value?.direccion ?? '',
+      telefono: empresa.value?.telefono ?? '',
+      email: empresa.value?.email ?? '',
+    },
+  })
 }
 
-const validate = () => {
-  errors.ruc = ''
-  errors.email = ''
-
-  if (!form.ruc.trim()) {
-    errors.ruc = 'El RUC es obligatorio'
-  }
-
-  return !errors.ruc && !errors.email
-}
-
-const handleSubmit = async () => {
-  if (!canSave.value || !validate()) return
-
-  isSubmitting.value = true
+const onSubmit = handleSubmit(async (values) => {
+  if (!canSave.value) return
 
   try {
     const payload = {
-      ruc: form.ruc.trim(),
-      razonSocial: form.razon_social.trim() || undefined,
-      nombreComercial: form.nombre_comercial.trim() || undefined,
-      direccion: form.direccion.trim() || undefined,
-      telefono: form.telefono.trim() || undefined,
-      email: form.email.trim() || undefined,
+      ruc: values.ruc,
+      razonSocial: values.razon_social || undefined,
+      nombreComercial: values.nombre_comercial || undefined,
+      direccion: values.direccion || undefined,
+      telefono: values.telefono || undefined,
+      email: values.email || undefined,
     }
 
     if (isEditMode.value && empresa.value) {
@@ -202,15 +213,13 @@ const handleSubmit = async () => {
     }
   } catch {
     // toast en mutation
-  } finally {
-    isSubmitting.value = false
   }
-}
+})
 
 watch(
   empresa,
   () => {
-    resetForm()
+    syncFormValues()
   },
   { immediate: true },
 )
