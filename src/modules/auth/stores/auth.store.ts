@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { defineStore } from 'pinia'
+import { hasPermissionFlag } from '@/shared/constants/permissions'
 import { setAuthPersistMode } from '@/shared/plugins/pinia'
 import type { AuthUser } from '@/modules/auth/interfaces/auth.interface'
 
@@ -28,10 +29,8 @@ export const useAuthStore = defineStore('auth', {
       return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase()
     },
     permisos: (state) => state.user?.permisos ?? [],
-    hasPermission: (state) => (permission: string) => {
-      const permisos = state.user?.permisos ?? []
-      return permisos.includes('auth.todo') || permisos.includes(permission)
-    },
+    hasPermission: (state) => (permission: string) =>
+      hasPermissionFlag(state.user?.permisos ?? [], permission),
   },
 
   actions: {

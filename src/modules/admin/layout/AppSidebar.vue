@@ -41,7 +41,7 @@
     <div class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
       <nav class="mb-6">
         <div class="flex flex-col gap-4">
-          <div v-for="(menuGroup, groupIndex) in adminMenuGroups" :key="groupIndex">
+          <div v-for="(menuGroup, groupIndex) in visibleMenuGroups" :key="groupIndex">
             <h2
               :class="[
                 'mb-4 text-xs uppercase flex leading-[20px] text-gray-400',
@@ -156,10 +156,11 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
-import { adminMenuGroups } from '@/modules/admin/config/menu'
+import { useAdminMenu } from '@/modules/admin/composables/useAdminMenu'
 import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 const route = useRoute()
+const { visibleMenuGroups } = useAdminMenu()
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar()
 
 const isActive = (path: string) => route.path === path
@@ -170,7 +171,7 @@ const toggleSubmenu = (groupIndex: number, itemIndex: number) => {
 }
 
 const isAnySubmenuRouteActive = computed(() =>
-  adminMenuGroups.some((group) =>
+  visibleMenuGroups.value.some((group) =>
     group.items.some(
       (item) => item.subItems?.some((subItem) => isActive(subItem.path)),
     ),
@@ -182,7 +183,7 @@ const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {
   return (
     openSubmenu.value === key ||
     (isAnySubmenuRouteActive.value &&
-      adminMenuGroups[groupIndex].items[itemIndex].subItems?.some((subItem) =>
+      visibleMenuGroups.value[groupIndex]?.items[itemIndex]?.subItems?.some((subItem) =>
         isActive(subItem.path),
       ))
   )

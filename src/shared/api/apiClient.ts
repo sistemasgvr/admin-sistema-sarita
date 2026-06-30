@@ -13,11 +13,11 @@ export const apiClient: AxiosInstance = axios.create({
 })
 
 let getAccessToken: () => string | null = () => null
-let handleUnauthorized: () => void = () => {}
+let handleUnauthorized: (options: { sessionExpired: boolean }) => void = () => {}
 
 export function configureApiClient(options: {
   getAccessToken: () => string | null
-  onUnauthorized: () => void
+  onUnauthorized: (options: { sessionExpired: boolean }) => void
 }) {
   getAccessToken = options.getAccessToken
   handleUnauthorized = options.onUnauthorized
@@ -41,7 +41,12 @@ apiClient.interceptors.response.use(
       const payload = error.response?.data
 
       if (statusCode === 401) {
-        handleUnauthorized()
+        const isLoginRequest = error.config?.url?.includes('/auth/login')
+        const hadToken = Boolean(getAccessToken())
+
+        if (!isLoginRequest && hadToken) {
+          handleUnauthorized({ sessionExpired: true })
+        }
       }
 
       throw new ApiError(

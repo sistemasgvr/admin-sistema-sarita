@@ -1,14 +1,17 @@
 import { ICONS } from '@/shared/constants/icons'
+import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
 
 export interface AdminMenuSubItem {
   name: string
   path: string
+  permission?: PermissionBandera
 }
 
 export interface AdminMenuItem {
   icon: string
   name: string
   path?: string
+  permission?: PermissionBandera
   subItems?: AdminMenuSubItem[]
 }
 
@@ -35,6 +38,7 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         icon: ICONS.users,
         name: 'Clientes',
         path: '/admin/clientes',
+        permission: PermisoBanderas.CLIENTES_LISTAR,
       },
     ],
   },
