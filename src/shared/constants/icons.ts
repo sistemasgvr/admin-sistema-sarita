@@ -26,6 +26,12 @@ export const ICONS = {
   trash: 'lucide:trash-2',
   shield: 'lucide:shield',
   keyRound: 'lucide:key-round',
+  building2: 'lucide:building-2',
+  warehouse: 'lucide:warehouse',
+  creditCard: 'lucide:credit-card',
+  building: 'lucide:building',
+  fileKey: 'lucide:file-key',
+  plug: 'lucide:plug',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

@@ -43,6 +43,17 @@ export const adminMenuGroups: AdminMenuGroup[] = [
     ],
   },
   {
+    title: 'Configuración',
+    items: [
+      {
+        icon: ICONS.settings,
+        name: 'Configuración',
+        path: '/admin/configuracion',
+        permission: PermisoBanderas.CONFIGURACION_VER,
+      },
+    ],
+  },
+  {
     title: 'Sistema',
     items: [
       {
