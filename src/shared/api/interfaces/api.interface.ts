@@ -1,7 +1,12 @@
+import type { PaginationMeta } from '@/shared/interfaces/pagination.interface'
+
+export type { PaginationMeta }
+
 export interface ApiResponse<T> {
   success: boolean
   message: string
   data: T
+  meta?: PaginationMeta
 }
 
 export interface ApiErrorResponse {

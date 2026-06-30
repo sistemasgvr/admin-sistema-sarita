@@ -6,6 +6,8 @@ export const ICONS = {
   clipboardList: 'lucide:clipboard-list',
   settings: 'lucide:settings',
   chevronDown: 'lucide:chevron-down',
+  chevronLeft: 'lucide:chevron-left',
+  chevronRight: 'lucide:chevron-right',
   ellipsis: 'lucide:ellipsis',
   userCircle: 'lucide:user-circle',
   logOut: 'lucide:log-out',
