@@ -32,6 +32,11 @@ export const ICONS = {
   building: 'lucide:building',
   fileKey: 'lucide:file-key',
   plug: 'lucide:plug',
+  layers: 'lucide:layers',
+  listTree: 'lucide:list-tree',
+  tags: 'lucide:tags',
+  arrowLeftRight: 'lucide:arrow-left-right',
+  boxes: 'lucide:boxes',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

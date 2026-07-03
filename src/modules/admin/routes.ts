@@ -5,6 +5,7 @@ import { usuariosRoutes } from '@/modules/usuarios/routes'
 import { rolesRoutes } from '@/modules/roles/routes'
 import { permisosRoutes } from '@/modules/permisos/routes'
 import { configuracionRoutes } from '@/modules/configuracion/routes'
+import { productosRoutes } from '@/modules/productos/routes'
 
 const moduleRoutes: RouteRecordRaw[] = [
   ...dashboardRoutes,
@@ -13,6 +14,7 @@ const moduleRoutes: RouteRecordRaw[] = [
   ...rolesRoutes,
   ...permisosRoutes,
   ...configuracionRoutes,
+  ...productosRoutes,
 ]
 
 export const adminRoutes: RouteRecordRaw[] = [
