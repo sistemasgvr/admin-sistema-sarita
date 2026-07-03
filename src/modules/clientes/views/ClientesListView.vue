@@ -229,10 +229,6 @@ const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CLIENT
 const isLoading = computed(() => clientesQuery.isFetching.value)
 const rows = computed(() => clientesQuery.data.value?.data ?? [])
 
-/**
- * Persona natural -> "Nombres Apellidos".
- * Persona jurídica -> razón social (el tipo se muestra aparte como badge).
- */
 const getNombrePrincipal = (cliente: Cliente) => {
   const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
 
@@ -321,7 +317,6 @@ const confirmDelete = async () => {
     deleteModalOpen.value = false
     clienteToDelete.value = null
   } catch {
-    // toast en mutation
   }
 }
 
@@ -334,7 +329,6 @@ const restaurarCliente = async (cliente: Cliente) => {
       idUsuarioAuditoria: currentUserId.value,
     })
   } catch {
-    // toast en mutation
   }
 }
 

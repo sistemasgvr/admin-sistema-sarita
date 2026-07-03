@@ -1,14 +1,8 @@
-/**
- * Shape real que retorna el backend en GET /clientes y GET /clientes/{id}.
- * A diferencia del payload de creación/edición (camelCase, según el swagger
- * de POST/PATCH), la respuesta viene en snake_case e incluye los nombres ya
- * resueltos por los INNER JOIN de cada catálogo (nombre_tipo_cliente,
- * nombre_tipo_persona, etc.) y los datos de auditoría.
- */
 export interface Cliente {
   id: number
   codigo_interno: string
   razon_social?: string | null
+  nombre_comercial?: string | null
   id_tipo_cliente: number
   nombre_tipo_cliente?: string | null
   id_tipo_persona: number
@@ -38,7 +32,6 @@ export interface Cliente {
   situacion_sunat?: string | null
   estado_contribuyente_sunat?: string | null
   observacion?: string | null
-  /** 1 = activo, 0 = inactivo (no es boolean) */
   estado: number
   id_usuario_creacion?: number | null
   nombre_usuario_creacion?: string | null
@@ -48,22 +41,16 @@ export interface Cliente {
   fecha_modificacion: string
 }
 
-/** Valor del select "Mostrar clientes" en el listado */
 export type ClienteEstadoFiltro = 'activos' | 'inactivos' | 'ambos'
 
 export interface ClienteListFilters {
   buscar?: string
   pagina?: number
   limite?: number
-  /** true = solo activos, false = solo inactivos, undefined = ambos */
   soloActivos?: boolean
   idTipoCliente?: number
 }
 
-/**
- * Payload de creación/edición: se mantiene camelCase porque así lo documenta
- * el swagger de POST /clientes y PATCH /clientes/{id}.
- */
 export interface ClientePayload {
   idUsuarioAuditoria: number
   codigoInterno?: string
@@ -79,10 +66,10 @@ export interface ClientePayload {
   referencia?: string
   telefono?: string
   email?: string
+  idPais?: number
   idDepartamento?: number
   idProvincia?: number
   idDistrito?: number
-  idPais?: number
   esAgentePercepcion?: boolean
   esBuenContribuyente?: boolean
   esAgenteRetenedor?: boolean
@@ -112,12 +99,6 @@ export interface ValidarDocumentoFilters {
   idExcluir?: number
 }
 
-/**
- * NOTA: el endpoint /clientes/validar-documento no documenta el shape exacto
- * de una respuesta exitosa (solo se vio el 401 en el swagger). Se asume que
- * `data` trae un booleano indicando si el documento ya está registrado.
- * Ajustar `registrado` al nombre real del campo si difiere.
- */
 export interface ValidarDocumentoResponse {
   registrado: boolean
 }

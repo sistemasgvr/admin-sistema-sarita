@@ -133,6 +133,9 @@ const sections = computed<DetailSection[]>(() => {
   if (cliente.razon_social) {
     datosGenerales.push({ label: 'Razón social', value: cliente.razon_social })
   }
+  if (cliente.nombre_comercial) {
+    datosGenerales.push({ label: 'Nombre comercial', value: cliente.nombre_comercial })
+  }
   if (nombreCompleto) {
     datosGenerales.push({ label: 'Nombre completo', value: nombreCompleto })
   }
