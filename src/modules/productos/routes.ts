@@ -40,8 +40,7 @@ export const productosRoutes: RouteRecordRaw[] = [
       {
         path: 'stock',
         name: 'admin-productos-stock',
-        component: () => import('@/modules/productos/views/ProductosSectionPlaceholder.vue'),
-        props: { pageTitle: 'Stock', phase: 4 },
+        component: () => import('@/modules/productos/stock/views/StockListView.vue'),
         meta: {
           title: 'Stock',
           module: 'productos',

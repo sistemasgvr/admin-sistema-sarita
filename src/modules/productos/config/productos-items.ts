@@ -40,7 +40,7 @@ export const productosMenuItems: ProductosMenuItem[] = [
     path: '/admin/productos/stock',
     permission: PermisoBanderas.STOCK_LISTAR,
     phase: 4,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'movimientos',
