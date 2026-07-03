@@ -19,7 +19,7 @@
               />
             </div>
 
-            <div class="w-full sm:w-52">
+            <div class="w-full sm:w-90">
               <AppSelect v-model="mostrarClientes" :options="estadoFiltroOptions" />
             </div>
           </div>
@@ -188,21 +188,18 @@ const limite = ref(10)
 
 const estadoFiltroOptions: SelectOption[] = [
   { label: 'Mostrar clientes: Activos', value: 'activos' },
-  { label: 'Mostrar clientes: Inactivos', value: 'inactivos' },
-  { label: 'Mostrar clientes: Ambos', value: 'ambos' },
+  { label: 'Mostrar clientes: Todos', value: 'inactivos' },
 ]
 
-const buildSoloActivos = (value: ClienteEstadoFiltro): boolean | undefined => {
-  if (value === 'activos') return true
-  if (value === 'inactivos') return false
-  return undefined
+const buildSoloActivos = (value: ClienteEstadoFiltro): number => {
+  return value === 'activos' ? 1 : 0
 }
 
 const filters = ref<ClienteListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
-  soloActivos: true,
+  soloActivos: 0,
 })
 
 const clientesQuery = useClientesQuery(filters)

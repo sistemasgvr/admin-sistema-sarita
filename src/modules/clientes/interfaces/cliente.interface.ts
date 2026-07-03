@@ -47,7 +47,7 @@ export interface ClienteListFilters {
   buscar?: string
   pagina?: number
   limite?: number
-  soloActivos?: boolean
+  soloActivos?: number
   idTipoCliente?: number
 }
 
