@@ -707,5 +707,23 @@ const onSubmit = handleSubmit(async (values) => {
   } catch {
     // toast en mutation
   }
-ation
-  }
+  })
+
+  watch(
+  () => open.value,
+  (isOpen) => {
+    if (isOpen) {
+      syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => props.cliente,
+  () => {
+    if (open.value) {
+      syncFormValues()
+    }
+  },
+)
+</script>
