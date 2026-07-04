@@ -50,8 +50,8 @@ export const productosRoutes: RouteRecordRaw[] = [
       {
         path: 'movimientos',
         name: 'admin-productos-movimientos',
-        component: () => import('@/modules/productos/views/ProductosSectionPlaceholder.vue'),
-        props: { pageTitle: 'Movimientos', phase: 4 },
+        component: () =>
+          import('@/modules/productos/movimientos/views/MovimientosListView.vue'),
         meta: {
           title: 'Movimientos',
           module: 'productos',
@@ -61,8 +61,8 @@ export const productosRoutes: RouteRecordRaw[] = [
       {
         path: 'catalogo-precios',
         name: 'admin-productos-catalogo-precios',
-        component: () => import('@/modules/productos/views/ProductosSectionPlaceholder.vue'),
-        props: { pageTitle: 'Catálogo de precios', phase: 5 },
+        component: () =>
+          import('@/modules/productos/catalogo-precios/views/CatalogoPreciosListView.vue'),
         meta: {
           title: 'Catálogo de precios',
           module: 'productos',

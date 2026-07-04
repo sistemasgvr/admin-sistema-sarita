@@ -48,7 +48,7 @@ export const productosMenuItems: ProductosMenuItem[] = [
     path: '/admin/productos/movimientos',
     permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
     phase: 4,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'catalogo-precios',
@@ -56,6 +56,6 @@ export const productosMenuItems: ProductosMenuItem[] = [
     path: '/admin/productos/catalogo-precios',
     permission: PermisoBanderas.CATALOGO_PRECIOS_LISTAR,
     phase: 5,
-    implemented: false,
+    implemented: true,
   },
 ]
