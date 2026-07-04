@@ -41,7 +41,7 @@ export interface Cliente {
   fecha_modificacion: string
 }
 
-export type ClienteEstadoFiltro = 'activos' | 'inactivos' | 'ambos'
+export type ClienteEstadoFiltro = 'activos' | 'inactivos' | 'todos'
 
 export interface ClienteListFilters {
   buscar?: string

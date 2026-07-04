@@ -47,7 +47,7 @@
 
               <button
                 type="button"
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-white/[0.03]"
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-white-200 dark:hover:bg-white/[0.03]"
                 :disabled="isSubmitting || isConsultandoDocumento"
                 title="Consultar RENIEC / SUNAT"
                 @click="handleConsultarDocumento"

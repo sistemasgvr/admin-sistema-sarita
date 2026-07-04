@@ -31,7 +31,7 @@
             @click="openCreateModal"
           >
             <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo cliente
+            Nuevo 
           </button>
         </div>
       </template>
@@ -78,7 +78,7 @@
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Eliminar
+          Archivar
         </button>
 
         <button
@@ -114,12 +114,12 @@
 
     <AppModal
       v-model="deleteModalOpen"
-      title="Eliminar cliente"
+      title="Archivar cliente"
       subtitle="Esta acción desactivará el cliente en el sistema (baja lógica)."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        ¿Confirmas que deseas eliminar a
+        ¿Confirmas que deseas archivar a
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ clienteToDelete ? getNombrePrincipal(clienteToDelete) : '' }}
         </span>
@@ -141,7 +141,7 @@
           :disabled="deleteMutation.isPending.value"
           @click="confirmDelete"
         >
-          {{ deleteMutation.isPending.value ? 'Eliminando...' : 'Eliminar' }}
+          {{ deleteMutation.isPending.value ? 'Archivando...' : 'Archivar' }}
         </button>
       </template>
     </AppModal>
@@ -187,19 +187,30 @@ const pagina = ref(1)
 const limite = ref(10)
 
 const estadoFiltroOptions: SelectOption[] = [
+  { label: 'Mostrar clientes: Todos', value: 'todos' },
   { label: 'Mostrar clientes: Activos', value: 'activos' },
-  { label: 'Mostrar clientes: Todos', value: 'inactivos' },
+  { label: 'Mostrar clientes: Inactivos', value: 'inactivos' },
 ]
 
-const buildSoloActivos = (value: ClienteEstadoFiltro): number => {
-  return value === 'activos' ? 1 : 0
+const buildSoloActivos = (
+  value: ClienteEstadoFiltro,
+): number | null => {
+  switch (value) {
+    case 'activos':
+      return 1
+    case 'inactivos':
+      return 0
+    case 'todos':
+    default:
+      return null
+  }
 }
 
 const filters = ref<ClienteListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
-  soloActivos: 0,
+  soloActivos: 1,
 })
 
 const clientesQuery = useClientesQuery(filters)
