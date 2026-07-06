@@ -33,6 +33,7 @@ export function useUpdateSubCategoriaProductoMutation() {
       subCategoriasProductoService.actualizar(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subCategoriasProductoQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: categoriasProductoQueryKeys.lists() })
       toastSuccess('Subcategoría actualizada correctamente')
     },
     onError: (error) => {
