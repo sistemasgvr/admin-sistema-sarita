@@ -5,6 +5,12 @@
  * Reemplaza cada 0 con el id real de tu entorno.
  */
 export const ListaIds = {
+  /** gen_lista.nombre = TipoPersona */
+  TIPO_PERSONA: 1,
+  /** gen_lista.nombre = TipoCliente */
+  TIPO_CLIENTE: 2,
+  /** gen_lista.nombre = TipoDocumento */
+  TIPO_DOCUMENTO: 3,
   /** gen_lista.nombre = UnidadMedida */
   UNIDAD_MEDIDA: 7,
   /** gen_lista.nombre = TipoMovInv */

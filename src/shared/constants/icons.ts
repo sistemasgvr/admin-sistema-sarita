@@ -37,6 +37,7 @@ export const ICONS = {
   tags: 'lucide:tags',
   arrowLeftRight: 'lucide:arrow-left-right',
   boxes: 'lucide:boxes',
+  loader: 'lucide:loader',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]
