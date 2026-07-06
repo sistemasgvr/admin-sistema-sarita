@@ -81,8 +81,8 @@
 
     <RolPermisosModal
       v-model="permisosModalOpen"
-      :rol="selectedRol"
-      @saved="onRolSaved"
+      :rol="rolPermisos"
+      @saved="onPermisosSaved"
     />
 
     <AppModal
@@ -156,6 +156,7 @@ const formModalOpen = ref(false)
 const permisosModalOpen = ref(false)
 const formMode = ref<RolFormMode>('create')
 const selectedRol = ref<Rol | null>(null)
+const rolPermisos = ref<Rol | null>(null)
 
 const deleteModalOpen = ref(false)
 const rolToDelete = ref<Rol | null>(null)
@@ -217,7 +218,7 @@ const openEditModal = (rol: Rol) => {
 }
 
 const openPermisosModal = (rol: Rol) => {
-  selectedRol.value = rol
+  rolPermisos.value = rol
   permisosModalOpen.value = true
 }
 
@@ -240,5 +241,9 @@ const confirmDelete = async () => {
 
 const onRolSaved = () => {
   selectedRol.value = null
+}
+
+const onPermisosSaved = () => {
+  rolPermisos.value = null
 }
 </script>

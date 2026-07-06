@@ -9,12 +9,13 @@
   >
     <input
       :id="fieldId"
-      v-model="model"
       type="checkbox"
       class="sr-only"
       :name="name"
+      :checked="model"
       :disabled="disabled"
       :required="required"
+      @change="onChange"
     />
     <span
       class="mr-3 flex h-5 w-5 items-center justify-center rounded-md border-[1.25px] transition-colors"
@@ -59,4 +60,8 @@ const model = defineModel<boolean>({ default: false })
 
 const generatedId = useId()
 const fieldId = computed(() => props.id ?? generatedId)
+
+const onChange = (event: Event) => {
+  model.value = (event.target as HTMLInputElement).checked
+}
 </script>

@@ -48,6 +48,7 @@
         </div>
 
         <div
+          ref="contentScrollRef"
           :class="[
             'min-h-0 flex-1 overflow-y-auto px-4 lg:px-8',
             $slots.header || title || subtitle ? 'py-5 lg:py-6' : 'py-4 pr-14 lg:py-8',
@@ -73,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, useId, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, useId, watch } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 
@@ -102,6 +103,7 @@ const emit = defineEmits<{
 }>()
 
 const titleId = useId()
+const contentScrollRef = ref<HTMLElement | null>(null)
 
 const panelSizeClass = computed(() => {
   const sizes: Record<ModalSize, string> = {
@@ -127,6 +129,12 @@ const onBackdropClick = () => {
 
 watch(modelValue, (isOpen) => {
   document.body.style.overflow = isOpen ? 'hidden' : ''
+
+  if (isOpen) {
+    nextTick(() => {
+      contentScrollRef.value?.scrollTo({ top: 0 })
+    })
+  }
 })
 
 onUnmounted(() => {
