@@ -6,6 +6,7 @@ import {
   apiPost,
 } from '@/shared/api/apiClient'
 import type {
+  ActivarUsuarioResponse,
   CreateUsuarioPayload,
   DeleteUsuarioResponse,
   UpdateUsuarioPayload,
@@ -30,7 +31,11 @@ export const usuariosService = {
     return apiPatch<Usuario>(`/auth/usuarios/${id}`, payload)
   },
 
-  eliminar(id: number) {
+  desactivar(id: number) {
     return apiDelete<DeleteUsuarioResponse>(`/auth/usuarios/${id}`)
+  },
+
+  activar(id: number) {
+    return apiPatch<ActivarUsuarioResponse>(`/auth/usuarios/${id}/activar`, {})
   },
 }
