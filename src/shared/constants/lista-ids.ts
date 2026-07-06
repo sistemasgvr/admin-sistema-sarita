@@ -13,6 +13,8 @@ export const ListaIds = {
   TIPO_DOCUMENTO_REF: 6,
   /** gen_lista.nombre = TipoCatalogoPrecio */
   TIPO_CATALOGO_PRECIO: 5,
+  /** gen_lista.nombre = AmbienteSunat */
+  AMBIENTE_SUNAT: 8,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds
