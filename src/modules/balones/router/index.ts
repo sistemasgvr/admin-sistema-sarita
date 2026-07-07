@@ -26,6 +26,17 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'movimientos',
+        name: 'admin-balones-movimientos',
+        component: () =>
+          import('@/modules/balones/movimientos/views/MovimientosBalonListView.vue'),
+        meta: {
+          title: 'Movimientos',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_BALON_LISTAR,
+        },
+      },
+      {
         path: '',
         redirect: { name: 'admin-balones-tipos' },
       },

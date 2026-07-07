@@ -33,7 +33,7 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     path: '/admin/balones/movimientos',
     permission: PermisoBanderas.MOVIMIENTOS_BALON_LISTAR,
     phase: 3,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'recargas',
