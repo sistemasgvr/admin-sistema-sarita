@@ -187,14 +187,14 @@ const pagina = ref(1)
 const limite = ref(10)
 
 const estadoFiltroOptions: SelectOption[] = [
-  { label: 'Mostrar clientes: Todos', value: 'todos' },
-  { label: 'Mostrar clientes: Activos', value: 'activos' },
-  { label: 'Mostrar clientes: Inactivos', value: 'inactivos' },
+  { label: 'Todos', value: 'todos' },
+  { label: 'Activos', value: 'activos' },
+  { label: 'Inactivos', value: 'inactivos' },
 ]
 
 const buildSoloActivos = (
   value: ClienteEstadoFiltro,
-): number | null => {
+): number | undefined => {
   switch (value) {
     case 'activos':
       return 1
@@ -202,7 +202,7 @@ const buildSoloActivos = (
       return 0
     case 'todos':
     default:
-      return null
+      return undefined
   }
 }
 

@@ -1,12 +1,12 @@
 <template>
   <div
-    class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+    class="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
   >
     <div v-if="$slots.toolbar" class="border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
       <slot name="toolbar" />
     </div>
 
-    <div class="max-w-full overflow-x-auto custom-scrollbar">
+    <div class="w-full min-w-0 max-w-full overflow-x-auto custom-scrollbar">
       <table class="min-w-full">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-700">
@@ -20,7 +20,7 @@
               ]"
             >
               <slot :name="`header-${column.key}`" :column="column">
-                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap">
                   {{ column.label }}
                 </p>
               </slot>
@@ -32,7 +32,7 @@
               :class="actionsHeaderClass"
             >
               <slot name="header-actions">
-                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap">
                   {{ actionsLabel }}
                 </p>
               </slot>
@@ -86,7 +86,7 @@
             </td>
 
             <td v-if="showActions" class="px-5 py-4 text-right sm:px-6">
-              <div class="flex items-center justify-end gap-2">
+              <div class="flex items-center justify-end gap-2 whitespace-nowrap">
                 <slot name="actions" :row="row" :index="index" />
               </div>
             </td>

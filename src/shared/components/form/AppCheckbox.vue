@@ -1,6 +1,6 @@
 <template>
   <label
-    class="flex cursor-pointer select-none items-center text-sm"
+    class="relative flex cursor-pointer select-none items-center text-sm"
     :class="
       disabled
         ? 'text-gray-300 dark:text-gray-700'
