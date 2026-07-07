@@ -107,21 +107,23 @@
         <button
           v-if="canEdit"
           type="button"
+          title="Ajustar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Ajustar
+          <!-- Ajustar -->
         </button>
 
         <button
           v-if="canDelete"
           type="button"
+          title="Eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Eliminar
+          <!-- Eliminar -->
         </button>
       </template>
 

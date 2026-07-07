@@ -64,31 +64,34 @@
         <button
           v-if="canEdit && row.estado"
           type="button"
+          title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Editar
+          <!-- Editar -->
         </button>
 
         <button
           v-if="canDeactivate && row.estado && row.id !== currentUserId"
           type="button"
+          title="Desactivar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeactivateModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Desactivar
+          <!-- Desactivar -->
         </button>
 
         <button
           v-if="canActivate && !row.estado"
           type="button"
+          title="Activar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
           @click="openActivateModal(row)"
         >
           <AppIcon :name="ICONS.check" :size="16" />
-          Activar
+          <!-- Activar -->
         </button>
       </template>
 
