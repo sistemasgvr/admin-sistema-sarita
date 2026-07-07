@@ -37,7 +37,7 @@
       </template>
 
       <template #cell-cliente="{ row }">
-        <p class="font-medium text-gray-800 dark:text-white/90">
+        <p class="truncate font-medium text-gray-800 dark:text-white/90">
           {{ getNombrePrincipal(row) }}
         </p>
         <AppBadge v-if="row.nombre_tipo_persona" size="sm" color="neutral" class="mt-1">
@@ -254,11 +254,11 @@ const getNombrePrincipal = (cliente: Cliente) => {
 
 const columns = computed<TableColumn<Cliente>[]>(() => [
   { key: 'cliente', label: 'Cliente' },
-  { key: 'numero_documento', label: 'Documento' },
+  { key: 'numero_documento', label: 'Documento', cellClass: 'whitespace-nowrap' },
   { key: 'direccion', label: 'Dirección' },
-  { key: 'telefono', label: 'Teléfono' },
+  { key: 'telefono', label: 'Teléfono', cellClass: 'whitespace-nowrap' },
   { key: 'email', label: 'Correo' },
-  { key: 'estado', label: 'Estado' },
+  { key: 'estado', label: 'Estado', cellClass: 'whitespace-nowrap' },
 ])
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined

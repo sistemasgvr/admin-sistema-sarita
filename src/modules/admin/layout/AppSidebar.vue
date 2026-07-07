@@ -62,15 +62,15 @@
                   :class="[
                     'menu-item group w-full',
                     {
-                      'menu-item-active': isSubmenuOpen(groupIndex, index),
-                      'menu-item-inactive': !isSubmenuOpen(groupIndex, index),
+                      'menu-item-active': isParentItemActive(item),
+                      'menu-item-inactive': !isParentItemActive(item),
                     },
                     !isExpanded && !isHovered ? 'lg:justify-center' : 'lg:justify-start',
                   ]"
                 >
                   <span
                     :class="[
-                      isSubmenuOpen(groupIndex, index)
+                      isParentItemActive(item)
                         ? 'menu-item-icon-active'
                         : 'menu-item-icon-inactive',
                     ]"
@@ -131,8 +131,8 @@
                           :class="[
                             'menu-dropdown-item',
                             {
-                              'menu-dropdown-item-active': isActive(subItem.path),
-                              'menu-dropdown-item-inactive': !isActive(subItem.path),
+                              'menu-dropdown-item-active': isSubmenuRouteActive(subItem.path),
+                              'menu-dropdown-item-inactive': !isSubmenuRouteActive(subItem.path),
                             },
                           ]"
                         >
@@ -152,8 +152,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { watch } from 'vue'
 import { useRoute } from 'vue-router'
+import type { AdminMenuItem } from '@/modules/admin/config/menu'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { useAdminMenu } from '@/modules/admin/composables/useAdminMenu'
@@ -163,31 +164,66 @@ const route = useRoute()
 const { visibleMenuGroups } = useAdminMenu()
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar()
 
+const submenuKey = (groupIndex: number, itemIndex: number) => `${groupIndex}-${itemIndex}`
+
 const isActive = (path: string) => route.path === path
 
-const toggleSubmenu = (groupIndex: number, itemIndex: number) => {
-  const key = `${groupIndex}-${itemIndex}`
-  openSubmenu.value = openSubmenu.value === key ? null : key
+const isSubmenuRouteActive = (path: string) => route.path === path
+
+const isParentItemActive = (item: AdminMenuItem) => {
+  if (item.path && (route.path === item.path || route.path.startsWith(`${item.path}/`))) {
+    return true
+  }
+
+  return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path)) ?? false
 }
 
-const isAnySubmenuRouteActive = computed(() =>
-  visibleMenuGroups.value.some((group) =>
-    group.items.some(
-      (item) => item.subItems?.some((subItem) => isActive(subItem.path)),
-    ),
-  ),
-)
+const hasActiveSubmenuRoute = (groupIndex: number, itemIndex: number) => {
+  const item = visibleMenuGroups.value[groupIndex]?.items[itemIndex]
+  if (!item) return false
+
+  if (item.path && (route.path === item.path || route.path.startsWith(`${item.path}/`))) {
+    return true
+  }
+
+  return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path)) ?? false
+}
+
+const toggleSubmenu = (groupIndex: number, itemIndex: number) => {
+  const key = submenuKey(groupIndex, itemIndex)
+
+  if (isSubmenuOpen(groupIndex, itemIndex)) {
+    openSubmenu.value = `closed:${key}`
+    return
+  }
+
+  openSubmenu.value = key
+}
 
 const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {
-  const key = `${groupIndex}-${itemIndex}`
-  return (
-    openSubmenu.value === key ||
-    (isAnySubmenuRouteActive.value &&
-      visibleMenuGroups.value[groupIndex]?.items[itemIndex]?.subItems?.some((subItem) =>
-        isActive(subItem.path),
-      ))
-  )
+  const key = submenuKey(groupIndex, itemIndex)
+
+  if (openSubmenu.value === `closed:${key}`) return false
+  if (openSubmenu.value === key) return true
+
+  return hasActiveSubmenuRoute(groupIndex, itemIndex)
 }
+
+watch(
+  () => route.path,
+  () => {
+    visibleMenuGroups.value.forEach((group, groupIndex) => {
+      group.items.forEach((item, itemIndex) => {
+        if (!item.subItems?.length) return
+
+        const key = submenuKey(groupIndex, itemIndex)
+        if (hasActiveSubmenuRoute(groupIndex, itemIndex) && openSubmenu.value === `closed:${key}`) {
+          openSubmenu.value = null
+        }
+      })
+    })
+  },
+)
 
 const startTransition = (el: Element) => {
   const htmlEl = el as HTMLElement

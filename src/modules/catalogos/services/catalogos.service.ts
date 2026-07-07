@@ -1,8 +1,8 @@
 import { apiGet } from '@/shared/api/apiClient'
-import type { CatalogoOpcion } from '@/modules/catalogos/interfaces/catalogo.interface'
+import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
 
 export const catalogosService = {
-  listarOpciones(idLista: number) {
-    return apiGet<CatalogoOpcion[]>(`/catalogos/listas/${idLista}/opciones`)
+  listarListaOpciones(idLista: number) {
+    return apiGet<ListaOpcion[]>(`/catalogos/listas/${idLista}/opciones`)
   },
 }

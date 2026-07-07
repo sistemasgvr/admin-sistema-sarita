@@ -101,13 +101,13 @@
           :hint="isEditMode ? 'Dejar vacío para mantener la clave actual.' : undefined"
         />
 
-        <AppInput
+        <AppSelect
           v-model="id_ambiente"
-          type="number"
-          label="ID ambiente"
-          placeholder="1"
-          v-bind="idAmbienteAttrs"
-          :disabled="!canSave || isSubmitting"
+          label="Ambiente"
+          placeholder="Seleccionar ambiente"
+          :options="ambienteOptions"
+          :disabled="!canSave || isSubmitting || isLoadingAmbientes"
+          :error="errors.id_ambiente"
         />
       </form>
 
@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -161,8 +161,10 @@ import {
   useUpdateConfiguracionSunatMutation,
 } from '@/modules/configuracion/sunat/composables/useConfiguracionSunatMutations'
 import { useConfiguracionSunatActualQuery } from '@/modules/configuracion/sunat/composables/useConfiguracionSunatActualQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput } from '@/shared/components'
+import { AppInput, AppSelect } from '@/shared/components'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import {
   optionalNumber,
@@ -177,6 +179,18 @@ const empresaQuery = useEmpresaActualQuery()
 const sunatQuery = useConfiguracionSunatActualQuery()
 const createMutation = useCreateConfiguracionSunatMutation()
 const updateMutation = useUpdateConfiguracionSunatMutation()
+
+const listaAmbienteSunatId = ref(ListaIds.AMBIENTE_SUNAT)
+const ambientesQuery = useListaOpcionesQuery(listaAmbienteSunatId)
+
+const isLoadingAmbientes = computed(() => ambientesQuery.isFetching.value)
+
+const ambienteOptions = computed(() =>
+  (ambientesQuery.data.value ?? []).map((opcion) => ({
+    value: opcion.id,
+    label: opcion.nombre,
+  })),
+)
 
 const isLoading = computed(
   () => empresaQuery.isFetching.value || sunatQuery.isFetching.value,
@@ -214,7 +228,7 @@ const [usuario_sol, usuarioSolAttrs] = defineField('usuario_sol')
 const [clave_sol, claveSolAttrs] = defineField('clave_sol')
 const [certificado_digital, certificadoDigitalAttrs] = defineField('certificado_digital')
 const [clave_certificado, claveCertificadoAttrs] = defineField('clave_certificado')
-const [id_ambiente, idAmbienteAttrs] = defineField('id_ambiente')
+const [id_ambiente] = defineField('id_ambiente')
 
 const empresaLabel = computed(() => {
   if (!empresa.value) return ''
@@ -257,7 +271,7 @@ const onSubmit = handleSubmit(async (values) => {
         idEmpresa: empresa.value.id,
         usuarioSol: values.usuario_sol,
         certificadoDigital: values.certificado_digital || undefined,
-        idAmbiente: values.id_ambiente,
+        idAmbiente: values.id_ambiente ?? undefined,
       }
 
       if (values.clave_sol) {
@@ -281,7 +295,7 @@ const onSubmit = handleSubmit(async (values) => {
         claveSol: values.clave_sol,
         certificadoDigital: values.certificado_digital || undefined,
         claveCertificado: values.clave_certificado || undefined,
-        idAmbiente: values.id_ambiente,
+        idAmbiente: values.id_ambiente ?? undefined,
       })
     }
   } catch {

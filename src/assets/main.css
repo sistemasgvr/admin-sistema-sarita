@@ -186,13 +186,23 @@ layer(base);
 }
 
 @utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-200) transparent;
+
+  .dark & {
+    scrollbar-color: var(--color-gray-700) transparent;
+  }
+
   &::-webkit-scrollbar {
     @apply size-1.5;
   }
   &::-webkit-scrollbar-track {
-    @apply rounded-full;
+    @apply rounded-full bg-gray-50 dark:bg-gray-800/50;
   }
   &::-webkit-scrollbar-thumb {
-    @apply bg-gray-200 rounded-full dark:bg-gray-700;
+    @apply rounded-full bg-gray-200 dark:bg-gray-600;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-300 dark:bg-gray-500;
   }
 }

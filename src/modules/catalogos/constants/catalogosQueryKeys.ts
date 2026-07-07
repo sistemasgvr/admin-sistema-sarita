@@ -1,6 +1,7 @@
 export const catalogosQueryKeys = {
   all: ['catalogos'] as const,
-  opciones: (idLista: number) => [...catalogosQueryKeys.all, 'opciones', idLista] as const,
+  listaOpciones: (idLista: number) =>
+    [...catalogosQueryKeys.all, 'lista-opciones', idLista] as const,
 }
 
 export const ubigeoQueryKeys = {

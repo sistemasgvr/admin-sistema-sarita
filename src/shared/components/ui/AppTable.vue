@@ -1,13 +1,13 @@
 <template>
   <div
-    class="min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+    class="w-full min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
   >
     <div v-if="$slots.toolbar" class="border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
       <slot name="toolbar" />
     </div>
 
-    <div class="w-full min-w-0 max-w-full overflow-x-auto custom-scrollbar">
-      <table class="min-w-full">
+    <div class="w-full min-w-0 overflow-x-auto custom-scrollbar">
+      <table class="w-full">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-700">
             <th
@@ -79,14 +79,14 @@
                 :index="index"
                 :column="column"
               >
-                <p class="text-gray-500 text-theme-sm dark:text-gray-400">
+                <p class="truncate text-gray-500 text-theme-sm dark:text-gray-400">
                   {{ formatTableCellValue(row, column) }}
                 </p>
               </slot>
             </td>
 
             <td v-if="showActions" class="px-5 py-4 text-right sm:px-6">
-              <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+              <div class="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
                 <slot name="actions" :row="row" :index="index" />
               </div>
             </td>

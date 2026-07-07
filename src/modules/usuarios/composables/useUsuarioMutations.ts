@@ -38,17 +38,32 @@ export function useUpdateUsuarioMutation() {
   })
 }
 
-export function useDeleteUsuarioMutation() {
+export function useDesactivarUsuarioMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: number) => usuariosService.eliminar(id),
+    mutationFn: (id: number) => usuariosService.desactivar(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.lists() })
-      toastSuccess('Usuario eliminado correctamente')
+      toastSuccess('Usuario desactivado correctamente')
     },
     onError: (error) => {
-      toastApiError(error, 'No se pudo eliminar el usuario')
+      toastApiError(error, 'No se pudo desactivar el usuario')
+    },
+  })
+}
+
+export function useActivarUsuarioMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => usuariosService.activar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.lists() })
+      toastSuccess('Usuario activado correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo activar el usuario')
     },
   })
 }

@@ -14,10 +14,13 @@ export interface Usuario {
   roles: UsuarioRol[]
 }
 
+export type UsuarioEstadoFiltro = 'todos' | 'activos' | 'inactivos'
+
 export interface UsuarioListFilters {
   buscar?: string
   pagina?: number
   limite?: number
+  estado?: UsuarioEstadoFiltro
 }
 
 export interface CreateUsuarioPayload {
@@ -34,6 +37,11 @@ export interface UpdateUsuarioPayload {
 
 export interface DeleteUsuarioResponse {
   eliminado: boolean
+  id: number
+}
+
+export interface ActivarUsuarioResponse {
+  activado: boolean
   id: number
 }
 

@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb page-title="Configuración" />
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-1 xl:grid-cols-2">
       <router-link
         v-for="item in visibleItems"
         :key="item.key"
@@ -43,6 +43,8 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 const authStore = useAuthStore()
 
 const visibleItems = computed(() =>
-  configuracionHubItems.filter((item) => authStore.hasPermission(item.permission)),
+  configuracionHubItems.filter(
+    (item) => !item.hidden && authStore.hasPermission(item.permission),
+  ),
 )
 </script>

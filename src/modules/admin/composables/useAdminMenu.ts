@@ -12,10 +12,14 @@ function filterMenuItem(
     const subItems = item.subItems.filter((subItem) =>
       hasPermissionFlag(permisos, subItem.permission),
     )
+    const canAccessParent = hasPermissionFlag(permisos, item.permission)
 
-    if (subItems.length === 0) return null
+    if (subItems.length === 0 && !canAccessParent) return null
 
-    return { ...item, subItems }
+    return {
+      ...item,
+      subItems: subItems.length > 0 ? subItems : undefined,
+    }
   }
 
   if (!hasPermissionFlag(permisos, item.permission)) return null

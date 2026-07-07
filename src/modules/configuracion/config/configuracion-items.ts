@@ -8,6 +8,8 @@ export interface ConfiguracionHubItem {
   path: string
   icon: IconName
   permission: PermissionBandera
+  /** Ocultar del hub sin eliminar la ruta (reactivar cuando esté listo). */
+  hidden?: boolean
 }
 
 export const configuracionHubItems: ConfiguracionHubItem[] = [
@@ -58,5 +60,6 @@ export const configuracionHubItems: ConfiguracionHubItem[] = [
     path: '/admin/configuracion/servicios',
     icon: ICONS.plug,
     permission: PermisoBanderas.CONFIGURACION_SERVICIOS_LISTAR,
+    hidden: true,
   },
 ]

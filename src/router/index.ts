@@ -1,16 +1,54 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { authRoutes } from '@/modules/auth/routes'
-import { adminRoutes } from '@/modules/admin/routes'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { authRoutes } from '@/modules/auth/router'
+import { dashboardRoutes } from '@/modules/dashboard/router'
+import { clientesRoutes } from '@/modules/clientes/router'
+import { usuariosRoutes } from '@/modules/usuarios/router'
+import { rolesRoutes } from '@/modules/roles/router'
+import { permisosRoutes } from '@/modules/permisos/router'
+import { configuracionRoutes } from '@/modules/configuracion/router'
+import { productosRoutes } from '@/modules/productos/router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
 import { resolvePostLoginRedirect } from '@/shared/utils/resolvePostLoginRedirect'
+
+const adminChildren: RouteRecordRaw[] = [
+  {
+    path: '',
+    redirect: '/admin/dashboard',
+  },
+  ...dashboardRoutes,
+  ...clientesRoutes,
+  ...usuariosRoutes,
+  ...rolesRoutes,
+  ...permisosRoutes,
+  ...configuracionRoutes,
+  ...productosRoutes,
+  {
+    path: ':pathMatch(.*)*',
+    name: 'admin-not-found',
+    component: () => import('@/modules/admin/views/NotFoundView.vue'),
+    meta: {
+      title: 'Página no encontrada',
+    },
+  },
+]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior(_to, _from, savedPosition) {
     return savedPosition || { left: 0, top: 0 }
   },
-  routes: [...authRoutes, ...adminRoutes],
+  routes: [
+    ...authRoutes,
+    {
+      path: '/admin',
+      component: () => import('@/modules/admin/layout/AdminShell.vue'),
+      meta: {
+        requiresAuth: true,
+      },
+      children: adminChildren,
+    },
+  ],
 })
 
 router.beforeEach((to) => {
