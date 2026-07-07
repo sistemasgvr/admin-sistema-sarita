@@ -132,6 +132,7 @@
             v-model="razonSocial"
             label="Razón social"
             placeholder="Comercial Los Andes S.A.C."
+            :required="requiereRazonSocial"
             v-bind="razonSocialAttrs"
             :disabled="isSubmitting"
             :error="errors.razonSocial"
@@ -142,6 +143,7 @@
               v-model="nombres"
               label="Nombres"
               placeholder="Juan"
+              :required="requiereNombres"
               v-bind="nombresAttrs"
               :disabled="isSubmitting"
               :error="errors.nombres"
@@ -329,8 +331,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/yup'
-import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import {
   useDepartamentosQuery,
@@ -350,6 +350,7 @@ import {
   useUpdateClienteMutation,
 } from '@/modules/clientes/composables/useClienteMutations'
 import { documentoYaRegistrado } from '@/modules/clientes/composables/useValidarDocumentoCliente'
+import { toClienteFormSchema } from '@/modules/clientes/validation/clienteFormSchema'
 import type {
   Cliente,
   ClienteFormMode,
@@ -361,7 +362,6 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastApiError, toastInfo, toastSuccess, toastWarning } from '@/shared/composables/useToast'
-import { optionalEmail, optionalString, requiredSelect, requiredString } from '@/shared/validation'
 
 interface ClienteFormModalProps {
   mode: ClienteFormMode
@@ -397,27 +397,12 @@ const tipoPersonaOptions = computed(() => toSelectOptions(tipoPersonaQuery.data.
 const tipoClienteOptions = computed(() => toSelectOptions(tipoClienteQuery.data.value))
 const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
 
-const validationSchema = toTypedSchema(
-  yup.object({
-    idTipoDocumento: requiredSelect('El tipo de documento'),
-    numeroDocumento: requiredString('El número de documento'),
-    codigoInterno: optionalString(),
-    idTipoCliente: requiredSelect('El tipo de cliente'),
-    idTipoPersona: requiredSelect('El tipo de persona'),
-    razonSocial: optionalString(),
-    nombreComercial: optionalString(),
-    nombres: optionalString(),
-    apellidoPaterno: optionalString(),
-    apellidoMaterno: optionalString(),
-    telefono: optionalString(),
-    email: optionalEmail(),
-    direccion: optionalString(),
-    referencia: optionalString(),
-    idDistrito: yup
-      .number()
-      .transform((v, o) => (o === '' ? undefined : v))
-      .optional(),
-    observacion: optionalString(),
+const validationSchema = computed(() =>
+  toClienteFormSchema({
+    getTipoDocumentoNombre: (id) =>
+      tipoDocumentoQuery.data.value?.find((opcion) => opcion.id === Number(id))?.nombre,
+    getTipoPersonaNombre: (id) =>
+      tipoPersonaQuery.data.value?.find((opcion) => opcion.id === Number(id))?.nombre,
   }),
 )
 
@@ -501,6 +486,21 @@ watch(idProvinciaUI, () => {
 const tipoDocumentoSeleccionado = computed(() => {
   const opciones = tipoDocumentoQuery.data.value ?? []
   return opciones.find((opcion) => opcion.id === Number(idTipoDocumento.value))
+})
+
+const tipoPersonaSeleccionado = computed(() => {
+  const opciones = tipoPersonaQuery.data.value ?? []
+  return opciones.find((opcion) => opcion.id === Number(idTipoPersona.value))
+})
+
+const requiereRazonSocial = computed(() => {
+  const nombre = tipoPersonaSeleccionado.value?.nombre?.toUpperCase() ?? ''
+  return nombre.includes('JURID')
+})
+
+const requiereNombres = computed(() => {
+  const nombre = tipoPersonaSeleccionado.value?.nombre?.toUpperCase() ?? ''
+  return nombre.includes('NATURAL')
 })
 
 const aplicarDatosDni = (data: ConsultaDniData) => {
@@ -711,9 +711,9 @@ const onSubmit = handleSubmit(async (values) => {
   } catch {
     // toast en mutation
   }
-  })
+})
 
-  watch(
+watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {

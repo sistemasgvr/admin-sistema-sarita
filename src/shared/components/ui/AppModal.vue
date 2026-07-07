@@ -50,7 +50,7 @@
         <div
           ref="contentScrollRef"
           :class="[
-            'min-h-0 flex-1 overflow-y-auto px-4 lg:px-8',
+            'custom-scrollbar min-h-0 flex-1 overflow-y-auto px-4 lg:px-8',
             $slots.header || title || subtitle ? 'py-5 lg:py-6' : 'py-4 pr-14 lg:py-8',
             contentClass,
           ]"

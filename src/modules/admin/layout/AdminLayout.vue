@@ -1,13 +1,13 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 xl:flex">
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <AppSidebar />
     <Backdrop />
     <div
-      class="flex-1 transition-all duration-300 ease-in-out"
+      class="min-w-0 transition-all duration-300 ease-in-out"
       :class="[isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]']"
     >
       <AppHeader />
-      <div class="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6">
+      <div class="mx-auto min-w-0 max-w-(--breakpoint-2xl) p-4 md:p-6">
         <slot></slot>
       </div>
     </div>
