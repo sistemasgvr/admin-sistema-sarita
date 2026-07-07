@@ -162,7 +162,7 @@ import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 const route = useRoute()
 const { visibleMenuGroups } = useAdminMenu()
-const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar()
+const { isExpanded, isMobileOpen, isHovered, expandedSubmenus, collapsedSubmenus } = useSidebar()
 
 const submenuKey = (groupIndex: number, itemIndex: number) => `${groupIndex}-${itemIndex}`
 
@@ -189,39 +189,52 @@ const hasActiveSubmenuRoute = (groupIndex: number, itemIndex: number) => {
   return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path)) ?? false
 }
 
+const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {
+  const key = submenuKey(groupIndex, itemIndex)
+
+  if (collapsedSubmenus.value.has(key)) return false
+  if (expandedSubmenus.value.has(key)) return true
+
+  return hasActiveSubmenuRoute(groupIndex, itemIndex)
+}
+
 const toggleSubmenu = (groupIndex: number, itemIndex: number) => {
   const key = submenuKey(groupIndex, itemIndex)
 
   if (isSubmenuOpen(groupIndex, itemIndex)) {
-    openSubmenu.value = `closed:${key}`
-    return
+    expandedSubmenus.value.delete(key)
+    if (hasActiveSubmenuRoute(groupIndex, itemIndex)) {
+      collapsedSubmenus.value.add(key)
+    }
+  } else {
+    collapsedSubmenus.value.delete(key)
+    expandedSubmenus.value.add(key)
   }
 
-  openSubmenu.value = key
-}
-
-const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {
-  const key = submenuKey(groupIndex, itemIndex)
-
-  if (openSubmenu.value === `closed:${key}`) return false
-  if (openSubmenu.value === key) return true
-
-  return hasActiveSubmenuRoute(groupIndex, itemIndex)
+  expandedSubmenus.value = new Set(expandedSubmenus.value)
+  collapsedSubmenus.value = new Set(collapsedSubmenus.value)
 }
 
 watch(
   () => route.path,
   () => {
+    let changed = false
+
     visibleMenuGroups.value.forEach((group, groupIndex) => {
       group.items.forEach((item, itemIndex) => {
         if (!item.subItems?.length) return
 
         const key = submenuKey(groupIndex, itemIndex)
-        if (hasActiveSubmenuRoute(groupIndex, itemIndex) && openSubmenu.value === `closed:${key}`) {
-          openSubmenu.value = null
+        if (hasActiveSubmenuRoute(groupIndex, itemIndex) && collapsedSubmenus.value.has(key)) {
+          collapsedSubmenus.value.delete(key)
+          changed = true
         }
       })
     })
+
+    if (changed) {
+      collapsedSubmenus.value = new Set(collapsedSubmenus.value)
+    }
   },
 )
 

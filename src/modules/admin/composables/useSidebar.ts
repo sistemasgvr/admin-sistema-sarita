@@ -6,12 +6,12 @@ interface SidebarContextType {
   isMobileOpen: Ref<boolean>
   isHovered: Ref<boolean>
   activeItem: Ref<string | null>
-  openSubmenu: Ref<string | null>
+  expandedSubmenus: Ref<Set<string>>
+  collapsedSubmenus: Ref<Set<string>>
   toggleSidebar: () => void
   toggleMobileSidebar: () => void
   setIsHovered: (isHovered: boolean) => void
   setActiveItem: (item: string | null) => void
-  toggleSubmenu: (item: string) => void
 }
 
 const SidebarSymbol = Symbol()
@@ -22,7 +22,8 @@ export function useSidebarProvider() {
   const isMobile = ref(false)
   const isHovered = ref(false)
   const activeItem = ref<string | null>(null)
-  const openSubmenu = ref<string | null>(null)
+  const expandedSubmenus = ref<Set<string>>(new Set())
+  const collapsedSubmenus = ref<Set<string>>(new Set())
 
   const handleResize = () => {
     const mobile = window.innerWidth < 768
@@ -61,21 +62,17 @@ export function useSidebarProvider() {
     activeItem.value = item
   }
 
-  const toggleSubmenu = (item: string) => {
-    openSubmenu.value = openSubmenu.value === item ? null : item
-  }
-
   const context: SidebarContextType = {
     isExpanded: computed(() => (isMobile.value ? false : isExpanded.value)),
     isMobileOpen,
     isHovered,
     activeItem,
-    openSubmenu,
+    expandedSubmenus,
+    collapsedSubmenus,
     toggleSidebar,
     toggleMobileSidebar,
     setIsHovered,
     setActiveItem,
-    toggleSubmenu,
   }
 
   provide(SidebarSymbol, context)

@@ -77,7 +77,7 @@
           @click="openDetailModal(row)"
         >
           <AppIcon :name="ICONS.eye" :size="16" />
-          Ver
+          <!-- Ver -->
         </button>
 
         <button
@@ -87,7 +87,7 @@
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Editar
+          <!-- Editar -->
         </button>
 
         <button
@@ -97,7 +97,7 @@
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Eliminar
+          <!-- Eliminar -->
         </button>
       </template>
 
