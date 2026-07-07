@@ -25,7 +25,7 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     path: '/admin/balones/cilindros',
     permission: PermisoBanderas.BALONES_LISTAR,
     phase: 2,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'movimientos',

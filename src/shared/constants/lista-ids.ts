@@ -1,8 +1,7 @@
 /**
  * IDs de `gen_lista` para GET /catalogos/listas/:idLista/opciones
  *
- * Consulta en BD: SELECT id, nombre FROM gen_lista ORDER BY id;
- * Reemplaza cada 0 con el id real de tu entorno.
+ * Fuente: SELECT id, nombre FROM gen_lista ORDER BY id;
  */
 export const ListaIds = {
   /** gen_lista.nombre = TipoPersona */
@@ -11,16 +10,38 @@ export const ListaIds = {
   TIPO_CLIENTE: 2,
   /** gen_lista.nombre = TipoDocumento */
   TIPO_DOCUMENTO: 3,
-  /** gen_lista.nombre = UnidadMedida */
-  UNIDAD_MEDIDA: 7,
   /** gen_lista.nombre = TipoMovInv */
   TIPO_MOV_INV: 4,
-  /** gen_lista.nombre = TipoDocumentoRef */
-  TIPO_DOCUMENTO_REF: 6,
   /** gen_lista.nombre = TipoCatalogoPrecio */
   TIPO_CATALOGO_PRECIO: 5,
+  /** gen_lista.nombre = TipoDocumentoRef */
+  TIPO_DOCUMENTO_REF: 6,
+  /** gen_lista.nombre = UnidadMedida */
+  UNIDAD_MEDIDA: 7,
   /** gen_lista.nombre = AmbienteSunat */
   AMBIENTE_SUNAT: 8,
+  /** gen_lista.nombre = ReferenciaCilindro */
+  REFERENCIA_CILINDRO: 9,
+  /** gen_lista.nombre = EstadoCilindroVenta */
+  ESTADO_CILINDRO_VENTA: 10,
+  /** gen_lista.nombre = EstadoMantenimiento */
+  ESTADO_MANTENIMIENTO: 11,
+  /** gen_lista.nombre = EstadoAlquiler */
+  ESTADO_ALQUILER: 12,
+  /** gen_lista.nombre = EstadoPrestamo */
+  ESTADO_PRESTAMO: 13,
+  /** gen_lista.nombre = PropietarioBalon */
+  PROPIETARIO_BALON: 14,
+  /** gen_lista.nombre = EstadoBalon */
+  ESTADO_BALON: 15,
+  /** gen_lista.nombre = TipoMantenimiento */
+  TIPO_MANTENIMIENTO: 16,
+  /** gen_lista.nombre = TipoMovBalon */
+  TIPO_MOV_BALON: 17,
+  /** gen_lista.nombre = TipoPrestamo */
+  TIPO_PRESTAMO: 18,
+  /** gen_lista.nombre = EstadoPrestamoDetalle */
+  ESTADO_PRESTAMO_DETALLE: 19,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds
