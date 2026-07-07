@@ -71,7 +71,13 @@ export const productosRoutes: RouteRecordRaw[] = [
       },
       {
         path: '',
-        redirect: { name: 'admin-productos-categorias' },
+        name: 'admin-productos',
+        component: () => import('@/modules/productos/views/ProductosHubView.vue'),
+        meta: {
+          title: 'Productos',
+          module: 'productos',
+          permission: PermisoBanderas.PRODUCTOS_HUB_VER,
+        },
       },
     ],
   },

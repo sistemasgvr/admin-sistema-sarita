@@ -38,7 +38,13 @@ export const balonesRoutes: RouteRecordRaw[] = [
       },
       {
         path: '',
-        redirect: { name: 'admin-balones-tipos' },
+        name: 'admin-balones',
+        component: () => import('@/modules/balones/views/BalonesHubView.vue'),
+        meta: {
+          title: 'Balones',
+          module: 'balones',
+          permission: PermisoBanderas.BALONES_HUB_VER,
+        },
       },
     ],
   },

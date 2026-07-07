@@ -45,11 +45,14 @@ export const adminMenuGroups: AdminMenuGroup[] = [
       {
         icon: ICONS.package,
         name: 'Productos',
+        path: '/admin/productos',
+        permission: PermisoBanderas.PRODUCTOS_HUB_VER,
         subItems: productosMenuSubItems,
       },
       {
         icon: ICONS.cylinder,
         name: 'Balones',
+        path: '/admin/balones',
         permission: PermisoBanderas.BALONES_HUB_VER,
         subItems: balonesMenuSubItems,
       },
