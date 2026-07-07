@@ -7,6 +7,7 @@ import { rolesRoutes } from '@/modules/roles/router'
 import { permisosRoutes } from '@/modules/permisos/router'
 import { configuracionRoutes } from '@/modules/configuracion/router'
 import { productosRoutes } from '@/modules/productos/router'
+import { balonesRoutes } from '@/modules/balones/router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
 import { resolvePostLoginRedirect } from '@/shared/utils/resolvePostLoginRedirect'
@@ -23,6 +24,7 @@ const adminChildren: RouteRecordRaw[] = [
   ...permisosRoutes,
   ...configuracionRoutes,
   ...productosRoutes,
+  ...balonesRoutes,
   {
     path: ':pathMatch(.*)*',
     name: 'admin-not-found',

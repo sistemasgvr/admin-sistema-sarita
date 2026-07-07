@@ -1,5 +1,6 @@
 import { ICONS } from '@/shared/constants/icons'
 import { productosMenuSubItems } from '@/modules/productos/config/productos-menu'
+import { balonesMenuSubItems } from '@/modules/balones/config/balones-menu'
 import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
 
 export interface AdminMenuSubItem {
@@ -45,6 +46,12 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         icon: ICONS.package,
         name: 'Productos',
         subItems: productosMenuSubItems,
+      },
+      {
+        icon: ICONS.cylinder,
+        name: 'Balones',
+        permission: PermisoBanderas.BALONES_HUB_VER,
+        subItems: balonesMenuSubItems,
       },
     ],
   },
