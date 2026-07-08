@@ -211,6 +211,7 @@
             type="date"
             v-bind="fechaPruebaHidrostaticaAttrs"
             :disabled="isSubmitting"
+            hint="Referencia documental de la planta. La renovación vigente se registra en Mantenimientos."
           />
         </div>
       </div>

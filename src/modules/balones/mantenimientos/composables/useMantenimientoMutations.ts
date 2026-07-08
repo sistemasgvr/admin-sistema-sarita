@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
 import { mantenimientosQueryKeys } from '@/modules/balones/mantenimientos/constants/mantenimientosQueryKeys'
 import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
 import type {
@@ -12,8 +13,13 @@ export function useCreateMantenimientoMutation() {
 
   return useMutation({
     mutationFn: (payload: CreateMantenimientoPayload) => mantenimientosService.crear(payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: mantenimientosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      if (variables.idBalon) {
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
+      }
       toastSuccess('Mantenimiento registrado correctamente')
     },
     onError: (error) => {
@@ -28,11 +34,17 @@ export function useUpdateMantenimientoMutation() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: UpdateMantenimientoPayload }) =>
       mantenimientosService.actualizar(id, payload),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: mantenimientosQueryKeys.all })
       queryClient.invalidateQueries({
         queryKey: mantenimientosQueryKeys.detail(variables.id),
       })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      const idBalon = data?.id_balon
+      if (idBalon) {
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(idBalon) })
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(idBalon) })
+      }
       toastSuccess('Mantenimiento actualizado correctamente')
     },
     onError: (error) => {

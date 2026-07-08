@@ -58,18 +58,29 @@
         </DetailSectionCard>
 
         <DetailSectionCard
-          v-if="phHistorialRows.length"
           title="Historial de pruebas hidrostáticas"
           :full-width="true"
         >
-          <div class="overflow-x-auto">
+          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Las renovaciones se registran en
+            <RouterLink
+              to="/admin/balones/mantenimientos"
+              class="font-medium text-brand-500 hover:underline"
+            >
+              Mantenimientos
+            </RouterLink>
+            con tipo <strong>Prueba hidrostática</strong> o <strong>Recertificación</strong> y fecha
+            de salida.
+          </p>
+          <div v-if="phHistorialRows.length" class="overflow-x-auto">
             <table class="min-w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800">
                   <th class="pb-2 pr-4">Fecha</th>
                   <th class="pb-2 pr-4">Vigencia</th>
                   <th class="pb-2 pr-4">Próxima</th>
-                  <th class="pb-2">Órgano</th>
+                  <th class="pb-2 pr-4">Órgano</th>
+                  <th class="pb-2">Certificado</th>
                 </tr>
               </thead>
               <tbody>
@@ -81,17 +92,19 @@
                   <td class="py-2 pr-4 whitespace-nowrap">{{ formatDetailDate(item.fecha_prueba) }}</td>
                   <td class="py-2 pr-4">{{ item.vigencia_anios }} años</td>
                   <td class="py-2 pr-4 whitespace-nowrap">{{ formatDetailDate(item.fecha_proxima) }}</td>
-                  <td class="py-2">
+                  <td class="py-2 pr-4">
                     {{
                       item.organo_inspector_no_aplica
                         ? 'No aplica'
                         : item.nombre_organo_inspector || '—'
                     }}
                   </td>
+                  <td class="py-2">{{ item.numero_certificado || '—' }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <p v-else class="text-sm text-gray-400">Sin renovaciones registradas.</p>
         </DetailSectionCard>
 
         <DetailSectionCard v-if="balon?.observacion" title="Observación" :full-width="true">

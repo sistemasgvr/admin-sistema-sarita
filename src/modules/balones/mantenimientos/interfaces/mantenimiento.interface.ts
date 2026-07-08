@@ -45,6 +45,10 @@ export interface CreateMantenimientoPayload {
   idComprobanteVenta?: number
   idComprobanteCompra?: number
   observacion?: string
+  vigenciaPhAnios?: number
+  idOrganoInspector?: number
+  organoInspectorNoAplica?: boolean
+  numeroCertificadoPh?: string
 }
 
 export interface UpdateMantenimientoPayload {
@@ -60,6 +64,10 @@ export interface UpdateMantenimientoPayload {
   idComprobanteVenta?: number
   idComprobanteCompra?: number
   observacion?: string
+  vigenciaPhAnios?: number
+  idOrganoInspector?: number
+  organoInspectorNoAplica?: boolean
+  numeroCertificadoPh?: string
 }
 
 export interface DeleteMantenimientoResponse {

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
 import { movimientosRecargaQueryKeys } from '@/modules/balones/recargas/constants/movimientosRecargaQueryKeys'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import type {
@@ -13,8 +14,13 @@ export function useCreateMovimientoRecargaMutation() {
   return useMutation({
     mutationFn: (payload: CreateMovimientoRecargaPayload) =>
       movimientosRecargaService.crear(payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      if (variables.idBalon) {
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
+      }
       toastSuccess('Recarga registrada correctamente')
     },
     onError: (error) => {
@@ -29,11 +35,17 @@ export function useUpdateMovimientoRecargaMutation() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: UpdateMovimientoRecargaPayload }) =>
       movimientosRecargaService.actualizar(id, payload),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.all })
       queryClient.invalidateQueries({
         queryKey: movimientosRecargaQueryKeys.detail(variables.id),
       })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      const idBalon = data?.id_balon
+      if (idBalon) {
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(idBalon) })
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(idBalon) })
+      }
       toastSuccess('Recarga actualizada correctamente')
     },
     onError: (error) => {

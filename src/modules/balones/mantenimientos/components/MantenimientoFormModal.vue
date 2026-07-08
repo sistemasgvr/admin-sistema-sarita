@@ -106,6 +106,56 @@
           :disabled="isSubmitting"
           :error="errors.descripcion"
         />
+
+        <p
+          v-if="esTipoPh"
+          class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+        >
+          La <strong>fecha de salida</strong> será la fecha de la prueba. Al guardar se actualizará
+          la P.H. vigente del cilindro.
+        </p>
+      </div>
+
+      <div
+        v-if="esTipoPh"
+        class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800"
+      >
+        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos de P.H.</h5>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <AppSelect
+            v-model="vigenciaPhAnios"
+            label="Vigencia (años)"
+            placeholder="Por defecto según tipo de balón"
+            :options="vigenciaPhOptions"
+            :disabled="isSubmitting"
+            v-bind="vigenciaPhAniosAttrs"
+            :error="errors.vigenciaPhAnios"
+          />
+          <AppInput
+            v-model="numeroCertificadoPh"
+            label="N° certificado"
+            placeholder="Opcional"
+            v-bind="numeroCertificadoPhAttrs"
+            :disabled="isSubmitting"
+            :error="errors.numeroCertificadoPh"
+          />
+          <AppSelect
+            v-model="idOrganoInspector"
+            label="Órgano inspector"
+            :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            :options="organoInspectorOptions"
+            :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
+            v-bind="idOrganoInspectorAttrs"
+            :error="errors.idOrganoInspector"
+          />
+          <div class="flex items-end pb-2">
+            <AppCheckbox
+              v-model="organoInspectorNoAplica"
+              label="Sin órgano inspector"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </div>
       </div>
 
       <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
@@ -247,8 +297,10 @@ const clientesQuery = useClientesQuery(clientesFilters)
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
 const listaEstadoMantenimientoId = ref(ListaIds.ESTADO_MANTENIMIENTO)
+const listaOrganoInspectorId = ref(ListaIds.ORGANO_INSPECTOR_CILINDRO)
 const tiposMantenimientoQuery = useListaOpcionesQuery(listaTipoMantenimientoId)
 const estadosMantenimientoQuery = useListaOpcionesQuery(listaEstadoMantenimientoId)
+const organoInspectorQuery = useListaOpcionesQuery(listaOrganoInspectorId)
 
 const balonOptions = computed(() =>
   (balonesQuery.data.value?.data ?? []).map((balon) => ({
@@ -261,6 +313,27 @@ const tipoMantenimientoOptions = computed(() => [
   { value: '', label: 'Sin tipo' },
   ...toSelectOptions(tiposMantenimientoQuery.data.value),
 ])
+
+const esTipoPh = computed(() => {
+  const tipoId = idTipoMantenimiento.value
+  if (!tipoId) return false
+  const opcion = tiposMantenimientoQuery.data.value?.find((item) => item.id === Number(tipoId))
+  const nombre = opcion?.nombre?.toUpperCase() ?? ''
+  return nombre === 'PRUEBA_HIDROSTATICA' || nombre === 'RECERTIFICACION'
+})
+
+const vigenciaPhOptions = [
+  { label: '5 años', value: 5 },
+  { label: '10 años', value: 10 },
+]
+
+const organoInspectorOptions = computed(() =>
+  toSelectOptions(
+    organoInspectorQuery.data.value?.filter(
+      (opcion) => opcion.nombre?.toUpperCase() !== 'NO_APLICA',
+    ),
+  ),
+)
 
 const estadoMantenimientoOptions = computed(() => [
   { value: '', label: 'Sin estado' },
@@ -302,6 +375,10 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idComprobanteVenta: optionalNumber().min(1, 'ID inválido'),
       idComprobanteCompra: optionalNumber().min(1, 'ID inválido'),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
+      vigenciaPhAnios: optionalNumber(),
+      idOrganoInspector: optionalNumber(),
+      organoInspectorNoAplica: yup.boolean().optional(),
+      numeroCertificadoPh: optionalString().max(50, 'Máximo 50 caracteres'),
     }),
   ),
   initialValues: {
@@ -317,6 +394,10 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idComprobanteVenta: undefined as number | undefined,
     idComprobanteCompra: undefined as number | undefined,
     observacion: '',
+    vigenciaPhAnios: undefined as number | undefined,
+    idOrganoInspector: undefined as number | undefined,
+    organoInspectorNoAplica: false,
+    numeroCertificadoPh: '',
   },
 })
 
@@ -332,6 +413,10 @@ const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
 const [idComprobanteCompra, idComprobanteCompraAttrs] = defineField('idComprobanteCompra')
 const [observacion, observacionAttrs] = defineField('observacion')
+const [vigenciaPhAnios, vigenciaPhAniosAttrs] = defineField('vigenciaPhAnios')
+const [idOrganoInspector, idOrganoInspectorAttrs] = defineField('idOrganoInspector')
+const [organoInspectorNoAplica] = defineField('organoInspectorNoAplica')
+const [numeroCertificadoPh, numeroCertificadoPhAttrs] = defineField('numeroCertificadoPh')
 
 const toOptionalNumber = (value: string | number | undefined) =>
   value !== '' && value != null ? Number(value) : undefined
@@ -348,6 +433,10 @@ const buildPayloadFields = (values: {
   idComprobanteVenta?: number
   idComprobanteCompra?: number
   observacion?: string
+  vigenciaPhAnios?: number
+  idOrganoInspector?: number
+  organoInspectorNoAplica?: boolean
+  numeroCertificadoPh?: string
 }) => ({
   idTipoMantenimiento: toOptionalNumber(values.idTipoMantenimiento),
   idEstado: toOptionalNumber(values.idEstado),
@@ -360,6 +449,16 @@ const buildPayloadFields = (values: {
   idComprobanteVenta: values.idComprobanteVenta ? Number(values.idComprobanteVenta) : undefined,
   idComprobanteCompra: values.idComprobanteCompra ? Number(values.idComprobanteCompra) : undefined,
   observacion: values.observacion || undefined,
+  ...(esTipoPh.value
+    ? {
+        vigenciaPhAnios: values.vigenciaPhAnios,
+        idOrganoInspector: values.organoInspectorNoAplica
+          ? undefined
+          : values.idOrganoInspector,
+        organoInspectorNoAplica: values.organoInspectorNoAplica ?? false,
+        numeroCertificadoPh: values.numeroCertificadoPh || undefined,
+      }
+    : {}),
 })
 
 const syncFormValues = () => {
@@ -378,6 +477,10 @@ const syncFormValues = () => {
       idComprobanteVenta: data?.id_comprobante_venta ?? undefined,
       idComprobanteCompra: data?.id_comprobante_compra ?? undefined,
       observacion: data?.observacion ?? '',
+      vigenciaPhAnios: undefined,
+      idOrganoInspector: undefined,
+      organoInspectorNoAplica: false,
+      numeroCertificadoPh: '',
     },
   })
 }
@@ -397,6 +500,10 @@ const resetCreateForm = () => {
       idComprobanteVenta: undefined,
       idComprobanteCompra: undefined,
       observacion: '',
+      vigenciaPhAnios: undefined,
+      idOrganoInspector: undefined,
+      organoInspectorNoAplica: false,
+      numeroCertificadoPh: '',
     },
   })
 }
@@ -466,6 +573,12 @@ watch(
 watch(esExterno, (value) => {
   if (!value) {
     idProveedor.value = ''
+  }
+})
+
+watch(organoInspectorNoAplica, (noAplica) => {
+  if (noAplica) {
+    idOrganoInspector.value = undefined
   }
 })
 </script>
