@@ -96,6 +96,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -135,6 +145,11 @@
       :almacenes="almacenes"
       :productos="productos"
       @saved="onMovimientoSaved"
+    />
+
+    <MovimientoInventarioDetailModal
+      v-model="detailModalOpen"
+      :movimiento="movimientoToView"
     />
 
     <AppModal
@@ -186,6 +201,7 @@ import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almac
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import MovimientoInventarioFormModal from '@/modules/productos/movimientos/components/MovimientoInventarioFormModal.vue'
+import MovimientoInventarioDetailModal from '@/modules/productos/movimientos/components/MovimientoInventarioDetailModal.vue'
 import { useDeleteMovimientoInventarioMutation } from '@/modules/productos/movimientos/composables/useMovimientoInventarioMutations'
 import { useMovimientosInventarioQuery } from '@/modules/productos/movimientos/composables/useMovimientosInventarioQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -243,7 +259,11 @@ const selectedMovimiento = ref<MovimientoInventario | null>(null)
 const deleteModalOpen = ref(false)
 const movimientoToDelete = ref<MovimientoInventario | null>(null)
 
+const detailModalOpen = ref(false)
+const movimientoToView = ref<MovimientoInventario | null>(null)
+
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_ELIMINAR))
 
@@ -373,6 +393,11 @@ const openEditModal = (movimiento: MovimientoInventario) => {
   formMode.value = 'edit'
   selectedMovimiento.value = movimiento
   formModalOpen.value = true
+}
+
+const openDetailModal = (movimiento: MovimientoInventario) => {
+  movimientoToView.value = movimiento
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (movimiento: MovimientoInventario) => {

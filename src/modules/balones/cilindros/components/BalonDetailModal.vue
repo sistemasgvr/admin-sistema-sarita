@@ -25,6 +25,7 @@
         <DetailSectionCard
           v-if="balon?.baja"
           title="Baja del cilindro"
+          :icon="ICONS.archive"
           :full-width="true"
         >
           <div class="grid gap-3 sm:grid-cols-2">
@@ -59,18 +60,22 @@
 
         <DetailSectionCard
           title="Historial de pruebas hidrostáticas"
+          :icon="ICONS.history"
           :full-width="true"
         >
-          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-            Las renovaciones se registran en
+          <template #actions>
             <RouterLink
               to="/admin/balones/mantenimientos"
-              class="font-medium text-brand-500 hover:underline"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
             >
+              <AppIcon :name="ICONS.construction" :size="14" />
               Mantenimientos
             </RouterLink>
-            con tipo <strong>Prueba hidrostática</strong> o <strong>Recertificación</strong> y fecha
-            de salida.
+          </template>
+
+          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Las renovaciones se registran con tipo <strong>Prueba hidrostática</strong> o
+            <strong>Recertificación</strong> y fecha de salida.
           </p>
           <div v-if="phHistorialRows.length" class="overflow-x-auto">
             <table class="min-w-full text-sm">
@@ -107,7 +112,12 @@
           <p v-else class="text-sm text-gray-400">Sin renovaciones registradas.</p>
         </DetailSectionCard>
 
-        <DetailSectionCard v-if="balon?.observacion" title="Observación" :full-width="true">
+        <DetailSectionCard
+          v-if="balon?.observacion"
+          title="Observación"
+          :icon="ICONS.messageSquare"
+          :full-width="true"
+        >
           <p class="text-sm text-gray-600 dark:text-gray-400">{{ balon.observacion }}</p>
         </DetailSectionCard>
       </template>
@@ -127,19 +137,21 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
-import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
-import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
-} from '@/modules/balones/components/detail/detailFormatters'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+} from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import {
   useBalonQuery,
   usePhHistorialQuery,
 } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import { AppBadge, AppModal } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{
   balonId?: number | null
@@ -178,6 +190,7 @@ const sections = computed<DetailSection[]>(() => {
   return [
     {
       title: 'Identificación',
+      icon: ICONS.idCard,
       items: [
         { label: 'Código', value: data.codigo_balon },
         { label: 'N° serie', value: data.numero_serie },
@@ -190,6 +203,7 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Clasificación y ubicación',
+      icon: ICONS.mapPin,
       items: [
         { label: 'Tipo de balón', value: data.nombre_tipo_balon },
         { label: 'Gas', value: data.nombre_producto_gas },
@@ -202,6 +216,7 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Prueba hidrostática',
+      icon: ICONS.gauge,
       items: [
         { label: 'Última P.H.', value: formatDetailDate(data.fecha_ultima_prueba_hidrostatica) },
         {
@@ -228,6 +243,7 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Auditoría',
+      icon: ICONS.userCircle,
       items: [
         { label: 'Creado por', value: data.nombre_usuario_creacion },
         { label: 'Modificado por', value: data.nombre_usuario_modificacion },

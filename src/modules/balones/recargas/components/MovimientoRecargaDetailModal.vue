@@ -16,7 +16,7 @@
       </template>
 
       <template v-if="recarga?.observacion" #extra>
-        <DetailSectionCard title="Observación" :full-width="true">
+        <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
           <p class="text-sm text-gray-600 dark:text-gray-400">{{ recarga.observacion }}</p>
         </DetailSectionCard>
       </template>
@@ -36,17 +36,18 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
-import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
-import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailCapacity,
   formatDetailDate,
   formatDetailDateTime,
   formatDetailDocument,
-} from '@/modules/balones/components/detail/detailFormatters'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+} from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useMovimientoRecargaQuery } from '@/modules/balones/recargas/composables/useMovimientosRecargaQuery'
 import { AppBadge, AppModal } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{ recargaId?: number | null }>()
 const open = defineModel<boolean>({ default: false })
@@ -62,9 +63,7 @@ const sections = computed<DetailSection[]>(() => {
   if (!data) return []
 
   return [
-    {
-      title: 'Salida de almacén',
-      items: [
+    { title: 'Salida de almacén', icon: ICONS.warehouse, items: [
         { label: 'Cilindro', value: data.codigo_balon },
         { label: 'Fecha salida', value: formatDetailDate(data.fecha_salida_almacen) },
         { label: 'Almacén', value: data.nombre_almacen },
@@ -76,9 +75,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Proveedor', value: data.nombre_proveedor },
       ],
     },
-    {
-      title: 'Guías de remisión',
-      items: [
+    { title: 'Guías de remisión', icon: ICONS.clipboardList, items: [
         {
           label: 'GRE salida',
           value: formatDetailDocument(data.serie_guia_salida, data.numero_guia_salida),
@@ -89,9 +86,7 @@ const sections = computed<DetailSection[]>(() => {
         },
       ],
     },
-    {
-      title: 'Factura y retorno',
-      items: [
+    { title: 'Factura y retorno', icon: ICONS.creditCard, items: [
         {
           label: 'Factura',
           value: formatDetailDocument(data.serie_factura, data.numero_factura),
@@ -103,9 +98,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'P.H. recarga', value: formatDetailDate(data.fecha_prueba_hidrostatica) },
       ],
     },
-    {
-      title: 'Auditoría',
-      items: [
+    { title: 'Auditoría', icon: ICONS.userCircle, items: [
         { label: 'Fecha creación', value: formatDetailDateTime(data.fecha_creacion) },
         { label: 'Última modificación', value: formatDetailDateTime(data.fecha_modificacion) },
       ],

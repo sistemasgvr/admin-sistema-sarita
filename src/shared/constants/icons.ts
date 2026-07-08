@@ -41,6 +41,13 @@ export const ICONS = {
   cylinder: 'lucide:cylinder',
   archive: 'lucide:archive',
   clipboardCheck: 'lucide:clipboard-check',
+  mapPin: 'lucide:map-pin',
+  calendar: 'lucide:calendar',
+  messageSquare: 'lucide:message-square',
+  history: 'lucide:history',
+  idCard: 'lucide:id-card',
+  gauge: 'lucide:gauge',
+  externalLink: 'lucide:external-link',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

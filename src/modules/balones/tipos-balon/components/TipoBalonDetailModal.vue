@@ -26,14 +26,15 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
-import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import {
   formatDetailCapacity,
   formatDetailDateTime,
-} from '@/modules/balones/components/detail/detailFormatters'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+} from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useTipoBalonQuery } from '@/modules/balones/tipos-balon/composables/useTiposBalonQuery'
 import { AppBadge, AppModal } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{ tipoId?: number | null }>()
 const open = defineModel<boolean>({ default: false })
@@ -51,6 +52,7 @@ const sections = computed<DetailSection[]>(() => {
   return [
     {
       title: 'Datos del tipo',
+      icon: ICONS.layers,
       items: [
         { label: 'Nombre', value: data.nombre },
         { label: 'Gas', value: data.nombre_gas },
@@ -68,6 +70,7 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Auditoría',
+      icon: ICONS.userCircle,
       items: [
         { label: 'Cilindros asociados', value: data.total_balones?.toString() },
         { label: 'Creado por', value: data.nombre_usuario_creacion },

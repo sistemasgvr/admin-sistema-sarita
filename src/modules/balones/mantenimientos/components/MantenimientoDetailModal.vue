@@ -22,11 +22,21 @@
       </template>
 
       <template #extra>
-        <DetailSectionCard v-if="mantenimiento?.descripcion" title="Descripción" :full-width="true">
+        <DetailSectionCard
+          v-if="mantenimiento?.descripcion"
+          title="Descripción"
+          :icon="ICONS.clipboardList"
+          :full-width="true"
+        >
           <p class="text-sm text-gray-600 dark:text-gray-400">{{ mantenimiento.descripcion }}</p>
         </DetailSectionCard>
 
-        <DetailSectionCard v-if="mantenimiento?.observacion" title="Observación" :full-width="true">
+        <DetailSectionCard
+          v-if="mantenimiento?.observacion"
+          title="Observación"
+          :icon="ICONS.messageSquare"
+          :full-width="true"
+        >
           <p class="text-sm text-gray-600 dark:text-gray-400">{{ mantenimiento.observacion }}</p>
         </DetailSectionCard>
       </template>
@@ -46,17 +56,18 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
-import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
-import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
   formatDetailMoney,
   formatDetailYesNo,
-} from '@/modules/balones/components/detail/detailFormatters'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+} from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import { AppBadge, AppModal } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{ mantenimientoId?: number | null }>()
 const open = defineModel<boolean>({ default: false })
@@ -74,6 +85,7 @@ const sections = computed<DetailSection[]>(() => {
   return [
     {
       title: 'Servicio',
+      icon: ICONS.construction,
       items: [
         { label: 'Cilindro', value: data.codigo_balon },
         { label: 'Tipo', value: data.nombre_tipo_mantenimiento },
@@ -84,6 +96,7 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Fechas',
+      icon: ICONS.calendar,
       items: [
         { label: 'Ingreso', value: formatDetailDate(data.fecha_ingreso) },
         { label: 'Salida', value: formatDetailDate(data.fecha_salida) },
@@ -91,12 +104,14 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Proveedor externo',
+      icon: ICONS.building,
       items: [
         { label: 'Proveedor / taller', value: data.nombre_proveedor },
       ],
     },
     {
       title: 'Comprobantes y auditoría',
+      icon: ICONS.creditCard,
       items: [
         { label: 'Comprobante venta', value: data.id_comprobante_venta?.toString() },
         { label: 'Comprobante compra', value: data.id_comprobante_compra?.toString() },

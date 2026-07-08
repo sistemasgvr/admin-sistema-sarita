@@ -50,6 +50,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canManageSubCategorias"
           type="button"
           title="Subcategorías"
@@ -100,6 +110,8 @@
       @saved="onCategoriaSaved"
     />
 
+    <CategoriaProductoDetailModal v-model="detailModalOpen" :categoria="categoriaToView" />
+
     <CategoriaSubcategoriasModal
       v-model="subcategoriasModalOpen"
       :categoria="categoriaForSubcategorias"
@@ -147,6 +159,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import CategoriaSubcategoriasModal from '@/modules/productos/categorias/components/CategoriaSubcategoriasModal.vue'
 import CategoriaProductoFormModal from '@/modules/productos/categorias/components/CategoriaProductoFormModal.vue'
+import CategoriaProductoDetailModal from '@/modules/productos/categorias/components/CategoriaProductoDetailModal.vue'
 import { useDeleteCategoriaProductoMutation } from '@/modules/productos/categorias/composables/useCategoriaProductoMutations'
 import { useCategoriasProductoQuery } from '@/modules/productos/categorias/composables/useCategoriasProductoQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -188,7 +201,11 @@ const categoriaForSubcategorias = ref<CategoriaProducto | null>(null)
 const deleteModalOpen = ref(false)
 const categoriaToDelete = ref<CategoriaProducto | null>(null)
 
+const detailModalOpen = ref(false)
+const categoriaToView = ref<CategoriaProducto | null>(null)
+
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_ELIMINAR))
 const canManageSubCategorias = computed(() =>
@@ -236,6 +253,11 @@ const openEditModal = (categoria: CategoriaProducto) => {
   formMode.value = 'edit'
   selectedCategoria.value = categoria
   formModalOpen.value = true
+}
+
+const openDetailModal = (categoria: CategoriaProducto) => {
+  categoriaToView.value = categoria
+  detailModalOpen.value = true
 }
 
 const openSubcategoriasModal = (categoria: CategoriaProducto) => {

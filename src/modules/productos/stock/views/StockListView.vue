@@ -102,6 +102,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Ajustar"
@@ -142,6 +152,8 @@
       :productos="productos"
       @saved="onStockSaved"
     />
+
+    <StockDetailModal v-model="detailModalOpen" :stock="stockToView" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -191,6 +203,7 @@ import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almac
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
+import StockDetailModal from '@/modules/productos/stock/components/StockDetailModal.vue'
 import { useDeleteStockMutation } from '@/modules/productos/stock/composables/useStockMutations'
 import { useStockQuery } from '@/modules/productos/stock/composables/useStockQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -243,7 +256,11 @@ const selectedStock = ref<Stock | null>(null)
 const deleteModalOpen = ref(false)
 const stockToDelete = ref<Stock | null>(null)
 
+const detailModalOpen = ref(false)
+const stockToView = ref<Stock | null>(null)
+
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_ELIMINAR))
 
@@ -348,6 +365,11 @@ const openEditModal = (stock: Stock) => {
   formMode.value = 'edit'
   selectedStock.value = stock
   formModalOpen.value = true
+}
+
+const openDetailModal = (stock: Stock) => {
+  stockToView.value = stock
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (stock: Stock) => {

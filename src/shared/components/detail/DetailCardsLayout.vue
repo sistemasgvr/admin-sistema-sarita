@@ -13,6 +13,7 @@
         v-for="section in sections"
         :key="section.title"
         :title="section.title"
+        :icon="section.icon"
         :items="section.items"
         :full-width="section.fullWidth"
       />
@@ -23,8 +24,8 @@
 </template>
 
 <script setup lang="ts">
-import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 
 withDefaults(
   defineProps<{

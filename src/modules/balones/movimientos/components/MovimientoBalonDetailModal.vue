@@ -13,7 +13,7 @@
       </template>
 
       <template v-if="movimiento?.observacion" #extra>
-        <DetailSectionCard title="Observación" :full-width="true">
+        <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
           <p class="text-sm text-gray-600 dark:text-gray-400">{{ movimiento.observacion }}</p>
         </DetailSectionCard>
       </template>
@@ -33,12 +33,13 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
-import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
-import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
-import { formatDetailDateTime } from '@/modules/balones/components/detail/detailFormatters'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import { formatDetailDateTime } from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useMovimientoBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
 import { AppBadge, AppModal } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{ movimientoId?: number | null }>()
 const open = defineModel<boolean>({ default: false })
@@ -54,32 +55,24 @@ const sections = computed<DetailSection[]>(() => {
   if (!data) return []
 
   return [
-    {
-      title: 'Movimiento',
-      items: [
+    { title: 'Movimiento', icon: ICONS.arrowLeftRight, items: [
         { label: 'Cilindro', value: data.codigo_balon },
         { label: 'Tipo', value: data.nombre_tipo_movimiento },
         { label: 'Fecha', value: formatDetailDateTime(data.fecha_movimiento) },
         { label: 'Cliente', value: data.nombre_cliente },
       ],
     },
-    {
-      title: 'Documento referencia',
-      items: [
+    { title: 'Documento referencia', icon: ICONS.fileKey, items: [
         { label: 'Tipo documento', value: data.nombre_tipo_documento_ref },
         { label: 'ID documento', value: data.id_documento_ref?.toString() },
       ],
     },
-    {
-      title: 'Traslado',
-      items: [
+    { title: 'Traslado', icon: ICONS.warehouse, items: [
         { label: 'Almacén origen', value: data.nombre_almacen_origen },
         { label: 'Almacén destino', value: data.nombre_almacen_destino },
       ],
     },
-    {
-      title: 'Auditoría',
-      items: [
+    { title: 'Auditoría', icon: ICONS.userCircle, items: [
         { label: 'Creado por', value: data.nombre_usuario_creacion },
         { label: 'Modificado por', value: data.nombre_usuario_modificacion },
         { label: 'Fecha creación', value: formatDetailDateTime(data.fecha_creacion) },

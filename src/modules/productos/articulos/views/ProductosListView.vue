@@ -72,6 +72,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -112,6 +122,8 @@
       :sub-categorias="subCategorias"
       @saved="onProductoSaved"
     />
+
+    <ProductoDetailModal v-model="detailModalOpen" :producto="productoToView" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -154,6 +166,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ProductoFormModal from '@/modules/productos/articulos/components/ProductoFormModal.vue'
+import ProductoDetailModal from '@/modules/productos/articulos/components/ProductoDetailModal.vue'
 import { useDeleteProductoMutation } from '@/modules/productos/articulos/composables/useProductoMutations'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type {
@@ -202,7 +215,11 @@ const selectedProducto = ref<Producto | null>(null)
 const deleteModalOpen = ref(false)
 const productoToDelete = ref<Producto | null>(null)
 
+const detailModalOpen = ref(false)
+const productoToView = ref<Producto | null>(null)
+
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_ELIMINAR))
 
@@ -345,6 +362,11 @@ const openEditModal = (producto: Producto) => {
   formMode.value = 'edit'
   selectedProducto.value = producto
   formModalOpen.value = true
+}
+
+const openDetailModal = (producto: Producto) => {
+  productoToView.value = producto
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (producto: Producto) => {

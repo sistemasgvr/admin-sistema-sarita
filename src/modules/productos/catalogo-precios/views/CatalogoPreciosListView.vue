@@ -70,6 +70,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -108,6 +118,11 @@
       :catalogo-precio="selectedCatalogoPrecio"
       :productos="productos"
       @saved="onCatalogoPrecioSaved"
+    />
+
+    <CatalogoPrecioDetailModal
+      v-model="detailModalOpen"
+      :catalogo-precio="catalogoPrecioToView"
     />
 
     <AppModal
@@ -153,6 +168,7 @@ import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaO
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import CatalogoPrecioFormModal from '@/modules/productos/catalogo-precios/components/CatalogoPrecioFormModal.vue'
+import CatalogoPrecioDetailModal from '@/modules/productos/catalogo-precios/components/CatalogoPrecioDetailModal.vue'
 import { useDeleteCatalogoPrecioMutation } from '@/modules/productos/catalogo-precios/composables/useCatalogoPrecioMutations'
 import { useCatalogoPreciosQuery } from '@/modules/productos/catalogo-precios/composables/useCatalogoPreciosQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -206,7 +222,11 @@ const selectedCatalogoPrecio = ref<CatalogoPrecio | null>(null)
 const deleteModalOpen = ref(false)
 const catalogoPrecioToDelete = ref<CatalogoPrecio | null>(null)
 
+const detailModalOpen = ref(false)
+const catalogoPrecioToView = ref<CatalogoPrecio | null>(null)
+
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGO_PRECIOS_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGO_PRECIOS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGO_PRECIOS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGO_PRECIOS_ELIMINAR))
 
@@ -302,6 +322,11 @@ const openEditModal = (catalogoPrecio: CatalogoPrecio) => {
   formMode.value = 'edit'
   selectedCatalogoPrecio.value = catalogoPrecio
   formModalOpen.value = true
+}
+
+const openDetailModal = (catalogoPrecio: CatalogoPrecio) => {
+  catalogoPrecioToView.value = catalogoPrecio
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (catalogoPrecio: CatalogoPrecio) => {

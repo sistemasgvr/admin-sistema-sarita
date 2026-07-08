@@ -20,12 +20,18 @@
         <DetailSectionCard
           v-if="detalleRows.length"
           title="Cilindros del préstamo"
+          :icon="ICONS.boxes"
           :full-width="true"
         >
           <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id" />
         </DetailSectionCard>
 
-        <DetailSectionCard v-if="prestamo?.observacion" title="Observación" :full-width="true">
+        <DetailSectionCard
+          v-if="prestamo?.observacion"
+          title="Observación"
+          :icon="ICONS.messageSquare"
+          :full-width="true"
+        >
           <p class="text-sm text-gray-600 dark:text-gray-400">{{ prestamo.observacion }}</p>
         </DetailSectionCard>
       </template>
@@ -45,17 +51,18 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue'
-import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
-import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
-} from '@/modules/balones/components/detail/detailFormatters'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+} from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import type { PrestamoDetalleListFilters } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { AppBadge, AppModal, AppTable } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const props = defineProps<{ prestamoId?: number | null }>()
@@ -94,9 +101,7 @@ const sections = computed<DetailSection[]>(() => {
   if (!data) return []
 
   return [
-    {
-      title: 'Datos generales',
-      items: [
+    { title: 'Datos generales', icon: ICONS.clipboardList, items: [
         { label: 'Número', value: data.numero_prestamo },
         { label: 'Título', value: data.titulo },
         { label: 'Tipo', value: data.nombre_tipo_prestamo },
@@ -104,24 +109,18 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Almacén', value: data.nombre_almacen },
       ],
     },
-    {
-      title: 'Partes involucradas',
-      items: [
+    { title: 'Partes involucradas', icon: ICONS.users, items: [
         { label: 'Cliente', value: data.nombre_cliente },
         { label: 'Proveedor / tercero', value: data.nombre_proveedor },
       ],
     },
-    {
-      title: 'Fechas',
-      items: [
+    { title: 'Fechas', icon: ICONS.calendar, items: [
         { label: 'Salida', value: formatDetailDate(data.fecha_salida) },
         { label: 'Retorno pactado', value: formatDetailDate(data.fecha_retorno_pactada) },
         { label: 'Retorno real', value: formatDetailDate(data.fecha_retorno_real) },
       ],
     },
-    {
-      title: 'Comprobantes y auditoría',
-      items: [
+    { title: 'Comprobantes y auditoría', icon: ICONS.creditCard, items: [
         { label: 'Comprobante venta', value: data.id_comprobante_venta?.toString() },
         { label: 'Comprobante compra', value: data.id_comprobante_compra?.toString() },
         { label: 'Fecha creación', value: formatDetailDateTime(data.fecha_creacion) },

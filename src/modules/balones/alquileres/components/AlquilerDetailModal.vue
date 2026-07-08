@@ -17,12 +17,18 @@
         <DetailSectionCard
           v-if="detalleRows.length"
           title="Cilindros en alquiler"
+          :icon="ICONS.boxes"
           :full-width="true"
         >
           <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id" />
         </DetailSectionCard>
 
-        <DetailSectionCard v-if="alquiler?.observacion" title="Observación" :full-width="true">
+        <DetailSectionCard
+          v-if="alquiler?.observacion"
+          title="Observación"
+          :icon="ICONS.messageSquare"
+          :full-width="true"
+        >
           <p class="text-sm text-gray-600 dark:text-gray-400">{{ alquiler.observacion }}</p>
         </DetailSectionCard>
       </template>
@@ -42,18 +48,19 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue'
-import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
-import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
   formatDetailMoney,
-} from '@/modules/balones/components/detail/detailFormatters'
-import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
+} from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import type { AlquilerDetalleListFilters } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { AppBadge, AppModal, AppTable } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const props = defineProps<{ alquilerId?: number | null }>()
@@ -86,34 +93,26 @@ const sections = computed<DetailSection[]>(() => {
   if (!data) return []
 
   return [
-    {
-      title: 'Datos del alquiler',
-      items: [
+    { title: 'Datos del alquiler', icon: ICONS.clipboardList, items: [
         { label: 'Número', value: data.numero_alquiler },
         { label: 'Cliente', value: data.nombre_cliente },
         { label: 'Almacén', value: data.nombre_almacen },
         { label: 'Estado', value: data.nombre_estado },
       ],
     },
-    {
-      title: 'Vigencia',
-      items: [
+    { title: 'Vigencia', icon: ICONS.calendar, items: [
         { label: 'Inicio', value: formatDetailDate(data.fecha_inicio) },
         { label: 'Fin pactado', value: formatDetailDate(data.fecha_fin_pactada) },
         { label: 'Fin real', value: formatDetailDate(data.fecha_fin_real) },
       ],
     },
-    {
-      title: 'Cobro',
-      items: [
+    { title: 'Cobro', icon: ICONS.creditCard, items: [
         { label: 'Tarifa diaria', value: formatDetailMoney(data.tarifa_diaria) },
         { label: 'Total cobrado', value: formatDetailMoney(data.total_cobrado) },
         { label: 'Comprobante venta', value: data.id_comprobante_venta?.toString() },
       ],
     },
-    {
-      title: 'Auditoría',
-      items: [
+    { title: 'Auditoría', icon: ICONS.userCircle, items: [
         { label: 'Fecha creación', value: formatDetailDateTime(data.fecha_creacion) },
         { label: 'Última modificación', value: formatDetailDateTime(data.fecha_modificacion) },
       ],
