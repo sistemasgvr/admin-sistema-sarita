@@ -2,12 +2,7 @@
   <div>
     <PageBreadcrumb page-title="Clientes" />
 
-    <AppTable
-      :columns="columns"
-      :rows="rows"
-      row-key="id"
-      :loading="isLoading"
-    >
+    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -31,7 +26,7 @@
             @click="openCreateModal"
           >
             <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo 
+            Nuevo
           </button>
         </div>
       </template>
@@ -44,7 +39,17 @@
           {{ row.nombre_tipo_persona }}
         </AppBadge>
       </template>
+      <template #cell-contacto="{ row }">
+        <div class="flex flex-col text-sm">
+          <span class="text-gray-500 dark:text-gray-400">
+            tel: {{ row.telefono || '-' }}
+          </span>
 
+          <span class="text-gray-500 dark:text-gray-400">
+            correo: {{ row.email || '-' }}
+          </span>
+        </div>
+      </template>
       <template #cell-estado="{ row }">
         <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
           {{ row.estado === 1 ? 'Activo' : 'Inactivo' }}
@@ -58,7 +63,6 @@
           @click="openDetailModal(row)"
         >
           <AppIcon :name="ICONS.eye" :size="16" />
-          Ver
         </button>
 
         <button
@@ -68,7 +72,6 @@
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Editar
         </button>
 
         <button
@@ -78,7 +81,6 @@
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Archivar
         </button>
 
         <button
@@ -187,14 +189,12 @@ const pagina = ref(1)
 const limite = ref(10)
 
 const estadoFiltroOptions: SelectOption[] = [
-  { label: 'Mostrar clientes: Todos', value: 'todos' },
-  { label: 'Mostrar clientes: Activos', value: 'activos' },
-  { label: 'Mostrar clientes: Inactivos', value: 'inactivos' },
+  { label: 'Todos', value: 'todos' },
+  { label: 'Activos', value: 'activos' },
+  { label: 'Inactivos', value: 'inactivos' },
 ]
 
-const buildSoloActivos = (
-  value: ClienteEstadoFiltro,
-): number | null => {
+const buildSoloActivos = (value: ClienteEstadoFiltro): number | undefined => {
   switch (value) {
     case 'activos':
       return 1
@@ -202,7 +202,7 @@ const buildSoloActivos = (
       return 0
     case 'todos':
     default:
-      return null
+      return undefined
   }
 }
 
@@ -254,11 +254,10 @@ const getNombrePrincipal = (cliente: Cliente) => {
 
 const columns = computed<TableColumn<Cliente>[]>(() => [
   { key: 'cliente', label: 'Cliente' },
-  { key: 'numero_documento', label: 'Documento', cellClass: 'whitespace-nowrap' },
+  { key: 'numero_documento', label: 'Documento' },
   { key: 'direccion', label: 'Dirección' },
-  { key: 'telefono', label: 'Teléfono', cellClass: 'whitespace-nowrap' },
-  { key: 'email', label: 'Correo' },
-  { key: 'estado', label: 'Estado', cellClass: 'whitespace-nowrap' },
+  { key: 'contacto', label: 'Teléfono / Correo' },
+  { key: 'estado', label: 'Estado' },
 ])
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
@@ -324,8 +323,7 @@ const confirmDelete = async () => {
     })
     deleteModalOpen.value = false
     clienteToDelete.value = null
-  } catch {
-  }
+  } catch {}
 }
 
 const restaurarCliente = async (cliente: Cliente) => {
@@ -336,8 +334,7 @@ const restaurarCliente = async (cliente: Cliente) => {
       id: cliente.id,
       idUsuarioAuditoria: currentUserId.value,
     })
-  } catch {
-  }
+  } catch {}
 }
 
 const onClienteSaved = () => {

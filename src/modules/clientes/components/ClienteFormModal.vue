@@ -7,14 +7,16 @@
         ? 'Registra un nuevo cliente en el sistema.'
         : 'Actualiza los datos del cliente seleccionado.'
     "
-    size="xl"
+    size="lg"
     @close="handleClose"
   >
-    <form id="cliente-form" class="space-y-6" autocomplete="off" @submit="onSubmit">
-      <div class="space-y-4">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Documento</h5>
+    <form id="cliente-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Documento</h5>
 
-        <div class="grid gap-4 sm:grid-cols-3">
+        <div class="grid gap-3 sm:grid-cols-3">
           <AppSelect
             v-model="idTipoDocumento"
             label="Tipo de documento"
@@ -29,7 +31,6 @@
                 : errors.idTipoDocumento
             "
           />
-
           <div class="sm:col-span-2">
             <div class="flex items-end gap-2">
               <div class="flex-1">
@@ -82,20 +83,23 @@
           </div>
         </div>
 
-        <AppInput
-          v-model="codigoInterno"
-          label="Código interno"
-          placeholder="Opcional"
-          v-bind="codigoInternoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.codigoInterno"
-        />
-      </div>
+        <div class="mt-3">
+          <AppInput
+            v-model="codigoInterno"
+            label="Código interno"
+            placeholder="Opcional"
+            v-bind="codigoInternoAttrs"
+            :disabled="isSubmitting"
+            :error="errors.codigoInterno"
+          />
+        </div>
+      </section>
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Datos generales</h5>
 
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos generales</h5>
-
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-3 sm:grid-cols-2">
           <AppSelect
             v-model="idTipoCliente"
             label="Tipo de cliente"
@@ -126,8 +130,7 @@
             "
           />
         </div>
-
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="mt-3">
           <AppInput
             v-model="razonSocial"
             label="Razón social"
@@ -138,7 +141,10 @@
             :error="errors.razonSocial"
             hint="Requerido para personas jurídicas."
           />
-          <div class="grid gap-4 sm:grid-cols-3">
+        </div>
+
+        <div class="mt-3 grid grid-cols-4 gap-3">
+          <div class="col-span-4 sm:col-span-2">
             <AppInput
               v-model="nombres"
               label="Nombres"
@@ -148,30 +154,37 @@
               :disabled="isSubmitting"
               :error="errors.nombres"
             />
+          </div>
 
+          <div class="col-span-2 sm:col-span-1">
             <AppInput
               v-model="apellidoPaterno"
-              label="Apellido paterno"
+              label="Ap. paterno"
               v-bind="apellidoPaternoAttrs"
               :disabled="isSubmitting"
               :error="errors.apellidoPaterno"
             />
+          </div>
 
+          <div class="col-span-2 sm:col-span-1">
             <AppInput
               v-model="apellidoMaterno"
-              label="Apellido materno"
+              label="Ap. materno"
               v-bind="apellidoMaternoAttrs"
               :disabled="isSubmitting"
               :error="errors.apellidoMaterno"
             />
           </div>
         </div>
-      </div>
+      </section>
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Contacto y ubicación
+        </h5>
 
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Contacto y ubicación</h5>
-
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-3 sm:grid-cols-2">
           <AppInput
             v-model="telefono"
             label="Teléfono"
@@ -192,25 +205,26 @@
           />
         </div>
 
-        <AppInput
-          v-model="direccion"
-          label="Dirección"
-          placeholder="Av. Principal 123"
-          v-bind="direccionAttrs"
-          :disabled="isSubmitting"
-          :error="errors.direccion"
-        />
+        <div class="mt-3 grid gap-3 sm:grid-cols-2">
+          <AppInput
+            v-model="direccion"
+            label="Dirección"
+            placeholder="Av. Principal 123"
+            v-bind="direccionAttrs"
+            :disabled="isSubmitting"
+            :error="errors.direccion"
+          />
 
-        <AppInput
-          v-model="referencia"
-          label="Referencia"
-          placeholder="Frente al parque"
-          v-bind="referenciaAttrs"
-          :disabled="isSubmitting"
-          :error="errors.referencia"
-        />
-
-        <div class="grid gap-4 sm:grid-cols-4">
+          <AppInput
+            v-model="referencia"
+            label="Referencia"
+            placeholder="Frente al parque"
+            v-bind="referenciaAttrs"
+            :disabled="isSubmitting"
+            :error="errors.referencia"
+          />
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-3">
           <AppSelect
             v-model="idPaisUI"
             label="País"
@@ -258,53 +272,67 @@
             :disabled="isSubmitting || !idProvinciaUI || distritosQuery.isLoading.value"
           />
         </div>
-      </div>
-
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Configuración SUNAT</h5>
-
-        <div class="grid gap-3 sm:grid-cols-2">
-          <AppCheckbox
-            v-model="esAgentePercepcion"
-            label="Agente de percepción"
-            :disabled="isSubmitting"
-          />
-          <AppCheckbox
-            v-model="esBuenContribuyente"
-            label="Buen contribuyente"
-            :disabled="isSubmitting"
-          />
-          <AppCheckbox
-            v-model="esAgenteRetenedor"
-            label="Agente retenedor"
-            :disabled="isSubmitting"
-          />
-          <AppCheckbox v-model="afectoRus" label="Afecto a RUS" :disabled="isSubmitting" />
-          <AppCheckbox
-            v-model="sunatActivo"
-            label="Situación SUNAT: Activo"
-            :disabled="isSubmitting"
-          />
-          <AppCheckbox
-            v-model="sunatHabido"
-            label="Condición SUNAT: Habido"
-            :disabled="isSubmitting"
-          />
+      </section>
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Configuración SUNAT
+        </h5>
+        <div class="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
+          <div class="flex min-h-[20px] items-center">
+            <AppCheckbox
+              v-model="esAgentePercepcion"
+              label="Agente de percepción"
+              :disabled="isSubmitting"
+            />
+          </div>
+          <div class="flex min-h-[20px] items-center">
+            <AppCheckbox
+              v-model="esBuenContribuyente"
+              label="Buen contribuyente"
+              :disabled="isSubmitting"
+            />
+          </div>
+          <div class="flex min-h-[20px] items-center">
+            <AppCheckbox
+              v-model="esAgenteRetenedor"
+              label="Agente retenedor"
+              :disabled="isSubmitting"
+            />
+          </div>
+          <div class="flex min-h-[20px] items-center">
+            <AppCheckbox v-model="afectoRus" label="Afecto a RUS" :disabled="isSubmitting" />
+          </div>
+          <div class="flex min-h-[20px] items-center">
+            <AppCheckbox
+              v-model="sunatActivo"
+              label="Situación SUNAT: Activo"
+              :disabled="isSubmitting"
+            />
+          </div>
+          <div class="flex min-h-[20px] items-center">
+            <AppCheckbox
+              v-model="sunatHabido"
+              label="Condición SUNAT: Habido"
+              :disabled="isSubmitting"
+            />
+          </div>
         </div>
-      </div>
-
-      <div class="border-t border-gray-100 pt-5 dark:border-gray-800">
+      </section>
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Observaciones</h5>
         <AppTextarea
           v-model="observacion"
-          label="Observación"
           placeholder="Notas adicionales sobre el cliente"
           v-bind="observacionAttrs"
           :disabled="isSubmitting"
           :error="errors.observacion"
         />
-      </div>
+      </section>
     </form>
-
     <template #footer>
       <button
         type="button"

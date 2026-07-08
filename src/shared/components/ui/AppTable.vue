@@ -20,7 +20,7 @@
               ]"
             >
               <slot :name="`header-${column.key}`" :column="column">
-                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap">
                   {{ column.label }}
                 </p>
               </slot>
@@ -32,7 +32,7 @@
               :class="actionsHeaderClass"
             >
               <slot name="header-actions">
-                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap">
                   {{ actionsLabel }}
                 </p>
               </slot>
