@@ -179,14 +179,17 @@ const selectTab = (key: string) => {
 
 .app-tabs__badge {
   display: inline-flex;
-  min-width: 1.125rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
-  background: rgba(217, 119, 6, 0.15);
-  padding: 0.125rem 0.375rem;
-  font-size: 0.6875rem;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 0.625rem;
   font-weight: 600;
+  line-height: 1;
+  background: rgba(217, 119, 6, 0.15);
   color: #b45309;
 }
 
