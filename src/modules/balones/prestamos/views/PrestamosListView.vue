@@ -53,9 +53,12 @@
         </div>
       </template>
 
-      <template #cell-numero_prestamo="{ value }">
+      <template #cell-prestamo="{ row }">
         <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ value || '—' }}
+          {{ row.numero_prestamo || '—' }}
+        </p>
+        <p v-if="row.titulo" class="text-xs text-gray-500 dark:text-gray-400">
+          {{ row.titulo }}
         </p>
       </template>
 
@@ -69,12 +72,11 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
-      <template #cell-fecha_salida="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
-      </template>
-
-      <template #cell-fecha_retorno_pactada="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
+      <template #cell-vigencia="{ row }">
+        <DateRangeBadges
+          :from="row.fecha_salida"
+          :to="row.fecha_retorno_pactada"
+        />
       </template>
 
       <template #cell-nombre_estado="{ value }">
@@ -180,6 +182,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import PrestamoFormModal from '@/modules/balones/prestamos/components/PrestamoFormModal.vue'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
+import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeletePrestamoMutation } from '@/modules/balones/prestamos/composables/usePrestamoMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import type {
@@ -250,12 +253,10 @@ const isLoading = computed(
 const rows = computed(() => prestamosQuery.data.value?.data ?? [])
 
 const columns: TableColumn[] = [
-  { key: 'numero_prestamo', label: 'Número' },
+  { key: 'prestamo', label: 'Préstamo' },
   { key: 'nombre_tipo_prestamo', label: 'Tipo' },
-  { key: 'titulo', label: 'Título' },
   { key: 'nombre_cliente', label: 'Cliente' },
-  { key: 'fecha_salida', label: 'Salida' },
-  { key: 'fecha_retorno_pactada', label: 'Retorno pactado' },
+  { key: 'vigencia', label: 'Salida / Retorno' },
   { key: 'nombre_estado', label: 'Estado' },
   { key: 'total_detalles', label: 'Cilindros' },
 ]
@@ -282,14 +283,6 @@ const clienteFilterOptions = computed(() => [
       cliente.numero_documento,
   })),
 ])
-
-const formatCellDate = (value?: string | null) => {
-  if (!value) return '—'
-  const date = value.slice(0, 10)
-  const [year, month, day] = date.split('-')
-  if (!year || !month || !day) return date
-  return `${day}/${month}/${year}`
-}
 
 const syncFilters = () => {
   filters.value = {

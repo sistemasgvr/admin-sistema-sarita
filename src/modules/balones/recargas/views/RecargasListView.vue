@@ -49,8 +49,11 @@
         </div>
       </template>
 
-      <template #cell-fecha_salida_almacen="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
+      <template #cell-vigencia="{ row }">
+        <DateRangeBadges
+          :from="row.fecha_salida_almacen"
+          :to="row.fecha_llegada_almacen"
+        />
       </template>
 
       <template #cell-codigo_balon="{ value }">
@@ -62,20 +65,15 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
-      <template #cell-guia_salida="{ row }">
-        <span class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-          {{ formatDocumento(row.serie_guia_salida, row.numero_guia_salida) }}
-        </span>
-      </template>
-
-      <template #cell-factura="{ row }">
-        <span class="whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-          {{ formatDocumento(row.serie_factura, row.numero_factura) }}
-        </span>
-      </template>
-
-      <template #cell-fecha_llegada_almacen="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
+      <template #cell-documentos="{ row }">
+        <div class="space-y-0.5 text-sm text-gray-600 dark:text-gray-400">
+          <p class="whitespace-nowrap">
+            GRE: {{ formatDocumento(row.serie_guia_salida, row.numero_guia_salida) }}
+          </p>
+          <p class="whitespace-nowrap">
+            Fac: {{ formatDocumento(row.serie_factura, row.numero_factura) }}
+          </p>
+        </div>
       </template>
 
       <template #cell-nombre_almacen="{ value }">
@@ -152,7 +150,7 @@
         </span>
         con salida el
         <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ formatCellDate(recargaToDelete?.fecha_salida_almacen) }}
+          {{ formatListDate(recargaToDelete?.fecha_salida_almacen) }}
         </span>
         ?
       </p>
@@ -184,6 +182,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MovimientoRecargaFormModal from '@/modules/balones/recargas/components/MovimientoRecargaFormModal.vue'
 import MovimientoRecargaDetailModal from '@/modules/balones/recargas/components/MovimientoRecargaDetailModal.vue'
+import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteMovimientoRecargaMutation } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
 import { useMovimientosRecargaQuery } from '@/modules/balones/recargas/composables/useMovimientosRecargaQuery'
 import type {
@@ -199,6 +198,7 @@ import { AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -259,12 +259,10 @@ const isLoading = computed(
 const rows = computed(() => recargasQuery.data.value?.data ?? [])
 
 const columns: TableColumn[] = [
-  { key: 'fecha_salida_almacen', label: 'Salida' },
+  { key: 'vigencia', label: 'Salida / Llegada' },
   { key: 'codigo_balon', label: 'Cilindro' },
   { key: 'nombre_producto', label: 'Gas' },
-  { key: 'guia_salida', label: 'GRE salida' },
-  { key: 'factura', label: 'Factura' },
-  { key: 'fecha_llegada_almacen', label: 'Llegada' },
+  { key: 'documentos', label: 'GRE / Factura' },
   { key: 'nombre_almacen', label: 'Almacén' },
 ]
 
@@ -285,14 +283,6 @@ const almacenFilterOptions = computed(() => [
     label: almacen.nombre,
   })),
 ])
-
-const formatCellDate = (value?: string | null) => {
-  if (!value) return '—'
-  const date = value.slice(0, 10)
-  const [year, month, day] = date.split('-')
-  if (!year || !month || !day) return date
-  return `${day}/${month}/${year}`
-}
 
 const formatDocumento = (serie?: string | null, numero?: string | null) => {
   if (!serie && !numero) return '—'

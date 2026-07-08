@@ -76,7 +76,7 @@
         <span class="text-sm text-gray-600 dark:text-gray-400">
           <template v-if="row.nombre_almacen_origen || row.nombre_almacen_destino">
             {{ row.nombre_almacen_origen || '—' }}
-            <span class="text-gray-400">→</span>
+            <span class="text-gray-400">/</span>
             {{ row.nombre_almacen_destino || '—' }}
           </template>
           <span v-else class="text-gray-400">—</span>
@@ -88,11 +88,13 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
+      <!--
       <template #cell-observacion="{ value }">
         <span class="line-clamp-2 text-sm text-gray-600 dark:text-gray-400">
           {{ value || '—' }}
         </span>
       </template>
+      -->
 
       <template #actions="{ row }">
         <button
@@ -288,9 +290,9 @@ const columns: TableColumn[] = [
   { key: 'fecha_movimiento', label: 'Fecha' },
   { key: 'codigo_balon', label: 'Cilindro' },
   { key: 'nombre_tipo_movimiento', label: 'Tipo' },
-  { key: 'almacenes', label: 'Origen → Destino' },
+  { key: 'almacenes', label: 'Origen / Destino' },
   { key: 'nombre_cliente', label: 'Cliente' },
-  { key: 'observacion', label: 'Observación' },
+  // { key: 'observacion', label: 'Observación' },
 ]
 
 const allOption = (): SelectOption => ({ value: '', label: 'Todos' })

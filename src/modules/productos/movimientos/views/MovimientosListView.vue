@@ -88,7 +88,7 @@
           class="tabular-nums text-sm text-gray-600 dark:text-gray-400"
         >
           {{ formatCantidad(row.stock_anterior) }}
-          <span class="text-gray-400">→</span>
+          <span class="text-gray-400">/</span>
           {{ formatCantidad(row.stock_nuevo) }}
         </span>
         <span v-else class="text-gray-400">—</span>

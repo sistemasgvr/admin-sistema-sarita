@@ -69,12 +69,8 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
-      <template #cell-fecha_ingreso="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
-      </template>
-
-      <template #cell-fecha_salida="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
+      <template #cell-vigencia="{ row }">
+        <DateRangeBadges :from="row.fecha_ingreso" :to="row.fecha_salida" />
       </template>
 
       <template #cell-costo="{ value }">
@@ -167,7 +163,7 @@
         </span>
         con ingreso el
         <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ formatCellDate(mantenimientoToDelete?.fecha_ingreso) }}
+          {{ formatListDate(mantenimientoToDelete?.fecha_ingreso) }}
         </span>
         ?
       </p>
@@ -199,6 +195,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MantenimientoFormModal from '@/modules/balones/mantenimientos/components/MantenimientoFormModal.vue'
 import MantenimientoDetailModal from '@/modules/balones/mantenimientos/components/MantenimientoDetailModal.vue'
+import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteMantenimientoMutation } from '@/modules/balones/mantenimientos/composables/useMantenimientoMutations'
 import { useMantenimientosQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import type {
@@ -216,6 +213,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -280,8 +278,7 @@ const rows = computed(() => mantenimientosQuery.data.value?.data ?? [])
 const columns: TableColumn[] = [
   { key: 'codigo_balon', label: 'Cilindro' },
   { key: 'nombre_tipo_mantenimiento', label: 'Tipo' },
-  { key: 'fecha_ingreso', label: 'Ingreso' },
-  { key: 'fecha_salida', label: 'Salida' },
+  { key: 'vigencia', label: 'Ingreso / Salida' },
   { key: 'costo', label: 'Costo' },
   { key: 'es_externo', label: 'Origen' },
   { key: 'nombre_estado', label: 'Estado' },
@@ -312,14 +309,6 @@ const esExternoFilterOptions: SelectOption[] = [
   { value: 'true', label: 'Externo' },
   { value: 'false', label: 'Interno' },
 ]
-
-const formatCellDate = (value?: string | null) => {
-  if (!value) return '—'
-  const date = value.slice(0, 10)
-  const [year, month, day] = date.split('-')
-  if (!year || !month || !day) return date
-  return `${day}/${month}/${year}`
-}
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)

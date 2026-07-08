@@ -67,12 +67,8 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
-      <template #cell-fecha_inicio="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
-      </template>
-
-      <template #cell-fecha_fin_pactada="{ value }">
-        <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
+      <template #cell-vigencia="{ row }">
+        <DateRangeBadges :from="row.fecha_inicio" :to="row.fecha_fin_pactada" />
       </template>
 
       <template #cell-tarifa_diaria="{ value }">
@@ -185,6 +181,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerFormModal from '@/modules/balones/alquileres/components/AlquilerFormModal.vue'
 import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
+import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
 import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import type {
@@ -260,8 +257,7 @@ const columns: TableColumn[] = [
   { key: 'numero_alquiler', label: 'Número' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'nombre_almacen', label: 'Almacén' },
-  { key: 'fecha_inicio', label: 'Inicio' },
-  { key: 'fecha_fin_pactada', label: 'Fin pactado' },
+  { key: 'vigencia', label: 'Inicio / Fin' },
   { key: 'tarifa_diaria', label: 'Tarifa/día' },
   { key: 'nombre_estado', label: 'Estado' },
   { key: 'total_detalles', label: 'Cilindros' },
@@ -292,14 +288,6 @@ const almacenFilterOptions = computed(() => [
     label: almacen.nombre,
   })),
 ])
-
-const formatCellDate = (value?: string | null) => {
-  if (!value) return '—'
-  const date = value.slice(0, 10)
-  const [year, month, day] = date.split('-')
-  if (!year || !month || !day) return date
-  return `${day}/${month}/${year}`
-}
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
