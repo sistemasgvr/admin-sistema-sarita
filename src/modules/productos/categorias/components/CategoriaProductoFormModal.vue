@@ -12,27 +12,32 @@
   >
     <form
       id="categoria-producto-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppInput
-        v-model="nombre"
-        label="Nombre"
-        placeholder="Gases"
-        required
-        v-bind="nombreAttrs"
-        :disabled="isSubmitting"
-        :error="errors.nombre"
-      />
+      <FormCardsLayout>
+        <DetailSectionCard title="Datos generales" :icon="ICONS.layers" :full-width="true">
+          <div class="space-y-4">
+            <AppInput
+              v-model="nombre"
+              label="Nombre"
+              placeholder="Gases"
+              required
+              v-bind="nombreAttrs"
+              :disabled="isSubmitting"
+              :error="errors.nombre"
+            />
 
-      <AppTextarea
-        v-model="descripcion"
-        label="Descripción"
-        placeholder="Descripción opcional"
-        v-bind="descripcionAttrs"
-        :disabled="isSubmitting"
-      />
+            <AppTextarea
+              v-model="descripcion"
+              label="Descripción"
+              placeholder="Descripción opcional"
+              v-bind="descripcionAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -70,6 +75,9 @@ import type {
   CategoriaProductoFormMode,
 } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { AppInput, AppModal, AppTextarea } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface CategoriaProductoFormModalProps {

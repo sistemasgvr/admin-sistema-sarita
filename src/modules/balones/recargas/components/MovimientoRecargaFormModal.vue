@@ -20,211 +20,212 @@
     <form
       v-else
       id="movimiento-recarga-form"
-      class="space-y-6"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div
-        v-if="mode === 'edit' && recargaDetalle"
-        class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-800 dark:bg-white/[0.03]"
-      >
-        <p class="font-medium text-gray-800 dark:text-white/90">
-          Cilindro: {{ recargaDetalle.codigo_balon }}
-        </p>
-      </div>
+      <FormCardsLayout>
+        <DetailSectionCard
+          v-if="mode === 'edit' && recargaDetalle"
+          title="Cilindro"
+          :icon="ICONS.cylinder"
+          :full-width="true"
+        >
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+            {{ recargaDetalle.codigo_balon }}
+          </p>
+        </DetailSectionCard>
 
-      <div class="space-y-4">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Salida de almacén</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppInput
-            v-model="fechaSalidaAlmacen"
-            label="Fecha salida"
-            type="date"
-            required
-            v-bind="fechaSalidaAlmacenAttrs"
+        <DetailSectionCard title="Salida de almacén" :icon="ICONS.warehouse">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="fechaSalidaAlmacen"
+              label="Fecha salida"
+              type="date"
+              required
+              v-bind="fechaSalidaAlmacenAttrs"
+              :disabled="isSubmitting"
+              :error="errors.fechaSalidaAlmacen"
+            />
+
+            <AppSelect
+              v-if="mode === 'create'"
+              v-model="idBalon"
+              label="Cilindro"
+              placeholder="Selecciona cilindro"
+              required
+              v-bind="idBalonAttrs"
+              :disabled="isSubmitting || balonesQuery.isLoading.value"
+              :error="errors.idBalon"
+              :options="balonOptions"
+            />
+
+            <AppSelect
+              v-model="idAlmacen"
+              label="Almacén"
+              placeholder="Opcional"
+              v-bind="idAlmacenAttrs"
+              :disabled="isSubmitting || almacenesQuery.isLoading.value"
+              :options="almacenOptions"
+            />
+
+            <AppSelect
+              v-model="idProducto"
+              label="Producto (gas)"
+              placeholder="Opcional"
+              v-bind="idProductoAttrs"
+              :disabled="isSubmitting || productosQuery.isLoading.value"
+              :options="gasOptions"
+            />
+
+            <AppInput
+              v-model="capacidad"
+              label="Capacidad"
+              type="number"
+              min="0"
+              step="0.0001"
+              v-bind="capacidadAttrs"
+              :disabled="isSubmitting"
+              :error="errors.capacidad"
+            />
+
+            <AppSelect
+              v-model="idUnidadMedida"
+              label="Unidad de medida"
+              placeholder="Opcional"
+              v-bind="idUnidadMedidaAttrs"
+              :disabled="isSubmitting || unidadMedidaQuery.isFetching.value"
+              :options="unidadMedidaOptions"
+            />
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Guías de remisión" :icon="ICONS.clipboardList">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="serieGuiaSalida"
+              label="Serie GRE salida"
+              placeholder="T001"
+              v-bind="serieGuiaSalidaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.serieGuiaSalida"
+            />
+            <AppInput
+              v-model="numeroGuiaSalida"
+              label="Número GRE salida"
+              placeholder="00000001"
+              v-bind="numeroGuiaSalidaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroGuiaSalida"
+            />
+            <AppInput
+              v-model="serieGuiaIngreso"
+              label="Serie GRE ingreso"
+              placeholder="T001"
+              v-bind="serieGuiaIngresoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.serieGuiaIngreso"
+            />
+            <AppInput
+              v-model="numeroGuiaIngreso"
+              label="Número GRE ingreso"
+              placeholder="00000002"
+              v-bind="numeroGuiaIngresoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroGuiaIngreso"
+            />
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Factura" :icon="ICONS.creditCard">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="serieFactura"
+              label="Serie factura"
+              placeholder="F001"
+              v-bind="serieFacturaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.serieFactura"
+            />
+            <AppInput
+              v-model="numeroFactura"
+              label="Número factura"
+              placeholder="00000001"
+              v-bind="numeroFacturaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroFactura"
+            />
+            <AppInput
+              v-model="idComprobante"
+              label="ID comprobante"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Opcional"
+              v-bind="idComprobanteAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Retorno y lote" :icon="ICONS.calendar">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="fechaLlegadaAlmacen"
+              label="Fecha llegada almacén"
+              type="date"
+              v-bind="fechaLlegadaAlmacenAttrs"
+              :disabled="isSubmitting"
+            />
+
+            <AppSelect
+              v-model="idProveedor"
+              label="Proveedor / planta"
+              placeholder="Opcional"
+              v-bind="idProveedorAttrs"
+              :disabled="isSubmitting || clientesQuery.isLoading.value"
+              :options="proveedorOptions"
+            />
+
+            <AppInput
+              v-model="lote"
+              label="Lote"
+              placeholder="Lote de recarga"
+              v-bind="loteAttrs"
+              :disabled="isSubmitting"
+              :error="errors.lote"
+            />
+
+            <AppInput
+              v-model="fechaVencimientoLote"
+              label="Vencimiento lote"
+              type="date"
+              v-bind="fechaVencimientoLoteAttrs"
+              :disabled="isSubmitting"
+            />
+
+            <AppInput
+              v-model="fechaPruebaHidrostatica"
+              label="Prueba hidrostática (P.H.)"
+              type="date"
+              v-bind="fechaPruebaHidrostaticaAttrs"
+              :disabled="isSubmitting"
+              hint="Referencia documental de la planta. La renovación vigente se registra en Mantenimientos."
+            />
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
+          <AppTextarea
+            v-model="observacion"
+            label="Observación"
+            placeholder="Detalle adicional"
+            :rows="3"
+            v-bind="observacionAttrs"
             :disabled="isSubmitting"
-            :error="errors.fechaSalidaAlmacen"
+            :error="errors.observacion"
           />
-
-          <AppSelect
-            v-if="mode === 'create'"
-            v-model="idBalon"
-            label="Cilindro"
-            placeholder="Selecciona cilindro"
-            required
-            v-bind="idBalonAttrs"
-            :disabled="isSubmitting || balonesQuery.isLoading.value"
-            :error="errors.idBalon"
-            :options="balonOptions"
-          />
-
-          <AppSelect
-            v-model="idAlmacen"
-            label="Almacén"
-            placeholder="Opcional"
-            v-bind="idAlmacenAttrs"
-            :disabled="isSubmitting || almacenesQuery.isLoading.value"
-            :options="almacenOptions"
-          />
-
-          <AppSelect
-            v-model="idProducto"
-            label="Producto (gas)"
-            placeholder="Opcional"
-            v-bind="idProductoAttrs"
-            :disabled="isSubmitting || productosQuery.isLoading.value"
-            :options="gasOptions"
-          />
-
-          <AppInput
-            v-model="capacidad"
-            label="Capacidad"
-            type="number"
-            min="0"
-            step="0.0001"
-            v-bind="capacidadAttrs"
-            :disabled="isSubmitting"
-            :error="errors.capacidad"
-          />
-
-          <AppSelect
-            v-model="idUnidadMedida"
-            label="Unidad de medida"
-            placeholder="Opcional"
-            v-bind="idUnidadMedidaAttrs"
-            :disabled="isSubmitting || unidadMedidaQuery.isFetching.value"
-            :options="unidadMedidaOptions"
-          />
-        </div>
-      </div>
-
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Guías de remisión</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppInput
-            v-model="serieGuiaSalida"
-            label="Serie GRE salida"
-            placeholder="T001"
-            v-bind="serieGuiaSalidaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.serieGuiaSalida"
-          />
-          <AppInput
-            v-model="numeroGuiaSalida"
-            label="Número GRE salida"
-            placeholder="00000001"
-            v-bind="numeroGuiaSalidaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroGuiaSalida"
-          />
-          <AppInput
-            v-model="serieGuiaIngreso"
-            label="Serie GRE ingreso"
-            placeholder="T001"
-            v-bind="serieGuiaIngresoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.serieGuiaIngreso"
-          />
-          <AppInput
-            v-model="numeroGuiaIngreso"
-            label="Número GRE ingreso"
-            placeholder="00000002"
-            v-bind="numeroGuiaIngresoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroGuiaIngreso"
-          />
-        </div>
-      </div>
-
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Factura</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppInput
-            v-model="serieFactura"
-            label="Serie factura"
-            placeholder="F001"
-            v-bind="serieFacturaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.serieFactura"
-          />
-          <AppInput
-            v-model="numeroFactura"
-            label="Número factura"
-            placeholder="00000001"
-            v-bind="numeroFacturaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroFactura"
-          />
-          <AppInput
-            v-model="idComprobante"
-            label="ID comprobante"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="Opcional"
-            v-bind="idComprobanteAttrs"
-            :disabled="isSubmitting"
-          />
-        </div>
-      </div>
-
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Retorno y lote</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppInput
-            v-model="fechaLlegadaAlmacen"
-            label="Fecha llegada almacén"
-            type="date"
-            v-bind="fechaLlegadaAlmacenAttrs"
-            :disabled="isSubmitting"
-          />
-
-          <AppSelect
-            v-model="idProveedor"
-            label="Proveedor / planta"
-            placeholder="Opcional"
-            v-bind="idProveedorAttrs"
-            :disabled="isSubmitting || clientesQuery.isLoading.value"
-            :options="proveedorOptions"
-          />
-
-          <AppInput
-            v-model="lote"
-            label="Lote"
-            placeholder="Lote de recarga"
-            v-bind="loteAttrs"
-            :disabled="isSubmitting"
-            :error="errors.lote"
-          />
-
-          <AppInput
-            v-model="fechaVencimientoLote"
-            label="Vencimiento lote"
-            type="date"
-            v-bind="fechaVencimientoLoteAttrs"
-            :disabled="isSubmitting"
-          />
-
-          <AppInput
-            v-model="fechaPruebaHidrostatica"
-            label="Prueba hidrostática (P.H.)"
-            type="date"
-            v-bind="fechaPruebaHidrostaticaAttrs"
-            :disabled="isSubmitting"
-            hint="Referencia documental de la planta. La renovación vigente se registra en Mantenimientos."
-          />
-        </div>
-      </div>
-
-      <AppTextarea
-        v-model="observacion"
-        label="Observación"
-        placeholder="Detalle adicional"
-        :rows="3"
-        v-bind="observacionAttrs"
-        :disabled="isSubmitting"
-        :error="errors.observacion"
-      />
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -273,6 +274,9 @@ import type { MovimientoRecargaFormMode } from '@/modules/balones/recargas/inter
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

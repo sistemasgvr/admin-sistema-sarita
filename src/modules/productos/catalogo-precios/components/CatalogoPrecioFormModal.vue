@@ -12,148 +12,159 @@
   >
     <form
       id="catalogo-precio-form"
-      class="space-y-5"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppSelect
-          v-model="idTipoCatalogo"
-          label="Tipo de catálogo"
-          placeholder="Selecciona tipo"
-          required
-          v-bind="idTipoCatalogoAttrs"
-          :disabled="isSubmitting || tiposCatalogoQuery.isFetching.value"
-          :error="errors.idTipoCatalogo"
-          :options="tipoCatalogoOptions"
-        />
+      <FormCardsLayout>
+        <DetailSectionCard title="Identificación" :icon="ICONS.clipboardList">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppSelect
+                v-model="idTipoCatalogo"
+                label="Tipo de catálogo"
+                placeholder="Selecciona tipo"
+                required
+                v-bind="idTipoCatalogoAttrs"
+                :disabled="isSubmitting || tiposCatalogoQuery.isFetching.value"
+                :error="errors.idTipoCatalogo"
+                :options="tipoCatalogoOptions"
+              />
 
-        <AppInput
-          v-model="periodo"
-          label="Periodo"
-          placeholder="2026-Q2"
-          v-bind="periodoAttrs"
-          :disabled="isSubmitting"
-        />
-      </div>
+              <AppInput
+                v-model="periodo"
+                label="Periodo"
+                placeholder="2026-Q2"
+                v-bind="periodoAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
 
-      <AppInput
-        v-model="nombreItem"
-        label="Nombre del ítem"
-        placeholder="Recarga Oxígeno Industrial 10 m³"
-        required
-        v-bind="nombreItemAttrs"
-        :disabled="isSubmitting"
-        :error="errors.nombreItem"
-      />
+            <AppInput
+              v-model="nombreItem"
+              label="Nombre del ítem"
+              placeholder="Recarga Oxígeno Industrial 10 m³"
+              required
+              v-bind="nombreItemAttrs"
+              :disabled="isSubmitting"
+              :error="errors.nombreItem"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <AppSelect
-        v-model="idProducto"
-        label="Producto asociado"
-        placeholder="Opcional"
-        v-bind="idProductoAttrs"
-        :disabled="isSubmitting"
-        :options="productoOptions"
-      />
+        <DetailSectionCard title="Producto y presentación" :icon="ICONS.package">
+          <div class="space-y-4">
+            <AppSelect
+              v-model="idProducto"
+              label="Producto asociado"
+              placeholder="Opcional"
+              v-bind="idProductoAttrs"
+              :disabled="isSubmitting"
+              :options="productoOptions"
+            />
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput
-          v-model="clasificacion"
-          label="Clasificación"
-          placeholder="Industrial, Soldadura..."
-          v-bind="clasificacionAttrs"
-          :disabled="isSubmitting"
-        />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="clasificacion"
+                label="Clasificación"
+                placeholder="Industrial, Soldadura..."
+                v-bind="clasificacionAttrs"
+                :disabled="isSubmitting"
+              />
 
-        <AppInput
-          v-model="modelo"
-          label="Modelo"
-          placeholder="Cilindro 10 m³"
-          v-bind="modeloAttrs"
-          :disabled="isSubmitting"
-        />
-      </div>
+              <AppInput
+                v-model="modelo"
+                label="Modelo"
+                placeholder="Cilindro 10 m³"
+                v-bind="modeloAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput
-          v-model="capacidad"
-          label="Capacidad"
-          type="number"
-          min="0"
-          step="0.0001"
-          v-bind="capacidadAttrs"
-          :disabled="isSubmitting"
-        />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="capacidad"
+                label="Capacidad"
+                type="number"
+                min="0"
+                step="0.0001"
+                v-bind="capacidadAttrs"
+                :disabled="isSubmitting"
+              />
 
-        <AppSelect
-          v-model="idUnidadMedida"
-          label="Unidad de medida"
-          placeholder="Opcional"
-          v-bind="idUnidadMedidaAttrs"
-          :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
-          :options="unidadMedidaOptions"
-        />
-      </div>
+              <AppSelect
+                v-model="idUnidadMedida"
+                label="Unidad de medida"
+                placeholder="Opcional"
+                v-bind="idUnidadMedidaAttrs"
+                :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
+                :options="unidadMedidaOptions"
+              />
+            </div>
 
-      <AppInput
-        v-model="descripcionPresentacion"
-        label="Presentación"
-        placeholder="Descripción comercial"
-        v-bind="descripcionPresentacionAttrs"
-        :disabled="isSubmitting"
-      />
+            <AppInput
+              v-model="descripcionPresentacion"
+              label="Presentación"
+              placeholder="Descripción comercial"
+              v-bind="descripcionPresentacionAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div class="grid grid-cols-1 gap-4 border-t border-gray-200 pt-4 sm:grid-cols-2 dark:border-gray-800">
-        <AppInput
-          v-model="costoProducto"
-          label="Costo producto"
-          type="number"
-          min="0"
-          step="0.01"
-          v-bind="costoProductoAttrs"
-          :disabled="isSubmitting"
-        />
+        <DetailSectionCard title="Precios" :icon="ICONS.creditCard" :full-width="true">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="costoProducto"
+              label="Costo producto"
+              type="number"
+              min="0"
+              step="0.01"
+              v-bind="costoProductoAttrs"
+              :disabled="isSubmitting"
+            />
 
-        <AppInput
-          v-model="costoFlete"
-          label="Costo flete"
-          type="number"
-          min="0"
-          step="0.01"
-          v-bind="costoFleteAttrs"
-          :disabled="isSubmitting"
-        />
+            <AppInput
+              v-model="costoFlete"
+              label="Costo flete"
+              type="number"
+              min="0"
+              step="0.01"
+              v-bind="costoFleteAttrs"
+              :disabled="isSubmitting"
+            />
 
-        <AppInput
-          v-model="porcentajeMargen"
-          label="Margen %"
-          type="number"
-          min="0"
-          step="0.01"
-          v-bind="porcentajeMargenAttrs"
-          :disabled="isSubmitting"
-        />
+            <AppInput
+              v-model="porcentajeMargen"
+              label="Margen %"
+              type="number"
+              min="0"
+              step="0.01"
+              v-bind="porcentajeMargenAttrs"
+              :disabled="isSubmitting"
+            />
 
-        <AppInput
-          v-model="precioFinal"
-          label="Precio final"
-          type="number"
-          min="0"
-          step="0.01"
-          v-bind="precioFinalAttrs"
-          :disabled="isSubmitting"
-        />
+            <AppInput
+              v-model="precioFinal"
+              label="Precio final"
+              type="number"
+              min="0"
+              step="0.01"
+              v-bind="precioFinalAttrs"
+              :disabled="isSubmitting"
+            />
 
-        <AppInput
-          v-model="precioGarantia"
-          label="Precio garantía"
-          type="number"
-          min="0"
-          step="0.01"
-          v-bind="precioGarantiaAttrs"
-          :disabled="isSubmitting"
-        />
-      </div>
+            <AppInput
+              v-model="precioGarantia"
+              label="Precio garantía"
+              type="number"
+              min="0"
+              step="0.01"
+              v-bind="precioGarantiaAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -193,6 +204,9 @@ import type {
 } from '@/modules/productos/catalogo-precios/interfaces/catalogo-precio.interface'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

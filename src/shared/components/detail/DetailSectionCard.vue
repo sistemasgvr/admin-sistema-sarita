@@ -1,9 +1,15 @@
 <template>
   <section
-    class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-    :class="fullWidth ? 'sm:col-span-2' : ''"
+    class="rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+    :class="[
+      isFormVariant ? 'p-5' : 'p-4',
+      fullWidth ? 'sm:col-span-2' : '',
+    ]"
   >
-    <div class="mb-3 flex items-start justify-between gap-3">
+    <div
+      class="flex items-start justify-between gap-3"
+      :class="isFormVariant ? 'mb-5' : 'mb-3'"
+    >
       <div class="flex min-w-0 items-center gap-2.5">
         <span
           v-if="icon"
@@ -21,7 +27,7 @@
       </div>
     </div>
 
-    <dl v-if="items?.length" class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+    <dl v-if="items?.length" class="grid gap-x-5 gap-y-4 sm:grid-cols-2">
       <div
         v-for="item in items"
         :key="item.label"
@@ -34,11 +40,17 @@
       </div>
     </dl>
 
-    <slot v-else />
+    <div
+      v-else
+      :class="isFormVariant ? 'space-y-5 [&_.grid]:gap-5' : ''"
+    >
+      <slot />
+    </div>
   </section>
 </template>
 
 <script setup lang="ts">
+import { computed, inject } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import type { IconName } from '@/shared/constants/icons'
 import type { DetailSectionItem } from '@/shared/components/detail/detail.types'
@@ -49,4 +61,7 @@ defineProps<{
   items?: DetailSectionItem[]
   fullWidth?: boolean
 }>()
+
+const sectionVariant = inject<'form' | 'default'>('detailSectionVariant', 'default')
+const isFormVariant = computed(() => sectionVariant === 'form')
 </script>

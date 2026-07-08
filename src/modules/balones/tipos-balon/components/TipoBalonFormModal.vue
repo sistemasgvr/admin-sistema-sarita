@@ -10,74 +10,80 @@
     size="md"
     @close="handleClose"
   >
-    <form id="tipo-balon-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
-      <AppInput
-        v-model="nombre"
-        label="Nombre"
-        placeholder="Oxígeno Industrial 10m³"
-        required
-        v-bind="nombreAttrs"
-        :disabled="isSubmitting"
-        :error="errors.nombre"
-      />
+    <form id="tipo-balon-form" autocomplete="off" @submit="onSubmit">
+      <FormCardsLayout>
+        <DetailSectionCard title="Datos del tipo" :icon="ICONS.layers" :full-width="true">
+          <div class="space-y-4">
+            <AppInput
+              v-model="nombre"
+              label="Nombre"
+              placeholder="Oxígeno Industrial 10m³"
+              required
+              v-bind="nombreAttrs"
+              :disabled="isSubmitting"
+              :error="errors.nombre"
+            />
 
-      <AppSelect
-        v-model="idGas"
-        label="Gas (producto)"
-        :placeholder="productosQuery.isLoading.value ? 'Cargando...' : 'Selecciona un gas...'"
-        :options="gasOptions"
-        :disabled="isSubmitting || productosQuery.isLoading.value"
-        v-bind="idGasAttrs"
-        :error="errors.idGas"
-        hint="Solo productos marcados como gas."
-      />
+            <AppSelect
+              v-model="idGas"
+              label="Gas (producto)"
+              :placeholder="productosQuery.isLoading.value ? 'Cargando...' : 'Selecciona un gas...'"
+              :options="gasOptions"
+              :disabled="isSubmitting || productosQuery.isLoading.value"
+              v-bind="idGasAttrs"
+              :error="errors.idGas"
+              hint="Solo productos marcados como gas."
+            />
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <AppInput
-          v-model="capacidad"
-          label="Capacidad"
-          type="number"
-          min="0"
-          step="0.0001"
-          placeholder="10"
-          v-bind="capacidadAttrs"
-          :disabled="isSubmitting"
-          :error="errors.capacidad"
-        />
+            <div class="grid gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="capacidad"
+                label="Capacidad"
+                type="number"
+                min="0"
+                step="0.0001"
+                placeholder="10"
+                v-bind="capacidadAttrs"
+                :disabled="isSubmitting"
+                :error="errors.capacidad"
+              />
 
-        <AppSelect
-          v-model="idUnidadMedida"
-          label="Unidad de medida"
-          :placeholder="unidadMedidaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-          :options="unidadMedidaOptions"
-          :disabled="isSubmitting || unidadMedidaQuery.isLoading.value"
-          v-bind="idUnidadMedidaAttrs"
-          :error="errors.idUnidadMedida"
-        />
-      </div>
+              <AppSelect
+                v-model="idUnidadMedida"
+                label="Unidad de medida"
+                :placeholder="unidadMedidaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                :options="unidadMedidaOptions"
+                :disabled="isSubmitting || unidadMedidaQuery.isLoading.value"
+                v-bind="idUnidadMedidaAttrs"
+                :error="errors.idUnidadMedida"
+              />
+            </div>
 
-      <AppInput
-        v-model="peso"
-        label="Peso tara (kg)"
-        type="number"
-        min="0"
-        step="0.0001"
-        placeholder="0"
-        v-bind="pesoAttrs"
-        :disabled="isSubmitting"
-        :error="errors.peso"
-      />
+            <AppInput
+              v-model="peso"
+              label="Peso tara (kg)"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="0"
+              v-bind="pesoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.peso"
+            />
 
-      <AppSelect
-        v-model="vigenciaPhAnios"
-        label="Vigencia P.H. (años)"
-        placeholder="Selecciona..."
-        :options="vigenciaPhOptions"
-        :disabled="isSubmitting"
-        v-bind="vigenciaPhAniosAttrs"
-        :error="errors.vigenciaPhAnios"
-        hint="Plazo de renovación de prueba hidrostática según normativa del tipo de gas."
-      />
+            <AppSelect
+              v-model="vigenciaPhAnios"
+              label="Vigencia P.H. (años)"
+              placeholder="Selecciona..."
+              :options="vigenciaPhOptions"
+              :disabled="isSubmitting"
+              v-bind="vigenciaPhAniosAttrs"
+              :error="errors.vigenciaPhAnios"
+              hint="Plazo de renovación de prueba hidrostática según normativa del tipo de gas."
+            />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -121,6 +127,9 @@ import type {
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, requiredString } from '@/shared/validation'
 

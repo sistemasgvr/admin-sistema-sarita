@@ -20,202 +20,206 @@
     <form
       v-else
       id="mantenimiento-form"
-      class="space-y-6"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div
-        v-if="mode === 'edit' && mantenimientoDetalle"
-        class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-800 dark:bg-white/[0.03]"
-      >
-        <p class="font-medium text-gray-800 dark:text-white/90">
-          Cilindro: {{ mantenimientoDetalle.codigo_balon }}
-        </p>
-      </div>
-
-      <div class="space-y-4">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos del servicio</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppSelect
-            v-if="mode === 'create'"
-            v-model="idBalon"
-            label="Cilindro"
-            placeholder="Selecciona cilindro"
-            required
-            v-bind="idBalonAttrs"
-            :disabled="isSubmitting || balonesQuery.isLoading.value"
-            :error="errors.idBalon"
-            :options="balonOptions"
-          />
-
-          <AppSelect
-            v-model="idTipoMantenimiento"
-            label="Tipo de mantenimiento"
-            placeholder="P.H., recertificación, etc."
-            v-bind="idTipoMantenimientoAttrs"
-            :disabled="isSubmitting || tiposMantenimientoQuery.isFetching.value"
-            :options="tipoMantenimientoOptions"
-          />
-
-          <AppSelect
-            v-model="idEstado"
-            label="Estado"
-            placeholder="Opcional"
-            v-bind="idEstadoAttrs"
-            :disabled="isSubmitting || estadosMantenimientoQuery.isFetching.value"
-            :options="estadoMantenimientoOptions"
-          />
-
-          <AppInput
-            v-model="fechaIngreso"
-            label="Fecha ingreso"
-            type="date"
-            required
-            v-bind="fechaIngresoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.fechaIngreso"
-          />
-
-          <AppInput
-            v-model="fechaSalida"
-            label="Fecha salida"
-            type="date"
-            v-bind="fechaSalidaAttrs"
-            :disabled="isSubmitting"
-          />
-
-          <AppInput
-            v-model="costo"
-            label="Costo"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            v-bind="costoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.costo"
-          />
-        </div>
-
-        <AppTextarea
-          v-model="descripcion"
-          label="Descripción"
-          placeholder="Detalle del trabajo realizado"
-          :rows="3"
-          v-bind="descripcionAttrs"
-          :disabled="isSubmitting"
-          :error="errors.descripcion"
-        />
-
-        <p
-          v-if="esTipoPh"
-          class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+      <FormCardsLayout>
+        <DetailSectionCard
+          v-if="mode === 'edit' && mantenimientoDetalle"
+          title="Cilindro"
+          :icon="ICONS.cylinder"
+          :full-width="true"
         >
-          La <strong>fecha de salida</strong> será la fecha de la prueba. Al guardar se actualizará
-          la P.H. vigente del cilindro.
-        </p>
-      </div>
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+            {{ mantenimientoDetalle.codigo_balon }}
+          </p>
+        </DetailSectionCard>
 
-      <div
-        v-if="esTipoPh"
-        class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800"
-      >
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos de P.H.</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppSelect
-            v-model="vigenciaPhAnios"
-            label="Vigencia (años)"
-            placeholder="Por defecto según tipo de balón"
-            :options="vigenciaPhOptions"
-            :disabled="isSubmitting"
-            v-bind="vigenciaPhAniosAttrs"
-            :error="errors.vigenciaPhAnios"
-          />
-          <AppInput
-            v-model="numeroCertificadoPh"
-            label="N° certificado"
-            placeholder="Opcional"
-            v-bind="numeroCertificadoPhAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroCertificadoPh"
-          />
-          <AppSelect
-            v-model="idOrganoInspector"
-            label="Órgano inspector"
-            :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            :options="organoInspectorOptions"
-            :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
-            v-bind="idOrganoInspectorAttrs"
-            :error="errors.idOrganoInspector"
-          />
-          <div class="flex items-end pb-2">
-            <AppCheckbox
-              v-model="organoInspectorNoAplica"
-              label="Sin órgano inspector"
+        <DetailSectionCard title="Datos del servicio" :icon="ICONS.construction">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppSelect
+                v-if="mode === 'create'"
+                v-model="idBalon"
+                label="Cilindro"
+                placeholder="Selecciona cilindro"
+                required
+                v-bind="idBalonAttrs"
+                :disabled="isSubmitting || balonesQuery.isLoading.value"
+                :error="errors.idBalon"
+                :options="balonOptions"
+              />
+
+              <AppSelect
+                v-model="idTipoMantenimiento"
+                label="Tipo de mantenimiento"
+                placeholder="P.H., recertificación, etc."
+                v-bind="idTipoMantenimientoAttrs"
+                :disabled="isSubmitting || tiposMantenimientoQuery.isFetching.value"
+                :options="tipoMantenimientoOptions"
+              />
+
+              <AppSelect
+                v-model="idEstado"
+                label="Estado"
+                placeholder="Opcional"
+                v-bind="idEstadoAttrs"
+                :disabled="isSubmitting || estadosMantenimientoQuery.isFetching.value"
+                :options="estadoMantenimientoOptions"
+              />
+
+              <AppInput
+                v-model="fechaIngreso"
+                label="Fecha ingreso"
+                type="date"
+                required
+                v-bind="fechaIngresoAttrs"
+                :disabled="isSubmitting"
+                :error="errors.fechaIngreso"
+              />
+
+              <AppInput
+                v-model="fechaSalida"
+                label="Fecha salida"
+                type="date"
+                v-bind="fechaSalidaAttrs"
+                :disabled="isSubmitting"
+              />
+
+              <AppInput
+                v-model="costo"
+                label="Costo"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                v-bind="costoAttrs"
+                :disabled="isSubmitting"
+                :error="errors.costo"
+              />
+            </div>
+
+            <AppTextarea
+              v-model="descripcion"
+              label="Descripción"
+              placeholder="Detalle del trabajo realizado"
+              :rows="3"
+              v-bind="descripcionAttrs"
+              :disabled="isSubmitting"
+              :error="errors.descripcion"
+            />
+
+            <p
+              v-if="esTipoPh"
+              class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
+            >
+              La <strong>fecha de salida</strong> será la fecha de la prueba. Al guardar se actualizará
+              la P.H. vigente del cilindro.
+            </p>
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard
+          v-if="esTipoPh"
+          title="Datos de P.H."
+          :icon="ICONS.gauge"
+        >
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppSelect
+              v-model="vigenciaPhAnios"
+              label="Vigencia (años)"
+              placeholder="Por defecto según tipo de balón"
+              :options="vigenciaPhOptions"
+              :disabled="isSubmitting"
+              v-bind="vigenciaPhAniosAttrs"
+              :error="errors.vigenciaPhAnios"
+            />
+            <AppInput
+              v-model="numeroCertificadoPh"
+              label="N° certificado"
+              placeholder="Opcional"
+              v-bind="numeroCertificadoPhAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroCertificadoPh"
+            />
+            <AppSelect
+              v-model="idOrganoInspector"
+              label="Órgano inspector"
+              :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="organoInspectorOptions"
+              :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
+              v-bind="idOrganoInspectorAttrs"
+              :error="errors.idOrganoInspector"
+            />
+            <div class="flex items-end pb-2">
+              <AppCheckbox
+                v-model="organoInspectorNoAplica"
+                label="Sin órgano inspector"
+                :disabled="isSubmitting"
+              />
+            </div>
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Proveedor externo" :icon="ICONS.building">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <AppCheckbox
+                v-model="esExterno"
+                label="Mantenimiento externo (taller / proveedor)"
+                :disabled="isSubmitting"
+              />
+            </div>
+
+            <AppSelect
+              v-model="idProveedor"
+              label="Proveedor / taller"
+              placeholder="Opcional"
+              v-bind="idProveedorAttrs"
+              :disabled="isSubmitting || !esExterno || clientesQuery.isLoading.value"
+              :options="proveedorOptions"
+            />
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Comprobantes" :icon="ICONS.clipboardList">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="idComprobanteVenta"
+              label="ID comprobante venta"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Si se cobra al cliente"
+              v-bind="idComprobanteVentaAttrs"
+              :disabled="isSubmitting"
+            />
+
+            <AppInput
+              v-model="idComprobanteCompra"
+              label="ID comprobante compra"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Si es servicio externo"
+              v-bind="idComprobanteCompraAttrs"
               :disabled="isSubmitting"
             />
           </div>
-        </div>
-      </div>
+        </DetailSectionCard>
 
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Proveedor externo</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="sm:col-span-2">
-            <AppCheckbox
-              v-model="esExterno"
-              label="Mantenimiento externo (taller / proveedor)"
-              :disabled="isSubmitting"
-            />
-          </div>
-
-          <AppSelect
-            v-model="idProveedor"
-            label="Proveedor / taller"
-            placeholder="Opcional"
-            v-bind="idProveedorAttrs"
-            :disabled="isSubmitting || !esExterno || clientesQuery.isLoading.value"
-            :options="proveedorOptions"
-          />
-        </div>
-      </div>
-
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Comprobantes</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppInput
-            v-model="idComprobanteVenta"
-            label="ID comprobante venta"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="Si se cobra al cliente"
-            v-bind="idComprobanteVentaAttrs"
+        <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
+          <AppTextarea
+            v-model="observacion"
+            label="Observación"
+            placeholder="Notas adicionales"
+            :rows="3"
+            v-bind="observacionAttrs"
             :disabled="isSubmitting"
+            :error="errors.observacion"
           />
-
-          <AppInput
-            v-model="idComprobanteCompra"
-            label="ID comprobante compra"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="Si es servicio externo"
-            v-bind="idComprobanteCompraAttrs"
-            :disabled="isSubmitting"
-          />
-        </div>
-      </div>
-
-      <AppTextarea
-        v-model="observacion"
-        label="Observación"
-        placeholder="Notas adicionales"
-        :rows="3"
-        v-bind="observacionAttrs"
-        :disabled="isSubmitting"
-        :error="errors.observacion"
-      />
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -262,6 +266,9 @@ import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/int
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

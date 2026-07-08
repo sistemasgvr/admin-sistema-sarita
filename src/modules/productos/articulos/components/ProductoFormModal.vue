@@ -12,107 +12,118 @@
   >
     <form
       id="producto-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput
-          v-model="codigo"
-          label="Código"
-          placeholder="GAS-OX-001"
-          required
-          v-bind="codigoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.codigo"
-        />
+      <FormCardsLayout>
+        <DetailSectionCard title="Identificación" :icon="ICONS.package">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="codigo"
+                label="Código"
+                placeholder="GAS-OX-001"
+                required
+                v-bind="codigoAttrs"
+                :disabled="isSubmitting"
+                :error="errors.codigo"
+              />
 
-        <AppInput
-          v-model="codigoBarra"
-          label="Código de barras"
-          placeholder="Opcional"
-          v-bind="codigoBarraAttrs"
-          :disabled="isSubmitting"
-        />
-      </div>
+              <AppInput
+                v-model="codigoBarra"
+                label="Código de barras"
+                placeholder="Opcional"
+                v-bind="codigoBarraAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
 
-      <AppInput
-        v-model="nombre"
-        label="Nombre"
-        placeholder="Oxígeno industrial"
-        required
-        v-bind="nombreAttrs"
-        :disabled="isSubmitting"
-        :error="errors.nombre"
-      />
+            <AppInput
+              v-model="nombre"
+              label="Nombre"
+              placeholder="Oxígeno industrial"
+              required
+              v-bind="nombreAttrs"
+              :disabled="isSubmitting"
+              :error="errors.nombre"
+            />
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppSelect
-          v-model="idCategoria"
-          label="Categoría"
-          placeholder="Selecciona categoría"
-          v-bind="idCategoriaAttrs"
-          :disabled="isSubmitting"
-          :options="categoriaOptions"
-        />
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="marca"
+                label="Marca"
+                placeholder="Opcional"
+                v-bind="marcaAttrs"
+                :disabled="isSubmitting"
+              />
 
-        <AppSelect
-          v-model="idSubCategoria"
-          label="Subcategoría"
-          placeholder="Selecciona subcategoría"
-          v-bind="idSubCategoriaAttrs"
-          :disabled="isSubmitting || !idCategoria"
-          :options="subCategoriaOptions"
-        />
-      </div>
+              <AppInput
+                v-model="presentacion"
+                label="Presentación"
+                placeholder="Ej. Cilindro 10 m³"
+                v-bind="presentacionAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
+          </div>
+        </DetailSectionCard>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppSelect
-          v-model="idUnidadMedida"
-          label="Unidad de medida"
-          placeholder="Selecciona unidad"
-          v-bind="idUnidadMedidaAttrs"
-          :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
-          :options="unidadMedidaOptions"
-        />
+        <DetailSectionCard title="Clasificación" :icon="ICONS.tags">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppSelect
+                v-model="idCategoria"
+                label="Categoría"
+                placeholder="Selecciona categoría"
+                v-bind="idCategoriaAttrs"
+                :disabled="isSubmitting"
+                :options="categoriaOptions"
+              />
 
-        <AppInput
-          v-model="precio"
-          label="Precio base"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="0.00"
-          v-bind="precioAttrs"
-          :disabled="isSubmitting"
-          :error="errors.precio"
-        />
-      </div>
+              <AppSelect
+                v-model="idSubCategoria"
+                label="Subcategoría"
+                placeholder="Selecciona subcategoría"
+                v-bind="idSubCategoriaAttrs"
+                :disabled="isSubmitting || !idCategoria"
+                :options="subCategoriaOptions"
+              />
+            </div>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput
-          v-model="marca"
-          label="Marca"
-          placeholder="Opcional"
-          v-bind="marcaAttrs"
-          :disabled="isSubmitting"
-        />
+            <AppSelect
+              v-model="idUnidadMedida"
+              label="Unidad de medida"
+              placeholder="Selecciona unidad"
+              v-bind="idUnidadMedidaAttrs"
+              :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
+              :options="unidadMedidaOptions"
+            />
+          </div>
+        </DetailSectionCard>
 
-        <AppInput
-          v-model="presentacion"
-          label="Presentación"
-          placeholder="Ej. Cilindro 10 m³"
-          v-bind="presentacionAttrs"
-          :disabled="isSubmitting"
-        />
-      </div>
+        <DetailSectionCard title="Comercial" :icon="ICONS.creditCard">
+          <div class="space-y-4">
+            <AppInput
+              v-model="precio"
+              label="Precio base"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              v-bind="precioAttrs"
+              :disabled="isSubmitting"
+              :error="errors.precio"
+            />
 
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <AppCheckbox v-model="esGas" :disabled="isSubmitting" label="Es gas" />
-        <AppCheckbox v-model="esServicio" :disabled="isSubmitting" label="Es servicio" />
-        <AppCheckbox v-model="esAlquilable" :disabled="isSubmitting" label="Es alquilable" />
-        <AppCheckbox v-model="afectaStock" :disabled="isSubmitting" label="Afecta stock" />
-      </div>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <AppCheckbox v-model="esGas" :disabled="isSubmitting" label="Es gas" />
+              <AppCheckbox v-model="esServicio" :disabled="isSubmitting" label="Es servicio" />
+              <AppCheckbox v-model="esAlquilable" :disabled="isSubmitting" label="Es alquilable" />
+              <AppCheckbox v-model="afectaStock" :disabled="isSubmitting" label="Afecta stock" />
+            </div>
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -153,6 +164,9 @@ import type {
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

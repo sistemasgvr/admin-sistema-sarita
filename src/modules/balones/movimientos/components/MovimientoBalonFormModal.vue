@@ -20,117 +20,128 @@
     <form
       v-else
       id="movimiento-balon-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div
-        v-if="mode === 'edit' && movimientoDetalle"
-        class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-800 dark:bg-white/[0.03]"
-      >
-        <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ movimientoDetalle.codigo_balon }}
-          <span v-if="movimientoDetalle.nombre_tipo_movimiento">
-            — {{ movimientoDetalle.nombre_tipo_movimiento }}
-          </span>
-        </p>
-        <p v-if="movimientoDetalle.nombre_cliente" class="mt-1 text-gray-600 dark:text-gray-400">
-          Cliente: {{ movimientoDetalle.nombre_cliente }}
-        </p>
-      </div>
+      <FormCardsLayout>
+        <DetailSectionCard
+          v-if="mode === 'edit' && movimientoDetalle"
+          title="Movimiento"
+          :icon="ICONS.cylinder"
+          :full-width="true"
+        >
+          <div class="text-sm">
+            <p class="font-medium text-gray-800 dark:text-white/90">
+              {{ movimientoDetalle.codigo_balon }}
+              <span v-if="movimientoDetalle.nombre_tipo_movimiento">
+                — {{ movimientoDetalle.nombre_tipo_movimiento }}
+              </span>
+            </p>
+            <p v-if="movimientoDetalle.nombre_cliente" class="mt-1 text-gray-600 dark:text-gray-400">
+              Cliente: {{ movimientoDetalle.nombre_cliente }}
+            </p>
+          </div>
+        </DetailSectionCard>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppSelect
-          v-if="mode === 'create'"
-          v-model="idBalon"
-          label="Cilindro"
-          placeholder="Selecciona cilindro"
-          required
-          v-bind="idBalonAttrs"
-          :disabled="isSubmitting || balonesQuery.isLoading.value"
-          :error="errors.idBalon"
-          :options="balonOptions"
-        />
+        <DetailSectionCard title="Datos del movimiento" :icon="ICONS.arrowLeftRight">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppSelect
+              v-if="mode === 'create'"
+              v-model="idBalon"
+              label="Cilindro"
+              placeholder="Selecciona cilindro"
+              required
+              v-bind="idBalonAttrs"
+              :disabled="isSubmitting || balonesQuery.isLoading.value"
+              :error="errors.idBalon"
+              :options="balonOptions"
+            />
 
-        <AppSelect
-          v-model="idTipoMovimiento"
-          label="Tipo de movimiento"
-          placeholder="Selecciona tipo"
-          v-bind="idTipoMovimientoAttrs"
-          :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
-          :error="errors.idTipoMovimiento"
-          :options="tipoMovimientoOptions"
-        />
+            <AppSelect
+              v-model="idTipoMovimiento"
+              label="Tipo de movimiento"
+              placeholder="Selecciona tipo"
+              v-bind="idTipoMovimientoAttrs"
+              :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
+              :error="errors.idTipoMovimiento"
+              :options="tipoMovimientoOptions"
+            />
 
-        <AppInput
-          v-model="fechaMovimiento"
-          label="Fecha"
-          type="date"
-          required
-          v-bind="fechaMovimientoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.fechaMovimiento"
-        />
+            <AppInput
+              v-model="fechaMovimiento"
+              label="Fecha"
+              type="date"
+              required
+              v-bind="fechaMovimientoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.fechaMovimiento"
+            />
 
-        <AppSelect
-          v-model="idCliente"
-          label="Cliente"
-          placeholder="Opcional"
-          v-bind="idClienteAttrs"
-          :disabled="isSubmitting || clientesQuery.isLoading.value"
-          :options="clienteOptions"
-        />
+            <AppSelect
+              v-model="idCliente"
+              label="Cliente"
+              placeholder="Opcional"
+              v-bind="idClienteAttrs"
+              :disabled="isSubmitting || clientesQuery.isLoading.value"
+              :options="clienteOptions"
+            />
 
-        <AppSelect
-          v-model="idAlmacenOrigen"
-          label="Almacén origen"
-          placeholder="Opcional"
-          v-bind="idAlmacenOrigenAttrs"
-          :disabled="isSubmitting || almacenesQuery.isLoading.value"
-          :options="almacenOptions"
-        />
+            <AppSelect
+              v-model="idAlmacenOrigen"
+              label="Almacén origen"
+              placeholder="Opcional"
+              v-bind="idAlmacenOrigenAttrs"
+              :disabled="isSubmitting || almacenesQuery.isLoading.value"
+              :options="almacenOptions"
+            />
 
-        <AppSelect
-          v-model="idAlmacenDestino"
-          label="Almacén destino"
-          placeholder="Opcional"
-          v-bind="idAlmacenDestinoAttrs"
-          :disabled="isSubmitting || almacenesQuery.isLoading.value"
-          :options="almacenOptions"
-        />
-      </div>
+            <AppSelect
+              v-model="idAlmacenDestino"
+              label="Almacén destino"
+              placeholder="Opcional"
+              v-bind="idAlmacenDestinoAttrs"
+              :disabled="isSubmitting || almacenesQuery.isLoading.value"
+              :options="almacenOptions"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppSelect
-          v-model="idTipoDocumentoRef"
-          label="Documento origen"
-          placeholder="Opcional"
-          v-bind="idTipoDocumentoRefAttrs"
-          :disabled="isSubmitting || tiposDocumentoQuery.isFetching.value"
-          :options="tipoDocumentoOptions"
-        />
+        <DetailSectionCard title="Referencia" :icon="ICONS.clipboardList">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppSelect
+              v-model="idTipoDocumentoRef"
+              label="Documento origen"
+              placeholder="Opcional"
+              v-bind="idTipoDocumentoRefAttrs"
+              :disabled="isSubmitting || tiposDocumentoQuery.isFetching.value"
+              :options="tipoDocumentoOptions"
+            />
 
-        <AppInput
-          v-model="idDocumentoRef"
-          label="ID documento ref."
-          type="number"
-          min="1"
-          step="1"
-          placeholder="Opcional"
-          v-bind="idDocumentoRefAttrs"
-          :disabled="isSubmitting"
-        />
-      </div>
+            <AppInput
+              v-model="idDocumentoRef"
+              label="ID documento ref."
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Opcional"
+              v-bind="idDocumentoRefAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <AppTextarea
-        v-model="observacion"
-        label="Observación"
-        placeholder="Detalle del movimiento"
-        :rows="3"
-        v-bind="observacionAttrs"
-        :disabled="isSubmitting"
-        :error="errors.observacion"
-      />
+        <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
+          <AppTextarea
+            v-model="observacion"
+            label="Observación"
+            placeholder="Detalle del movimiento"
+            :rows="3"
+            v-bind="observacionAttrs"
+            :disabled="isSubmitting"
+            :error="errors.observacion"
+          />
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -178,6 +189,9 @@ import { useMovimientoBalonQuery } from '@/modules/balones/movimientos/composabl
 import type { MovimientoBalonFormMode } from '@/modules/balones/movimientos/interfaces/movimiento-balon.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

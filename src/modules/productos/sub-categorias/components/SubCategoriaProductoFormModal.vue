@@ -12,38 +12,43 @@
   >
     <form
       id="sub-categoria-producto-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppSelect
-        v-model="idCategoria"
-        label="Categoría"
-        placeholder="Selecciona una categoría"
-        required
-        v-bind="idCategoriaAttrs"
-        :disabled="isSubmitting || isCategoriaLocked"
-        :error="errors.idCategoria"
-        :options="categoriaOptions"
-      />
+      <FormCardsLayout>
+        <DetailSectionCard title="Datos generales" :icon="ICONS.listTree" :full-width="true">
+          <div class="space-y-4">
+            <AppSelect
+              v-model="idCategoria"
+              label="Categoría"
+              placeholder="Selecciona una categoría"
+              required
+              v-bind="idCategoriaAttrs"
+              :disabled="isSubmitting || isCategoriaLocked"
+              :error="errors.idCategoria"
+              :options="categoriaOptions"
+            />
 
-      <AppInput
-        v-model="nombre"
-        label="Nombre"
-        placeholder="Oxígeno industrial"
-        required
-        v-bind="nombreAttrs"
-        :disabled="isSubmitting"
-        :error="errors.nombre"
-      />
+            <AppInput
+              v-model="nombre"
+              label="Nombre"
+              placeholder="Oxígeno industrial"
+              required
+              v-bind="nombreAttrs"
+              :disabled="isSubmitting"
+              :error="errors.nombre"
+            />
 
-      <AppTextarea
-        v-model="descripcion"
-        label="Descripción"
-        placeholder="Descripción opcional"
-        v-bind="descripcionAttrs"
-        :disabled="isSubmitting"
-      />
+            <AppTextarea
+              v-model="descripcion"
+              label="Descripción"
+              placeholder="Descripción opcional"
+              v-bind="descripcionAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -82,6 +87,9 @@ import type {
 } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface SubCategoriaProductoFormModalProps {

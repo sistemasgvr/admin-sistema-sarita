@@ -20,20 +20,23 @@
     <form
       v-else
       id="alquiler-detalle-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppSelect
-        v-model="idBalon"
-        label="Cilindro"
-        placeholder="Selecciona cilindro"
-        required
-        v-bind="idBalonAttrs"
-        :disabled="isSubmitting || balonesQuery.isLoading.value"
-        :error="errors.idBalon"
-        :options="balonOptions"
-      />
+      <FormCardsLayout>
+        <DetailSectionCard title="Cilindro" :icon="ICONS.cylinder" :full-width="true">
+          <AppSelect
+            v-model="idBalon"
+            label="Cilindro"
+            placeholder="Selecciona cilindro"
+            required
+            v-bind="idBalonAttrs"
+            :disabled="isSubmitting || balonesQuery.isLoading.value"
+            :error="errors.idBalon"
+            :options="balonOptions"
+          />
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -77,6 +80,9 @@ import { useAlquilerDetalleQuery } from '@/modules/balones/alquileres/composable
 import type { AlquilerDetalleFormMode } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppModal, AppSelect } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { requiredSelect } from '@/shared/validation'
 
 interface AlquilerDetalleFormModalProps {

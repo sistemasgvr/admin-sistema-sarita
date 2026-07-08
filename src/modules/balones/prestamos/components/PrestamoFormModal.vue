@@ -17,170 +17,162 @@
       Cargando préstamo...
     </div>
 
-    <div v-else class="space-y-6">
+    <div v-else class="space-y-4">
       <form
         id="prestamo-form"
-        class="space-y-6"
         autocomplete="off"
         @submit="onSubmit"
       >
-        <div class="space-y-4">
-          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos generales</h5>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <AppSelect
-              v-model="idTipoPrestamo"
-              label="Tipo de préstamo"
-              placeholder="Selecciona tipo"
-              required
-              v-bind="idTipoPrestamoAttrs"
-              :disabled="isSubmitting || tiposPrestamoQuery.isFetching.value"
-              :error="errors.idTipoPrestamo"
-              :options="tipoPrestamoOptions"
-            />
+        <FormCardsLayout>
+          <DetailSectionCard title="Datos generales" :icon="ICONS.clipboardList">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppSelect
+                v-model="idTipoPrestamo"
+                label="Tipo de préstamo"
+                placeholder="Selecciona tipo"
+                required
+                v-bind="idTipoPrestamoAttrs"
+                :disabled="isSubmitting || tiposPrestamoQuery.isFetching.value"
+                :error="errors.idTipoPrestamo"
+                :options="tipoPrestamoOptions"
+              />
 
-            <AppInput
-              v-model="numeroPrestamo"
-              label="Número de préstamo"
-              placeholder="Opcional"
-              v-bind="numeroPrestamoAttrs"
+              <AppInput
+                v-model="numeroPrestamo"
+                label="Número de préstamo"
+                placeholder="Opcional"
+                v-bind="numeroPrestamoAttrs"
+                :disabled="isSubmitting"
+                :error="errors.numeroPrestamo"
+              />
+
+              <AppInput
+                v-model="titulo"
+                label="Título"
+                placeholder="Referencia o descripción breve"
+                class="sm:col-span-2"
+                v-bind="tituloAttrs"
+                :disabled="isSubmitting"
+                :error="errors.titulo"
+              />
+
+              <AppSelect
+                v-model="idEstado"
+                label="Estado"
+                placeholder="Opcional"
+                v-bind="idEstadoAttrs"
+                :disabled="isSubmitting || estadosPrestamoQuery.isFetching.value"
+                :options="estadoPrestamoOptions"
+              />
+
+              <AppSelect
+                v-model="idAlmacen"
+                label="Almacén"
+                placeholder="Opcional"
+                v-bind="idAlmacenAttrs"
+                :disabled="isSubmitting || almacenesQuery.isLoading.value"
+                :options="almacenOptions"
+              />
+            </div>
+          </DetailSectionCard>
+
+          <DetailSectionCard title="Partes involucradas" :icon="ICONS.users">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppSelect
+                v-model="idCliente"
+                label="Cliente"
+                placeholder="Opcional"
+                v-bind="idClienteAttrs"
+                :disabled="isSubmitting || clientesQuery.isLoading.value"
+                :options="clienteOptions"
+              />
+
+              <AppSelect
+                v-model="idProveedor"
+                label="Proveedor / tercero"
+                placeholder="Opcional"
+                v-bind="idProveedorAttrs"
+                :disabled="isSubmitting || clientesQuery.isLoading.value"
+                :options="clienteOptions"
+              />
+            </div>
+          </DetailSectionCard>
+
+          <DetailSectionCard title="Fechas" :icon="ICONS.calendar">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <AppInput
+                v-model="fechaSalida"
+                label="Fecha salida"
+                type="date"
+                v-bind="fechaSalidaAttrs"
+                :disabled="isSubmitting"
+              />
+
+              <AppInput
+                v-model="fechaRetornoPactada"
+                label="Retorno pactado"
+                type="date"
+                v-bind="fechaRetornoPactadaAttrs"
+                :disabled="isSubmitting"
+              />
+
+              <AppInput
+                v-model="fechaRetornoReal"
+                label="Retorno real"
+                type="date"
+                v-bind="fechaRetornoRealAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
+          </DetailSectionCard>
+
+          <DetailSectionCard title="Comprobantes" :icon="ICONS.creditCard">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="idComprobanteVenta"
+                label="ID comprobante venta"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Opcional"
+                v-bind="idComprobanteVentaAttrs"
+                :disabled="isSubmitting"
+              />
+
+              <AppInput
+                v-model="idComprobanteCompra"
+                label="ID comprobante compra"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Opcional"
+                v-bind="idComprobanteCompraAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
+          </DetailSectionCard>
+
+          <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
+            <AppTextarea
+              v-model="observacion"
+              label="Observación"
+              placeholder="Notas adicionales del préstamo"
+              :rows="3"
+              v-bind="observacionAttrs"
               :disabled="isSubmitting"
-              :error="errors.numeroPrestamo"
+              :error="errors.observacion"
             />
-
-            <AppInput
-              v-model="titulo"
-              label="Título"
-              placeholder="Referencia o descripción breve"
-              class="sm:col-span-2"
-              v-bind="tituloAttrs"
-              :disabled="isSubmitting"
-              :error="errors.titulo"
-            />
-
-            <AppSelect
-              v-model="idEstado"
-              label="Estado"
-              placeholder="Opcional"
-              v-bind="idEstadoAttrs"
-              :disabled="isSubmitting || estadosPrestamoQuery.isFetching.value"
-              :options="estadoPrestamoOptions"
-            />
-
-            <AppSelect
-              v-model="idAlmacen"
-              label="Almacén"
-              placeholder="Opcional"
-              v-bind="idAlmacenAttrs"
-              :disabled="isSubmitting || almacenesQuery.isLoading.value"
-              :options="almacenOptions"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Partes involucradas</h5>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <AppSelect
-              v-model="idCliente"
-              label="Cliente"
-              placeholder="Opcional"
-              v-bind="idClienteAttrs"
-              :disabled="isSubmitting || clientesQuery.isLoading.value"
-              :options="clienteOptions"
-            />
-
-            <AppSelect
-              v-model="idProveedor"
-              label="Proveedor / tercero"
-              placeholder="Opcional"
-              v-bind="idProveedorAttrs"
-              :disabled="isSubmitting || clientesQuery.isLoading.value"
-              :options="clienteOptions"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Fechas</h5>
-          <div class="grid gap-4 sm:grid-cols-3">
-            <AppInput
-              v-model="fechaSalida"
-              label="Fecha salida"
-              type="date"
-              v-bind="fechaSalidaAttrs"
-              :disabled="isSubmitting"
-            />
-
-            <AppInput
-              v-model="fechaRetornoPactada"
-              label="Retorno pactado"
-              type="date"
-              v-bind="fechaRetornoPactadaAttrs"
-              :disabled="isSubmitting"
-            />
-
-            <AppInput
-              v-model="fechaRetornoReal"
-              label="Retorno real"
-              type="date"
-              v-bind="fechaRetornoRealAttrs"
-              :disabled="isSubmitting"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Comprobantes</h5>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <AppInput
-              v-model="idComprobanteVenta"
-              label="ID comprobante venta"
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Opcional"
-              v-bind="idComprobanteVentaAttrs"
-              :disabled="isSubmitting"
-            />
-
-            <AppInput
-              v-model="idComprobanteCompra"
-              label="ID comprobante compra"
-              type="number"
-              min="1"
-              step="1"
-              placeholder="Opcional"
-              v-bind="idComprobanteCompraAttrs"
-              :disabled="isSubmitting"
-            />
-          </div>
-        </div>
-
-        <AppTextarea
-          v-model="observacion"
-          label="Observación"
-          placeholder="Notas adicionales del préstamo"
-          :rows="3"
-          v-bind="observacionAttrs"
-          :disabled="isSubmitting"
-          :error="errors.observacion"
-        />
+          </DetailSectionCard>
+        </FormCardsLayout>
       </form>
 
-      <div
+      <DetailSectionCard
         v-if="activePrestamoId"
-        class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800"
+        title="Cilindros del préstamo"
+        :icon="ICONS.boxes"
+        :full-width="true"
       >
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
-              Cilindros del préstamo
-            </h5>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ detalleRows.length }} cilindro(s) registrado(s)
-            </p>
-          </div>
-
+        <template #actions>
           <button
             v-if="canCreateDetalle"
             type="button"
@@ -190,7 +182,11 @@
             <AppIcon :name="ICONS.plus" :size="16" />
             Agregar cilindro
           </button>
-        </div>
+        </template>
+
+        <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          {{ detalleRows.length }} cilindro(s) registrado(s)
+        </p>
 
         <AppTable
           bare
@@ -243,14 +239,18 @@
             </button>
           </template>
         </AppTable>
-      </div>
+      </DetailSectionCard>
 
-      <div
+      <DetailSectionCard
         v-else-if="isCreateMode"
-        class="rounded-lg border border-dashed border-gray-200 px-4 py-5 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+        title="Cilindros del préstamo"
+        :icon="ICONS.boxes"
+        :full-width="true"
       >
-        Guarda el préstamo para poder agregar cilindros.
-      </div>
+        <p class="text-center text-sm text-gray-500 dark:text-gray-400">
+          Guarda el préstamo para poder agregar cilindros.
+        </p>
+      </DetailSectionCard>
     </div>
 
     <template #footer>
@@ -349,6 +349,8 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTable, AppTextarea } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'

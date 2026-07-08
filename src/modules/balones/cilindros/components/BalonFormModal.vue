@@ -13,218 +13,220 @@
     <form
       v-if="!isLoadingBalon"
       id="balon-form"
-      class="space-y-6"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div class="space-y-4">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Identificación</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppInput
-            v-model="codigoBalon"
-            label="Código de balón"
-            placeholder="20K650076"
-            required
-            v-bind="codigoBalonAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.codigoBalon"
-          />
-          <AppInput
-            v-model="numeroSerie"
-            label="Número de serie"
-            placeholder="Igual al código si no difiere"
-            v-bind="numeroSerieAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.numeroSerie"
-          />
-        </div>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppSelect
-            v-model="idMarcaCilindro"
-            label="Marca"
-            :placeholder="marcaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            :options="marcaOptions"
-            :disabled="isSubmitting || marcaQuery.isLoading.value"
-            v-bind="idMarcaCilindroAttrs"
-            :error="errors.idMarcaCilindro"
-          />
-          <AppInput
-            v-model="numeroRecepcion"
-            label="Número de recepción"
-            v-bind="numeroRecepcionAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.numeroRecepcion"
-          />
-        </div>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <AppInput
-            v-model="libroCilindro"
-            label="Libro cilindro"
-            placeholder="LIBRO 1"
-            v-bind="libroCilindroAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.libroCilindro"
-          />
-          <AppInput
-            v-model="paginaLibro"
-            label="Página"
-            type="number"
-            min="0"
-            v-bind="paginaLibroAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.paginaLibro"
-          />
-          <AppInput
-            v-model="fechaRegistro"
-            label="Fecha registro"
-            type="date"
-            v-bind="fechaRegistroAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.fechaRegistro"
-          />
-        </div>
-      </div>
+      <FormCardsLayout>
+        <DetailSectionCard title="Identificación" :icon="ICONS.idCard" :full-width="true">
+          <div class="space-y-5">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <AppInput
+                v-model="codigoBalon"
+                label="Código de balón"
+                placeholder="20K650076"
+                required
+                v-bind="codigoBalonAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.codigoBalon"
+              />
+              <AppInput
+                v-model="numeroSerie"
+                label="Número de serie"
+                placeholder="Igual al código si no difiere"
+                v-bind="numeroSerieAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.numeroSerie"
+              />
+            </div>
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <AppSelect
+                v-model="idMarcaCilindro"
+                label="Marca"
+                :placeholder="marcaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                :options="marcaOptions"
+                :disabled="isSubmitting || marcaQuery.isLoading.value"
+                v-bind="idMarcaCilindroAttrs"
+                :error="errors.idMarcaCilindro"
+              />
+              <AppInput
+                v-model="numeroRecepcion"
+                label="Número de recepción"
+                v-bind="numeroRecepcionAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.numeroRecepcion"
+              />
+            </div>
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 lg:grid-cols-3">
+              <AppInput
+                v-model="libroCilindro"
+                label="Libro cilindro"
+                placeholder="LIBRO 1"
+                v-bind="libroCilindroAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.libroCilindro"
+              />
+              <AppInput
+                v-model="paginaLibro"
+                label="Página"
+                type="number"
+                min="0"
+                v-bind="paginaLibroAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.paginaLibro"
+              />
+              <AppInput
+                v-model="fechaRegistro"
+                label="Fecha registro"
+                type="date"
+                v-bind="fechaRegistroAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.fechaRegistro"
+              />
+            </div>
+          </div>
+        </DetailSectionCard>
 
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Clasificación</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppSelect
-            v-model="idTipoBalon"
-            label="Tipo de balón"
-            :placeholder="tiposBalonQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            :options="tipoBalonOptions"
-            :disabled="isSubmitting || tiposBalonQuery.isLoading.value"
-            v-bind="idTipoBalonAttrs"
-            :error="errors.idTipoBalon"
-          />
-          <AppSelect
-            v-model="idProductoGas"
-            label="Gas (producto)"
-            :placeholder="productosQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            :options="gasOptions"
-            :disabled="isSubmitting || productosQuery.isLoading.value"
-            v-bind="idProductoGasAttrs"
-            :error="errors.idProductoGas"
-          />
-          <AppSelect
-            v-model="idEstadoBalon"
-            label="Estado del balón"
-            :placeholder="estadoBalonQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            :options="estadoBalonOptions"
-            :disabled="isSubmitting || estadoBalonQuery.isLoading.value"
-            v-bind="idEstadoBalonAttrs"
-            :error="errors.idEstadoBalon"
-          />
-          <AppSelect
-            v-model="idReferencia"
-            label="Referencia"
-            :placeholder="referenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            :options="referenciaOptions"
-            :disabled="isSubmitting || referenciaQuery.isLoading.value"
-            v-bind="idReferenciaAttrs"
-            :error="errors.idReferencia"
-          />
-        </div>
-      </div>
+        <DetailSectionCard title="Clasificación" :icon="ICONS.layers" :full-width="true">
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <AppSelect
+              v-model="idTipoBalon"
+              label="Tipo de balón"
+              :placeholder="tiposBalonQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="tipoBalonOptions"
+              :disabled="isSubmitting || tiposBalonQuery.isLoading.value"
+              v-bind="idTipoBalonAttrs"
+              :error="errors.idTipoBalon"
+            />
+            <AppSelect
+              v-model="idProductoGas"
+              label="Gas (producto)"
+              :placeholder="productosQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="gasOptions"
+              :disabled="isSubmitting || productosQuery.isLoading.value"
+              v-bind="idProductoGasAttrs"
+              :error="errors.idProductoGas"
+            />
+            <AppSelect
+              v-model="idEstadoBalon"
+              label="Estado del balón"
+              :placeholder="estadoBalonQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="estadoBalonOptions"
+              :disabled="isSubmitting || estadoBalonQuery.isLoading.value"
+              v-bind="idEstadoBalonAttrs"
+              :error="errors.idEstadoBalon"
+            />
+            <AppSelect
+              v-model="idReferencia"
+              label="Referencia"
+              :placeholder="referenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="referenciaOptions"
+              :disabled="isSubmitting || referenciaQuery.isLoading.value"
+              v-bind="idReferenciaAttrs"
+              :error="errors.idReferencia"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Ubicación</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppSelect
-            v-model="idAlmacen"
-            label="Almacén"
-            placeholder="Selecciona almacén"
-            :options="almacenOptions"
-            :disabled="isSubmitting || almacenesQuery.isLoading.value"
-            v-bind="idAlmacenAttrs"
-            :error="errors.idAlmacen"
-          />
-          <AppSelect
-            v-model="idClienteUbicacion"
-            label="Cliente (ubicación actual)"
-            placeholder="Opcional"
-            :options="clienteOptions"
-            :disabled="isSubmitting || clientesQuery.isLoading.value"
-            v-bind="idClienteUbicacionAttrs"
-            :error="errors.idClienteUbicacion"
-          />
-        </div>
-      </div>
+        <DetailSectionCard title="Ubicación" :icon="ICONS.mapPin" :full-width="true">
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <AppSelect
+              v-model="idAlmacen"
+              label="Almacén"
+              placeholder="Selecciona almacén"
+              :options="almacenOptions"
+              :disabled="isSubmitting || almacenesQuery.isLoading.value"
+              v-bind="idAlmacenAttrs"
+              :error="errors.idAlmacen"
+            />
+            <AppSelect
+              v-model="idClienteUbicacion"
+              label="Cliente (ubicación actual)"
+              placeholder="Opcional"
+              :options="clienteOptions"
+              :disabled="isSubmitting || clientesQuery.isLoading.value"
+              v-bind="idClienteUbicacionAttrs"
+              :error="errors.idClienteUbicacion"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Propiedad del envase</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppSelect
-            v-model="idPropietario"
-            label="Propietario"
-            :placeholder="propietarioQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            :options="propietarioOptions"
-            :disabled="isSubmitting || propietarioQuery.isLoading.value"
-            v-bind="idPropietarioAttrs"
-            :error="errors.idPropietario"
-          />
-          <AppSelect
-            v-if="requiereClientePropietario"
-            v-model="idClientePropietario"
-            label="Cliente propietario"
-            placeholder="Selecciona cliente"
-            :options="clienteOptions"
-            :disabled="isSubmitting || clientesQuery.isLoading.value"
-            v-bind="idClientePropietarioAttrs"
-            :error="errors.idClientePropietario"
-          />
-        </div>
-      </div>
+        <DetailSectionCard title="Propiedad del envase" :icon="ICONS.building" :full-width="true">
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <AppSelect
+              v-model="idPropietario"
+              label="Propietario"
+              :placeholder="propietarioQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="propietarioOptions"
+              :disabled="isSubmitting || propietarioQuery.isLoading.value"
+              v-bind="idPropietarioAttrs"
+              :error="errors.idPropietario"
+            />
+            <AppSelect
+              v-if="requiereClientePropietario"
+              v-model="idClientePropietario"
+              label="Cliente propietario"
+              placeholder="Selecciona cliente"
+              :options="clienteOptions"
+              :disabled="isSubmitting || clientesQuery.isLoading.value"
+              v-bind="idClientePropietarioAttrs"
+              :error="errors.idClientePropietario"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div
-        class="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200"
-      >
-        La <strong>prueba hidrostática</strong> se registra en
-        <strong>Mantenimientos</strong> (tipo P.H. o Recertificación). Aquí solo se consulta en el
-        detalle del cilindro.
-      </div>
+        <DetailSectionCard title="Datos técnicos" :icon="ICONS.gauge" :full-width="true">
+          <div class="space-y-5">
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 lg:grid-cols-3">
+              <AppInput
+                v-model="fechaFabricacion"
+                label="Fecha fabricación"
+                type="date"
+                v-bind="fechaFabricacionAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.fechaFabricacion"
+              />
+              <AppInput
+                v-model="anioFabricacion"
+                label="Año fabricación"
+                type="number"
+                min="1900"
+                max="2100"
+                v-bind="anioFabricacionAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.anioFabricacion"
+              />
+              <AppInput
+                v-model="presionActual"
+                label="Presión actual"
+                type="number"
+                min="0"
+                step="0.01"
+                v-bind="presionActualAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.presionActual"
+              />
+            </div>
+            <AppTextarea
+              v-model="observacion"
+              label="Observación"
+              placeholder="Notas adicionales"
+              v-bind="observacionAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.observacion"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos técnicos</h5>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <AppInput
-            v-model="fechaFabricacion"
-            label="Fecha fabricación"
-            type="date"
-            v-bind="fechaFabricacionAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.fechaFabricacion"
-          />
-          <AppInput
-            v-model="anioFabricacion"
-            label="Año fabricación"
-            type="number"
-            min="1900"
-            max="2100"
-            v-bind="anioFabricacionAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.anioFabricacion"
-          />
-          <AppInput
-            v-model="presionActual"
-            label="Presión actual"
-            type="number"
-            min="0"
-            step="0.01"
-            v-bind="presionActualAttrs"
-            :disabled="isSubmitting || isLoadingBalon"
-            :error="errors.presionActual"
-          />
-        </div>
-        <AppTextarea
-          v-model="observacion"
-          label="Observación"
-          placeholder="Notas adicionales"
-          v-bind="observacionAttrs"
-          :disabled="isSubmitting || isLoadingBalon"
-          :error="errors.observacion"
-        />
-      </div>
+        <template #extra>
+          <p
+            class="rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 text-sm leading-relaxed text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200"
+          >
+            La <strong>prueba hidrostática</strong> se registra en
+            <strong>Mantenimientos</strong> (tipo P.H. o Recertificación). Aquí solo se consulta en
+            el detalle del cilindro.
+          </p>
+        </template>
+      </FormCardsLayout>
     </form>
 
     <div v-else class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -271,6 +273,9 @@ import type { BalonFormMode } from '@/modules/balones/cilindros/interfaces/balon
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

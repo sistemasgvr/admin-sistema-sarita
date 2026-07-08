@@ -12,73 +12,87 @@
   >
     <form
       id="stock-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <template v-if="mode === 'create'">
-        <AppSelect
-          v-model="idAlmacen"
-          label="Almacén"
-          placeholder="Selecciona un almacén"
-          required
-          v-bind="idAlmacenAttrs"
-          :disabled="isSubmitting"
-          :error="errors.idAlmacen"
-          :options="almacenOptions"
-        />
+      <FormCardsLayout>
+        <DetailSectionCard
+          v-if="mode === 'create'"
+          title="Ubicación y producto"
+          :icon="ICONS.warehouse"
+          :full-width="true"
+        >
+          <div class="space-y-4">
+            <AppSelect
+              v-model="idAlmacen"
+              label="Almacén"
+              placeholder="Selecciona un almacén"
+              required
+              v-bind="idAlmacenAttrs"
+              :disabled="isSubmitting"
+              :error="errors.idAlmacen"
+              :options="almacenOptions"
+            />
 
-        <AppSelect
-          v-model="idProducto"
-          label="Producto"
-          placeholder="Selecciona un producto"
-          required
-          v-bind="idProductoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.idProducto"
-          :options="productoOptions"
-        />
-      </template>
+            <AppSelect
+              v-model="idProducto"
+              label="Producto"
+              placeholder="Selecciona un producto"
+              required
+              v-bind="idProductoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.idProducto"
+              :options="productoOptions"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div
-        v-else-if="stock"
-        class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-800 dark:bg-white/[0.03]"
-      >
-        <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ stock.nombre_almacen }}
-        </p>
-        <p class="mt-1 text-gray-600 dark:text-gray-400">
-          {{ stock.codigo_producto }} — {{ stock.nombre_producto }}
-        </p>
-      </div>
+        <DetailSectionCard
+          v-else-if="stock"
+          title="Registro"
+          :icon="ICONS.package"
+          :full-width="true"
+        >
+          <div class="text-sm">
+            <p class="font-medium text-gray-800 dark:text-white/90">
+              {{ stock.nombre_almacen }}
+            </p>
+            <p class="mt-1 text-gray-600 dark:text-gray-400">
+              {{ stock.codigo_producto }} — {{ stock.nombre_producto }}
+            </p>
+          </div>
+        </DetailSectionCard>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput
-          v-model="stockCantidad"
-          label="Cantidad en stock"
-          type="number"
-          min="0"
-          step="0.0001"
-          placeholder="0"
-          required
-          v-bind="stockCantidadAttrs"
-          :disabled="isSubmitting"
-          :error="errors.stock"
-        />
+        <DetailSectionCard title="Cantidades" :icon="ICONS.boxes" :full-width="true">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="stockCantidad"
+              label="Cantidad en stock"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="0"
+              required
+              v-bind="stockCantidadAttrs"
+              :disabled="isSubmitting"
+              :error="errors.stock"
+            />
 
-        <AppInput
-          v-model="stockMinimo"
-          label="Stock mínimo"
-          type="number"
-          min="0"
-          step="0.0001"
-          placeholder="0"
-          required
-          v-bind="stockMinimoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.stockMinimo"
-        />
-      </div>
+            <AppInput
+              v-model="stockMinimo"
+              label="Stock mínimo"
+              type="number"
+              min="0"
+              step="0.0001"
+              placeholder="0"
+              required
+              v-bind="stockMinimoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.stockMinimo"
+            />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -115,6 +129,9 @@ import type { Stock, StockFormMode } from '@/modules/productos/stock/interfaces/
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 
 interface StockFormModalProps {
   mode: StockFormMode

@@ -20,139 +20,147 @@
     <form
       v-else
       id="prestamo-detalle-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppSelect
-          v-model="idBalon"
-          label="Cilindro"
-          placeholder="Selecciona cilindro"
-          v-bind="idBalonAttrs"
-          :disabled="isSubmitting || balonesQuery.isLoading.value"
-          :options="balonOptions"
-        />
+      <FormCardsLayout>
+        <DetailSectionCard title="Datos del cilindro" :icon="ICONS.cylinder">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppSelect
+              v-model="idBalon"
+              label="Cilindro"
+              placeholder="Selecciona cilindro"
+              v-bind="idBalonAttrs"
+              :disabled="isSubmitting || balonesQuery.isLoading.value"
+              :options="balonOptions"
+            />
 
-        <AppSelect
-          v-model="idProducto"
-          label="Producto (gas)"
-          placeholder="Opcional"
-          v-bind="idProductoAttrs"
-          :disabled="isSubmitting || productosQuery.isLoading.value"
-          :options="gasOptions"
-        />
+            <AppSelect
+              v-model="idProducto"
+              label="Producto (gas)"
+              placeholder="Opcional"
+              v-bind="idProductoAttrs"
+              :disabled="isSubmitting || productosQuery.isLoading.value"
+              :options="gasOptions"
+            />
 
-        <AppInput
-          v-model="motivoEspecifico"
-          label="Motivo específico"
-          placeholder="Motivo del préstamo de este cilindro"
-          class="sm:col-span-2"
-          v-bind="motivoEspecificoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.motivoEspecifico"
-        />
+            <AppInput
+              v-model="motivoEspecifico"
+              label="Motivo específico"
+              placeholder="Motivo del préstamo de este cilindro"
+              class="sm:col-span-2"
+              v-bind="motivoEspecificoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.motivoEspecifico"
+            />
 
-        <AppInput
-          v-model="fechaEntregado"
-          label="Fecha entregado"
-          type="date"
-          v-bind="fechaEntregadoAttrs"
-          :disabled="isSubmitting"
-        />
+            <AppSelect
+              v-model="idEstado"
+              label="Estado"
+              placeholder="Opcional"
+              v-bind="idEstadoAttrs"
+              :disabled="isSubmitting || estadosDetalleQuery.isFetching.value"
+              :options="estadoDetalleOptions"
+            />
+          </div>
+        </DetailSectionCard>
 
-        <AppInput
-          v-model="fechaPrestamo"
-          label="Fecha préstamo"
-          type="date"
-          v-bind="fechaPrestamoAttrs"
-          :disabled="isSubmitting"
-        />
+        <DetailSectionCard title="Fechas" :icon="ICONS.calendar">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="fechaEntregado"
+              label="Fecha entregado"
+              type="date"
+              v-bind="fechaEntregadoAttrs"
+              :disabled="isSubmitting"
+            />
 
-        <AppInput
-          v-model="diasPrestamo"
-          label="Días de préstamo"
-          type="number"
-          min="0"
-          step="1"
-          v-bind="diasPrestamoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.diasPrestamo"
-        />
+            <AppInput
+              v-model="fechaPrestamo"
+              label="Fecha préstamo"
+              type="date"
+              v-bind="fechaPrestamoAttrs"
+              :disabled="isSubmitting"
+            />
 
-        <AppInput
-          v-model="fechaVencimiento"
-          label="Fecha vencimiento"
-          type="date"
-          v-bind="fechaVencimientoAttrs"
-          :disabled="isSubmitting"
-        />
+            <AppInput
+              v-model="diasPrestamo"
+              label="Días de préstamo"
+              type="number"
+              min="0"
+              step="1"
+              v-bind="diasPrestamoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.diasPrestamo"
+            />
 
-        <AppInput
-          v-model="fechaDevolucion"
-          label="Fecha devolución"
-          type="date"
-          v-bind="fechaDevolucionAttrs"
-          :disabled="isSubmitting"
-        />
+            <AppInput
+              v-model="fechaVencimiento"
+              label="Fecha vencimiento"
+              type="date"
+              v-bind="fechaVencimientoAttrs"
+              :disabled="isSubmitting"
+            />
 
-        <AppSelect
-          v-model="idEstado"
-          label="Estado"
-          placeholder="Opcional"
-          v-bind="idEstadoAttrs"
-          :disabled="isSubmitting || estadosDetalleQuery.isFetching.value"
-          :options="estadoDetalleOptions"
-        />
-      </div>
+            <AppInput
+              v-model="fechaDevolucion"
+              label="Fecha devolución"
+              type="date"
+              v-bind="fechaDevolucionAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div class="space-y-4 border-t border-gray-100 pt-4 dark:border-gray-800">
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Guías de remisión</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <AppInput
-            v-model="serieGuiaEntrega"
-            label="Serie GRE entrega"
-            placeholder="T001"
-            v-bind="serieGuiaEntregaAttrs"
+        <DetailSectionCard title="Guías de remisión" :icon="ICONS.clipboardList">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppInput
+              v-model="serieGuiaEntrega"
+              label="Serie GRE entrega"
+              placeholder="T001"
+              v-bind="serieGuiaEntregaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.serieGuiaEntrega"
+            />
+            <AppInput
+              v-model="numeroGuiaEntrega"
+              label="Número GRE entrega"
+              placeholder="00000001"
+              v-bind="numeroGuiaEntregaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroGuiaEntrega"
+            />
+            <AppInput
+              v-model="serieGuiaDevolucion"
+              label="Serie GRE devolución"
+              placeholder="T001"
+              v-bind="serieGuiaDevolucionAttrs"
+              :disabled="isSubmitting"
+              :error="errors.serieGuiaDevolucion"
+            />
+            <AppInput
+              v-model="numeroGuiaDevolucion"
+              label="Número GRE devolución"
+              placeholder="00000002"
+              v-bind="numeroGuiaDevolucionAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroGuiaDevolucion"
+            />
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
+          <AppTextarea
+            v-model="observacion"
+            label="Observación"
+            placeholder="Notas adicionales"
+            :rows="3"
+            v-bind="observacionAttrs"
             :disabled="isSubmitting"
-            :error="errors.serieGuiaEntrega"
+            :error="errors.observacion"
           />
-          <AppInput
-            v-model="numeroGuiaEntrega"
-            label="Número GRE entrega"
-            placeholder="00000001"
-            v-bind="numeroGuiaEntregaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroGuiaEntrega"
-          />
-          <AppInput
-            v-model="serieGuiaDevolucion"
-            label="Serie GRE devolución"
-            placeholder="T001"
-            v-bind="serieGuiaDevolucionAttrs"
-            :disabled="isSubmitting"
-            :error="errors.serieGuiaDevolucion"
-          />
-          <AppInput
-            v-model="numeroGuiaDevolucion"
-            label="Número GRE devolución"
-            placeholder="00000002"
-            v-bind="numeroGuiaDevolucionAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroGuiaDevolucion"
-          />
-        </div>
-      </div>
-
-      <AppTextarea
-        v-model="observacion"
-        label="Observación"
-        placeholder="Notas adicionales"
-        :rows="3"
-        v-bind="observacionAttrs"
-        :disabled="isSubmitting"
-        :error="errors.observacion"
-      />
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -199,6 +207,9 @@ import type { PrestamoDetalleFormMode } from '@/modules/balones/prestamos/interf
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString } from '@/shared/validation'
 
