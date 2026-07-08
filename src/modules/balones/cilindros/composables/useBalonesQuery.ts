@@ -19,3 +19,11 @@ export function useBalonQuery(id: Ref<number | null | undefined>) {
     enabled: computed(() => id.value != null && id.value > 0),
   })
 }
+
+export function usePhHistorialQuery(id: Ref<number | null | undefined>) {
+  return useQuery({
+    queryKey: computed(() => balonesQueryKeys.phHistorial(id.value ?? 0)),
+    queryFn: () => balonesService.listarPhHistorial(id.value!, { pagina: 1, limite: 50 }),
+    enabled: computed(() => id.value != null && id.value > 0),
+  })
+}

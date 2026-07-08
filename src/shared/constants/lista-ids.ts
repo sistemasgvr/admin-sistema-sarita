@@ -42,6 +42,12 @@ export const ListaIds = {
   TIPO_PRESTAMO: 18,
   /** gen_lista.nombre = EstadoPrestamoDetalle */
   ESTADO_PRESTAMO_DETALLE: 19,
+  /** gen_lista.nombre = MotivoBajaBalon */
+  MOTIVO_BAJA_BALON: 20,
+  /** gen_lista.nombre = MarcaCilindro */
+  MARCA_CILINDRO: 21,
+  /** gen_lista.nombre = OrganoInspectorCilindro */
+  ORGANO_INSPECTOR_CILINDRO: 22,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds

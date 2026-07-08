@@ -7,6 +7,7 @@ export interface TipoBalon {
   id_unidad_medida?: number | null
   nombre_unidad_medida?: string | null
   peso?: number | null
+  vigencia_ph_anios?: number | null
   estado: number
   total_balones?: number
   nombre_usuario_creacion?: string | null
@@ -30,6 +31,7 @@ export interface TipoBalonPayload {
   capacidad?: number
   idUnidadMedida?: number
   peso?: number
+  vigenciaPhAnios?: number
 }
 
 export type CreateTipoBalonPayload = TipoBalonPayload

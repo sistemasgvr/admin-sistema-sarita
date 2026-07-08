@@ -30,6 +30,25 @@
             :error="errors.codigoBalon"
           />
           <AppInput
+            v-model="numeroSerie"
+            label="Número de serie"
+            placeholder="Igual al código si no difiere"
+            v-bind="numeroSerieAttrs"
+            :disabled="isSubmitting || isLoadingBalon"
+            :error="errors.numeroSerie"
+          />
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <AppSelect
+            v-model="idMarcaCilindro"
+            label="Marca"
+            :placeholder="marcaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            :options="marcaOptions"
+            :disabled="isSubmitting || marcaQuery.isLoading.value"
+            v-bind="idMarcaCilindroAttrs"
+            :error="errors.idMarcaCilindro"
+          />
+          <AppInput
             v-model="numeroRecepcion"
             label="Número de recepción"
             v-bind="numeroRecepcionAttrs"
@@ -186,11 +205,29 @@
             :error="errors.fechaProximaPruebaHidrostatica"
           />
         </div>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <AppSelect
+            v-model="idOrganoInspector"
+            label="Órgano inspector"
+            :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            :options="organoInspectorOptions"
+            :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
+            v-bind="idOrganoInspectorAttrs"
+            :error="errors.idOrganoInspector"
+          />
+          <div class="flex items-end pb-2">
+            <AppCheckbox
+              v-model="organoInspectorNoAplica"
+              label="Sin órgano inspector"
+              :disabled="isSubmitting || isLoadingBalon"
+            />
+          </div>
+        </div>
       </div>
 
       <div class="space-y-4 border-t border-gray-100 pt-5 dark:border-gray-800">
         <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos técnicos</h5>
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div class="grid gap-4 sm:grid-cols-3">
           <AppInput
             v-model="fechaFabricacion"
             label="Fecha fabricación"
@@ -198,6 +235,16 @@
             v-bind="fechaFabricacionAttrs"
             :disabled="isSubmitting || isLoadingBalon"
             :error="errors.fechaFabricacion"
+          />
+          <AppInput
+            v-model="anioFabricacion"
+            label="Año fabricación"
+            type="number"
+            min="1900"
+            max="2100"
+            v-bind="anioFabricacionAttrs"
+            :disabled="isSubmitting || isLoadingBalon"
+            :error="errors.anioFabricacion"
           />
           <AppInput
             v-model="presionActual"
@@ -264,7 +311,7 @@ import { useTiposBalonQuery } from '@/modules/balones/tipos-balon/composables/us
 import type { BalonFormMode } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { AppCheckbox, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
@@ -307,10 +354,14 @@ const clientesQuery = useClientesQuery(clientesFilters)
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
 const listaReferenciaId = ref(ListaIds.REFERENCIA_CILINDRO)
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
+const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
+const listaOrganoInspectorId = ref(ListaIds.ORGANO_INSPECTOR_CILINDRO)
 
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
 const referenciaQuery = useListaOpcionesQuery(listaReferenciaId)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
+const marcaQuery = useListaOpcionesQuery(listaMarcaId)
+const organoInspectorQuery = useListaOpcionesQuery(listaOrganoInspectorId)
 
 const tipoBalonOptions = computed(() =>
   (tiposBalonQuery.data.value?.data ?? []).map((tipo) => ({
@@ -346,6 +397,14 @@ const clienteOptions = computed(() =>
 const estadoBalonOptions = computed(() => toSelectOptions(estadoBalonQuery.data.value))
 const referenciaOptions = computed(() => toSelectOptions(referenciaQuery.data.value))
 const propietarioOptions = computed(() => toSelectOptions(propietarioQuery.data.value))
+const marcaOptions = computed(() => toSelectOptions(marcaQuery.data.value))
+const organoInspectorOptions = computed(() =>
+  toSelectOptions(
+    organoInspectorQuery.data.value?.filter(
+      (opcion) => opcion.nombre?.toUpperCase() !== 'NO_APLICA',
+    ),
+  ),
+)
 
 const toDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '')
 
@@ -353,6 +412,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       codigoBalon: requiredString('El código de balón').max(50, 'Máximo 50 caracteres'),
+      numeroSerie: optionalString().max(50, 'Máximo 50 caracteres'),
       libroCilindro: optionalString().max(30, 'Máximo 30 caracteres'),
       paginaLibro: optionalNumber(),
       fechaRegistro: optionalString(),
@@ -362,6 +422,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idPropietario: optionalNumber(),
       idClientePropietario: optionalNumber(),
       idReferencia: optionalNumber(),
+      idMarcaCilindro: optionalNumber(),
+      idOrganoInspector: optionalNumber(),
+      organoInspectorNoAplica: yup.boolean().optional(),
       idTipoBalon: optionalNumber(),
       idProductoGas: optionalNumber(),
       idEstadoBalon: optionalNumber(),
@@ -369,12 +432,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       vigenciaPruebaHidrostaticaAnios: optionalNumber(),
       fechaProximaPruebaHidrostatica: optionalString(),
       fechaFabricacion: optionalString(),
+      anioFabricacion: optionalNumber(),
       presionActual: optionalNumber(),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
     }),
   ),
   initialValues: {
     codigoBalon: '',
+    numeroSerie: '',
     libroCilindro: '',
     paginaLibro: undefined as number | undefined,
     fechaRegistro: '',
@@ -384,6 +449,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idPropietario: undefined as number | undefined,
     idClientePropietario: undefined as number | undefined,
     idReferencia: undefined as number | undefined,
+    idMarcaCilindro: undefined as number | undefined,
+    idOrganoInspector: undefined as number | undefined,
+    organoInspectorNoAplica: false,
     idTipoBalon: undefined as number | undefined,
     idProductoGas: undefined as number | undefined,
     idEstadoBalon: undefined as number | undefined,
@@ -391,12 +459,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     vigenciaPruebaHidrostaticaAnios: 5 as number | undefined,
     fechaProximaPruebaHidrostatica: '',
     fechaFabricacion: '',
+    anioFabricacion: undefined as number | undefined,
     presionActual: undefined as number | undefined,
     observacion: '',
   },
 })
 
 const [codigoBalon, codigoBalonAttrs] = defineField('codigoBalon')
+const [numeroSerie, numeroSerieAttrs] = defineField('numeroSerie')
 const [libroCilindro, libroCilindroAttrs] = defineField('libroCilindro')
 const [paginaLibro, paginaLibroAttrs] = defineField('paginaLibro')
 const [fechaRegistro, fechaRegistroAttrs] = defineField('fechaRegistro')
@@ -406,6 +476,9 @@ const [idClienteUbicacion, idClienteUbicacionAttrs] = defineField('idClienteUbic
 const [idPropietario, idPropietarioAttrs] = defineField('idPropietario')
 const [idClientePropietario, idClientePropietarioAttrs] = defineField('idClientePropietario')
 const [idReferencia, idReferenciaAttrs] = defineField('idReferencia')
+const [idMarcaCilindro, idMarcaCilindroAttrs] = defineField('idMarcaCilindro')
+const [idOrganoInspector, idOrganoInspectorAttrs] = defineField('idOrganoInspector')
+const [organoInspectorNoAplica] = defineField('organoInspectorNoAplica')
 const [idTipoBalon, idTipoBalonAttrs] = defineField('idTipoBalon')
 const [idProductoGas, idProductoGasAttrs] = defineField('idProductoGas')
 const [idEstadoBalon, idEstadoBalonAttrs] = defineField('idEstadoBalon')
@@ -419,6 +492,7 @@ const [fechaProximaPruebaHidrostatica, fechaProximaPruebaHidrostaticaAttrs] = de
   'fechaProximaPruebaHidrostatica',
 )
 const [fechaFabricacion, fechaFabricacionAttrs] = defineField('fechaFabricacion')
+const [anioFabricacion, anioFabricacionAttrs] = defineField('anioFabricacion')
 const [presionActual, presionActualAttrs] = defineField('presionActual')
 const [observacion, observacionAttrs] = defineField('observacion')
 
@@ -436,9 +510,37 @@ watch(idPropietario, () => {
   }
 })
 
+watch(organoInspectorNoAplica, (noAplica) => {
+  if (noAplica) {
+    idOrganoInspector.value = undefined
+  }
+})
+
+watch(idTipoBalon, (tipoId) => {
+  if (!tipoId) return
+  const tipo = tiposBalonQuery.data.value?.data?.find((item) => item.id === Number(tipoId))
+  if (tipo?.vigencia_ph_anios) {
+    vigenciaPruebaHidrostaticaAnios.value = tipo.vigencia_ph_anios
+  }
+})
+
+watch([fechaUltimaPruebaHidrostatica, vigenciaPruebaHidrostaticaAnios], ([ultima, vigencia]) => {
+  if (!ultima || !vigencia) return
+  const proxima = new Date(`${ultima}T00:00:00`)
+  proxima.setFullYear(proxima.getFullYear() + Number(vigencia))
+  fechaProximaPruebaHidrostatica.value = proxima.toISOString().slice(0, 10)
+})
+
+watch(codigoBalon, (codigo) => {
+  if (props.mode === 'create' && codigo && !numeroSerie.value) {
+    numeroSerie.value = codigo
+  }
+})
+
 const buildPayload = (
   values: {
     codigoBalon: string
+    numeroSerie: string
     libroCilindro: string
     paginaLibro?: number
     fechaRegistro: string
@@ -448,6 +550,9 @@ const buildPayload = (
     idPropietario?: number
     idClientePropietario?: number
     idReferencia?: number
+    idMarcaCilindro?: number
+    idOrganoInspector?: number
+    organoInspectorNoAplica?: boolean
     idTipoBalon?: number
     idProductoGas?: number
     idEstadoBalon?: number
@@ -455,6 +560,7 @@ const buildPayload = (
     vigenciaPruebaHidrostaticaAnios?: number
     fechaProximaPruebaHidrostatica: string
     fechaFabricacion: string
+    anioFabricacion?: number
     presionActual?: number
     observacion: string
   },
@@ -462,6 +568,7 @@ const buildPayload = (
 ) => ({
   idUsuarioAuditoria: userId,
   codigoBalon: values.codigoBalon,
+  numeroSerie: values.numeroSerie || values.codigoBalon || undefined,
   libroCilindro: values.libroCilindro || undefined,
   paginaLibro: values.paginaLibro,
   fechaRegistro: values.fechaRegistro || undefined,
@@ -471,6 +578,9 @@ const buildPayload = (
   idPropietario: values.idPropietario,
   idClientePropietario: requiereClientePropietario.value ? values.idClientePropietario : undefined,
   idReferencia: values.idReferencia,
+  idMarcaCilindro: values.idMarcaCilindro,
+  idOrganoInspector: values.organoInspectorNoAplica ? undefined : values.idOrganoInspector,
+  organoInspectorNoAplica: values.organoInspectorNoAplica ?? false,
   idTipoBalon: values.idTipoBalon,
   idProductoGas: values.idProductoGas,
   idEstadoBalon: values.idEstadoBalon,
@@ -478,6 +588,7 @@ const buildPayload = (
   vigenciaPruebaHidrostaticaAnios: values.vigenciaPruebaHidrostaticaAnios,
   fechaProximaPruebaHidrostatica: values.fechaProximaPruebaHidrostatica || undefined,
   fechaFabricacion: values.fechaFabricacion || undefined,
+  anioFabricacion: values.anioFabricacion,
   presionActual: values.presionActual,
   observacion: values.observacion || undefined,
 })
@@ -487,6 +598,7 @@ const syncFormValues = () => {
   resetForm({
     values: {
       codigoBalon: data?.codigo_balon ?? '',
+      numeroSerie: data?.numero_serie ?? '',
       libroCilindro: data?.libro_cilindro ?? '',
       paginaLibro: data?.pagina_libro ?? undefined,
       fechaRegistro: toDateInput(data?.fecha_registro),
@@ -496,13 +608,18 @@ const syncFormValues = () => {
       idPropietario: data?.id_propietario ?? undefined,
       idClientePropietario: data?.id_cliente_propietario ?? undefined,
       idReferencia: data?.id_referencia ?? undefined,
+      idMarcaCilindro: data?.id_marca_cilindro ?? undefined,
+      idOrganoInspector: data?.id_organo_inspector ?? undefined,
+      organoInspectorNoAplica: data?.organo_inspector_no_aplica ?? false,
       idTipoBalon: data?.id_tipo_balon ?? undefined,
       idProductoGas: data?.id_producto_gas ?? undefined,
       idEstadoBalon: data?.id_estado_balon ?? undefined,
       fechaUltimaPruebaHidrostatica: toDateInput(data?.fecha_ultima_prueba_hidrostatica),
-      vigenciaPruebaHidrostaticaAnios: data?.vigencia_prueba_hidrostatica_anios ?? 5,
+      vigenciaPruebaHidrostaticaAnios:
+        data?.vigencia_prueba_hidrostatica_anios ?? data?.vigencia_ph_tipo_anios ?? 5,
       fechaProximaPruebaHidrostatica: toDateInput(data?.fecha_proxima_prueba_hidrostatica),
       fechaFabricacion: toDateInput(data?.fecha_fabricacion),
+      anioFabricacion: data?.anio_fabricacion ?? undefined,
       presionActual: data?.presion_actual ?? undefined,
       observacion: data?.observacion ?? '',
     },
@@ -520,6 +637,7 @@ const onSubmit = handleSubmit(async (values) => {
   const payload = buildPayload(
     {
       ...values,
+      numeroSerie: values.numeroSerie ?? '',
       libroCilindro: values.libroCilindro ?? '',
       fechaRegistro: values.fechaRegistro ?? '',
       numeroRecepcion: values.numeroRecepcion ?? '',

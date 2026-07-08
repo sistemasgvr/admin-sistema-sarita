@@ -60,6 +60,10 @@ const sections = computed<DetailSection[]>(() => {
           value: formatDetailCapacity(data.capacidad, data.nombre_unidad_medida),
         },
         { label: 'Peso', value: data.peso != null ? `${data.peso} kg` : undefined },
+        {
+          label: 'Vigencia P.H.',
+          value: data.vigencia_ph_anios != null ? `${data.vigencia_ph_anios} años` : undefined,
+        },
       ],
     },
     {

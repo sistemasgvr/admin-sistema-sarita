@@ -67,6 +67,17 @@
         :disabled="isSubmitting"
         :error="errors.peso"
       />
+
+      <AppSelect
+        v-model="vigenciaPhAnios"
+        label="Vigencia P.H. (años)"
+        placeholder="Selecciona..."
+        :options="vigenciaPhOptions"
+        :disabled="isSubmitting"
+        v-bind="vigenciaPhAniosAttrs"
+        :error="errors.vigenciaPhAnios"
+        hint="Plazo de renovación de prueba hidrostática según normativa del tipo de gas."
+      />
     </form>
 
     <template #footer>
@@ -145,6 +156,11 @@ const gasOptions = computed(() =>
 
 const unidadMedidaOptions = computed(() => toSelectOptions(unidadMedidaQuery.data.value))
 
+const vigenciaPhOptions = [
+  { label: '5 años', value: 5 },
+  { label: '10 años', value: 10 },
+]
+
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
@@ -153,6 +169,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       capacidad: optionalNumber(),
       idUnidadMedida: optionalNumber(),
       peso: optionalNumber(),
+      vigenciaPhAnios: optionalNumber(),
     }),
   ),
   initialValues: {
@@ -161,6 +178,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     capacidad: undefined as number | undefined,
     idUnidadMedida: undefined as number | undefined,
     peso: undefined as number | undefined,
+    vigenciaPhAnios: 5 as number | undefined,
   },
 })
 
@@ -169,6 +187,7 @@ const [idGas, idGasAttrs] = defineField('idGas')
 const [capacidad, capacidadAttrs] = defineField('capacidad')
 const [idUnidadMedida, idUnidadMedidaAttrs] = defineField('idUnidadMedida')
 const [peso, pesoAttrs] = defineField('peso')
+const [vigenciaPhAnios, vigenciaPhAniosAttrs] = defineField('vigenciaPhAnios')
 
 const syncFormValues = () => {
   resetForm({
@@ -178,6 +197,7 @@ const syncFormValues = () => {
       capacidad: props.tipoBalon?.capacidad ?? undefined,
       idUnidadMedida: props.tipoBalon?.id_unidad_medida ?? undefined,
       peso: props.tipoBalon?.peso ?? undefined,
+      vigenciaPhAnios: props.tipoBalon?.vigencia_ph_anios ?? 5,
     },
   })
 }
@@ -197,6 +217,7 @@ const onSubmit = handleSubmit(async (values) => {
     capacidad: values.capacidad,
     idUnidadMedida: values.idUnidadMedida,
     peso: values.peso,
+    vigenciaPhAnios: values.vigenciaPhAnios,
   }
 
   try {
