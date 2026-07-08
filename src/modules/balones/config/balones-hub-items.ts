@@ -46,7 +46,7 @@ export const balonesHubItems: BalonesHubItem[] = [
     path: '/admin/balones/recargas',
     icon: ICONS.clipboardList,
     permission: PermisoBanderas.MOVIMIENTOS_RECARGA_LISTAR,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'prestamos',

@@ -37,6 +37,16 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'recargas',
+        name: 'admin-balones-recargas',
+        component: () => import('@/modules/balones/recargas/views/RecargasListView.vue'),
+        meta: {
+          title: 'Recargas',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_RECARGA_LISTAR,
+        },
+      },
+      {
         path: '',
         name: 'admin-balones',
         component: () => import('@/modules/balones/views/BalonesHubView.vue'),
