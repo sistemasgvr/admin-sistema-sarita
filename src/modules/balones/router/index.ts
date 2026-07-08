@@ -47,6 +47,16 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'prestamos',
+        name: 'admin-balones-prestamos',
+        component: () => import('@/modules/balones/prestamos/views/PrestamosListView.vue'),
+        meta: {
+          title: 'Préstamos',
+          module: 'balones',
+          permission: PermisoBanderas.PRESTAMOS_BALON_LISTAR,
+        },
+      },
+      {
         path: '',
         name: 'admin-balones',
         component: () => import('@/modules/balones/views/BalonesHubView.vue'),

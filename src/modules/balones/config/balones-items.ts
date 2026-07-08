@@ -49,7 +49,7 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     path: '/admin/balones/prestamos',
     permission: PermisoBanderas.PRESTAMOS_BALON_LISTAR,
     phase: 5,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'alquileres',
