@@ -67,6 +67,17 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'mantenimientos',
+        name: 'admin-balones-mantenimientos',
+        component: () =>
+          import('@/modules/balones/mantenimientos/views/MantenimientosListView.vue'),
+        meta: {
+          title: 'Mantenimientos',
+          module: 'balones',
+          permission: PermisoBanderas.MANTENIMIENTOS_BALON_LISTAR,
+        },
+      },
+      {
         path: '',
         name: 'admin-balones',
         component: () => import('@/modules/balones/views/BalonesHubView.vue'),

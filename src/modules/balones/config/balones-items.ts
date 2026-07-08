@@ -65,6 +65,6 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     path: '/admin/balones/mantenimientos',
     permission: PermisoBanderas.MANTENIMIENTOS_BALON_LISTAR,
     phase: 7,
-    implemented: false,
+    implemented: true,
   },
 ]

@@ -73,6 +73,6 @@ export const balonesHubItems: BalonesHubItem[] = [
     path: '/admin/balones/mantenimientos',
     icon: ICONS.construction,
     permission: PermisoBanderas.MANTENIMIENTOS_BALON_LISTAR,
-    implemented: false,
+    implemented: true,
   },
 ]
