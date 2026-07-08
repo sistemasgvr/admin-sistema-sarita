@@ -96,6 +96,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -133,6 +143,11 @@
       :mode="formMode"
       :movimiento-id="selectedMovimientoId"
       @saved="onMovimientoSaved"
+    />
+
+    <MovimientoBalonDetailModal
+      v-model="detailModalOpen"
+      :movimiento-id="movimientoToViewId"
     />
 
     <AppModal
@@ -179,6 +194,7 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MovimientoBalonFormModal from '@/modules/balones/movimientos/components/MovimientoBalonFormModal.vue'
+import MovimientoBalonDetailModal from '@/modules/balones/movimientos/components/MovimientoBalonDetailModal.vue'
 import { useDeleteMovimientoBalonMutation } from '@/modules/balones/movimientos/composables/useMovimientoBalonMutations'
 import { useMovimientosBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
 import type {
@@ -240,6 +256,9 @@ const formModalOpen = ref(false)
 const formMode = ref<MovimientoBalonFormMode>('create')
 const selectedMovimientoId = ref<number | null>(null)
 
+const detailModalOpen = ref(false)
+const movimientoToViewId = ref<number | null>(null)
+
 const deleteModalOpen = ref(false)
 const movimientoToDelete = ref<MovimientoBalon | null>(null)
 const deleteMutation = useDeleteMovimientoBalonMutation()
@@ -248,6 +267,9 @@ const breadcrumbItems = balonesBreadcrumbItems('Movimientos')
 
 const canCreate = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_BALON_CREAR),
+)
+const canView = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_BALON_VER),
 )
 const canEdit = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_BALON_EDITAR),
@@ -330,6 +352,11 @@ const openEditModal = (row: MovimientoBalon) => {
   formMode.value = 'edit'
   selectedMovimientoId.value = row.id
   formModalOpen.value = true
+}
+
+const openDetailModal = (row: MovimientoBalon) => {
+  movimientoToViewId.value = row.id
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (row: MovimientoBalon) => {

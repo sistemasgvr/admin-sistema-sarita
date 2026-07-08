@@ -258,29 +258,6 @@ const getContactoNombre = (contacto: Contacto) => {
     .trim()
 }
 
-const getClienteSelectNombre = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-
-  if (esJuridica && cliente.razon_social) {
-    return cliente.razon_social
-  }
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
-}
-
-const clienteFilterOptions = computed(() => [
-  { value: '', label: 'Todos los clientes' },
-  ...clientes.value.map((cliente) => ({
-    value: cliente.id,
-    label: getClienteSelectNombre(cliente),
-  })),
-])
-
 const columns = computed<TableColumn<Contacto>[]>(() => [
   { key: 'cliente', label: 'Cliente / Proveedor' },
   { key: 'contacto', label: 'Contacto' },

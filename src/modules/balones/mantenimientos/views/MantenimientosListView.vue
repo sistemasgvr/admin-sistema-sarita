@@ -102,6 +102,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -137,6 +147,11 @@
       :mode="formMode"
       :mantenimiento-id="selectedMantenimientoId"
       @saved="onMantenimientoSaved"
+    />
+
+    <MantenimientoDetailModal
+      v-model="detailModalOpen"
+      :mantenimiento-id="mantenimientoToViewId"
     />
 
     <AppModal
@@ -183,6 +198,7 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MantenimientoFormModal from '@/modules/balones/mantenimientos/components/MantenimientoFormModal.vue'
+import MantenimientoDetailModal from '@/modules/balones/mantenimientos/components/MantenimientoDetailModal.vue'
 import { useDeleteMantenimientoMutation } from '@/modules/balones/mantenimientos/composables/useMantenimientoMutations'
 import { useMantenimientosQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import type {
@@ -233,6 +249,9 @@ const formModalOpen = ref(false)
 const formMode = ref<MantenimientoFormMode>('create')
 const selectedMantenimientoId = ref<number | null>(null)
 
+const detailModalOpen = ref(false)
+const mantenimientoToViewId = ref<number | null>(null)
+
 const deleteModalOpen = ref(false)
 const mantenimientoToDelete = ref<Mantenimiento | null>(null)
 const deleteMutation = useDeleteMantenimientoMutation()
@@ -241,6 +260,9 @@ const breadcrumbItems = balonesBreadcrumbItems('Mantenimientos')
 
 const canCreate = computed(() =>
   authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR),
+)
+const canView = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_VER),
 )
 const canEdit = computed(() =>
   authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_EDITAR),
@@ -335,6 +357,11 @@ const openEditModal = (row: Mantenimiento) => {
   formMode.value = 'edit'
   selectedMantenimientoId.value = row.id
   formModalOpen.value = true
+}
+
+const openDetailModal = (row: Mantenimiento) => {
+  mantenimientoToViewId.value = row.id
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (row: Mantenimiento) => {

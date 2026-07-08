@@ -85,6 +85,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -122,6 +132,11 @@
       :mode="formMode"
       :recarga-id="selectedRecargaId"
       @saved="onRecargaSaved"
+    />
+
+    <MovimientoRecargaDetailModal
+      v-model="detailModalOpen"
+      :recarga-id="recargaToViewId"
     />
 
     <AppModal
@@ -168,6 +183,7 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MovimientoRecargaFormModal from '@/modules/balones/recargas/components/MovimientoRecargaFormModal.vue'
+import MovimientoRecargaDetailModal from '@/modules/balones/recargas/components/MovimientoRecargaDetailModal.vue'
 import { useDeleteMovimientoRecargaMutation } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
 import { useMovimientosRecargaQuery } from '@/modules/balones/recargas/composables/useMovimientosRecargaQuery'
 import type {
@@ -214,6 +230,9 @@ const formModalOpen = ref(false)
 const formMode = ref<MovimientoRecargaFormMode>('create')
 const selectedRecargaId = ref<number | null>(null)
 
+const detailModalOpen = ref(false)
+const recargaToViewId = ref<number | null>(null)
+
 const deleteModalOpen = ref(false)
 const recargaToDelete = ref<MovimientoRecarga | null>(null)
 const deleteMutation = useDeleteMovimientoRecargaMutation()
@@ -222,6 +241,9 @@ const breadcrumbItems = balonesBreadcrumbItems('Recargas')
 
 const canCreate = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR),
+)
+const canView = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_VER),
 )
 const canEdit = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_EDITAR),
@@ -309,6 +331,11 @@ const openEditModal = (row: MovimientoRecarga) => {
   formMode.value = 'edit'
   selectedRecargaId.value = row.id
   formModalOpen.value = true
+}
+
+const openDetailModal = (row: MovimientoRecarga) => {
+  recargaToViewId.value = row.id
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (row: MovimientoRecarga) => {

@@ -90,6 +90,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -126,6 +136,8 @@
       :prestamo-id="selectedPrestamoId"
       @saved="onPrestamoSaved"
     />
+
+    <PrestamoDetailModal v-model="detailModalOpen" :prestamo-id="prestamoToViewId" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -167,6 +179,7 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import PrestamoFormModal from '@/modules/balones/prestamos/components/PrestamoFormModal.vue'
+import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
 import { useDeletePrestamoMutation } from '@/modules/balones/prestamos/composables/usePrestamoMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import type {
@@ -216,6 +229,9 @@ const formModalOpen = ref(false)
 const formMode = ref<PrestamoFormMode>('create')
 const selectedPrestamoId = ref<number | null>(null)
 
+const detailModalOpen = ref(false)
+const prestamoToViewId = ref<number | null>(null)
+
 const deleteModalOpen = ref(false)
 const prestamoToDelete = ref<Prestamo | null>(null)
 const deleteMutation = useDeletePrestamoMutation()
@@ -223,6 +239,7 @@ const deleteMutation = useDeletePrestamoMutation()
 const breadcrumbItems = balonesBreadcrumbItems('Préstamos')
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_ELIMINAR))
 
@@ -305,6 +322,11 @@ const openEditModal = (row: Prestamo) => {
   formMode.value = 'edit'
   selectedPrestamoId.value = row.id
   formModalOpen.value = true
+}
+
+const openDetailModal = (row: Prestamo) => {
+  prestamoToViewId.value = row.id
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (row: Prestamo) => {

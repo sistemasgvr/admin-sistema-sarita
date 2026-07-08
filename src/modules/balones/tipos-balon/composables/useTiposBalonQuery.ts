@@ -11,3 +11,11 @@ export function useTiposBalonQuery(filters: Ref<TipoBalonListFilters>) {
     placeholderData: keepPreviousData,
   })
 }
+
+export function useTipoBalonQuery(id: Ref<number | null | undefined>) {
+  return useQuery({
+    queryKey: computed(() => tiposBalonQueryKeys.detail(id.value ?? 0)),
+    queryFn: () => tiposBalonService.obtenerPorId(id.value!),
+    enabled: computed(() => id.value != null && id.value > 0),
+  })
+}

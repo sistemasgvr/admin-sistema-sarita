@@ -1,5 +1,6 @@
 import {
   apiDelete,
+  apiGet,
   apiGetPaginated,
   apiPatch,
   apiPost,
@@ -15,6 +16,10 @@ import type {
 export const tiposBalonService = {
   listar(filters: TipoBalonListFilters = {}) {
     return apiGetPaginated<TipoBalon>('/balones/tipos', { params: filters })
+  },
+
+  obtenerPorId(id: number) {
+    return apiGet<TipoBalon>(`/balones/tipos/${id}`)
   },
 
   crear(payload: CreateTipoBalonPayload) {

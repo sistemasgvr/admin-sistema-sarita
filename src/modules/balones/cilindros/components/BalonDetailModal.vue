@@ -3,54 +3,27 @@
     v-model="open"
     title="Detalle del cilindro"
     :subtitle="balon?.codigo_balon"
-    size="lg"
+    size="xl"
   >
-    <div v-if="isLoading" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-      Cargando detalle...
-    </div>
-
-    <div v-else-if="balon" class="space-y-6">
-      <div class="flex flex-wrap items-center gap-2">
-        <AppBadge v-if="balon.nombre_estado_balon" color="primary">
+    <DetailCardsLayout :loading="isLoading" :sections="sections">
+      <template #badges>
+        <AppBadge v-if="balon?.nombre_estado_balon" color="primary">
           {{ balon.nombre_estado_balon }}
         </AppBadge>
-        <AppBadge v-if="balon.nombre_tipo_balon" color="neutral">
+        <AppBadge v-if="balon?.nombre_tipo_balon" color="neutral">
           {{ balon.nombre_tipo_balon }}
         </AppBadge>
-        <AppBadge v-if="balon.nombre_propietario" color="neutral">
+        <AppBadge v-if="balon?.nombre_propietario" color="neutral">
           {{ balon.nombre_propietario }}
         </AppBadge>
-      </div>
+      </template>
 
-      <section v-for="section in sections" :key="section.title" class="space-y-3">
-        <div class="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 dark:border-gray-800">
-          <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
-            {{ section.title }}
-          </h5>
-
-          <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-            <div
-              v-for="item in section.items"
-              :key="item.label"
-              :class="item.fullWidth ? 'sm:col-span-2' : ''"
-            >
-              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">{{ item.label }}</dt>
-              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ item.value ?? '—' }}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </section>
-
-      <section
-        v-if="balon.observacion"
-        class="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800"
-      >
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Observación</h5>
-        <p class="text-sm text-gray-600 dark:text-gray-400">{{ balon.observacion }}</p>
-      </section>
-    </div>
+      <template v-if="balon?.observacion" #extra>
+        <DetailSectionCard title="Observación" :full-width="true">
+          <p class="text-sm text-gray-600 dark:text-gray-400">{{ balon.observacion }}</p>
+        </DetailSectionCard>
+      </template>
+    </DetailCardsLayout>
 
     <template #footer>
       <button
@@ -66,20 +39,15 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
+import DetailCardsLayout from '@/modules/balones/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/modules/balones/components/detail/DetailSectionCard.vue'
+import {
+  formatDetailDate,
+  formatDetailDateTime,
+} from '@/modules/balones/components/detail/detailFormatters'
+import type { DetailSection } from '@/modules/balones/components/detail/detail.types'
 import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { AppBadge, AppModal } from '@/shared/components'
-import { formatDateTime } from '@/shared/utils/date'
-
-interface DetailSectionItem {
-  label: string
-  value?: string | null
-  fullWidth?: boolean
-}
-
-interface DetailSection {
-  title: string
-  items: DetailSectionItem[]
-}
 
 const props = defineProps<{
   balonId?: number | null
@@ -93,8 +61,6 @@ const balonQuery = useBalonQuery(balonIdRef)
 const isLoading = computed(() => balonQuery.isFetching.value)
 const balon = computed(() => balonQuery.data.value ?? null)
 
-const formatDate = (value?: string | null) => (value ? value.slice(0, 10) : undefined)
-
 const sections = computed<DetailSection[]>(() => {
   const data = balon.value
   if (!data) return []
@@ -106,7 +72,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Código', value: data.codigo_balon },
         { label: 'Libro', value: data.libro_cilindro },
         { label: 'Página', value: data.pagina_libro?.toString() },
-        { label: 'Fecha registro', value: formatDate(data.fecha_registro) },
+        { label: 'Fecha registro', value: formatDetailDate(data.fecha_registro) },
         { label: 'N° recepción', value: data.numero_recepcion },
       ],
     },
@@ -124,16 +90,16 @@ const sections = computed<DetailSection[]>(() => {
     {
       title: 'Prueba hidrostática',
       items: [
-        { label: 'Última P.H.', value: formatDate(data.fecha_ultima_prueba_hidrostatica) },
+        { label: 'Última P.H.', value: formatDetailDate(data.fecha_ultima_prueba_hidrostatica) },
         {
           label: 'Vigencia',
           value: data.vigencia_prueba_hidrostatica_anios
             ? `${data.vigencia_prueba_hidrostatica_anios} años`
             : undefined,
         },
-        { label: 'Próxima P.H.', value: formatDate(data.fecha_proxima_prueba_hidrostatica) },
+        { label: 'Próxima P.H.', value: formatDetailDate(data.fecha_proxima_prueba_hidrostatica) },
         { label: 'Presión actual', value: data.presion_actual?.toString() },
-        { label: 'Fecha fabricación', value: formatDate(data.fecha_fabricacion) },
+        { label: 'Fecha fabricación', value: formatDetailDate(data.fecha_fabricacion) },
       ],
     },
     {
@@ -141,8 +107,8 @@ const sections = computed<DetailSection[]>(() => {
       items: [
         { label: 'Creado por', value: data.nombre_usuario_creacion },
         { label: 'Modificado por', value: data.nombre_usuario_modificacion },
-        { label: 'Fecha creación', value: formatDateTime(data.fecha_creacion) },
-        { label: 'Última modificación', value: formatDateTime(data.fecha_modificacion) },
+        { label: 'Fecha creación', value: formatDetailDateTime(data.fecha_creacion) },
+        { label: 'Última modificación', value: formatDetailDateTime(data.fecha_modificacion) },
       ],
     },
   ]

@@ -95,6 +95,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -131,6 +141,8 @@
       :alquiler-id="selectedAlquilerId"
       @saved="onAlquilerSaved"
     />
+
+    <AlquilerDetailModal v-model="detailModalOpen" :alquiler-id="alquilerToViewId" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -172,6 +184,7 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerFormModal from '@/modules/balones/alquileres/components/AlquilerFormModal.vue'
+import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
 import { useDeleteAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
 import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import type {
@@ -223,6 +236,9 @@ const formModalOpen = ref(false)
 const formMode = ref<AlquilerFormMode>('create')
 const selectedAlquilerId = ref<number | null>(null)
 
+const detailModalOpen = ref(false)
+const alquilerToViewId = ref<number | null>(null)
+
 const deleteModalOpen = ref(false)
 const alquilerToDelete = ref<Alquiler | null>(null)
 const deleteMutation = useDeleteAlquilerMutation()
@@ -230,6 +246,7 @@ const deleteMutation = useDeleteAlquilerMutation()
 const breadcrumbItems = balonesBreadcrumbItems('Alquileres')
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_ELIMINAR))
 
@@ -317,6 +334,11 @@ const openEditModal = (row: Alquiler) => {
   formMode.value = 'edit'
   selectedAlquilerId.value = row.id
   formModalOpen.value = true
+}
+
+const openDetailModal = (row: Alquiler) => {
+  alquilerToViewId.value = row.id
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (row: Alquiler) => {

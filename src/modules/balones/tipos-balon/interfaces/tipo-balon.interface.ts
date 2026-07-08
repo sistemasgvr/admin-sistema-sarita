@@ -9,6 +9,9 @@ export interface TipoBalon {
   peso?: number | null
   estado: number
   total_balones?: number
+  nombre_usuario_creacion?: string | null
+  nombre_usuario_modificacion?: string | null
+  codigo_gas?: string | null
   fecha_creacion: string
   fecha_modificacion: string
 }

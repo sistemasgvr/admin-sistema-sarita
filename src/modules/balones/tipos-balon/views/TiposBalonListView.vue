@@ -57,6 +57,16 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           title="Editar"
@@ -95,6 +105,8 @@
       :tipo-balon="selectedTipoBalon"
       @saved="onTipoBalonSaved"
     />
+
+    <TipoBalonDetailModal v-model="detailModalOpen" :tipo-id="tipoToViewId" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -136,6 +148,7 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import TipoBalonFormModal from '@/modules/balones/tipos-balon/components/TipoBalonFormModal.vue'
+import TipoBalonDetailModal from '@/modules/balones/tipos-balon/components/TipoBalonDetailModal.vue'
 import { useDeleteTipoBalonMutation } from '@/modules/balones/tipos-balon/composables/useTipoBalonMutations'
 import { useTiposBalonQuery } from '@/modules/balones/tipos-balon/composables/useTiposBalonQuery'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
@@ -170,12 +183,16 @@ const formModalOpen = ref(false)
 const formMode = ref<TipoBalonFormMode>('create')
 const selectedTipoBalon = ref<TipoBalon | null>(null)
 
+const detailModalOpen = ref(false)
+const tipoToViewId = ref<number | null>(null)
+
 const deleteModalOpen = ref(false)
 const tipoBalonToDelete = ref<TipoBalon | null>(null)
 
 const breadcrumbItems = computed(() => balonesBreadcrumbItems('Tipos de balón'))
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.TIPOS_BALON_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.TIPOS_BALON_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.TIPOS_BALON_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.TIPOS_BALON_ELIMINAR))
 
@@ -222,6 +239,11 @@ const openEditModal = (tipoBalon: TipoBalon) => {
   formMode.value = 'edit'
   selectedTipoBalon.value = tipoBalon
   formModalOpen.value = true
+}
+
+const openDetailModal = (tipoBalon: TipoBalon) => {
+  tipoToViewId.value = tipoBalon.id
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (tipoBalon: TipoBalon) => {

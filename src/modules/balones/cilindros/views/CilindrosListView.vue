@@ -73,6 +73,7 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
           type="button"
           title="Ver"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
@@ -226,6 +227,7 @@ const balonToDelete = ref<Balon | null>(null)
 const breadcrumbItems = computed(() => balonesBreadcrumbItems('Libro de cilindros'))
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_ELIMINAR))
 
