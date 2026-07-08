@@ -1,8 +1,8 @@
 <template>
   <AppModal
     v-model="open"
-    title="Dar de baja cilindro"
-    :subtitle="balon?.codigo_balon ?? 'Registro de baja definitiva'"
+    title="Solicitar baja de cilindro"
+    :subtitle="balon?.codigo_balon ?? 'Solicitud de baja definitiva'"
     size="lg"
     @close="handleClose"
   >
@@ -10,8 +10,8 @@
       <div
         class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
       >
-        Esta acción requiere autorización de un administrador de la empresa. El cilindro quedará
-        fuera del parque activo.
+        La solicitud quedará pendiente hasta que un administrador (distinto a ti) la apruebe en
+        <strong>Aprobar bajas</strong>. El cilindro seguirá activo mientras tanto.
       </div>
 
       <AppSelect
@@ -84,17 +84,6 @@
         :error="errors.fechaBaja"
       />
 
-      <AppSelect
-        v-model="idUsuarioAutoriza"
-        label="Administrador autorizador"
-        placeholder="Selecciona administrador..."
-        :options="adminOptions"
-        :disabled="isSubmitting || usuariosQuery.isLoading.value"
-        v-bind="idUsuarioAutorizaAttrs"
-        :error="errors.idUsuarioAutoriza"
-        required
-      />
-
       <AppTextarea
         v-model="observacion"
         label="Observación"
@@ -120,7 +109,7 @@
         class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >
-        {{ isSubmitting ? 'Procesando...' : 'Confirmar baja' }}
+        {{ isSubmitting ? 'Procesando...' : 'Enviar solicitud' }}
       </button>
     </template>
   </AppModal>
@@ -136,7 +125,6 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useDarBajaBalonMutation } from '@/modules/balones/cilindros/composables/useBalonMutations'
 import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
-import { useUsuariosQuery } from '@/modules/usuarios/composables/useUsuariosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
 import { ListaIds } from '@/shared/constants/lista-ids'
@@ -165,9 +153,6 @@ const motivoBajaQuery = useListaOpcionesQuery(listaMotivoBajaId)
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
 
-const usuariosFilters = ref({ pagina: 1, limite: 200, estado: 'activos' as const })
-const usuariosQuery = useUsuariosQuery(usuariosFilters)
-
 const motivoBajaOptions = computed(() => toSelectOptions(motivoBajaQuery.data.value))
 
 const clienteOptions = computed(() =>
@@ -178,17 +163,6 @@ const clienteOptions = computed(() =>
       cliente.numero_documento,
     value: cliente.id,
   })),
-)
-
-const adminOptions = computed(() =>
-  (usuariosQuery.data.value?.data ?? [])
-    .filter((usuario) =>
-      usuario.roles?.some((rol) => rol.nombre?.toUpperCase() === 'ADMINISTRADOR'),
-    )
-    .map((usuario) => ({
-      label: usuario.nombre,
-      value: usuario.id,
-    })),
 )
 
 const motivoSeleccionado = computed(() =>
@@ -210,7 +184,6 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       serieComprobante: optionalString().max(10, 'Máximo 10 caracteres'),
       numeroComprobante: optionalString().max(15, 'Máximo 15 caracteres'),
       fechaBaja: optionalString(),
-      idUsuarioAutoriza: requiredSelect('El administrador autorizador'),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
     }),
   ),
@@ -222,7 +195,6 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     serieComprobante: '',
     numeroComprobante: '',
     fechaBaja: new Date().toISOString().slice(0, 10),
-    idUsuarioAutoriza: undefined as number | undefined,
     observacion: '',
   },
 })
@@ -234,7 +206,6 @@ const [montoVenta, montoVentaAttrs] = defineField('montoVenta')
 const [serieComprobante, serieComprobanteAttrs] = defineField('serieComprobante')
 const [numeroComprobante, numeroComprobanteAttrs] = defineField('numeroComprobante')
 const [fechaBaja, fechaBajaAttrs] = defineField('fechaBaja')
-const [idUsuarioAutoriza, idUsuarioAutorizaAttrs] = defineField('idUsuarioAutoriza')
 const [observacion, observacionAttrs] = defineField('observacion')
 
 watch(idMotivoBaja, () => {
@@ -259,7 +230,6 @@ const resetFormState = () => {
       serieComprobante: '',
       numeroComprobante: '',
       fechaBaja: new Date().toISOString().slice(0, 10),
-      idUsuarioAutoriza: undefined,
       observacion: '',
     },
   })
@@ -281,7 +251,6 @@ const onSubmit = handleSubmit(async (values) => {
         idUsuarioAuditoria: currentUserId,
         idMotivoBaja: Number(values.idMotivoBaja),
         idUsuarioSolicita: currentUserId,
-        idUsuarioAutoriza: Number(values.idUsuarioAutoriza),
         motivoDetalle: values.motivoDetalle || undefined,
         idClienteComprador: values.idClienteComprador,
         serieComprobante: values.serieComprobante || undefined,

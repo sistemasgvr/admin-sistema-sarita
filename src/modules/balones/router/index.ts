@@ -8,7 +8,7 @@ export const balonesRoutes: RouteRecordRaw[] = [
       {
         path: 'cilindros',
         name: 'admin-balones-cilindros',
-        component: () => import('@/modules/balones/cilindros/views/CilindrosListView.vue'),
+        component: () => import('@/modules/balones/cilindros/views/CilindrosTabsView.vue'),
         meta: {
           title: 'Libro de cilindros',
           module: 'balones',
@@ -65,6 +65,10 @@ export const balonesRoutes: RouteRecordRaw[] = [
           module: 'balones',
           permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,
         },
+      },
+      {
+        path: 'bajas-pendientes',
+        redirect: { name: 'admin-balones-cilindros', query: { tab: 'aprobaciones' } },
       },
       {
         path: 'mantenimientos',

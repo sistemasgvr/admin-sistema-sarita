@@ -91,10 +91,11 @@ export function useDarBajaBalonMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.baja(variables.id) })
-      toastSuccess('Cilindro dado de baja correctamente')
+      queryClient.invalidateQueries({ queryKey: ['bajas-pendientes'] })
+      toastSuccess('Solicitud de baja registrada. Un administrador debe aprobarla.')
     },
     onError: (error) => {
-      toastApiError(error, 'No se pudo dar de baja el cilindro')
+      toastApiError(error, 'No se pudo registrar la solicitud de baja')
     },
   })
 }

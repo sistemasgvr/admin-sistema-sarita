@@ -24,7 +24,7 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'cilindros',
     title: 'Libro de cilindros',
-    description: 'Registro y trazabilidad de cilindros en operación.',
+    description: 'Registro, trazabilidad y aprobación de bajas de cilindros.',
     path: '/admin/balones/cilindros',
     icon: ICONS.cylinder,
     permission: PermisoBanderas.BALONES_LISTAR,

@@ -40,6 +40,7 @@ export const ICONS = {
   loader: 'lucide:loader',
   cylinder: 'lucide:cylinder',
   archive: 'lucide:archive',
+  clipboardCheck: 'lucide:clipboard-check',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

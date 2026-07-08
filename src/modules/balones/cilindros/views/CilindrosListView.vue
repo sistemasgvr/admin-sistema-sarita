@@ -1,6 +1,10 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Libro de cilindros" :items="breadcrumbItems" />
+    <PageBreadcrumb
+      v-if="!embedded"
+      page-title="Libro de cilindros"
+      :items="breadcrumbItems"
+    />
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
@@ -126,7 +130,7 @@
         <button
           v-if="canEdit && puedeDarDeBaja(row)"
           type="button"
-          title="Dar de baja"
+          title="Solicitar baja"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
           @click="openBajaModal(row)"
         >
@@ -235,6 +239,15 @@ import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
+withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
+
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -308,6 +321,7 @@ const phBadgeColor = (estado: EstadoPh): BadgeColor => {
 const puedeDarDeBaja = (balon: Balon) =>
   balon.estado === 1 &&
   !balon.baja &&
+  !balon.tiene_solicitud_baja_pendiente &&
   balon.nombre_estado_balon?.toUpperCase() !== 'DADO_DE_BAJA'
 
 const phPorVencerOptions: SelectOption[] = [

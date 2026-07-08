@@ -1,4 +1,5 @@
 export type EstadoPh = 'VENCIDA' | 'POR_VENCER' | 'VIGENTE'
+export type EstadoAprobacionBaja = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
 
 export interface BalonBaja {
   id: number
@@ -20,6 +21,7 @@ export interface BalonBaja {
   id_usuario_autoriza?: number | null
   nombre_usuario_autoriza?: string | null
   fecha_autorizacion?: string | null
+  estado_aprobacion?: EstadoAprobacionBaja | null
 }
 
 export interface BalonPhHistorial {
@@ -77,6 +79,7 @@ export interface Balon {
   numero_recepcion?: string | null
   presion_actual?: number | null
   observacion?: string | null
+  tiene_solicitud_baja_pendiente?: boolean
   baja?: BalonBaja | null
   estado: number
   nombre_usuario_creacion?: string | null
@@ -141,11 +144,10 @@ export interface RegistrarPhHistorialPayload {
   observacion?: string
 }
 
-export interface DarBajaBalonPayload {
+export interface SolicitarBajaBalonPayload {
   idUsuarioAuditoria: number
   idMotivoBaja: number
   idUsuarioSolicita: number
-  idUsuarioAutoriza: number
   motivoDetalle?: string
   idClienteComprador?: number
   idComprobanteVenta?: number
@@ -155,6 +157,9 @@ export interface DarBajaBalonPayload {
   observacion?: string
   fechaBaja?: string
 }
+
+/** @deprecated Usar SolicitarBajaBalonPayload */
+export type DarBajaBalonPayload = SolicitarBajaBalonPayload
 
 export interface DeleteBalonResponse {
   eliminado: boolean
