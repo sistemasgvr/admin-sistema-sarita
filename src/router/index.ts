@@ -10,6 +10,8 @@ import { productosRoutes } from '@/modules/productos/router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
 import { resolvePostLoginRedirect } from '@/shared/utils/resolvePostLoginRedirect'
+import { contactosRoutes } from '@/modules/contactos/router'
+import { direccionesRoutes } from '@/modules/direcciones/router'
 
 const adminChildren: RouteRecordRaw[] = [
   {
@@ -23,6 +25,8 @@ const adminChildren: RouteRecordRaw[] = [
   ...permisosRoutes,
   ...configuracionRoutes,
   ...productosRoutes,
+  ...contactosRoutes,
+  ...direccionesRoutes,
   {
     path: ':pathMatch(.*)*',
     name: 'admin-not-found',

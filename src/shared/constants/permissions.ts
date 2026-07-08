@@ -119,6 +119,31 @@ export const PermisoBanderas = {
   MOVIMIENTOS_CREAR: 'movimientos.crear',
   MOVIMIENTOS_EDITAR: 'movimientos.editar',
   MOVIMIENTOS_ELIMINAR: 'movimientos.eliminar',
+  
+  DIRECCIONES_LISTAR: 'direcciones.listar',
+  DIRECCIONES_VER: 'direcciones.ver',
+  DIRECCIONES_CREAR: 'direcciones.crear',
+  DIRECCIONES_EDITAR: 'direcciones.editar',
+  DIRECCIONES_ELIMINAR: 'direcciones.eliminar',
+  
+  CONTACTOS_LISTAR: 'contactos.listar',
+  CONTACTOS_VER: 'contactos.ver',
+  CONTACTOS_CREAR: 'contactos.crear',
+  CONTACTOS_EDITAR: 'contactos.editar',
+  CONTACTOS_ELIMINAR: 'contactos.eliminar',
+
+  CHOFERES_LISTAR: 'choferes.listar',
+  CHOFERES_VER: 'choferes.ver',
+  CHOFERES_CREAR: 'choferes.crear',
+  CHOFERES_EDITAR: 'choferes.editar',
+  CHOFERES_ELIMINAR: 'choferes.eliminar',
+
+  VEHICULOS_LISTAR: 'vehiculos.listar',
+  VEHICULOS_VER: 'vehiculos.ver',
+  VEHICULOS_CREAR: 'vehiculos.crear',
+  VEHICULOS_EDITAR: 'vehiculos.editar',
+  VEHICULOS_ELIMINAR: 'vehiculos.eliminar',
+
 } as const
 
 export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBanderas]
