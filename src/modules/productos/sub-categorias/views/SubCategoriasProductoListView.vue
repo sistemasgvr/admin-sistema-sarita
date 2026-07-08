@@ -9,34 +9,35 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
-            <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="idCategoriaFiltro"
-                label="Categoría"
-                placeholder="Todas las categorías"
-                :options="categoriaFilterOptions"
-              />
-            </div>
-            <div class="w-full sm:max-w-sm">
+        <div class="flex flex-col gap-4">
+          <div v-if="canCreate" class="flex justify-end">
+            <button
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nueva subcategoría
+            </button>
+          </div>
+
+          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AppSelect
+              v-model="idCategoriaFiltro"
+              label="Categoría"
+              placeholder="Todas"
+              :options="categoriaFilterOptions"
+            />
+
+            <div class="sm:col-span-2 lg:col-span-1">
               <AppInput
                 v-model="buscar"
+                label="Buscar"
                 type="search"
-                placeholder="Buscar por nombre..."
+                placeholder="Nombre..."
               />
             </div>
           </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nueva subcategoría
-          </button>
         </div>
       </template>
 

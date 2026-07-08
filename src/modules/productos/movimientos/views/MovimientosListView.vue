@@ -9,62 +9,48 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div class="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-            <div class="w-full sm:max-w-[10rem]">
-              <AppInput
-                v-model="fechaDesde"
-                label="Desde"
-                type="date"
-              />
-            </div>
-
-            <div class="w-full sm:max-w-[10rem]">
-              <AppInput
-                v-model="fechaHasta"
-                label="Hasta"
-                type="date"
-              />
-            </div>
-
-            <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="idAlmacenFiltro"
-                label="Almacén"
-                placeholder="Todos"
-                :options="almacenFilterOptions"
-                :disabled="isLoadingCatalogos"
-              />
-            </div>
-
-            <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="idTipoMovimientoFiltro"
-                label="Tipo"
-                placeholder="Todos"
-                :options="tipoMovimientoFilterOptions"
-                :disabled="tiposMovimientoQuery.isFetching.value"
-              />
-            </div>
-
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por producto, almacén o glosa..."
-              />
-            </div>
+        <div class="flex flex-col gap-4">
+          <div v-if="canCreate" class="flex justify-end">
+            <button
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo movimiento
+            </button>
           </div>
 
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo movimiento
-          </button>
+          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="sm:col-span-2 lg:col-span-1">
+              <AppInput
+                v-model="buscar"
+                label="Buscar"
+                type="search"
+                placeholder="Producto, almacén o glosa..."
+              />
+            </div>
+
+            <AppInput v-model="fechaDesde" label="Desde" type="date" />
+
+            <AppInput v-model="fechaHasta" label="Hasta" type="date" />
+
+            <AppSelect
+              v-model="idAlmacenFiltro"
+              label="Almacén"
+              placeholder="Todos"
+              :options="almacenFilterOptions"
+              :disabled="isLoadingCatalogos"
+            />
+
+            <AppSelect
+              v-model="idTipoMovimientoFiltro"
+              label="Tipo"
+              placeholder="Todos"
+              :options="tipoMovimientoFilterOptions"
+              :disabled="tiposMovimientoQuery.isFetching.value"
+            />
+          </div>
         </div>
       </template>
 
