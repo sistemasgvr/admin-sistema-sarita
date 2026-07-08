@@ -57,6 +57,16 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'alquileres',
+        name: 'admin-balones-alquileres',
+        component: () => import('@/modules/balones/alquileres/views/AlquileresListView.vue'),
+        meta: {
+          title: 'Alquileres',
+          module: 'balones',
+          permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,
+        },
+      },
+      {
         path: '',
         name: 'admin-balones',
         component: () => import('@/modules/balones/views/BalonesHubView.vue'),

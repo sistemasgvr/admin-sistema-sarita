@@ -57,7 +57,7 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     path: '/admin/balones/alquileres',
     permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,
     phase: 6,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'mantenimientos',

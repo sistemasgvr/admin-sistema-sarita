@@ -64,7 +64,7 @@ export const balonesHubItems: BalonesHubItem[] = [
     path: '/admin/balones/alquileres',
     icon: ICONS.boxes,
     permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,
-    implemented: false,
+    implemented: true,
   },
   {
     key: 'mantenimientos',
