@@ -90,9 +90,8 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
-      <template #cell-nombre_estado_balon="{ value }">
-        <AppBadge v-if="value" size="sm" color="primary">{{ formatListaOpcionLabel(value) }}</AppBadge>
-        <span v-else class="text-gray-400">—</span>
+      <template #cell-nombre_estado_balon="{ row }">
+        <BalonEstadoBadge :balon="row" />
       </template>
 
       <template #cell-fecha_proxima_prueba_hidrostatica="{ row, value }">
@@ -238,7 +237,7 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 
 withDefaults(
   defineProps<{

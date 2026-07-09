@@ -7,9 +7,7 @@
   >
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
-        <AppBadge v-if="balon?.nombre_estado_balon" color="primary">
-          {{ formatListaOpcionLabel(balon.nombre_estado_balon) }}
-        </AppBadge>
+        <BalonEstadoBadge v-if="balon" :balon="balon" size="md" />
         <AppBadge v-if="balon?.nombre_tipo_balon" color="neutral">
           {{ balon.nombre_tipo_balon }}
         </AppBadge>
@@ -22,6 +20,14 @@
       </template>
 
       <template #extra>
+        <div
+          v-if="balon?.tiene_solicitud_baja_pendiente"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+        >
+          Este cilindro tiene una <strong>solicitud de baja pendiente</strong> de aprobación por un
+          administrador en la pestaña <strong>Aprobar bajas</strong>.
+        </div>
+
         <DetailSectionCard
           v-if="balon?.baja"
           title="Baja del cilindro"
@@ -144,7 +150,7 @@ import {
   formatDetailDateTime,
   formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import {
   useBalonQuery,
