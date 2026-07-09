@@ -74,7 +74,7 @@
           variant="light"
           :color="String(value).toUpperCase().includes('SALIDA') ? 'error' : 'success'"
         >
-          {{ value }}
+          {{ formatListaOpcionLabel(value as string) }}
         </AppBadge>
       </template>
 
@@ -224,6 +224,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const authStore = useAuthStore()
 const breadcrumbItems = productosBreadcrumbItems('Movimientos')

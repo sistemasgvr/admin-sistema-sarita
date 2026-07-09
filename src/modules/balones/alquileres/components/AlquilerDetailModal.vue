@@ -8,7 +8,7 @@
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
         <AppBadge v-if="alquiler?.nombre_estado" color="primary">
-          {{ alquiler.nombre_estado }}
+          {{ formatListaOpcionLabel(alquiler.nombre_estado) }}
         </AppBadge>
         <AppBadge color="neutral">{{ detalleRows.length }} cilindros</AppBadge>
       </template>
@@ -53,8 +53,10 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
+  formatDetailListaOpcion,
   formatDetailMoney,
 } from '@/shared/components/detail/detailFormatters'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
@@ -97,7 +99,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Número', value: data.numero_alquiler },
         { label: 'Cliente', value: data.nombre_cliente },
         { label: 'Almacén', value: data.nombre_almacen },
-        { label: 'Estado', value: data.nombre_estado },
+        { label: 'Estado', value: formatDetailListaOpcion(data.nombre_estado) },
       ],
     },
     { title: 'Vigencia', icon: ICONS.calendar, items: [

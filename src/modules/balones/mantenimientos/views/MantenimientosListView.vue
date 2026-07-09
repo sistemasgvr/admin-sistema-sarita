@@ -65,7 +65,7 @@
       </template>
 
       <template #cell-nombre_tipo_mantenimiento="{ value }">
-        <span v-if="value">{{ value }}</span>
+        <span v-if="value">{{ formatListaOpcionLabel(value) }}</span>
         <span v-else class="text-gray-400">—</span>
       </template>
 
@@ -92,7 +92,7 @@
       </template>
 
       <template #cell-nombre_estado="{ value }">
-        <span v-if="value">{{ value }}</span>
+        <span v-if="value">{{ formatListaOpcionLabel(value) }}</span>
         <span v-else class="text-gray-400">—</span>
       </template>
 
@@ -216,6 +216,7 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const authStore = useAuthStore()
 

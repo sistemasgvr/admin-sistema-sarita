@@ -1,4 +1,13 @@
 import { formatDateTime } from '@/shared/utils/date'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+
+export const formatDetailListaOpcion = (
+  nombre?: string | null,
+  descripcion?: string | null,
+) => {
+  const label = formatListaOpcionLabel(nombre, descripcion)
+  return label || undefined
+}
 
 export const formatDetailDate = (value?: string | null) =>
   value ? value.slice(0, 10) : undefined

@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Detalle del movimiento"
-    :subtitle="movimiento?.nombre_tipo_movimiento"
+    :subtitle="movimiento?.nombre_tipo_movimiento ? formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) : undefined"
     size="lg"
   >
     <DetailCardsLayout :loading="false" :sections="sections">
@@ -15,7 +15,7 @@
               : 'success'
           "
         >
-          {{ movimiento.nombre_tipo_movimiento }}
+          {{ formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) }}
         </AppBadge>
       </template>
     </DetailCardsLayout>
@@ -39,7 +39,9 @@ import {
   formatDetailCantidad,
   formatDetailDate,
   formatDetailDateTime,
+  formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import type { MovimientoInventario } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
 import { AppBadge, AppModal } from '@/shared/components'
@@ -66,7 +68,7 @@ const sections = computed<DetailSection[]>(() => {
       icon: ICONS.arrowLeftRight,
       items: [
         { label: 'Fecha', value: formatDetailDate(data.fecha) },
-        { label: 'Tipo', value: data.nombre_tipo_movimiento },
+        { label: 'Tipo', value: formatDetailListaOpcion(data.nombre_tipo_movimiento) },
         { label: 'Cantidad', value: formatDetailCantidad(data.cantidad) },
         { label: 'Stock anterior / nuevo', value: stockCambio },
       ],
@@ -84,7 +86,7 @@ const sections = computed<DetailSection[]>(() => {
       title: 'Referencia',
       icon: ICONS.clipboardList,
       items: [
-        { label: 'Tipo documento', value: data.nombre_tipo_documento_ref },
+        { label: 'Tipo documento', value: formatDetailListaOpcion(data.nombre_tipo_documento_ref) },
         { label: 'ID documento', value: data.id_documento_ref?.toString() },
         { label: 'Glosa', value: data.glosa },
       ],

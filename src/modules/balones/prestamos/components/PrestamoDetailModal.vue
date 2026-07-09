@@ -8,10 +8,10 @@
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
         <AppBadge v-if="prestamo?.nombre_tipo_prestamo" color="primary">
-          {{ prestamo.nombre_tipo_prestamo }}
+          {{ formatListaOpcionLabel(prestamo.nombre_tipo_prestamo) }}
         </AppBadge>
         <AppBadge v-if="prestamo?.nombre_estado" color="neutral">
-          {{ prestamo.nombre_estado }}
+          {{ formatListaOpcionLabel(prestamo.nombre_estado) }}
         </AppBadge>
         <AppBadge color="neutral">{{ detalleRows.length }} cilindros</AppBadge>
       </template>
@@ -56,7 +56,9 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
+  formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
@@ -104,8 +106,8 @@ const sections = computed<DetailSection[]>(() => {
     { title: 'Datos generales', icon: ICONS.clipboardList, items: [
         { label: 'Número', value: data.numero_prestamo },
         { label: 'Título', value: data.titulo },
-        { label: 'Tipo', value: data.nombre_tipo_prestamo },
-        { label: 'Estado', value: data.nombre_estado },
+        { label: 'Tipo', value: formatDetailListaOpcion(data.nombre_tipo_prestamo) },
+        { label: 'Estado', value: formatDetailListaOpcion(data.nombre_estado) },
         { label: 'Almacén', value: data.nombre_almacen },
       ],
     },

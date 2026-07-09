@@ -8,7 +8,7 @@
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
         <AppBadge v-if="balon?.nombre_estado_balon" color="primary">
-          {{ balon.nombre_estado_balon }}
+          {{ formatListaOpcionLabel(balon.nombre_estado_balon) }}
         </AppBadge>
         <AppBadge v-if="balon?.nombre_tipo_balon" color="neutral">
           {{ balon.nombre_tipo_balon }}
@@ -142,7 +142,9 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
+  formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import {
   useBalonQuery,
@@ -207,8 +209,8 @@ const sections = computed<DetailSection[]>(() => {
       items: [
         { label: 'Tipo de balón', value: data.nombre_tipo_balon },
         { label: 'Gas', value: data.nombre_producto_gas },
-        { label: 'Propietario', value: data.nombre_propietario },
-        { label: 'Referencia', value: data.nombre_referencia },
+        { label: 'Propietario', value: formatDetailListaOpcion(data.nombre_propietario) },
+        { label: 'Referencia', value: formatDetailListaOpcion(data.nombre_referencia) },
         { label: 'Almacén', value: data.nombre_almacen },
         { label: 'Cliente ubicación', value: data.nombre_cliente_ubicacion },
         { label: 'Cliente propietario', value: data.nombre_cliente_propietario },

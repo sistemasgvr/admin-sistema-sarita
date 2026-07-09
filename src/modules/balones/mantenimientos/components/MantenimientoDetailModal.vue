@@ -8,10 +8,10 @@
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
         <AppBadge v-if="mantenimiento?.nombre_tipo_mantenimiento" color="primary">
-          {{ mantenimiento.nombre_tipo_mantenimiento }}
+          {{ formatListaOpcionLabel(mantenimiento.nombre_tipo_mantenimiento) }}
         </AppBadge>
         <AppBadge v-if="mantenimiento?.nombre_estado" color="neutral">
-          {{ mantenimiento.nombre_estado }}
+          {{ formatListaOpcionLabel(mantenimiento.nombre_estado) }}
         </AppBadge>
         <AppBadge
           :color="mantenimiento?.es_externo ? 'warning' : undefined"
@@ -61,9 +61,11 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
+  formatDetailListaOpcion,
   formatDetailMoney,
   formatDetailYesNo,
 } from '@/shared/components/detail/detailFormatters'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import { AppBadge, AppModal } from '@/shared/components'
@@ -88,8 +90,8 @@ const sections = computed<DetailSection[]>(() => {
       icon: ICONS.construction,
       items: [
         { label: 'Cilindro', value: data.codigo_balon },
-        { label: 'Tipo', value: data.nombre_tipo_mantenimiento },
-        { label: 'Estado', value: data.nombre_estado },
+        { label: 'Tipo', value: formatDetailListaOpcion(data.nombre_tipo_mantenimiento) },
+        { label: 'Estado', value: formatDetailListaOpcion(data.nombre_estado) },
         { label: 'Origen', value: formatDetailYesNo(data.es_externo, 'Externo', 'Interno') },
         { label: 'Costo', value: formatDetailMoney(data.costo) },
       ],
