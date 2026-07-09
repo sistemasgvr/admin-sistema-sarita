@@ -9,39 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Nombre, producto o periodo..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo ítem
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <AppSelect
-              v-model="idTipoCatalogoFiltro"
-              label="Tipo"
-              placeholder="Todos"
-              :options="tipoCatalogoFilterOptions"
-              :disabled="tiposCatalogoQuery.isFetching.value"
-            />
-
-            <AppInput v-model="periodoFiltro" label="Periodo" placeholder="2026-Q2" />
-
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Nombre, producto o periodo..."
-              />
-            </div>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-nombre_tipo_catalogo="{ value }">
@@ -180,16 +166,16 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -200,8 +186,7 @@ const tiposCatalogoQuery = useListaOpcionesQuery(listaTipoCatalogoId)
 
 const productos = ref<Producto[]>([])
 
-const idTipoCatalogoFiltro = ref<string | number>('')
-const periodoFiltro = ref('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
@@ -233,12 +218,24 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CATALOG
 const isLoading = computed(() => catalogoPreciosQuery.isFetching.value)
 const rows = computed(() => catalogoPreciosQuery.data.value?.data ?? [])
 
-const tipoCatalogoFilterOptions = computed(() => [
-  { value: '', label: 'Todos los tipos' },
-  ...(tiposCatalogoQuery.data.value ?? []).map((opcion) => ({
-    value: opcion.id,
-    label: opcion.nombre,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idTipoCatalogo',
+    label: 'Tipo',
+    type: 'select',
+    placeholder: 'Seleccionar tipo',
+    disabled: tiposCatalogoQuery.isFetching.value,
+    options: (tiposCatalogoQuery.data.value ?? []).map((opcion) => ({
+      value: opcion.id,
+      label: opcion.nombre,
+    })),
+  },
+  {
+    key: 'periodo',
+    label: 'Periodo',
+    type: 'text',
+    placeholder: '2026-Q2',
+  },
 ])
 
 const columns = computed<TableColumn<CatalogoPrecio>[]>(() => [
@@ -251,7 +248,36 @@ const columns = computed<TableColumn<CatalogoPrecio>[]>(() => [
 ])
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
-let periodoTimeout: ReturnType<typeof setTimeout> | undefined
+
+const syncFilters = () => {
+  const active = dynamicFilters.value
+
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idTipoCatalogo:
+      active.idTipoCatalogo != null ? Number(active.idTipoCatalogo) : undefined,
+    periodo: active.periodo ? String(active.periodo).trim() || undefined : undefined,
+  }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
+})
+
+watch([pagina, limite], () => {
+  syncFilters()
+})
 
 const formatPrecio = (value: unknown) => {
   const amount = Number(value ?? 0)
@@ -268,47 +294,6 @@ onMounted(async () => {
     productos.value = response.data
   } catch {
     productos.value = []
-  }
-})
-
-watch(idTipoCatalogoFiltro, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    idTipoCatalogo: value ? Number(value) : undefined,
-    pagina: 1,
-  }
-})
-
-watch(periodoFiltro, (value) => {
-  clearTimeout(periodoTimeout)
-  periodoTimeout = setTimeout(() => {
-    pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      periodo: value.trim() || undefined,
-      pagina: 1,
-    }
-  }, 350)
-})
-
-watch(buscar, (value) => {
-  clearTimeout(buscarTimeout)
-  buscarTimeout = setTimeout(() => {
-    pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
-  }, 350)
-})
-
-watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
   }
 })
 

@@ -48,7 +48,7 @@
             ref="dropdownRef"
             role="listbox"
             :style="dropdownStyle"
-            class="custom-scrollbar fixed z-[100000] max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
+            class="app-select-dropdown fixed z-[100001] max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
           >
             <button
               v-for="option in options"

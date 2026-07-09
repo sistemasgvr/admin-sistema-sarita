@@ -8,7 +8,7 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-3">
           <div
             class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
           >
@@ -16,16 +16,10 @@
             distinto al solicitante puede aprobar o rechazar.
           </div>
 
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="sm:col-span-2">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Cilindro, motivo o solicitante..."
-              />
-            </div>
-          </div>
+          <AppListToolbar
+            v-model:search="buscar"
+            search-placeholder="Cilindro, motivo o solicitante..."
+          />
         </div>
       </template>
 
@@ -261,7 +255,7 @@ import { useBajasPendientesQuery } from '@/modules/balones/bajas-pendientes/comp
 import type { BajaSolicitud } from '@/modules/balones/bajas-pendientes/interfaces/baja-solicitud.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppPagination, AppTable, AppTextarea } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable, AppTextarea } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -385,11 +379,25 @@ const confirmarRechazo = async () => {
   }
 }
 
-watch([buscar, pagina, limite], () => {
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
+
+const syncFilters = () => {
   filters.value = {
-    buscar: buscar.value,
+    buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
   }
+}
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
+})
+
+watch([pagina, limite], () => {
+  syncFilters()
 })
 </script>

@@ -4,49 +4,25 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Cilindro, GRE o factura..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva recarga
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Cilindro, GRE o factura..."
-              />
-            </div>
-
-            <AppInput v-model="fechaDesde" label="Desde" type="date" />
-
-            <AppInput v-model="fechaHasta" label="Hasta" type="date" />
-
-            <AppSelect
-              v-model="idBalonFiltro"
-              label="Cilindro"
-              placeholder="Todos"
-              :options="balonFilterOptions"
-              :disabled="balonesQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="idAlmacenFiltro"
-              label="Almacén"
-              placeholder="Todos"
-              :options="almacenFilterOptions"
-              :disabled="almacenesQuery.isLoading.value"
-            />
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-vigencia="{ row }">
@@ -194,21 +170,18 @@ import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalo
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const fechaDesde = ref('')
-const fechaHasta = ref('')
-const idBalonFiltro = ref<number | ''>('')
-const idAlmacenFiltro = ref<number | ''>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -266,22 +239,39 @@ const columns: TableColumn[] = [
   { key: 'nombre_almacen', label: 'Almacén' },
 ]
 
-const allOption = (): SelectOption => ({ value: '', label: 'Todos' })
-
-const balonFilterOptions = computed(() => [
-  allOption(),
-  ...(balonesQuery.data.value?.data ?? []).map((balon) => ({
-    value: balon.id,
-    label: balon.codigo_balon,
-  })),
-])
-
-const almacenFilterOptions = computed(() => [
-  allOption(),
-  ...(almacenesQuery.data.value?.data ?? []).map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'fechaDesde',
+    label: 'Desde',
+    type: 'date',
+  },
+  {
+    key: 'fechaHasta',
+    label: 'Hasta',
+    type: 'date',
+  },
+  {
+    key: 'idBalon',
+    label: 'Cilindro',
+    type: 'select',
+    placeholder: 'Seleccionar cilindro',
+    disabled: balonesQuery.isLoading.value,
+    options: (balonesQuery.data.value?.data ?? []).map((balon) => ({
+      value: balon.id,
+      label: balon.codigo_balon,
+    })),
+  },
+  {
+    key: 'idAlmacen',
+    label: 'Almacén',
+    type: 'select',
+    placeholder: 'Seleccionar almacén',
+    disabled: almacenesQuery.isLoading.value,
+    options: (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
+      value: almacen.id,
+      label: almacen.nombre,
+    })),
+  },
 ])
 
 const formatDocumento = (serie?: string | null, numero?: string | null) => {
@@ -290,21 +280,33 @@ const formatDocumento = (serie?: string | null, numero?: string | null) => {
   return serie || numero || '—'
 }
 
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
+
 const syncFilters = () => {
+  const active = dynamicFilters.value
+
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
-    fechaDesde: fechaDesde.value || undefined,
-    fechaHasta: fechaHasta.value || undefined,
-    idBalon: idBalonFiltro.value === '' ? undefined : Number(idBalonFiltro.value),
-    idAlmacen: idAlmacenFiltro.value === '' ? undefined : Number(idAlmacenFiltro.value),
+    fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
+    fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
+    idBalon: active.idBalon != null ? Number(active.idBalon) : undefined,
+    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
   }
 }
 
-watch([buscar, fechaDesde, fechaHasta, idBalonFiltro, idAlmacenFiltro], () => {
+const onFiltersChange = () => {
   pagina.value = 1
   syncFilters()
+}
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
 })
 
 watch([pagina, limite], () => {

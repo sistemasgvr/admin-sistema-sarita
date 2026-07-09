@@ -9,41 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Almacén, código o producto..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Registrar stock
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <AppSelect
-              v-model="idAlmacenFiltro"
-              label="Almacén"
-              placeholder="Todos"
-              :options="almacenFilterOptions"
-              :disabled="isLoadingAlmacenes"
-            />
-
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Almacén, código o producto..."
-              />
-            </div>
-
-            <div class="flex items-end pb-1">
-              <AppCheckbox v-model="soloBajoMinimo" label="Solo bajo mínimo" />
-            </div>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-almacen="{ row }">
@@ -215,16 +199,15 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppCheckbox,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -234,8 +217,7 @@ const almacenes = ref<Almacen[]>([])
 const productos = ref<Producto[]>([])
 const isLoadingAlmacenes = ref(false)
 
-const idAlmacenFiltro = ref<string | number>('')
-const soloBajoMinimo = ref(false)
+const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
@@ -267,14 +249,26 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_E
 const isLoading = computed(() => stockQuery.isFetching.value)
 const rows = computed(() => stockQuery.data.value?.data ?? [])
 
-const almacenFilterOptions = computed(() => [
-  { value: '', label: 'Todos los almacenes' },
-  ...almacenes.value.map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre_sucursal
-      ? `${almacen.nombre} (${almacen.nombre_sucursal})`
-      : almacen.nombre,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idAlmacen',
+    label: 'Almacén',
+    type: 'select',
+    placeholder: 'Seleccionar almacén',
+    disabled: isLoadingAlmacenes.value,
+    options: almacenes.value.map((almacen) => ({
+      value: almacen.id,
+      label: almacen.nombre_sucursal
+        ? `${almacen.nombre} (${almacen.nombre_sucursal})`
+        : almacen.nombre,
+    })),
+  },
+  {
+    key: 'soloBajoMinimo',
+    label: 'Bajo mínimo',
+    type: 'checkbox',
+    placeholder: 'Solo bajo mínimo',
+  },
 ])
 
 const columns = computed<TableColumn<Stock>[]>(() => [
@@ -317,42 +311,33 @@ onMounted(() => {
   loadCatalogos()
 })
 
-watch(idAlmacenFiltro, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    idAlmacen: value ? Number(value) : undefined,
-    pagina: 1,
-  }
-})
+const syncFilters = () => {
+  const active = dynamicFilters.value
 
-watch(soloBajoMinimo, (value) => {
-  pagina.value = 1
   filters.value = {
-    ...filters.value,
-    soloBajoMinimo: value ? true : undefined,
-    pagina: 1,
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    soloBajoMinimo: active.soloBajoMinimo === true ? true : undefined,
   }
-})
+}
 
-watch(buscar, (value) => {
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {

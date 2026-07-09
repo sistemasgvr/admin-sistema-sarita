@@ -9,44 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Código, nombre o marca..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo producto
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <AppSelect
-              v-model="idCategoriaFiltro"
-              label="Categoría"
-              placeholder="Todas"
-              :options="categoriaFilterOptions"
-            />
-
-            <AppSelect
-              v-model="idSubCategoriaFiltro"
-              label="Subcategoría"
-              placeholder="Todas"
-              :disabled="!idCategoriaFiltro"
-              :options="subCategoriaFilterOptions"
-            />
-
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Código, nombre o marca..."
-              />
-            </div>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-categoria="{ row }">
@@ -180,10 +161,11 @@ import { productosBreadcrumbItems } from '@/modules/productos/config/productos-b
 import { subCategoriasProductoService } from '@/modules/productos/sub-categorias/services/sub-categorias-producto.service'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -193,8 +175,7 @@ const breadcrumbItems = productosBreadcrumbItems('Productos')
 const categorias = ref<CategoriaProducto[]>([])
 const subCategorias = ref<SubCategoriaProducto[]>([])
 
-const idCategoriaFiltro = ref<string | number>('')
-const idSubCategoriaFiltro = ref<string | number>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
@@ -226,27 +207,38 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCT
 const isLoading = computed(() => productosQuery.isFetching.value)
 const rows = computed(() => productosQuery.data.value?.data ?? [])
 
-const categoriaFilterOptions = computed(() => [
-  { value: '', label: 'Todas las categorías' },
-  ...categorias.value.map((categoria) => ({
-    value: categoria.id,
-    label: categoria.nombre,
-  })),
-])
-
-const subCategoriaFilterOptions = computed(() => {
-  const categoriaId = idCategoriaFiltro.value ? Number(idCategoriaFiltro.value) : null
+const filterFields = computed<DynamicFilterFieldDef[]>(() => {
+  const categoriaId =
+    dynamicFilters.value.idCategoria != null
+      ? Number(dynamicFilters.value.idCategoria)
+      : null
 
   return [
-    { value: '', label: 'Todas las subcategorías' },
-    ...subCategorias.value
-      .filter((subCategoria) =>
-        categoriaId ? subCategoria.id_categoria === categoriaId : true,
-      )
-      .map((subCategoria) => ({
-        value: subCategoria.id,
-        label: subCategoria.nombre,
+    {
+      key: 'idCategoria',
+      label: 'Categoría',
+      type: 'select',
+      placeholder: 'Seleccionar categoría',
+      options: categorias.value.map((categoria) => ({
+        value: categoria.id,
+        label: categoria.nombre,
       })),
+    },
+    {
+      key: 'idSubCategoria',
+      label: 'Subcategoría',
+      type: 'select',
+      placeholder: 'Seleccionar subcategoría',
+      disabled: !categoriaId,
+      options: subCategorias.value
+        .filter((subCategoria) =>
+          categoriaId ? subCategoria.id_categoria === categoriaId : true,
+        )
+        .map((subCategoria) => ({
+          value: subCategoria.id,
+          label: subCategoria.nombre,
+        })),
+    },
   ]
 })
 
@@ -289,67 +281,65 @@ onMounted(async () => {
 
   const idCategoriaQuery = route.query.idCategoria
   const idSubCategoriaQuery = route.query.idSubCategoria
+  const initialFilters: DynamicFilterValues = {}
 
   if (idCategoriaQuery) {
-    idCategoriaFiltro.value = Number(idCategoriaQuery)
+    initialFilters.idCategoria = Number(idCategoriaQuery)
   }
 
   if (idSubCategoriaQuery) {
-    idSubCategoriaFiltro.value = Number(idSubCategoriaQuery)
+    initialFilters.idSubCategoria = Number(idSubCategoriaQuery)
+  }
+
+  if (Object.keys(initialFilters).length) {
+    dynamicFilters.value = initialFilters
+    syncFilters()
   }
 })
 
-watch(idCategoriaFiltro, (value) => {
-  const categoriaId = value ? Number(value) : null
+const syncFilters = () => {
+  const active = dynamicFilters.value
 
-  if (idSubCategoriaFiltro.value) {
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
+    idSubCategoria:
+      active.idSubCategoria != null ? Number(active.idSubCategoria) : undefined,
+  }
+}
+
+const onFiltersChange = () => {
+  const active = { ...dynamicFilters.value }
+  const categoriaId =
+    active.idCategoria != null ? Number(active.idCategoria) : null
+
+  if (active.idSubCategoria != null) {
     const subCategoria = subCategorias.value.find(
-      (item) => item.id === Number(idSubCategoriaFiltro.value),
+      (item) => item.id === Number(active.idSubCategoria),
     )
 
     if (!categoriaId || subCategoria?.id_categoria !== categoriaId) {
-      idSubCategoriaFiltro.value = ''
+      delete active.idSubCategoria
+      dynamicFilters.value = active
     }
   }
 
   pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    idCategoria: categoriaId ?? undefined,
-    idSubCategoria: idSubCategoriaFiltro.value
-      ? Number(idSubCategoriaFiltro.value)
-      : undefined,
-    pagina: 1,
-  }
-})
+  syncFilters()
+}
 
-watch(idSubCategoriaFiltro, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    idSubCategoria: value ? Number(value) : undefined,
-    pagina: 1,
-  }
-})
-
-watch(buscar, (value) => {
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {

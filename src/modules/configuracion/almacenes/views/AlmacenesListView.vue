@@ -9,37 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Nombre o ubicación..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo almacén
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Nombre o ubicación..."
-              />
-            </div>
-
-            <AppSelect
-              v-model="idSucursalFilter"
-              label="Sucursal"
-              placeholder="Todas"
-              :options="sucursalFilterOptions"
-              :disabled="isLoadingSucursales"
-            />
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #actions="{ row }">
@@ -133,18 +121,19 @@ import type {
 import { sucursalesService } from '@/modules/configuracion/sucursales/services/sucursales.service'
 import type { Sucursal } from '@/modules/configuracion/sucursales/interfaces/sucursal.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
-const idSucursalFilter = ref<string | number>('')
 
 const filters = ref<AlmacenListFilters>({
   buscar: '',
@@ -172,12 +161,18 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ALMACEN
 const isLoading = computed(() => almacenesQuery.isFetching.value)
 const rows = computed(() => almacenesQuery.data.value?.data ?? [])
 
-const sucursalFilterOptions = computed(() => [
-  { value: '', label: 'Todas las sucursales' },
-  ...sucursales.value.map((sucursal) => ({
-    value: sucursal.id,
-    label: sucursal.nombre,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idSucursal',
+    label: 'Sucursal',
+    type: 'select',
+    placeholder: 'Seleccionar sucursal',
+    disabled: isLoadingSucursales.value,
+    options: sucursales.value.map((sucursal) => ({
+      value: sucursal.id,
+      label: sucursal.nombre,
+    })),
+  },
 ])
 
 const columns = computed<TableColumn<Almacen>[]>(() => [
@@ -200,33 +195,32 @@ const loadSucursales = async () => {
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+const syncFilters = () => {
+  const active = dynamicFilters.value
+
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idSucursal: active.idSucursal != null ? Number(active.idSucursal) : undefined,
+  }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
-})
-
-watch(idSucursalFilter, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    idSucursal: value ? Number(value) : undefined,
-    pagina: 1,
-  }
+  syncFilters()
 })
 
 onMounted(() => {

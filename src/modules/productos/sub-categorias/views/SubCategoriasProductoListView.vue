@@ -9,36 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Nombre..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva subcategoría
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <AppSelect
-              v-model="idCategoriaFiltro"
-              label="Categoría"
-              placeholder="Todas"
-              :options="categoriaFilterOptions"
-            />
-
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Nombre..."
-              />
-            </div>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-total_productos="{ value }">
@@ -155,10 +144,11 @@ import type {
   SubCategoriaProductoListFilters,
 } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -166,7 +156,7 @@ const route = useRoute()
 const breadcrumbItems = productosBreadcrumbItems('Subcategorías')
 
 const categorias = ref<CategoriaProducto[]>([])
-const idCategoriaFiltro = ref<string | number>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
@@ -198,12 +188,17 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.SUB_CAT
 const isLoading = computed(() => subCategoriasQuery.isFetching.value)
 const rows = computed(() => subCategoriasQuery.data.value?.data ?? [])
 
-const categoriaFilterOptions = computed(() => [
-  { value: '', label: 'Todas las categorías' },
-  ...categorias.value.map((categoria) => ({
-    value: categoria.id,
-    label: categoria.nombre,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idCategoria',
+    label: 'Categoría',
+    type: 'select',
+    placeholder: 'Seleccionar categoría',
+    options: categorias.value.map((categoria) => ({
+      value: categoria.id,
+      label: categoria.nombre,
+    })),
+  },
 ])
 
 const columns = computed<TableColumn<SubCategoriaProducto>[]>(() => [
@@ -225,37 +220,37 @@ onMounted(async () => {
 
   const idCategoriaQuery = route.query.idCategoria
   if (idCategoriaQuery) {
-    idCategoriaFiltro.value = Number(idCategoriaQuery)
+    dynamicFilters.value = { idCategoria: Number(idCategoriaQuery) }
+    syncFilters()
   }
 })
 
-watch(idCategoriaFiltro, (value) => {
-  pagina.value = 1
+const syncFilters = () => {
+  const active = dynamicFilters.value
+
   filters.value = {
-    ...filters.value,
-    idCategoria: value ? Number(value) : undefined,
-    pagina: 1,
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
   }
-})
+}
 
-watch(buscar, (value) => {
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {

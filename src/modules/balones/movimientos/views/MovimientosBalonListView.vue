@@ -4,57 +4,25 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Código, tipo, observación..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo movimiento
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Código, tipo, observación..."
-              />
-            </div>
-
-            <AppInput v-model="fechaDesde" label="Desde" type="date" />
-
-            <AppInput v-model="fechaHasta" label="Hasta" type="date" />
-
-            <AppSelect
-              v-model="idBalonFiltro"
-              label="Cilindro"
-              placeholder="Todos"
-              :options="balonFilterOptions"
-              :disabled="balonesQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="idTipoMovimientoFiltro"
-              label="Tipo"
-              placeholder="Todos"
-              :options="tipoMovimientoFilterOptions"
-              :disabled="tiposMovimientoQuery.isFetching.value"
-            />
-
-            <AppSelect
-              v-model="idClienteFiltro"
-              label="Cliente"
-              placeholder="Todos"
-              :options="clienteFilterOptions"
-              :disabled="clientesQuery.isLoading.value"
-            />
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-fecha_movimiento="{ value }">
@@ -212,17 +180,16 @@ import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuer
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { formatDateTime } from '@/shared/utils/date'
@@ -230,11 +197,7 @@ import { formatDateTime } from '@/shared/utils/date'
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const fechaDesde = ref('')
-const fechaHasta = ref('')
-const idBalonFiltro = ref<number | ''>('')
-const idTipoMovimientoFiltro = ref<number | ''>('')
-const idClienteFiltro = ref<number | ''>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -296,49 +259,81 @@ const columns: TableColumn[] = [
   // { key: 'observacion', label: 'Observación' },
 ]
 
-const allOption = (): SelectOption => ({ value: '', label: 'Todos' })
-
-const balonFilterOptions = computed(() => [
-  allOption(),
-  ...(balonesQuery.data.value?.data ?? []).map((balon) => ({
-    value: balon.id,
-    label: balon.codigo_balon,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'fechaDesde',
+    label: 'Desde',
+    type: 'date',
+  },
+  {
+    key: 'fechaHasta',
+    label: 'Hasta',
+    type: 'date',
+  },
+  {
+    key: 'idBalon',
+    label: 'Cilindro',
+    type: 'select',
+    placeholder: 'Seleccionar cilindro',
+    disabled: balonesQuery.isLoading.value,
+    options: (balonesQuery.data.value?.data ?? []).map((balon) => ({
+      value: balon.id,
+      label: balon.codigo_balon,
+    })),
+  },
+  {
+    key: 'idTipoMovimiento',
+    label: 'Tipo',
+    type: 'select',
+    placeholder: 'Seleccionar tipo',
+    disabled: tiposMovimientoQuery.isFetching.value,
+    options: toSelectOptions(tiposMovimientoQuery.data.value),
+  },
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    placeholder: 'Seleccionar cliente',
+    disabled: clientesQuery.isLoading.value,
+    options: (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+      value: cliente.id,
+      label:
+        cliente.razon_social ||
+        [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
+        cliente.numero_documento,
+    })),
+  },
 ])
 
-const tipoMovimientoFilterOptions = computed(() => [
-  allOption(),
-  ...toSelectOptions(tiposMovimientoQuery.data.value),
-])
-
-const clienteFilterOptions = computed(() => [
-  allOption(),
-  ...(clientesQuery.data.value?.data ?? []).map((cliente) => ({
-    value: cliente.id,
-    label:
-      cliente.razon_social ||
-      [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
-      cliente.numero_documento,
-  })),
-])
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const syncFilters = () => {
+  const active = dynamicFilters.value
+
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
-    fechaDesde: fechaDesde.value || undefined,
-    fechaHasta: fechaHasta.value || undefined,
-    idBalon: idBalonFiltro.value === '' ? undefined : Number(idBalonFiltro.value),
+    fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
+    fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
+    idBalon: active.idBalon != null ? Number(active.idBalon) : undefined,
     idTipoMovimiento:
-      idTipoMovimientoFiltro.value === '' ? undefined : Number(idTipoMovimientoFiltro.value),
-    idCliente: idClienteFiltro.value === '' ? undefined : Number(idClienteFiltro.value),
+      active.idTipoMovimiento != null ? Number(active.idTipoMovimiento) : undefined,
+    idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
   }
 }
 
-watch([buscar, fechaDesde, fechaHasta, idBalonFiltro, idTipoMovimientoFiltro, idClienteFiltro], () => {
+const onFiltersChange = () => {
   pagina.value = 1
   syncFilters()
+}
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
 })
 
 watch([pagina, limite], () => {

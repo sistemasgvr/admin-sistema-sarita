@@ -4,53 +4,25 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Número o título..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo préstamo
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Número o título..."
-              />
-            </div>
-
-            <AppSelect
-              v-model="idTipoPrestamoFiltro"
-              label="Tipo"
-              placeholder="Todos"
-              :options="tipoPrestamoFilterOptions"
-              :disabled="tiposPrestamoQuery.isFetching.value"
-            />
-
-            <AppSelect
-              v-model="idClienteFiltro"
-              label="Cliente"
-              placeholder="Todos"
-              :options="clienteFilterOptions"
-              :disabled="clientesQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="idEstadoFiltro"
-              label="Estado"
-              placeholder="Todos"
-              :options="estadoPrestamoFilterOptions"
-              :disabled="estadosPrestamoQuery.isFetching.value"
-            />
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-prestamo="{ row }">
@@ -195,21 +167,19 @@ import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaO
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const idTipoPrestamoFiltro = ref<number | ''>('')
-const idClienteFiltro = ref<number | ''>('')
-const idEstadoFiltro = ref<number | ''>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -262,44 +232,65 @@ const columns: TableColumn[] = [
   { key: 'total_detalles', label: 'Cilindros' },
 ]
 
-const allOption = (): SelectOption => ({ value: '', label: 'Todos' })
-
-const tipoPrestamoFilterOptions = computed(() => [
-  allOption(),
-  ...toSelectOptions(tiposPrestamoQuery.data.value),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idTipoPrestamo',
+    label: 'Tipo',
+    type: 'select',
+    placeholder: 'Seleccionar tipo',
+    disabled: tiposPrestamoQuery.isFetching.value,
+    options: toSelectOptions(tiposPrestamoQuery.data.value),
+  },
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    placeholder: 'Seleccionar cliente',
+    disabled: clientesQuery.isLoading.value,
+    options: (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+      value: cliente.id,
+      label:
+        cliente.razon_social ||
+        [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
+        cliente.numero_documento,
+    })),
+  },
+  {
+    key: 'idEstado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar estado',
+    disabled: estadosPrestamoQuery.isFetching.value,
+    options: toSelectOptions(estadosPrestamoQuery.data.value),
+  },
 ])
 
-const estadoPrestamoFilterOptions = computed(() => [
-  allOption(),
-  ...toSelectOptions(estadosPrestamoQuery.data.value),
-])
-
-const clienteFilterOptions = computed(() => [
-  allOption(),
-  ...(clientesQuery.data.value?.data ?? []).map((cliente) => ({
-    value: cliente.id,
-    label:
-      cliente.razon_social ||
-      [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
-      cliente.numero_documento,
-  })),
-])
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const syncFilters = () => {
+  const active = dynamicFilters.value
+
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
-    idTipoPrestamo:
-      idTipoPrestamoFiltro.value === '' ? undefined : Number(idTipoPrestamoFiltro.value),
-    idCliente: idClienteFiltro.value === '' ? undefined : Number(idClienteFiltro.value),
-    idEstado: idEstadoFiltro.value === '' ? undefined : Number(idEstadoFiltro.value),
+    idTipoPrestamo: active.idTipoPrestamo != null ? Number(active.idTipoPrestamo) : undefined,
+    idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
+    idEstado: active.idEstado != null ? Number(active.idEstado) : undefined,
   }
 }
 
-watch([buscar, idTipoPrestamoFiltro, idClienteFiltro, idEstadoFiltro], () => {
+const onFiltersChange = () => {
   pagina.value = 1
   syncFilters()
+}
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
 })
 
 watch([pagina, limite], () => {

@@ -9,35 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Nombre o correo..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo usuario
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Nombre o correo..."
-              />
-            </div>
-
-            <AppSelect
-              v-model="estadoFilter"
-              label="Estado"
-              :options="estadoFilterOptions"
-            />
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-estado="{ value }">
@@ -202,31 +192,38 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
   AppBadgeList,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatDateTime } from '@/shared/utils/date'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const estadoFilter = ref<UsuarioEstadoFiltro>('activos')
+const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
 const pagina = ref(1)
 const limite = ref(10)
 
-const estadoFilterOptions: SelectOption[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'activos', label: 'Activos' },
-  { value: 'inactivos', label: 'Inactivos' },
-]
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar estado',
+    options: [
+      { value: 'todos', label: 'Todos' },
+      { value: 'activos', label: 'Activo' },
+      { value: 'inactivos', label: 'Inactivo' },
+    ],
+  },
+])
 
 const filters = ref<UsuarioListFilters>({
   buscar: '',
@@ -273,33 +270,32 @@ const columns = computed<TableColumn<Usuario>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+const syncFilters = () => {
+  const active = dynamicFilters.value
+
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    estado: (active.estado as UsuarioEstadoFiltro | undefined) ?? 'activos',
+  }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
-watch(estadoFilter, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    estado: value,
-    pagina: 1,
-  }
-})
-
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {

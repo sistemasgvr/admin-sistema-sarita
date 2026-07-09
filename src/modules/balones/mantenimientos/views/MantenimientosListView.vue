@@ -4,60 +4,25 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Cilindro o descripción..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo mantenimiento
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Cilindro o descripción..."
-              />
-            </div>
-
-            <AppSelect
-              v-model="idBalonFiltro"
-              label="Cilindro"
-              placeholder="Todos"
-              :options="balonFilterOptions"
-              :disabled="balonesQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="idTipoMantenimientoFiltro"
-              label="Tipo"
-              placeholder="Todos"
-              :options="tipoMantenimientoFilterOptions"
-              :disabled="tiposMantenimientoQuery.isFetching.value"
-            />
-
-            <AppSelect
-              v-model="idEstadoFiltro"
-              label="Estado"
-              placeholder="Todos"
-              :options="estadoMantenimientoFilterOptions"
-              :disabled="estadosMantenimientoQuery.isFetching.value"
-            />
-
-            <AppSelect
-              v-model="esExternoFiltro"
-              label="Externo"
-              placeholder="Todos"
-              :options="esExternoFilterOptions"
-            />
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-codigo_balon="{ value }">
@@ -208,23 +173,20 @@ import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcr
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const idBalonFiltro = ref<number | ''>('')
-const idTipoMantenimientoFiltro = ref<number | ''>('')
-const idEstadoFiltro = ref<number | ''>('')
-const esExternoFiltro = ref<'' | 'true' | 'false'>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -285,52 +247,78 @@ const columns: TableColumn[] = [
   { key: 'nombre_estado', label: 'Estado' },
 ]
 
-const allOption = (): SelectOption => ({ value: '', label: 'Todos' })
-
-const balonFilterOptions = computed(() => [
-  allOption(),
-  ...(balonesQuery.data.value?.data ?? []).map((balon) => ({
-    value: balon.id,
-    label: balon.codigo_balon,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idBalon',
+    label: 'Cilindro',
+    type: 'select',
+    placeholder: 'Seleccionar cilindro',
+    disabled: balonesQuery.isLoading.value,
+    options: (balonesQuery.data.value?.data ?? []).map((balon) => ({
+      value: balon.id,
+      label: balon.codigo_balon,
+    })),
+  },
+  {
+    key: 'idTipoMantenimiento',
+    label: 'Tipo',
+    type: 'select',
+    placeholder: 'Seleccionar tipo',
+    disabled: tiposMantenimientoQuery.isFetching.value,
+    options: toSelectOptions(tiposMantenimientoQuery.data.value),
+  },
+  {
+    key: 'idEstado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar estado',
+    disabled: estadosMantenimientoQuery.isFetching.value,
+    options: toSelectOptions(estadosMantenimientoQuery.data.value),
+  },
+  {
+    key: 'esExterno',
+    label: 'Externo',
+    type: 'select',
+    placeholder: 'Seleccionar origen',
+    options: [
+      { value: 'true', label: 'Externo' },
+      { value: 'false', label: 'Interno' },
+    ],
+  },
 ])
-
-const tipoMantenimientoFilterOptions = computed(() => [
-  allOption(),
-  ...toSelectOptions(tiposMantenimientoQuery.data.value),
-])
-
-const estadoMantenimientoFilterOptions = computed(() => [
-  allOption(),
-  ...toSelectOptions(estadosMantenimientoQuery.data.value),
-])
-
-const esExternoFilterOptions: SelectOption[] = [
-  { value: '', label: 'Todos' },
-  { value: 'true', label: 'Externo' },
-  { value: 'false', label: 'Interno' },
-]
 
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
 
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
+
 const syncFilters = () => {
+  const active = dynamicFilters.value
+
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
-    idBalon: idBalonFiltro.value === '' ? undefined : Number(idBalonFiltro.value),
+    idBalon: active.idBalon != null ? Number(active.idBalon) : undefined,
     idTipoMantenimiento:
-      idTipoMantenimientoFiltro.value === '' ? undefined : Number(idTipoMantenimientoFiltro.value),
-    idEstado: idEstadoFiltro.value === '' ? undefined : Number(idEstadoFiltro.value),
+      active.idTipoMantenimiento != null ? Number(active.idTipoMantenimiento) : undefined,
+    idEstado: active.idEstado != null ? Number(active.idEstado) : undefined,
     esExterno:
-      esExternoFiltro.value === '' ? undefined : esExternoFiltro.value === 'true',
+      active.esExterno === 'true' ? true : active.esExterno === 'false' ? false : undefined,
   }
 }
 
-watch([buscar, idBalonFiltro, idTipoMantenimientoFiltro, idEstadoFiltro, esExternoFiltro], () => {
+const onFiltersChange = () => {
   pagina.value = 1
   syncFilters()
+}
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
 })
 
 watch([pagina, limite], () => {

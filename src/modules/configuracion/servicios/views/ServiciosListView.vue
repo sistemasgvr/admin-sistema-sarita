@@ -9,29 +9,22 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          search-placeholder="Código, nombre o URL..."
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo servicio
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="sm:col-span-2 lg:col-span-1">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Código, nombre o URL..."
-              />
-            </div>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-tiene_contrasena="{ row }">
@@ -129,7 +122,7 @@ import type {
   ConfiguracionServicioListFilters,
 } from '@/modules/configuracion/servicios/interfaces/configuracion-servicio.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppInput, AppModal, AppPagination, AppTable } from '@/shared/components'
+import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -181,24 +174,24 @@ const columns = computed<TableColumn<ConfiguracionServicio>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+const syncFilters = () => {
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+  }
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {

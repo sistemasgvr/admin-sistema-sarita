@@ -48,6 +48,8 @@ export const ICONS = {
   idCard: 'lucide:id-card',
   gauge: 'lucide:gauge',
   externalLink: 'lucide:external-link',
+  listFilter: 'lucide:list-filter',
+  brushCleaning: 'lucide:brush-cleaning',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

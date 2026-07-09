@@ -8,72 +8,25 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4">
-          <div v-if="canCreate" class="flex justify-end">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Código, libro, tipo..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
+              v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo cilindro
+              Nuevo
             </button>
-          </div>
-
-          <div class="grid w-full gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-            <div class="sm:col-span-2 lg:col-span-1 xl:col-span-2">
-              <AppInput
-                v-model="buscar"
-                label="Buscar"
-                type="search"
-                placeholder="Código, libro, tipo..."
-              />
-            </div>
-
-            <AppSelect
-              v-model="idTipoBalonFiltro"
-              label="Tipo"
-              placeholder="Todos"
-              :options="tipoBalonFilterOptions"
-              :disabled="tiposBalonQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="idMarcaCilindroFiltro"
-              label="Marca"
-              placeholder="Todas"
-              :options="marcaFilterOptions"
-              :disabled="marcaQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="idAlmacenFiltro"
-              label="Almacén"
-              placeholder="Todos"
-              :options="almacenFilterOptions"
-              :disabled="almacenesQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="idEstadoBalonFiltro"
-              label="Estado"
-              placeholder="Todos"
-              :options="estadoBalonFilterOptions"
-              :disabled="estadoBalonQuery.isLoading.value"
-            />
-
-            <AppSelect
-              v-model="phPorVencerDiasFiltro"
-              label="PH por vencer"
-              placeholder="Todos"
-              :options="phPorVencerOptions"
-            />
-
-            <div class="flex items-end pb-2">
-              <AppCheckbox v-model="phVencidaFiltro" label="Solo PH vencida" />
-            </div>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-codigo_balon="{ row }">
@@ -229,13 +182,13 @@ import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaO
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppCheckbox, AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 
@@ -251,12 +204,7 @@ withDefaults(
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const idTipoBalonFiltro = ref<number | ''>('')
-const idMarcaCilindroFiltro = ref<number | ''>('')
-const idAlmacenFiltro = ref<number | ''>('')
-const idEstadoBalonFiltro = ref<number | ''>('')
-const phVencidaFiltro = ref(false)
-const phPorVencerDiasFiltro = ref<number | ''>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -324,43 +272,65 @@ const puedeDarDeBaja = (balon: Balon) =>
   !balon.tiene_solicitud_baja_pendiente &&
   balon.nombre_estado_balon?.toUpperCase() !== 'DADO_DE_BAJA'
 
-const phPorVencerOptions: SelectOption[] = [
-  { label: 'Todos', value: '' },
+const phPorVencerOptions = [
   { label: '30 días', value: 30 },
   { label: '60 días', value: 60 },
   { label: '90 días', value: 90 },
 ]
 
-const withAllOption = (options: SelectOption[]): SelectOption[] => [
-  { label: 'Todos', value: '' },
-  ...options,
-]
-
-const tipoBalonFilterOptions = computed(() =>
-  withAllOption(
-    (tiposBalonQuery.data.value?.data ?? []).map((tipo) => ({
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idTipoBalon',
+    label: 'Tipo',
+    type: 'select',
+    placeholder: 'Seleccionar tipo',
+    disabled: tiposBalonQuery.isLoading.value,
+    options: (tiposBalonQuery.data.value?.data ?? []).map((tipo) => ({
       label: tipo.nombre,
       value: tipo.id,
     })),
-  ),
-)
-
-const almacenFilterOptions = computed(() =>
-  withAllOption(
-    (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
+  },
+  {
+    key: 'idMarcaCilindro',
+    label: 'Marca',
+    type: 'select',
+    placeholder: 'Seleccionar marca',
+    disabled: marcaQuery.isLoading.value,
+    options: toSelectOptions(marcaQuery.data.value),
+  },
+  {
+    key: 'idAlmacen',
+    label: 'Almacén',
+    type: 'select',
+    placeholder: 'Seleccionar almacén',
+    disabled: almacenesQuery.isLoading.value,
+    options: (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
       label: almacen.nombre,
       value: almacen.id,
     })),
-  ),
-)
-
-const estadoBalonFilterOptions = computed(() =>
-  withAllOption(toSelectOptions(estadoBalonQuery.data.value)),
-)
-
-const marcaFilterOptions = computed(() =>
-  withAllOption(toSelectOptions(marcaQuery.data.value)),
-)
+  },
+  {
+    key: 'idEstadoBalon',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar estado',
+    disabled: estadoBalonQuery.isLoading.value,
+    options: toSelectOptions(estadoBalonQuery.data.value),
+  },
+  {
+    key: 'phPorVencerDias',
+    label: 'PH por vencer',
+    type: 'select',
+    placeholder: 'Seleccionar días',
+    options: phPorVencerOptions,
+  },
+  {
+    key: 'phVencida',
+    label: 'PH vencida',
+    type: 'checkbox',
+    placeholder: 'Solo PH vencida',
+  },
+])
 
 const columns = computed<TableColumn<Balon>[]>(() => [
   { key: 'codigo_balon', label: 'Código / Libro' },
@@ -379,19 +349,26 @@ const columns = computed<TableColumn<Balon>[]>(() => [
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const syncFilters = () => {
+  const active = dynamicFilters.value
+
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
-    idTipoBalon: idTipoBalonFiltro.value ? Number(idTipoBalonFiltro.value) : undefined,
-    idMarcaCilindro: idMarcaCilindroFiltro.value ? Number(idMarcaCilindroFiltro.value) : undefined,
-    idAlmacen: idAlmacenFiltro.value ? Number(idAlmacenFiltro.value) : undefined,
-    idEstadoBalon: idEstadoBalonFiltro.value ? Number(idEstadoBalonFiltro.value) : undefined,
-    phVencida: phVencidaFiltro.value || undefined,
-    phPorVencerDias: phPorVencerDiasFiltro.value
-      ? Number(phPorVencerDiasFiltro.value)
-      : undefined,
+    idTipoBalon: active.idTipoBalon != null ? Number(active.idTipoBalon) : undefined,
+    idMarcaCilindro:
+      active.idMarcaCilindro != null ? Number(active.idMarcaCilindro) : undefined,
+    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    idEstadoBalon: active.idEstadoBalon != null ? Number(active.idEstadoBalon) : undefined,
+    phVencida: active.phVencida === true ? true : undefined,
+    phPorVencerDias:
+      active.phPorVencerDias != null ? Number(active.phPorVencerDias) : undefined,
   }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
 }
 
 watch(buscar, () => {
@@ -401,14 +378,6 @@ watch(buscar, () => {
     syncFilters()
   }, 350)
 })
-
-watch(
-  [idTipoBalonFiltro, idMarcaCilindroFiltro, idAlmacenFiltro, idEstadoBalonFiltro, phVencidaFiltro, phPorVencerDiasFiltro],
-  () => {
-    pagina.value = 1
-    syncFilters()
-  },
-)
 
 watch([pagina, limite], () => {
   syncFilters()
