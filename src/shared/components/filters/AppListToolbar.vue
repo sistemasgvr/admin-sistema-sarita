@@ -1,15 +1,20 @@
 <template>
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <div class="w-full max-w-[14rem] sm:max-w-xs">
+  <div
+    class="grid items-center gap-2 sm:gap-3"
+    :class="gridClass"
+  >
+    <div v-if="showSearch" class="min-w-0 sm:max-w-xs">
       <AppInput
-        v-if="showSearch"
         v-model="search"
         type="search"
         :placeholder="searchPlaceholder"
       />
     </div>
 
-    <div class="flex shrink-0 items-center justify-end gap-2">
+    <div
+      v-if="hasTrailingActions"
+      class="flex shrink-0 items-center justify-end gap-2"
+    >
       <AppDynamicFilters
         v-if="filterFields?.length"
         v-model="filters"
@@ -24,6 +29,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, useSlots } from 'vue'
 import { AppInput } from '@/shared/components'
 import AppDynamicFilters from '@/shared/components/filters/AppDynamicFilters.vue'
 import type {
@@ -31,7 +37,7 @@ import type {
   DynamicFilterValues,
 } from '@/shared/interfaces/dynamic-filter.interface'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     filterFields?: DynamicFilterFieldDef[]
     searchPlaceholder?: string
@@ -45,10 +51,28 @@ withDefaults(
   },
 )
 
+const slots = useSlots()
+
 const search = defineModel<string>('search', { default: '' })
 const filters = defineModel<DynamicFilterValues>('filters', { default: () => ({}) })
 
 const emit = defineEmits<{
   'filter-change': []
 }>()
+
+const hasTrailingActions = computed(
+  () => (props.filterFields?.length ?? 0) > 0 || Boolean(slots.actions),
+)
+
+const gridClass = computed(() => {
+  if (props.showSearch && hasTrailingActions.value) {
+    return 'grid-cols-[minmax(0,1fr)_auto]'
+  }
+
+  if (hasTrailingActions.value) {
+    return 'grid-cols-1'
+  }
+
+  return 'grid-cols-1'
+})
 </script>

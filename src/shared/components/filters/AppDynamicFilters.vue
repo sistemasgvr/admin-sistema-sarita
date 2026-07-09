@@ -20,9 +20,10 @@
         v-if="isOpen"
         ref="panelRef"
         :style="panelStyle"
-        class="fixed z-[100000] w-[min(100vw-2rem,28rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
+        class="fixed z-[100000] flex w-[min(100vw-2rem,28rem)] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
       >
-        <div class="space-y-3">
+        <div class="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+          <div class="space-y-3">
           <div
             v-for="row in rows"
             :key="row.id"
@@ -79,9 +80,10 @@
               <AppIcon :name="ICONS.brushCleaning" :size="16" />
             </button>
           </div>
+          </div>
         </div>
 
-        <div class="mt-4 flex justify-end border-t border-gray-200 pt-3 dark:border-gray-800">
+        <div class="shrink-0 border-t border-gray-200 px-4 py-3 dark:border-gray-800">
           <button
             type="button"
             class="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-brand-600 disabled:pointer-events-none disabled:opacity-40 dark:text-gray-400 dark:hover:text-brand-400"
@@ -126,7 +128,11 @@ const emit = defineEmits<{
 
 const rootRef = ref<HTMLElement>()
 const panelRef = ref<HTMLElement>()
-const panelStyle = ref<{ top: string; left: string }>({ top: '0px', left: '0px' })
+const panelStyle = ref<{ top: string; left: string; maxHeight: string }>({
+  top: '0px',
+  left: '0px',
+  maxHeight: 'calc(100dvh - 2rem)',
+})
 
 const fieldsRef = toRef(() => props.fields)
 
@@ -171,6 +177,7 @@ const onCheckboxChange = (row: { value: string | number | boolean | null }, chec
 
 const updatePanelPosition = () => {
   const trigger = rootRef.value
+  const panel = panelRef.value
   if (!trigger) return
 
   const rect = trigger.getBoundingClientRect()
@@ -180,9 +187,30 @@ const updatePanelPosition = () => {
     window.innerWidth - panelWidth - 16,
   )
 
+  const viewportPadding = 16
+  const maxHeight = window.innerHeight - viewportPadding * 2
+  const gap = 8
+  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+  const spaceAbove = rect.top - viewportPadding
+
+  let top = rect.bottom + gap
+
+  if (panel) {
+    const panelHeight = Math.min(panel.scrollHeight, maxHeight)
+
+    if (top + panelHeight > window.innerHeight - viewportPadding && spaceAbove > spaceBelow) {
+      top = Math.max(viewportPadding, rect.top - panelHeight - gap)
+    }
+
+    if (top + panelHeight > window.innerHeight - viewportPadding) {
+      top = Math.max(viewportPadding, window.innerHeight - viewportPadding - panelHeight)
+    }
+  }
+
   panelStyle.value = {
-    top: `${rect.bottom + 8}px`,
+    top: `${top}px`,
     left: `${left}px`,
+    maxHeight: `${maxHeight}px`,
   }
 }
 
@@ -193,6 +221,8 @@ const togglePanel = async () => {
   }
 
   openPanel()
+  await nextTick()
+  updatePanelPosition()
   await nextTick()
   updatePanelPosition()
 }

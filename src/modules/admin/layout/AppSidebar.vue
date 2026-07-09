@@ -1,7 +1,7 @@
 <template>
   <aside
     :class="[
-      'fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200',
+      'fixed top-16 bottom-0 left-0 z-99999 flex flex-col border-r border-gray-200 bg-white px-5 text-gray-900 transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-900 lg:top-0 lg:mt-0 lg:h-screen',
       {
         'lg:w-[290px]': isExpanded || isMobileOpen || isHovered,
         'lg:w-[90px]': !isExpanded && !isHovered,
@@ -15,7 +15,7 @@
   >
     <div
       :class="[
-        'py-8 flex',
+        'hidden py-8 lg:flex',
         !isExpanded && !isHovered ? 'lg:justify-center' : 'justify-start',
       ]"
     >
@@ -38,8 +38,8 @@
         />
       </router-link>
     </div>
-    <div class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-      <nav class="mb-6">
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto pt-4 duration-300 ease-linear no-scrollbar lg:pt-0">
+      <nav class="mb-6 pb-6">
         <div class="flex flex-col gap-4">
           <div v-for="(menuGroup, groupIndex) in visibleMenuGroups" :key="groupIndex">
             <h2
