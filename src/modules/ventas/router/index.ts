@@ -1,0 +1,35 @@
+import type { RouteRecordRaw } from 'vue-router'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+
+export const ventasRoutes: RouteRecordRaw[] = [
+  {
+    path: 'ventas',
+    children: [
+      {
+        path: 'pos',
+        name: 'admin-ventas-pos',
+        component: () => import('@/modules/ventas/comprobantes/views/PosView.vue'),
+        meta: {
+          title: 'Punto de venta',
+          module: 'ventas',
+          permission: PermisoBanderas.COMPROBANTES_CREAR,
+        },
+      },
+      {
+        path: 'comprobantes',
+        name: 'admin-ventas-comprobantes',
+        component: () =>
+          import('@/modules/ventas/comprobantes/views/ComprobantesListView.vue'),
+        meta: {
+          title: 'Comprobantes',
+          module: 'ventas',
+          permission: PermisoBanderas.COMPROBANTES_LISTAR,
+        },
+      },
+      {
+        path: '',
+        redirect: { name: 'admin-ventas-pos' },
+      },
+    ],
+  },
+]
