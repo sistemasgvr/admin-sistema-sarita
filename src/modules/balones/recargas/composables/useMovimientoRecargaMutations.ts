@@ -4,6 +4,7 @@ import { movimientosRecargaQueryKeys } from '@/modules/balones/recargas/constant
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import type {
   CreateMovimientoRecargaPayload,
+  CreateRecargaClientePayload,
   UpdateMovimientoRecargaPayload,
 } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -21,10 +22,29 @@ export function useCreateMovimientoRecargaMutation() {
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
       }
-      toastSuccess('Recarga registrada correctamente')
+      toastSuccess('Recarga en planta externa registrada')
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar la recarga')
+    },
+  })
+}
+
+export function useCreateRecargaClienteMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CreateRecargaClientePayload) =>
+      movimientosRecargaService.crearRecargaCliente(payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
+      toastSuccess('Recarga registrada y comprobante generado')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo registrar la recarga del cliente')
     },
   })
 }

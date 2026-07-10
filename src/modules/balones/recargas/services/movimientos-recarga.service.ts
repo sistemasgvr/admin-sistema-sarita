@@ -1,9 +1,11 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type {
   CreateMovimientoRecargaPayload,
+  CreateRecargaClientePayload,
   DeleteMovimientoRecargaResponse,
   MovimientoRecarga,
   MovimientoRecargaListFilters,
+  RecargaClienteResult,
   UpdateMovimientoRecargaPayload,
 } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 
@@ -18,6 +20,10 @@ export const movimientosRecargaService = {
 
   crear(payload: CreateMovimientoRecargaPayload) {
     return apiPost<MovimientoRecarga>('/balones/movimientos-recarga', payload)
+  },
+
+  crearRecargaCliente(payload: CreateRecargaClientePayload) {
+    return apiPost<RecargaClienteResult>('/balones/movimientos-recarga/recarga-cliente', payload)
   },
 
   actualizar(id: number, payload: UpdateMovimientoRecargaPayload) {

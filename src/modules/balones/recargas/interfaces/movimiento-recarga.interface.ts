@@ -3,6 +3,12 @@ export interface MovimientoRecarga {
   fecha_salida_almacen: string
   id_balon: number
   codigo_balon?: string | null
+  id_cliente?: number | null
+  nombre_cliente?: string | null
+  documento_cliente?: string | null
+  id_tipo_recarga?: number | null
+  tipo_recarga_nombre?: string | null
+  tipo_recarga_descripcion?: string | null
   id_producto?: number | null
   nombre_producto?: string | null
   capacidad?: number | null
@@ -60,6 +66,31 @@ export interface CreateMovimientoRecargaPayload {
   idProveedor?: number
   observacion?: string
   idAlmacen?: number
+}
+
+export interface CreateRecargaClientePayload {
+  idUsuarioAuditoria: number
+  idCliente: number
+  idBalon: number
+  idProducto: number
+  precioUnitario: number
+  cantidad?: number
+  idTipoComprobante?: number
+  serie?: string
+  capacidad?: number
+  idMedioPago?: number
+  idAlmacen?: number
+  observacion?: string
+}
+
+export interface RecargaClienteResult {
+  recarga: MovimientoRecarga
+  comprobante: {
+    id: number
+    serie: string
+    numero: string
+    total_importe?: number
+  }
 }
 
 export interface UpdateMovimientoRecargaPayload {

@@ -42,7 +42,7 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'recargas',
     title: 'Recargas',
-    description: 'Control de recargas, GRE y documentación asociada.',
+    description: 'Recarga en mostrador (cliente trae balón) y envíos a planta externa.',
     path: '/admin/balones/recargas',
     icon: ICONS.clipboardList,
     permission: PermisoBanderas.MOVIMIENTOS_RECARGA_LISTAR,

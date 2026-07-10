@@ -1,11 +1,11 @@
 <template>
   <AppModal
     v-model="open"
-    :title="mode === 'create' ? 'Nueva recarga' : 'Editar recarga'"
+    :title="mode === 'create' ? 'Recarga planta externa' : 'Editar recarga planta externa'"
     :subtitle="
       mode === 'create'
-        ? 'Registra el envío del cilindro a planta y su retorno con documentación.'
-        : 'Actualiza los datos de la recarga seleccionada.'
+        ? 'Envío del cilindro propio a un tercero (GRE, factura compra, lote y P.H.).'
+        : 'Actualiza los datos del envío a planta externa.'
     "
     size="xl"
     @close="handleClose"

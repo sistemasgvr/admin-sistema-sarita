@@ -8,18 +8,25 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Cilindro, GRE o factura..."
+          search-placeholder="Cilindro, cliente o comprobante..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <RouterLink
+              v-if="canCreate"
+              :to="{ name: 'admin-balones-recarga-cliente' }"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Recargar balón
+            </RouterLink>
             <button
               v-if="canCreate"
               type="button"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               @click="openCreateModal"
             >
-              <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo
+              Planta externa
             </button>
           </template>
         </AppListToolbar>
@@ -41,13 +48,25 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
+      <template #cell-tipo_recarga_nombre="{ value }">
+        <AppBadge v-if="value === 'CLIENTE'" color="primary">Mostrador</AppBadge>
+        <AppBadge v-else-if="value === 'PLANTA_EXTERNA'" color="warning">Planta ext.</AppBadge>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
+      <template #cell-nombre_cliente="{ value }">
+        <span v-if="value">{{ value }}</span>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
       <template #cell-documentos="{ row }">
         <div class="space-y-0.5 text-sm text-gray-600 dark:text-gray-400">
-          <p class="whitespace-nowrap">
+          <p v-if="row.tipo_recarga_nombre === 'PLANTA_EXTERNA'" class="whitespace-nowrap">
             GRE: {{ formatDocumento(row.serie_guia_salida, row.numero_guia_salida) }}
           </p>
           <p class="whitespace-nowrap">
-            Fac: {{ formatDocumento(row.serie_factura, row.numero_factura) }}
+            {{ row.tipo_recarga_nombre === 'CLIENTE' ? 'Comp.' : 'Fac.' }}:
+            {{ formatDocumento(row.serie_factura, row.numero_factura) }}
           </p>
         </div>
       </template>
@@ -69,7 +88,7 @@
         </button>
 
         <button
-          v-if="canEdit"
+          v-if="canEdit && row.tipo_recarga_nombre !== 'CLIENTE'"
           type="button"
           title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
@@ -170,7 +189,7 @@ import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalo
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -232,10 +251,12 @@ const isLoading = computed(
 const rows = computed(() => recargasQuery.data.value?.data ?? [])
 
 const columns: TableColumn[] = [
-  { key: 'vigencia', label: 'Salida / Llegada' },
+  { key: 'vigencia', label: 'Fecha' },
+  { key: 'tipo_recarga_nombre', label: 'Tipo' },
   { key: 'codigo_balon', label: 'Cilindro' },
+  { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'nombre_producto', label: 'Gas' },
-  { key: 'documentos', label: 'GRE / Factura' },
+  { key: 'documentos', label: 'Documentos' },
   { key: 'nombre_almacen', label: 'Almacén' },
 ]
 

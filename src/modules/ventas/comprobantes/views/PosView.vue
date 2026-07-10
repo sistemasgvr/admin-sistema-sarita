@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Punto de venta" :items="breadcrumbItems" />
+    <PageBreadcrumb page-title="Punto de venta (accesorios)" :items="breadcrumbItems" />
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
       <section class="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -24,6 +24,16 @@
           :options="clienteOptions"
           :disabled="clientesQuery.isLoading.value"
         />
+
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Solo accesorios y productos que no son gas. Para recargar el balón del cliente use
+          <RouterLink
+            :to="{ name: 'admin-balones-recarga-cliente' }"
+            class="font-medium text-brand-500 hover:underline"
+          >
+            Balones → Recargar balón
+          </RouterLink>.
+        </p>
 
         <div class="rounded-xl border border-gray-200 dark:border-gray-800">
           <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
@@ -169,7 +179,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastWarning } from '@/shared/composables/useToast'
 
-const breadcrumbItems = [{ label: 'Ventas', path: '/admin/ventas/pos' }, { label: 'POS' }]
+const breadcrumbItems = [{ label: 'Ventas', path: '/admin/ventas/pos' }, { label: 'Accesorios' }]
 
 const authStore = useAuthStore()
 const catalogosQuery = useComprobanteCatalogosPosQuery()
@@ -179,7 +189,7 @@ const emitMutation = useEmitirComprobanteMutation()
 const clientesFilters = ref({ pagina: 1, limite: 300, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
 
-const productosFilters = ref({ pagina: 1, limite: 300 })
+const productosFilters = ref({ pagina: 1, limite: 300, esGas: false })
 const productosQuery = useProductosQuery(productosFilters)
 
 const idTipoComprobante = ref<number | ''>('')
