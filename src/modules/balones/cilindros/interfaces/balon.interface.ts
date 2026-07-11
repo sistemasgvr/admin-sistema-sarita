@@ -168,3 +168,12 @@ export interface DeleteBalonResponse {
 }
 
 export type BalonFormMode = 'create' | 'edit'
+
+export interface BalonFormPreset {
+  codigoBalon?: string
+  idClienteUbicacion?: number
+  idClientePropietario?: number
+  idPropietario?: number
+  idAlmacen?: number
+  idEstadoBalon?: number
+}

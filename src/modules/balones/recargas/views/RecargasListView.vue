@@ -14,7 +14,7 @@
           <template #actions>
             <RouterLink
               v-if="canCreate"
-              :to="{ name: 'admin-balones-recarga-cliente' }"
+              :to="{ name: 'admin-ventas-pos', query: { tab: 'recarga' } }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />

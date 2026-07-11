@@ -3,6 +3,7 @@ export { default as AppFileInput } from '@/shared/components/form/AppFileInput.v
 export { default as AppFormField } from '@/shared/components/form/AppFormField.vue'
 export { default as AppInput } from '@/shared/components/form/AppInput.vue'
 export { default as AppSelect } from '@/shared/components/form/AppSelect.vue'
+export { default as AppSelectSearch } from '@/shared/components/form/AppSelectSearch.vue'
 export { default as AppTextarea } from '@/shared/components/form/AppTextarea.vue'
 export { default as AppBadge } from '@/shared/components/ui/AppBadge.vue'
 export { default as AppBadgeList } from '@/shared/components/ui/AppBadgeList.vue'

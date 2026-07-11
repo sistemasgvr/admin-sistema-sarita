@@ -269,7 +269,7 @@ import {
 } from '@/modules/balones/cilindros/composables/useBalonMutations'
 import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { useTiposBalonQuery } from '@/modules/balones/tipos-balon/composables/useTiposBalonQuery'
-import type { BalonFormMode } from '@/modules/balones/cilindros/interfaces/balon.interface'
+import type { Balon, BalonFormMode, BalonFormPreset } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
@@ -282,14 +282,18 @@ import { optionalNumber, optionalString, requiredString } from '@/shared/validat
 interface BalonFormModalProps {
   mode: BalonFormMode
   balonId?: number | null
+  preset?: BalonFormPreset | null
 }
 
-const props = defineProps<BalonFormModalProps>()
+const props = withDefaults(defineProps<BalonFormModalProps>(), {
+  preset: null,
+})
 
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
   saved: []
+  created: [balon: Balon]
 }>()
 
 const authStore = useAuthStore()
@@ -523,6 +527,32 @@ const syncFormValues = () => {
   })
 }
 
+const applyCreateForm = () => {
+  resetForm({
+    values: {
+      codigoBalon: props.preset?.codigoBalon ?? '',
+      numeroSerie: props.preset?.codigoBalon ?? '',
+      libroCilindro: '',
+      paginaLibro: undefined,
+      fechaRegistro: new Date().toISOString().slice(0, 10),
+      numeroRecepcion: '',
+      idAlmacen: props.preset?.idAlmacen,
+      idClienteUbicacion: props.preset?.idClienteUbicacion,
+      idPropietario: props.preset?.idPropietario,
+      idClientePropietario: props.preset?.idClientePropietario,
+      idReferencia: undefined,
+      idMarcaCilindro: undefined,
+      idTipoBalon: undefined,
+      idProductoGas: undefined,
+      idEstadoBalon: props.preset?.idEstadoBalon,
+      fechaFabricacion: '',
+      anioFabricacion: undefined,
+      presionActual: undefined,
+      observacion: '',
+    },
+  })
+}
+
 const handleClose = () => {
   open.value = false
 }
@@ -546,7 +576,8 @@ const onSubmit = handleSubmit(async (values) => {
 
   try {
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      const created = await createMutation.mutateAsync(payload)
+      emit('created', created)
     } else if (props.balonId) {
       await updateMutation.mutateAsync({
         id: props.balonId,
@@ -564,12 +595,14 @@ const onSubmit = handleSubmit(async (values) => {
 })
 
 watch(
-  () => open.value,
-  (isOpen) => {
-    if (isOpen) {
-      if (props.mode === 'create') {
-        syncFormValues()
-      }
+  () => [open.value, props.preset, props.mode] as const,
+  ([isOpen, , mode]) => {
+    if (!isOpen) return
+
+    if (mode === 'create') {
+      applyCreateForm()
+    } else {
+      syncFormValues()
     }
   },
 )

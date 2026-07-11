@@ -49,6 +49,8 @@ export const ICONS = {
   gauge: 'lucide:gauge',
   externalLink: 'lucide:external-link',
   listFilter: 'lucide:list-filter',
+  list: 'lucide:list',
+  layoutGrid: 'lucide:layout-grid',
   brushCleaning: 'lucide:brush-cleaning',
 } as const
 

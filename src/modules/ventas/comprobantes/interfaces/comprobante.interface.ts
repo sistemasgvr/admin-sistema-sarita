@@ -67,6 +67,7 @@ export interface ComprobanteDetallePayload {
   porcentajeIgv?: number
   idAfectacionIgv?: number
   descripcion?: string
+  idBalon?: number
 }
 
 export interface CreateComprobantePayload {

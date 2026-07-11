@@ -10,7 +10,7 @@ export const ventasRoutes: RouteRecordRaw[] = [
         name: 'admin-ventas-pos',
         component: () => import('@/modules/ventas/comprobantes/views/PosView.vue'),
         meta: {
-          title: 'Punto de venta',
+          title: 'Mostrador',
           module: 'ventas',
           permission: PermisoBanderas.COMPROBANTES_CREAR,
         },
