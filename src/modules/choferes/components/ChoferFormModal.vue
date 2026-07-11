@@ -81,12 +81,12 @@
 
       <div class="grid gap-3 sm:grid-cols-2">
         <AppInput
-          v-model="brevete"
-          label="Brevete"
+          v-model="codigoLicencia"
+          label="N° de licencia (brevete)"
           placeholder="Q12345678"
-          v-bind="breveteAttrs"
+          v-bind="codigoLicenciaAttrs"
           :disabled="isSubmitting"
-          :error="errors.brevete"
+          :error="errors.codigoLicencia"
         />
 
         <AppInput
@@ -96,6 +96,48 @@
           v-bind="telefonoAttrs"
           :disabled="isSubmitting"
           :error="errors.telefono"
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppSelect
+          v-model="idTipoLicencia"
+          label="Tipo de licencia"
+          :placeholder="tipoLicenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          v-bind="idTipoLicenciaAttrs"
+          :disabled="isSubmitting || tipoLicenciaQuery.isLoading.value"
+          :error="errors.idTipoLicencia"
+          :options="tipoLicenciaOptions"
+        />
+
+        <AppSelect
+          v-model="idCategoriaLicencia"
+          label="Categoría de licencia"
+          :placeholder="categoriaLicenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          v-bind="idCategoriaLicenciaAttrs"
+          :disabled="isSubmitting || categoriaLicenciaQuery.isLoading.value"
+          :error="errors.idCategoriaLicencia"
+          :options="categoriaLicenciaOptions"
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppInput
+          v-model="fechaEmision"
+          type="date"
+          label="Fecha de emisión"
+          v-bind="fechaEmisionAttrs"
+          :disabled="isSubmitting"
+          :error="errors.fechaEmision"
+        />
+
+        <AppInput
+          v-model="fechaVencimiento"
+          type="date"
+          label="Fecha de vencimiento"
+          v-bind="fechaVencimientoAttrs"
+          :disabled="isSubmitting"
+          :error="errors.fechaVencimiento"
         />
       </div>
     </form>
@@ -166,6 +208,14 @@ const listaTipoDocumentoId = computed(() => ListaIds.TIPO_DOCUMENTO)
 const tipoDocumentoQuery = useListaOpcionesQuery(listaTipoDocumentoId)
 const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
 
+const listaTipoLicenciaId = computed(() => ListaIds.TIPO_LICENCIA)
+const tipoLicenciaQuery = useListaOpcionesQuery(listaTipoLicenciaId)
+const tipoLicenciaOptions = computed(() => toSelectOptions(tipoLicenciaQuery.data.value))
+
+const listaCategoriaLicenciaId = computed(() => ListaIds.CATEGORIA_LICENCIA)
+const categoriaLicenciaQuery = useListaOpcionesQuery(listaCategoriaLicenciaId)
+const categoriaLicenciaOptions = computed(() => toSelectOptions(categoriaLicenciaQuery.data.value))
+
 const getClienteNombre = (cliente: Cliente) => {
   const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
 
@@ -198,8 +248,12 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       apellidoMaterno: optionalString(),
       idTipoDocumento: yup.number().required('El tipo de documento es obligatorio'),
       numeroDocumento: requiredString('El número de documento'),
-      brevete: optionalString(),
       telefono: optionalString(),
+      codigoLicencia: optionalString(),
+      idTipoLicencia: yup.number().optional(),
+      idCategoriaLicencia: yup.number().optional(),
+      fechaEmision: optionalString(),
+      fechaVencimiento: optionalString(),
     }),
   ),
   initialValues: {
@@ -209,8 +263,12 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     apellidoMaterno: '',
     idTipoDocumento: undefined as number | undefined,
     numeroDocumento: '',
-    brevete: '',
     telefono: '',
+    codigoLicencia: '',
+    idTipoLicencia: undefined as number | undefined,
+    idCategoriaLicencia: undefined as number | undefined,
+    fechaEmision: '',
+    fechaVencimiento: '',
   },
 })
 
@@ -220,8 +278,12 @@ const [apellidoPaterno, apellidoPaternoAttrs] = defineField('apellidoPaterno')
 const [apellidoMaterno, apellidoMaternoAttrs] = defineField('apellidoMaterno')
 const [idTipoDocumento, idTipoDocumentoAttrs] = defineField('idTipoDocumento')
 const [numeroDocumento, numeroDocumentoAttrs] = defineField('numeroDocumento')
-const [brevete, breveteAttrs] = defineField('brevete')
 const [telefono, telefonoAttrs] = defineField('telefono')
+const [codigoLicencia, codigoLicenciaAttrs] = defineField('codigoLicencia')
+const [idTipoLicencia, idTipoLicenciaAttrs] = defineField('idTipoLicencia')
+const [idCategoriaLicencia, idCategoriaLicenciaAttrs] = defineField('idCategoriaLicencia')
+const [fechaEmision, fechaEmisionAttrs] = defineField('fechaEmision')
+const [fechaVencimiento, fechaVencimientoAttrs] = defineField('fechaVencimiento')
 
 const syncFormValues = () => {
   resetForm({
@@ -235,8 +297,12 @@ const syncFormValues = () => {
       apellidoMaterno: props.chofer?.apellido_materno ?? '',
       idTipoDocumento: props.chofer?.id_tipo_documento ?? undefined,
       numeroDocumento: props.chofer?.numero_documento ?? '',
-      brevete: props.chofer?.brevete ?? '',
       telefono: props.chofer?.telefono ?? '',
+      codigoLicencia: props.chofer?.codigo_licencia ?? '',
+      idTipoLicencia: props.chofer?.id_tipo_licencia ?? undefined,
+      idCategoriaLicencia: props.chofer?.id_categoria_licencia ?? undefined,
+      fechaEmision: props.chofer?.fecha_emision ?? '',
+      fechaVencimiento: props.chofer?.fecha_vencimiento ?? '',
     },
   })
 }
@@ -258,8 +324,12 @@ const onSubmit = handleSubmit(async (values) => {
       apellidoMaterno: values.apellidoMaterno || undefined,
       idTipoDocumento: Number(values.idTipoDocumento),
       numeroDocumento: values.numeroDocumento,
-      brevete: values.brevete || undefined,
       telefono: values.telefono || undefined,
+      codigoLicencia: values.codigoLicencia || undefined,
+      idTipoLicencia: values.idTipoLicencia ? Number(values.idTipoLicencia) : undefined,
+      idCategoriaLicencia: values.idCategoriaLicencia ? Number(values.idCategoriaLicencia) : undefined,
+      fechaEmision: values.fechaEmision || undefined,
+      fechaVencimiento: values.fechaVencimiento || undefined,
     }
 
     if (props.mode === 'create') {

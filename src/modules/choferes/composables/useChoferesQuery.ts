@@ -4,10 +4,11 @@ import { choferesQueryKeys } from '@/modules/choferes/constants/choferesQueryKey
 import { choferesService } from '@/modules/choferes/services/choferes.service'
 import type { ChoferListFilters } from '@/modules/choferes/interfaces/chofer.interface'
 
-export function useChoferesQuery(filters: Ref<ChoferListFilters>) {
+export function useChoferesQuery(filters: Ref<ChoferListFilters>, enabled?: Ref<boolean>) {
   return useQuery({
     queryKey: computed(() => choferesQueryKeys.list(filters.value)),
     queryFn: () => choferesService.listar(filters.value),
     placeholderData: keepPreviousData,
+    enabled: enabled ?? computed(() => true),
   })
 }

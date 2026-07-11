@@ -38,6 +38,15 @@ export const ICONS = {
   arrowLeftRight: 'lucide:arrow-left-right',
   boxes: 'lucide:boxes',
   loader: 'lucide:loader',
+  phone: 'lucide:phone',
+  mail: 'lucide:mail',
+  mapPin: 'lucide:map-pin',
+  car: 'lucide:car',
+  idCard: 'lucide:id-card',
+  star: 'lucide:star',
+  inbox: 'lucide:inbox',
+  alertCircle: 'lucide:alert-circle',
+  contact: 'lucide:contact',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

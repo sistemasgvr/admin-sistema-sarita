@@ -12,8 +12,15 @@ export interface Chofer {
   id_tipo_documento: number
   nombre_tipo_documento?: string | null
   numero_documento: string
-  brevete?: string | null
   telefono?: string | null
+  id_licencia?: number | null
+  codigo_licencia?: string | null
+  fecha_emision?: string | null
+  fecha_vencimiento?: string | null
+  id_tipo_licencia?: number | null
+  nombre_tipo_licencia?: string | null
+  id_categoria_licencia?: number | null
+  nombre_categoria_licencia?: string | null
   estado: number
   id_usuario_creacion?: number | null
   nombre_usuario_creacion?: string | null
@@ -41,8 +48,12 @@ export interface ChoferPayload {
   apellidoMaterno?: string
   idTipoDocumento: number
   numeroDocumento: string
-  brevete?: string
   telefono?: string
+  codigoLicencia?: string
+  fechaEmision?: string
+  fechaVencimiento?: string
+  idTipoLicencia?: number
+  idCategoriaLicencia?: number
 }
 
 export type CreateChoferPayload = ChoferPayload

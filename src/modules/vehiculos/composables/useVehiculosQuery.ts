@@ -4,10 +4,11 @@ import { vehiculosQueryKeys } from '@/modules/vehiculos/constants/vehiculosQuery
 import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import type { VehiculoListFilters } from '@/modules/vehiculos/interfaces/vehiculo.interface'
 
-export function useVehiculosQuery(filters: Ref<VehiculoListFilters>) {
+export function useVehiculosQuery(filters: Ref<VehiculoListFilters>, enabled?: Ref<boolean>) {
   return useQuery({
     queryKey: computed(() => vehiculosQueryKeys.list(filters.value)),
     queryFn: () => vehiculosService.listar(filters.value),
     placeholderData: keepPreviousData,
+    enabled: enabled ?? computed(() => true),
   })
 }

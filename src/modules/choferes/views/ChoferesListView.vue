@@ -272,7 +272,7 @@ const getClienteNombre = (chofer: Chofer) => {
 const clienteFilterOptions = computed(() => [
   { value: '', label: 'Todos los clientes' },
   ...clientes.value.map((cliente) => ({
-    value: cliente.id,
+    value: cliente.id,sZ|
     label: getClienteSelectNombre(cliente),
   })),
 ]) */
@@ -280,7 +280,6 @@ const clienteFilterOptions = computed(() => [
 const columns = computed<TableColumn<Chofer>[]>(() => [
   { key: 'chofer', label: 'Chofer' },
   { key: 'cliente', label: 'Cliente / Proveedor' },
-  { key: 'brevete', label: 'Brevete' },
   { key: 'telefono', label: 'Teléfono' },
   { key: 'estado', label: 'Estado' },
 ])
