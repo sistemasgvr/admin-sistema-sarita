@@ -14,6 +14,8 @@ import { toastWarning } from '@/shared/composables/useToast'
 import { resolvePostLoginRedirect } from '@/shared/utils/resolvePostLoginRedirect'
 import { contactosRoutes } from '@/modules/contactos/router'
 import { direccionesRoutes } from '@/modules/direcciones/router'
+import { choferesRoutes } from '@/modules/choferes/router'
+import { vehiculosRoutes } from '@/modules/vehiculos/router'
 
 const adminChildren: RouteRecordRaw[] = [
   {
@@ -31,6 +33,8 @@ const adminChildren: RouteRecordRaw[] = [
   ...direccionesRoutes,
   ...balonesRoutes,
   ...ventasRoutes,
+  ...choferesRoutes,
+  ...vehiculosRoutes,
   {
     path: ':pathMatch(.*)*',
     name: 'admin-not-found',

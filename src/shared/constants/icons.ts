@@ -52,6 +52,13 @@ export const ICONS = {
   list: 'lucide:list',
   layoutGrid: 'lucide:layout-grid',
   brushCleaning: 'lucide:brush-cleaning',
+  phone: 'lucide:phone',
+  mail: 'lucide:mail',
+  car: 'lucide:car',
+  star: 'lucide:star',
+  inbox: 'lucide:inbox',
+  alertCircle: 'lucide:alert-circle',
+  contact: 'lucide:contact',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

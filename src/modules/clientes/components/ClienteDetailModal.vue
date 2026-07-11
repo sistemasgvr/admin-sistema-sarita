@@ -3,9 +3,9 @@
     v-model="open"
     title="Detalle del cliente"
     :subtitle="cliente ? getNombreCliente(cliente) : undefined"
-    size="lg"
+    size="xl"
   >
-    <div v-if="cliente" class="space-y-6">
+    <div v-if="cliente" class="space-y-4">
       <div class="flex flex-wrap items-center gap-2">
         <AppBadge :color="cliente.estado === 1 ? 'success' : 'error'">
           {{ cliente.estado === 1 ? 'Activo' : 'Inactivo' }}
@@ -18,29 +18,33 @@
         </AppBadge>
       </div>
 
-      <section v-for="section in sections" :key="section.title" class="space-y-3">
-        <div class="border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 dark:border-gray-800">
-          <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
-            {{ section.title }}
-          </h5>
+      <section
+        v-for="section in sections"
+        :key="section.title"
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+          {{ section.title }}
+        </h5>
 
-          <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-            <div
-              v-for="item in section.items"
-              :key="item.label"
-              :class="item.fullWidth ? 'sm:col-span-2' : ''"
-            >
-              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">{{ item.label }}</dt>
-              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ item.value ?? '—' }}
-              </dd>
-            </div>
-          </dl>
-        </div>
+        <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+          <div
+            v-for="item in section.items"
+            :key="item.label"
+            :class="item.fullWidth ? 'sm:col-span-2' : ''"
+          >
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">{{ item.label }}</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ item.value ?? '—' }}
+            </dd>
+          </div>
+        </dl>
       </section>
 
-      <section class="space-y-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-        <h5 class="mb-1 text-sm font-semibold text-gray-800 dark:text-white/90">
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
           Configuración SUNAT
         </h5>
         <div class="flex flex-wrap gap-1.5">
@@ -61,10 +65,261 @@
 
       <section
         v-if="cliente.observacion"
-        class="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800"
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Observación</h5>
+        <h5 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">Observación</h5>
         <p class="text-sm text-gray-600 dark:text-gray-400">{{ cliente.observacion }}</p>
+      </section>
+
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Auditoría
+        </h5>
+        <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+          <div>
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Creado por</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ cliente.nombre_usuario_creacion ?? '—' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha de creación</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ formatDateTime(cliente.fecha_creacion) }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Modificado por</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ cliente.nombre_usuario_modificacion ?? '—' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Última modificación</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ formatDateTime(cliente.fecha_modificacion) }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Información relacionada
+        </h5>
+
+        <div class="flex flex-wrap gap-1.5 border-b border-gray-100 pb-3 dark:border-gray-800">
+          <button
+            v-for="tab in relatedTabs"
+            :key="tab.key"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition"
+            :class="
+              activeTab === tab.key
+                ? 'bg-brand-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10'
+            "
+            @click="activeTab = tab.key"
+          >
+            <AppIcon :name="tab.icon" :size="14" />
+            {{ tab.label }}
+            <span
+              v-if="tab.count !== null"
+              class="rounded-full px-1.5 text-theme-xs"
+              :class="activeTab === tab.key ? 'bg-white/20' : 'bg-gray-200 dark:bg-white/10'"
+            >
+              {{ tab.count }}
+            </span>
+          </button>
+        </div>
+
+        <div class="mt-3">
+          <!-- Contactos -->
+          <div v-if="activeTab === 'contactos'">
+            <RelatedListState
+              :loading="contactosQuery.isLoading.value"
+              :error="contactosQuery.isError.value"
+              :empty="!contactosItems.length"
+              empty-text="Este cliente no tiene contactos registrados."
+              @retry="contactosQuery.refetch()"
+            >
+              <div class="space-y-2">
+                <div
+                  v-for="contacto in contactosItems"
+                  :key="contacto.id"
+                  class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                      {{ getNombreCompleto(contacto.nombre, contacto.apellido_paterno, contacto.apellido_materno) }}
+                    </p>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <AppBadge v-if="contacto.es_principal" size="sm" color="primary" :icon="ICONS.star">
+                        Principal
+                      </AppBadge>
+                      <AppBadge size="sm" :color="contacto.estado === 1 ? 'success' : 'error'">
+                        {{ contacto.estado === 1 ? 'Activo' : 'Inactivo' }}
+                      </AppBadge>
+                    </div>
+                  </div>
+                  <div
+                    class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-theme-xs text-gray-500 dark:text-gray-400"
+                  >
+                    <span v-if="contacto.telefono1" class="inline-flex items-center gap-1">
+                      <AppIcon :name="ICONS.phone" :size="13" />{{ contacto.telefono1 }}
+                    </span>
+                    <span v-if="contacto.telefono2" class="inline-flex items-center gap-1">
+                      <AppIcon :name="ICONS.phone" :size="13" />{{ contacto.telefono2 }}
+                    </span>
+                    <span v-if="contacto.email" class="inline-flex items-center gap-1">
+                      <AppIcon :name="ICONS.mail" :size="13" />{{ contacto.email }}
+                    </span>
+                    <span v-if="contacto.direccion" class="inline-flex items-center gap-1">
+                      <AppIcon :name="ICONS.mapPin" :size="13" />{{ contacto.direccion }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </RelatedListState>
+          </div>
+
+          <!-- Direcciones -->
+          <div v-if="activeTab === 'direcciones'">
+            <RelatedListState
+              :loading="direccionesQuery.isLoading.value"
+              :error="direccionesQuery.isError.value"
+              :empty="!direccionesItems.length"
+              empty-text="Este cliente no tiene direcciones registradas."
+              @retry="direccionesQuery.refetch()"
+            >
+              <div class="space-y-2">
+                <div
+                  v-for="dir in direccionesItems"
+                  :key="dir.id"
+                  class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        {{ dir.descripcion || dir.direccion }}
+                      </p>
+                      <p v-if="dir.descripcion" class="text-theme-xs text-gray-500 dark:text-gray-400">
+                        {{ dir.direccion }}
+                      </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <AppBadge v-if="dir.es_principal" size="sm" color="primary" :icon="ICONS.star">
+                        Principal
+                      </AppBadge>
+                      <AppBadge size="sm" :color="dir.estado === 1 ? 'success' : 'error'">
+                        {{ dir.estado === 1 ? 'Activo' : 'Inactivo' }}
+                      </AppBadge>
+                    </div>
+                  </div>
+                  <p class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+                    {{ getUbigeoTexto(dir) }}
+                  </p>
+                  <p v-if="dir.referencia" class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                    Referencia: {{ dir.referencia }}
+                  </p>
+                </div>
+              </div>
+            </RelatedListState>
+          </div>
+
+          <!-- Choferes -->
+          <div v-if="activeTab === 'choferes'">
+            <RelatedListState
+              :loading="choferesQuery.isLoading.value"
+              :error="choferesQuery.isError.value"
+              :empty="!choferesItems.length"
+              empty-text="Este cliente no tiene choferes registrados."
+              @retry="choferesQuery.refetch()"
+            >
+              <div class="space-y-2">
+                <div
+                  v-for="chofer in choferesItems"
+                  :key="chofer.id"
+                  class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        {{ getNombreCompleto(chofer.nombres, chofer.apellido_paterno, chofer.apellido_materno) }}
+                      </p>
+                      <p class="text-theme-xs text-gray-500 dark:text-gray-400">
+                        {{ chofer.nombre_tipo_documento }} {{ chofer.numero_documento }}
+                      </p>
+                    </div>
+                    <AppBadge size="sm" :color="chofer.estado === 1 ? 'success' : 'error'">
+                      {{ chofer.estado === 1 ? 'Activo' : 'Inactivo' }}
+                    </AppBadge>
+                  </div>
+                  <div
+                    class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-theme-xs text-gray-500 dark:text-gray-400"
+                  >
+                    <span v-if="chofer.telefono" class="inline-flex items-center gap-1">
+                      <AppIcon :name="ICONS.phone" :size="13" />{{ chofer.telefono }}
+                    </span>
+                    <span v-if="chofer.codigo_licencia" class="inline-flex items-center gap-1">
+                      <AppIcon :name="ICONS.idCard" :size="13" />
+                      {{ chofer.codigo_licencia }}
+                      <template v-if="chofer.nombre_categoria_licencia">
+                        ({{ chofer.nombre_categoria_licencia }})
+                      </template>
+                    </span>
+                    <span v-if="chofer.fecha_vencimiento">
+                      Vence: {{ formatDate(chofer.fecha_vencimiento) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </RelatedListState>
+          </div>
+
+          <!-- Vehículos -->
+          <div v-if="activeTab === 'vehiculos'">
+            <RelatedListState
+              :loading="vehiculosQuery.isLoading.value"
+              :error="vehiculosQuery.isError.value"
+              :empty="!vehiculosItems.length"
+              empty-text="Este cliente no tiene vehículos registrados."
+              @retry="vehiculosQuery.refetch()"
+            >
+              <div class="space-y-2">
+                <div
+                  v-for="vehiculo in vehiculosItems"
+                  :key="vehiculo.id"
+                  class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        {{ vehiculo.placa }}
+                        <span v-if="vehiculo.placa2" class="font-normal text-gray-500">
+                          / {{ vehiculo.placa2 }}
+                        </span>
+                      </p>
+                      <p v-if="vehiculo.nombre_tipo_vehiculo" class="text-theme-xs text-gray-500 dark:text-gray-400">
+                        {{ vehiculo.nombre_tipo_vehiculo }}
+                      </p>
+                    </div>
+                    <AppBadge size="sm" :color="vehiculo.estado === 1 ? 'success' : 'error'">
+                      {{ vehiculo.estado === 1 ? 'Activo' : 'Inactivo' }}
+                    </AppBadge>
+                  </div>
+                  <p class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+                    {{ getVehiculoDescripcion(vehiculo) }}
+                  </p>
+                </div>
+              </div>
+            </RelatedListState>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -81,10 +336,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { AppBadge, AppModal } from '@/shared/components'
-import { formatDateTime } from '@/shared/utils/date'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS, type IconName } from '@/shared/constants/icons'
+import { formatDate, formatDateTime } from '@/shared/utils/date'
+import RelatedListState from '@/modules/clientes/components/RelatedListState.vue'
+
+import { useContactosQuery } from '@/modules/contactos/composables/useContactosQuery'
+import type { Contacto, ContactoListFilters } from '@/modules/contactos/interfaces/contacto.interface'
+
+import { useDireccionesQuery } from '@/modules/direcciones/composables/useDireccionesQuery'
+import type { Direccion, DireccionListFilters } from '@/modules/direcciones/interfaces/direccion.interface'
+
+import { useChoferesQuery } from '@/modules/choferes/composables/useChoferesQuery'
+import type { Chofer, ChoferListFilters } from '@/modules/choferes/interfaces/chofer.interface'
+
+import { useVehiculosQuery } from '@/modules/vehiculos/composables/useVehiculosQuery'
+import type { Vehiculo, VehiculoListFilters } from '@/modules/vehiculos/interfaces/vehiculo.interface'
 
 interface ClienteDetailModalProps {
   cliente?: Cliente | null
@@ -102,6 +372,24 @@ const getNombreCliente = (cliente: Cliente) => {
       .join(' ')
       .trim() || cliente.numero_documento
   )
+}
+
+const getNombreCompleto = (
+  nombre?: string | null,
+  apellidoPaterno?: string | null,
+  apellidoMaterno?: string | null,
+) => [nombre, apellidoPaterno, apellidoMaterno].filter(Boolean).join(' ').trim() || '—'
+
+const getUbigeoTexto = (dir: Direccion) => {
+  const partes = [dir.nombre_distrito, dir.nombre_provincia, dir.nombre_departamento, dir.nombre_pais].filter(
+    Boolean,
+  )
+  return partes.length ? partes.join(', ') : 'Sin ubigeo registrado'
+}
+
+const getVehiculoDescripcion = (vehiculo: Vehiculo) => {
+  const partes = [vehiculo.marca, vehiculo.modelo, vehiculo.anio ? String(vehiculo.anio) : null, vehiculo.color]
+  return partes.filter(Boolean).join(' · ') || 'Sin datos adicionales'
 }
 
 const formatId = (id?: number | null) => (id ? `#${id}` : null)
@@ -163,15 +451,109 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Distrito', value: cliente.nombre_distrito ?? formatId(cliente.id_distrito) },
       ],
     },
-    {
-      title: 'Auditoría',
-      items: [
-        { label: 'Creado por', value: cliente.nombre_usuario_creacion ?? null },
-        { label: 'Fecha de creación', value: formatDateTime(cliente.fecha_creacion) },
-        { label: 'Modificado por', value: cliente.nombre_usuario_modificacion ?? null },
-        { label: 'Última modificación', value: formatDateTime(cliente.fecha_modificacion) },
-      ],
-    },
   ]
 })
+
+/* ---------------- Información relacionada (pestañas) ---------------- */
+
+type RelatedTabKey = 'contactos' | 'direcciones' | 'choferes' | 'vehiculos'
+
+const activeTab = ref<RelatedTabKey>('contactos')
+
+const idCliente = computed(() => props.cliente?.id)
+
+const isTabActive = (tab: RelatedTabKey) => computed(() => open.value && activeTab.value === tab && Boolean(idCliente.value))
+
+// Contactos
+const contactosFilters = computed<ContactoListFilters>(() => ({
+  idCliente: idCliente.value,
+  limite: 50,
+  soloActivos: null,
+}))
+const contactosEnabled = isTabActive('contactos')
+const contactosQuery = useContactosQuery(contactosFilters, contactosEnabled)
+const contactosItems = computed<Contacto[]>(() => contactosQuery.data.value?.data ?? [])
+
+// Direcciones
+const direccionesFilters = computed<DireccionListFilters>(() => ({
+  idCliente: idCliente.value,
+  limite: 50,
+  soloActivos: null,
+}))
+const direccionesEnabled = isTabActive('direcciones')
+const direccionesQuery = useDireccionesQuery(direccionesFilters, direccionesEnabled)
+const direccionesItems = computed<Direccion[]>(() => direccionesQuery.data.value?.data ?? [])
+
+// Choferes
+const choferesFilters = computed<ChoferListFilters>(() => ({
+  idCliente: idCliente.value,
+  limite: 50,
+  isActivos: null,
+}))
+const choferesEnabled = isTabActive('choferes')
+const choferesQuery = useChoferesQuery(choferesFilters, choferesEnabled)
+const choferesItems = computed<Chofer[]>(() => choferesQuery.data.value?.data ?? [])
+
+// Vehículos
+const vehiculosFilters = computed<VehiculoListFilters>(() => ({
+  idCliente: idCliente.value,
+  limite: 50,
+  isActivos: null,
+}))
+const vehiculosEnabled = isTabActive('vehiculos')
+const vehiculosQuery = useVehiculosQuery(vehiculosFilters, vehiculosEnabled)
+const vehiculosItems = computed<Vehiculo[]>(() => vehiculosQuery.data.value?.data ?? [])
+
+interface RelatedTab {
+  key: RelatedTabKey
+  label: string
+  icon: IconName
+  count: number | null
+}
+
+const relatedTabs = computed<RelatedTab[]>(() => [
+  {
+    key: 'contactos',
+    label: 'Contactos',
+    icon: ICONS.contact,
+    count: contactosQuery.data.value?.meta.total ?? (contactosQuery.isSuccess.value ? contactosItems.value.length : null),
+  },
+  {
+    key: 'direcciones',
+    label: 'Direcciones',
+    icon: ICONS.mapPin,
+    count:
+      direccionesQuery.data.value?.meta.total ??
+      (direccionesQuery.isSuccess.value ? direccionesItems.value.length : null),
+  },
+  {
+    key: 'choferes',
+    label: 'Choferes',
+    icon: ICONS.idCard,
+    count: choferesQuery.data.value?.meta.total ?? (choferesQuery.isSuccess.value ? choferesItems.value.length : null),
+  },
+  {
+    key: 'vehiculos',
+    label: 'Vehículos',
+    icon: ICONS.car,
+    count:
+      vehiculosQuery.data.value?.meta.total ?? (vehiculosQuery.isSuccess.value ? vehiculosItems.value.length : null),
+  },
+])
+
+watch(
+  () => open.value,
+  (isOpen) => {
+    if (isOpen) {
+      activeTab.value = 'contactos'
+    }
+  },
+)
+
+watch(
+  () => props.cliente?.id,
+  () => {
+    activeTab.value = 'contactos'
+  },
+)
 </script>

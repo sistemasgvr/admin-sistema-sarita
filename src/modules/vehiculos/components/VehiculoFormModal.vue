@@ -1,0 +1,355 @@
+<template>
+  <AppModal
+    v-model="open"
+    :title="mode === 'create' ? 'Nuevo vehículo' : 'Editar vehículo'"
+    :subtitle="
+      mode === 'create'
+        ? 'Registra un vehículo, asignado o no a un cliente.'
+        : 'Actualiza los datos del vehículo seleccionado.'
+    "
+    size="lg"
+    @close="handleClose"
+  >
+    <form
+      id="vehiculo-form"
+      class="space-y-4"
+      autocomplete="off"
+      @submit="onSubmit"
+    >
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppSelect
+          v-model="idCliente"
+          label="Cliente / Proveedor dueño"
+          placeholder="Sin cliente asignado"
+          v-bind="idClienteAttrs"
+          :disabled="isSubmitting"
+          :error="errors.idCliente"
+          :options="clienteOptions"
+        />
+
+        <AppSelect
+          v-model="idTipoVehiculo"
+          label="Tipo de vehículo"
+          :placeholder="tipoVehiculoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          required
+          v-bind="idTipoVehiculoAttrs"
+          :disabled="isSubmitting || tipoVehiculoQuery.isLoading.value"
+          :error="errors.idTipoVehiculo"
+          :options="tipoVehiculoOptions"
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppInput
+          v-model="placa"
+          label="Placa"
+          placeholder="ABC-123"
+          required
+          v-bind="placaAttrs"
+          :disabled="isSubmitting"
+          :error="errors.placa"
+        />
+
+        <AppInput
+          v-model="placa2"
+          label="Placa secundaria"
+          placeholder="Opcional (semirremolque)"
+          v-bind="placa2Attrs"
+          :disabled="isSubmitting"
+          :error="errors.placa2"
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppInput
+          v-model="marca"
+          label="Marca"
+          placeholder="Volvo"
+          v-bind="marcaAttrs"
+          :disabled="isSubmitting"
+          :error="errors.marca"
+        />
+
+        <AppInput
+          v-model="marca2"
+          label="Marca secundaria"
+          placeholder="Opcional"
+          v-bind="marca2Attrs"
+          :disabled="isSubmitting"
+          :error="errors.marca2"
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-3">
+        <AppInput
+          v-model="modelo"
+          label="Modelo"
+          placeholder="FH 460"
+          v-bind="modeloAttrs"
+          :disabled="isSubmitting"
+          :error="errors.modelo"
+        />
+
+        <AppInput
+          v-model="anio"
+          type="number"
+          label="Año"
+          placeholder="2022"
+          v-bind="anioAttrs"
+          :disabled="isSubmitting"
+          :error="errors.anio"
+        />
+
+        <AppInput
+          v-model="color"
+          label="Color"
+          placeholder="Blanco"
+          v-bind="colorAttrs"
+          :disabled="isSubmitting"
+          :error="errors.color"
+        />
+      </div>
+
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppInput
+          v-model="certificadoInscripcion"
+          label="Certificado de inscripción"
+          placeholder="CERT-100293"
+          v-bind="certificadoInscripcionAttrs"
+          :disabled="isSubmitting"
+          :error="errors.certificadoInscripcion"
+        />
+
+        <AppInput
+          v-model="certificado2"
+          label="Certificado secundario"
+          placeholder="Opcional"
+          v-bind="certificado2Attrs"
+          :disabled="isSubmitting"
+          :error="errors.certificado2"
+        />
+      </div>
+    </form>
+
+    <template #footer>
+      <button
+        type="button"
+        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+        :disabled="isSubmitting"
+        @click="handleClose"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        form="vehiculo-form"
+        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        :disabled="isSubmitting"
+      >
+        {{ isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear vehículo' : 'Guardar cambios' }}
+      </button>
+    </template>
+  </AppModal>
+</template>
+
+<script setup lang="ts">
+import { computed, watch } from 'vue'
+import { useForm } from 'vee-validate'
+import { toTypedSchema } from '@vee-validate/yup'
+import * as yup from 'yup'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import {
+  useCreateVehiculoMutation,
+  useUpdateVehiculoMutation,
+} from '@/modules/vehiculos/composables/useVehiculoMutations'
+import type {
+  Vehiculo,
+  VehiculoFormMode,
+} from '@/modules/vehiculos/interfaces/vehiculo.interface'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { ListaIds } from '@/shared/constants/lista-ids'
+import { optionalString, requiredString } from '@/shared/validation'
+
+interface VehiculoFormModalProps {
+  mode: VehiculoFormMode
+  vehiculo?: Vehiculo | null
+  clientes: Cliente[]
+  defaultClienteId?: number | null
+}
+
+const props = defineProps<VehiculoFormModalProps>()
+
+const open = defineModel<boolean>({ default: false })
+
+const emit = defineEmits<{
+  saved: []
+}>()
+
+const authStore = useAuthStore()
+
+const createMutation = useCreateVehiculoMutation()
+const updateMutation = useUpdateVehiculoMutation()
+
+const listaTipoVehiculoId = computed(() => ListaIds.TIPO_VEHICULO)
+const tipoVehiculoQuery = useListaOpcionesQuery(listaTipoVehiculoId)
+const tipoVehiculoOptions = computed(() => toSelectOptions(tipoVehiculoQuery.data.value))
+
+const getClienteNombre = (cliente: Cliente) => {
+  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
+
+  if (esJuridica && cliente.razon_social) {
+    return cliente.razon_social
+  }
+
+  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return nombreCompleto || cliente.razon_social || cliente.numero_documento
+}
+
+const clienteOptions = computed(() => [
+  { value: '', label: 'Sin cliente asignado' },
+  ...props.clientes.map((cliente) => ({
+    value: cliente.id,
+    label: getClienteNombre(cliente),
+  })),
+])
+
+const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+  validationSchema: toTypedSchema(
+    yup.object({
+      idCliente: yup.number().optional(),
+      idTipoVehiculo: yup.number().required('El tipo de vehículo es obligatorio'),
+      placa: requiredString('La placa'),
+      placa2: optionalString(),
+      marca: optionalString(),
+      marca2: optionalString(),
+      modelo: optionalString(),
+      anio: yup.number().optional(),
+      color: optionalString(),
+      certificadoInscripcion: optionalString(),
+      certificado2: optionalString(),
+    }),
+  ),
+  initialValues: {
+    idCliente: undefined as number | undefined,
+    idTipoVehiculo: undefined as number | undefined,
+    placa: '',
+    placa2: '',
+    marca: '',
+    marca2: '',
+    modelo: '',
+    anio: undefined as number | undefined,
+    color: '',
+    certificadoInscripcion: '',
+    certificado2: '',
+  },
+})
+
+const [idCliente, idClienteAttrs] = defineField('idCliente')
+const [idTipoVehiculo, idTipoVehiculoAttrs] = defineField('idTipoVehiculo')
+const [placa, placaAttrs] = defineField('placa')
+const [placa2, placa2Attrs] = defineField('placa2')
+const [marca, marcaAttrs] = defineField('marca')
+const [marca2, marca2Attrs] = defineField('marca2')
+const [modelo, modeloAttrs] = defineField('modelo')
+const [anio, anioAttrs] = defineField('anio')
+const [color, colorAttrs] = defineField('color')
+const [certificadoInscripcion, certificadoInscripcionAttrs] = defineField('certificadoInscripcion')
+const [certificado2, certificado2Attrs] = defineField('certificado2')
+
+const syncFormValues = () => {
+  resetForm({
+    values: {
+      idCliente:
+        props.vehiculo?.id_cliente ??
+        props.defaultClienteId ??
+        undefined,
+      idTipoVehiculo: props.vehiculo?.id_tipo_vehiculo ?? undefined,
+      placa: props.vehiculo?.placa ?? '',
+      placa2: props.vehiculo?.placa2 ?? '',
+      marca: props.vehiculo?.marca ?? '',
+      marca2: props.vehiculo?.marca2 ?? '',
+      modelo: props.vehiculo?.modelo ?? '',
+      anio: props.vehiculo?.anio ?? undefined,
+      color: props.vehiculo?.color ?? '',
+      certificadoInscripcion: props.vehiculo?.certificado_inscripcion ?? '',
+      certificado2: props.vehiculo?.certificado2 ?? '',
+    },
+  })
+}
+
+const handleClose = () => {
+  open.value = false
+}
+
+const onSubmit = handleSubmit(async (values) => {
+  const currentUserId = authStore.user?.id
+  if (!currentUserId) return
+
+  try {
+    const payload = {
+      idUsuarioAuditoria: currentUserId,
+      idCliente: values.idCliente ? Number(values.idCliente) : undefined,
+      idTipoVehiculo: Number(values.idTipoVehiculo),
+      placa: values.placa,
+      placa2: values.placa2 || undefined,
+      marca: values.marca || undefined,
+      marca2: values.marca2 || undefined,
+      modelo: values.modelo || undefined,
+      anio: values.anio ? Number(values.anio) : undefined,
+      color: values.color || undefined,
+      certificadoInscripcion: values.certificadoInscripcion || undefined,
+      certificado2: values.certificado2 || undefined,
+    }
+
+    if (props.mode === 'create') {
+      await createMutation.mutateAsync(payload)
+    } else if (props.vehiculo) {
+      await updateMutation.mutateAsync({
+        id: props.vehiculo.id,
+        payload,
+      })
+    } else {
+      return
+    }
+
+    emit('saved')
+    open.value = false
+  } catch {
+    // toast en mutation
+  }
+})
+
+watch(
+  () => open.value,
+  (isOpen) => {
+    if (isOpen) {
+      syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => props.vehiculo,
+  () => {
+    if (open.value) {
+      syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => props.defaultClienteId,
+  () => {
+    if (open.value) {
+      syncFormValues()
+    }
+  },
+)
+</script>
