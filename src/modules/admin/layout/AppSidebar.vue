@@ -166,9 +166,12 @@ const { isExpanded, isMobileOpen, isHovered, expandedSubmenus, collapsedSubmenus
 
 const submenuKey = (groupIndex: number, itemIndex: number) => `${groupIndex}-${itemIndex}`
 
-const isActive = (path: string) => route.path === path
+/** Resalta hubs y rutas hijas (ej. /admin/configuracion → /admin/configuracion/sucursales). */
+const isActive = (path: string) =>
+  route.path === path || route.path.startsWith(`${path}/`)
 
-const isSubmenuRouteActive = (path: string) => route.path === path
+const isSubmenuRouteActive = (path: string) =>
+  route.path === path || route.path.startsWith(`${path}/`)
 
 const isParentItemActive = (item: AdminMenuItem) => {
   if (item.path && (route.path === item.path || route.path.startsWith(`${item.path}/`))) {
