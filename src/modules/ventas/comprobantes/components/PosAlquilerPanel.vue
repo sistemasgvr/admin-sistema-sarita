@@ -350,6 +350,8 @@ const {
 
   comprobanteBaseValido,
 
+  mensajeValidacionComprobante,
+
 } = usePosComprobanteForm()
 
 
@@ -595,6 +597,16 @@ async function registrarAlquiler() {
   if (!userId) {
 
     toastWarning('Sesión inválida')
+
+    return
+
+  }
+
+  const errorValidacion = mensajeValidacionComprobante()
+
+  if (errorValidacion) {
+
+    toastWarning(errorValidacion)
 
     return
 

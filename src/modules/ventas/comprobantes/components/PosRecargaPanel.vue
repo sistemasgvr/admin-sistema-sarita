@@ -144,6 +144,7 @@ const {
   canEmit,
   tipoComprobanteOptions,
   clienteOptions,
+  mensajeValidacionComprobante,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateRecargaClienteMutation()
@@ -203,6 +204,12 @@ async function registrarRecarga() {
   const userId = authStore.user?.id
   if (!userId) {
     toastWarning('Sesión inválida')
+    return
+  }
+
+  const errorValidacion = mensajeValidacionComprobante()
+  if (errorValidacion) {
+    toastWarning(errorValidacion)
     return
   }
 

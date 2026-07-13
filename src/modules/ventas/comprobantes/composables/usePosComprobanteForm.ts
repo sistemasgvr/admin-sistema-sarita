@@ -1,11 +1,29 @@
 import { computed, ref, watch } from 'vue'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import {
+  seriePorDefectoDesdeCodigo,
+  tipoRequiereRuc,
+  validarSerieParaTipo,
+} from '@/modules/ventas/comprobantes/utils/serieComprobante'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
-export function usePosComprobanteForm() {
+/** Tipos de venta directa en mostrador (sin origen). NC/ND se emiten desde flujo de notas. */
+const CODIGOS_TIPO_POS = ['01', '03'] as const
+
+export {
+  seriePorDefectoDesdeCodigo,
+  validarSerieParaTipo,
+  tipoRequiereRuc,
+} from '@/modules/ventas/comprobantes/utils/serieComprobante'
+
+export function usePosComprobanteForm(options?: {
+  /** Serie del comprobante origen (NC/ND). */
+  serieOrigen?: () => string | null | undefined
+}) {
   const authStore = useAuthStore()
   const catalogosQuery = useComprobanteCatalogosPosQuery()
 
@@ -19,6 +37,8 @@ export function usePosComprobanteForm() {
   const clientesQuery = useClientesQuery(clientesFilters)
 
   let clienteBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+  let cargandoNumero = false
+  let sincronizandoSerieDesdeTipo = false
 
   watch(clienteBuscar, (value) => {
     if (clienteBuscarTimeout) {
@@ -44,18 +64,34 @@ export function usePosComprobanteForm() {
 
   const tipoComprobanteOptions = computed(() =>
     (catalogosQuery.data.value?.tiposComprobante ?? [])
-      .filter((item) => ['01', '03'].includes(item.descripcion ?? ''))
+      .filter((item) =>
+        CODIGOS_TIPO_POS.includes(
+          (item.descripcion ?? '') as (typeof CODIGOS_TIPO_POS)[number],
+        ),
+      )
       .map((item) => ({
         value: item.id,
         label: `${item.nombre} (${item.descripcion})`,
+        codigo: item.descripcion ?? '',
       })),
   )
+
+  const codigoTipoComprobante = computed(() => {
+    const opcion = tipoComprobanteOptions.value.find(
+      (item) => item.value === idTipoComprobante.value,
+    )
+    return opcion?.codigo ?? ''
+  })
 
   const clienteOptions = computed(() =>
     (clientesQuery.data.value?.data ?? []).map((cliente) => ({
       value: cliente.id,
       label: `${cliente.razon_social ?? cliente.numero_documento} — ${cliente.numero_documento}`,
     })),
+  )
+
+  const clienteSeleccionado = computed(() =>
+    (clientesQuery.data.value?.data ?? []).find((cliente) => cliente.id === idCliente.value),
   )
 
   const idAfectacionGravado = computed(() => {
@@ -77,51 +113,91 @@ export function usePosComprobanteForm() {
     return opcion?.id
   })
 
-  watch(idTipoComprobante, async (value) => {
-    if (!value || !serie.value.trim()) {
+  async function refrescarSiguienteNumero() {
+    if (!idTipoComprobante.value || !serie.value.trim()) {
       numero.value = ''
       return
     }
 
-    try {
-      const result = await comprobantesService.obtenerSiguienteNumero(Number(value), serie.value)
-      numero.value = result.numero
-    } catch {
-      numero.value = ''
-    }
-  })
-
-  watch(serie, async (value) => {
-    if (!idTipoComprobante.value || !value.trim()) return
-
+    cargandoNumero = true
     try {
       const result = await comprobantesService.obtenerSiguienteNumero(
         Number(idTipoComprobante.value),
-        value,
+        serie.value.trim().toUpperCase(),
       )
       numero.value = result.numero
     } catch {
       numero.value = ''
+    } finally {
+      cargandoNumero = false
     }
+  }
+
+  watch(idTipoComprobante, async (value) => {
+    if (!value) {
+      numero.value = ''
+      return
+    }
+
+    const codigo =
+      tipoComprobanteOptions.value.find((item) => item.value === value)?.codigo ?? ''
+    const serieOrigen = options?.serieOrigen?.() ?? null
+    const serieEsperada = seriePorDefectoDesdeCodigo(codigo, serie.value, serieOrigen)
+
+    if (serie.value.trim().toUpperCase() !== serieEsperada) {
+      sincronizandoSerieDesdeTipo = true
+      serie.value = serieEsperada
+      sincronizandoSerieDesdeTipo = false
+    }
+
+    await refrescarSiguienteNumero()
+  })
+
+  watch(serie, async (value) => {
+    if (sincronizandoSerieDesdeTipo || cargandoNumero) return
+    if (!idTipoComprobante.value || !value.trim()) return
+
+    const upper = value.trim().toUpperCase()
+    if (upper !== value) {
+      sincronizandoSerieDesdeTipo = true
+      serie.value = upper
+      sincronizandoSerieDesdeTipo = false
+    }
+
+    await refrescarSiguienteNumero()
   })
 
   watch(
     tipoComprobanteOptions,
-    (options) => {
-      if (!idTipoComprobante.value && options.length > 0) {
-        const boleta = options.find((item) => item.label.includes('BOLETA'))
-        idTipoComprobante.value = boleta?.value ?? options[0].value
+    (opts) => {
+      if (!idTipoComprobante.value && opts.length > 0) {
+        const boleta = opts.find((item) => item.codigo === '03')
+        idTipoComprobante.value = boleta?.value ?? opts[0].value
       }
     },
     { immediate: true },
   )
 
+  function mensajeValidacionComprobante(): string | null {
+    if (!idTipoComprobante.value) return 'Selecciona el tipo de comprobante'
+    if (!idCliente.value) return 'Selecciona un cliente'
+
+    const codigo = codigoTipoComprobante.value
+    const serieOrigen = options?.serieOrigen?.() ?? null
+    const errorSerie = validarSerieParaTipo(codigo, serie.value, serieOrigen)
+    if (errorSerie) return errorSerie
+
+    if (tipoRequiereRuc(codigo, serie.value) && !clienteDocumentoEsRuc(clienteSeleccionado.value)) {
+      return codigo === '01'
+        ? 'La factura requiere un cliente con RUC (11 dígitos)'
+        : 'Este comprobante (serie F) requiere un cliente con RUC (11 dígitos)'
+    }
+
+    return null
+  }
+
   function comprobanteBaseValido() {
-    return (
-      Boolean(idTipoComprobante.value) &&
-      Boolean(idCliente.value) &&
-      Boolean(serie.value.trim())
-    )
+    return mensajeValidacionComprobante() === null
   }
 
   return {
@@ -136,12 +212,25 @@ export function usePosComprobanteForm() {
     idCliente,
     canEmit,
     tipoComprobanteOptions,
+    codigoTipoComprobante,
     clienteOptions,
+    clienteSeleccionado,
     idAfectacionGravado,
     idMonedaPen,
     idTipoOperacionVentaInterna,
     comprobanteBaseValido,
+    mensajeValidacionComprobante,
+    refrescarSiguienteNumero,
   }
+}
+
+function clienteDocumentoEsRuc(cliente: Cliente | undefined) {
+  if (!cliente) return false
+
+  const tipo = (cliente.nombre_tipo_documento ?? '').toUpperCase()
+  const doc = (cliente.numero_documento ?? '').trim()
+
+  return tipo.includes('RUC') || doc.length === 11
 }
 
 export function formatPosMoney(value: number) {

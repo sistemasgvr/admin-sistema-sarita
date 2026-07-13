@@ -170,6 +170,7 @@ const {
   idMonedaPen,
   idTipoOperacionVentaInterna,
   comprobanteBaseValido,
+  mensajeValidacionComprobante,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateComprobanteMutation()
@@ -370,6 +371,12 @@ async function guardarComprobante() {
   const userId = authStore.user?.id
   if (!userId) {
     toastWarning('Sesión inválida')
+    return
+  }
+
+  const errorValidacion = mensajeValidacionComprobante()
+  if (errorValidacion) {
+    toastWarning(errorValidacion)
     return
   }
 
