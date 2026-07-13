@@ -70,11 +70,59 @@
       </div>
 
       <div class="flex flex-col items-end gap-1 text-sm">
-        <p>Subtotal: {{ formatMoney(Number(comprobante.sub_total ?? 0)) }}</p>
-        <p>IGV: {{ formatMoney(Number(comprobante.igv ?? 0)) }}</p>
+        <p>Valor venta: {{ formatMoney(Number(comprobante.valor_venta ?? 0)) }}</p>
+        <p>IGV (18% incluido): {{ formatMoney(Number(comprobante.igv ?? 0)) }}</p>
         <p class="text-base font-semibold text-gray-800 dark:text-white/90">
           Total: {{ formatMoney(Number(comprobante.total_importe ?? 0)) }}
         </p>
+      </div>
+
+      <div
+        v-if="puedePdf"
+        class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
+      >
+        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Representación impresa
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300"
+            :disabled="pdfBusy"
+            @click="descargarPdf('a4')"
+          >
+            <AppIcon :name="ICONS.download" :size="16" />
+            PDF A4
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300"
+            :disabled="pdfBusy"
+            @click="imprimirPdf('a4')"
+          >
+            <AppIcon :name="ICONS.printer" :size="16" />
+            Imprimir A4
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-brand-500 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-brand-500/10 disabled:opacity-60"
+            :disabled="pdfBusy"
+            @click="descargarPdf('ticket')"
+          >
+            <AppIcon :name="ICONS.download" :size="16" />
+            Ticketera 80mm
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-brand-500 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-brand-500/10 disabled:opacity-60"
+            :disabled="pdfBusy"
+            @click="imprimirPdf('ticket')"
+          >
+            <AppIcon :name="ICONS.printer" :size="16" />
+            Imprimir ticket 80mm
+          </button>
+        </div>
+        <p v-if="pdfBusy" class="mt-2 text-xs text-gray-500">Generando PDF...</p>
       </div>
     </div>
 
@@ -92,8 +140,23 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
+import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import {
+  downloadBlob,
+  printBlob,
+  type ComprobantePdfFormato,
+} from '@/modules/ventas/comprobantes/utils/comprobantePdf'
+import {
+  buildTicketHtml,
+  downloadTicketHtml,
+  printTicketHtml,
+} from '@/modules/ventas/comprobantes/utils/comprobanteTicket'
 import { AppBadge, AppModal } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
 const props = defineProps<{
   modelValue: boolean
@@ -111,6 +174,8 @@ const open = computed({
 
 const comprobanteIdRef = ref<number | null>(null)
 const comprobanteQuery = useComprobanteQuery(comprobanteIdRef)
+const empresaQuery = useEmpresaActualQuery()
+const pdfBusy = ref(false)
 
 watch(
   () => props.comprobanteId,
@@ -126,6 +191,11 @@ watch(open, (isOpen) => {
 
 const comprobante = computed(() => comprobanteQuery.data.value)
 
+const puedePdf = computed(() => {
+  const estado = comprobante.value?.nombre_estado_sunat?.toUpperCase()
+  return estado === 'ACEPTADO' || Boolean(comprobante.value?.hash_documento)
+})
+
 const sunatBadgeColor = computed(() => {
   const estado = comprobante.value?.nombre_estado_sunat?.toUpperCase()
   if (estado === 'ACEPTADO') return 'success'
@@ -136,7 +206,59 @@ const sunatBadgeColor = computed(() => {
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
 
+function ticketHtml() {
+  const c = comprobante.value
+  if (!c) throw new Error('Comprobante inválido')
+  return buildTicketHtml(c, empresaQuery.data.value ?? null)
+}
+
+async function descargarPdf(formato: ComprobantePdfFormato) {
+  pdfBusy.value = true
+  try {
+    const c = comprobante.value
+    if (!c) throw new Error('Comprobante inválido')
+
+    if (formato === 'ticket') {
+      downloadTicketHtml(ticketHtml(), `${c.serie}-${c.numero}-ticket.html`)
+      toastSuccess('Ticketera descargada (abre e imprime en 80mm)')
+      return
+    }
+
+    const blob = await comprobantesService.obtenerPdf(c.id, 'a4')
+    downloadBlob(blob, `${c.serie}-${c.numero}-a4.pdf`)
+    toastSuccess('PDF A4 descargado')
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el documento')
+  } finally {
+    pdfBusy.value = false
+  }
+}
+
+async function imprimirPdf(formato: ComprobantePdfFormato) {
+  pdfBusy.value = true
+  try {
+    if (formato === 'ticket') {
+      printTicketHtml(ticketHtml())
+      return
+    }
+
+    const id = props.comprobanteId
+    if (!id) throw new Error('Comprobante inválido')
+    const blob = await comprobantesService.obtenerPdf(id, 'a4')
+    printBlob(blob)
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('bloqueó')) {
+      toastWarning(error.message)
+    } else {
+      toastApiError(error, 'No se pudo abrir para imprimir')
+    }
+  } finally {
+    pdfBusy.value = false
+  }
+}
+
 function handleClose() {
   open.value = false
 }
+
 </script>

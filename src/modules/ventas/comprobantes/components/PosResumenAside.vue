@@ -8,7 +8,7 @@
         <span class="tabular-nums">{{ formatMoney(totales.valorVenta) }}</span>
       </div>
       <div class="flex justify-between">
-        <span class="text-gray-500">IGV (18%)</span>
+        <span class="text-gray-500">IGV (18% incluido)</span>
         <span class="tabular-nums">{{ formatMoney(totales.igv) }}</span>
       </div>
       <div

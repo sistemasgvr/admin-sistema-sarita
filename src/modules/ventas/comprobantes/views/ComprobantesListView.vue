@@ -60,6 +60,28 @@
         </button>
 
         <button
+          v-if="canView && puedePdf(row)"
+          type="button"
+          title="Descargar PDF A4"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-500/10 disabled:opacity-60"
+          :disabled="pdfBusyId === row.id"
+          @click="descargarPdf(row, 'a4')"
+        >
+          <AppIcon :name="ICONS.download" :size="16" />
+        </button>
+
+        <button
+          v-if="canView && puedePdf(row)"
+          type="button"
+          title="Imprimir ticketera 80mm"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-500/10 disabled:opacity-60"
+          :disabled="pdfBusyId === row.id"
+          @click="imprimirPdf(row, 'ticket')"
+        >
+          <AppIcon :name="ICONS.receipt" :size="16" />
+        </button>
+
+        <button
           v-if="canEmit && puedeEmitir(row)"
           type="button"
           title="Emitir SUNAT"
@@ -141,10 +163,27 @@ import type {
   ComprobanteListFilters,
   ComprobanteListItem,
 } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import {
+  downloadBlob,
+  printBlob,
+  type ComprobantePdfFormato,
+} from '@/modules/ventas/comprobantes/utils/comprobantePdf'
+import {
+  buildTicketHtml,
+  downloadTicketHtml,
+  printTicketHtml,
+} from '@/modules/ventas/comprobantes/utils/comprobanteTicket'
+import {
+  debeImprimirTrasEmision,
+  imprimirTicketPorComprobanteId,
+} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import { empresasService } from '@/modules/configuracion/empresas/services/empresas.service'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
@@ -177,6 +216,7 @@ const comprobanteToViewId = ref<number | null>(null)
 
 const deleteModalOpen = ref(false)
 const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
+const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
@@ -226,6 +266,60 @@ function puedeEliminar(row: ComprobanteListItem) {
   return row.nombre_estado_sunat !== 'ACEPTADO'
 }
 
+function puedePdf(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat === 'ACEPTADO'
+}
+
+async function obtenerTicketHtml(row: ComprobanteListItem) {
+  const [detalle, empresas] = await Promise.all([
+    comprobantesService.obtenerPorId(row.id),
+    empresasService.listar({ pagina: 1, limite: 1 }),
+  ])
+  return buildTicketHtml(detalle, empresas.data[0] ?? null)
+}
+
+async function descargarPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {
+  pdfBusyId.value = row.id
+  try {
+    if (formato === 'ticket') {
+      const html = await obtenerTicketHtml(row)
+      downloadTicketHtml(html, `${row.serie}-${row.numero}-ticket.html`)
+      toastSuccess('Ticketera descargada (abre e imprime en 80mm)')
+      return
+    }
+
+    const blob = await comprobantesService.obtenerPdf(row.id, 'a4')
+    downloadBlob(blob, `${row.serie}-${row.numero}-a4.pdf`)
+    toastSuccess('PDF A4 descargado')
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el documento')
+  } finally {
+    pdfBusyId.value = null
+  }
+}
+
+async function imprimirPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {
+  pdfBusyId.value = row.id
+  try {
+    if (formato === 'ticket') {
+      const html = await obtenerTicketHtml(row)
+      printTicketHtml(html)
+      return
+    }
+
+    const blob = await comprobantesService.obtenerPdf(row.id, 'a4')
+    printBlob(blob)
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('bloqueó')) {
+      toastWarning(error.message)
+    } else {
+      toastApiError(error, 'No se pudo abrir para imprimir')
+    }
+  } finally {
+    pdfBusyId.value = null
+  }
+}
+
 function openDetailModal(row: ComprobanteListItem) {
   comprobanteToViewId.value = row.id
   detailModalOpen.value = true
@@ -240,7 +334,19 @@ async function emitirComprobante(row: ComprobanteListItem) {
   const userId = authStore.user?.id
   if (!userId) return
 
-  await emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
+  const data = await emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
+
+  if (debeImprimirTrasEmision(data.sunat.estado)) {
+    try {
+      await imprimirTicketPorComprobanteId(row.id)
+    } catch (error) {
+      toastWarning(
+        error instanceof Error && error.message.includes('bloqueó')
+          ? error.message
+          : 'Emitido OK, pero no se pudo abrir la impresión del ticket',
+      )
+    }
+  }
 }
 
 async function confirmDelete() {

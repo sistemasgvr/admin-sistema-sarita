@@ -42,6 +42,9 @@ export interface Comprobante extends ComprobanteListItem {
   exonerado?: number | null
   glosa?: string | null
   observaciones?: string | null
+  hash_documento?: string | null
+  xml_firmado?: string | null
+  ticket_sunat?: string | null
   detalles: ComprobanteDetalle[]
   cuotas?: unknown[]
 }

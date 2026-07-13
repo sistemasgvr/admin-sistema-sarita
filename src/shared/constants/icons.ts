@@ -59,6 +59,10 @@ export const ICONS = {
   inbox: 'lucide:inbox',
   alertCircle: 'lucide:alert-circle',
   contact: 'lucide:contact',
+  download: 'lucide:download',
+  printer: 'lucide:printer',
+  fileText: 'lucide:file-text',
+  receipt: 'lucide:receipt',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

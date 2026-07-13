@@ -143,6 +143,10 @@ import {
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import {
+  debeImprimirTrasEmision,
+  imprimirTicketPorComprobanteId,
+} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -318,11 +322,11 @@ const lineasActivas = computed(() =>
 )
 
 const totales = computed(() => {
-  const valorVenta = lineasActivas.value.reduce(
+  const importeConIgv = lineasActivas.value.reduce(
     (sum, linea) => sum + calcularImporteLinea(linea),
     0,
   )
-  return calcularTotalesDesdeImporte(valorVenta)
+  return calcularTotalesDesdeImporte(importeConIgv)
 })
 
 const puedeGuardar = computed(
@@ -399,9 +403,22 @@ async function emitirComprobante() {
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
 
-  await emitMutation.mutateAsync({
-    id: comprobanteGuardadoId.value,
+  const id = comprobanteGuardadoId.value
+  const data = await emitMutation.mutateAsync({
+    id,
     idUsuarioAuditoria: userId,
   })
+
+  if (debeImprimirTrasEmision(data.sunat.estado)) {
+    try {
+      await imprimirTicketPorComprobanteId(id)
+    } catch (error) {
+      toastWarning(
+        error instanceof Error && error.message.includes('bloqueó')
+          ? error.message
+          : 'Emitido OK, pero no se pudo abrir la impresión del ticket',
+      )
+    }
+  }
 }
 </script>

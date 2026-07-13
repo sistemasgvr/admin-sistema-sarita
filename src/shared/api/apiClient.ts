@@ -116,3 +116,28 @@ export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Pr
   const response = await apiClient.delete<ApiResponse<T>>(url, config)
   return unwrapResponse(response)
 }
+
+export async function apiGetBlob(url: string, config?: AxiosRequestConfig): Promise<Blob> {
+  const response = await apiClient.get<Blob>(url, {
+    ...config,
+    responseType: 'blob',
+  })
+
+  const contentType = String(response.headers['content-type'] ?? '')
+
+  if (contentType.includes('application/json')) {
+    const text = await response.data.text()
+    let message = 'No se pudo obtener el archivo'
+
+    try {
+      const parsed = JSON.parse(text) as ApiErrorResponse
+      message = parsed.message ?? message
+    } catch {
+      // ignore parse errors
+    }
+
+    throw new ApiError(message, response.status || 500)
+  }
+
+  return response.data
+}

@@ -112,6 +112,10 @@ import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
+import {
+  debeImprimirTrasEmision,
+  imprimirTicketPorComprobanteId,
+} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import { toastWarning } from '@/shared/composables/useToast'
 
@@ -212,9 +216,22 @@ async function emitirComprobante() {
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
 
-  await emitMutation.mutateAsync({
-    id: comprobanteGuardadoId.value,
+  const id = comprobanteGuardadoId.value
+  const data = await emitMutation.mutateAsync({
+    id,
     idUsuarioAuditoria: userId,
   })
+
+  if (debeImprimirTrasEmision(data.sunat.estado)) {
+    try {
+      await imprimirTicketPorComprobanteId(id)
+    } catch (error) {
+      toastWarning(
+        error instanceof Error && error.message.includes('bloqueó')
+          ? error.message
+          : 'Emitido OK, pero no se pudo abrir la impresión del ticket',
+      )
+    }
+  }
 }
 </script>

@@ -148,11 +148,29 @@ export function formatPosMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
 }
 
-export function calcularTotalesDesdeImporte(valorVenta: number) {
-  const igv = valorVenta * 0.18
+/** Tasa IGV Perú (18%). Los precios del catálogo/POS se tratan como IGV incluido. */
+export const TASA_IGV = 0.18
+
+/**
+ * Descompone un importe con IGV incluido en valor venta + IGV.
+ * Ej.: S/ 28.00 → valor 23.73 + IGV 4.27 = total 28.00
+ */
+export function calcularTotalesDesdeImporte(
+  importeConIgv: number,
+  tasaIgv: number = TASA_IGV,
+) {
+  const total = Number(importeConIgv) || 0
+
+  if (total <= 0 || tasaIgv <= 0) {
+    return { valorVenta: total, igv: 0, total }
+  }
+
+  const valorVenta = Math.round((total / (1 + tasaIgv)) * 100) / 100
+  const igv = Math.round((total - valorVenta) * 100) / 100
+
   return {
     valorVenta,
     igv,
-    total: valorVenta + igv,
+    total: Math.round(total * 100) / 100,
   }
 }

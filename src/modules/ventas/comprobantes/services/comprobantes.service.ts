@@ -1,6 +1,7 @@
 import {
   apiDelete,
   apiGet,
+  apiGetBlob,
   apiGetPaginated,
   apiPost,
 } from '@/shared/api/apiClient'
@@ -13,6 +14,7 @@ import type {
   EmitirComprobanteResponse,
   SiguienteNumeroResponse,
 } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import type { ComprobantePdfFormato } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 
 export const comprobantesService = {
   listar(filters: ComprobanteListFilters) {
@@ -40,6 +42,12 @@ export const comprobantesService = {
   emitir(id: number, idUsuarioAuditoria: number) {
     return apiPost<EmitirComprobanteResponse>(`/comprobantes/${id}/emitir`, {
       idUsuarioAuditoria,
+    })
+  },
+
+  obtenerPdf(id: number, formato: ComprobantePdfFormato = 'a4') {
+    return apiGetBlob(`/comprobantes/${id}/pdf`, {
+      params: { formato },
     })
   },
 
