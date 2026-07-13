@@ -338,6 +338,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
 import { AppBadge, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS, type IconName } from '@/shared/constants/icons'
@@ -363,6 +364,11 @@ interface ClienteDetailModalProps {
 const props = defineProps<ClienteDetailModalProps>()
 
 const open = defineModel<boolean>({ default: false })
+
+const idReferencia = computed(() => props.cliente?.id)
+const clienteDetailQuery = useClienteDetailQuery(idReferencia, open)
+const cliente = computed<Cliente | null>(() => clienteDetailQuery.data.value ?? props.cliente ?? null)
+//const isLoadingCliente = computed(() => clienteDetailQuery.isLoading.value && !props.cliente)
 
 const getNombreCliente = (cliente: Cliente) => {
   if (cliente.razon_social) return cliente.razon_social
@@ -406,23 +412,23 @@ interface DetailSection {
 }
 
 const sections = computed<DetailSection[]>(() => {
-  const cliente = props.cliente
-  if (!cliente) return []
+  const c = cliente.value
+  if (!c) return []
 
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
+  const nombreCompleto = [c.nombres, c.apellido_paterno, c.apellido_materno]
     .filter(Boolean)
     .join(' ')
     .trim()
 
   const datosGenerales: DetailItem[] = [
-    { label: 'Código interno', value: cliente.codigo_interno || null },
+    { label: 'Código interno', value: c.codigo_interno || null },
   ]
 
-  if (cliente.razon_social) {
-    datosGenerales.push({ label: 'Razón social', value: cliente.razon_social })
+  if (c.razon_social) {
+    datosGenerales.push({ label: 'Razón social', value: c.razon_social })
   }
-  if (cliente.nombre_comercial) {
-    datosGenerales.push({ label: 'Nombre comercial', value: cliente.nombre_comercial })
+  if (c.nombre_comercial) {
+    datosGenerales.push({ label: 'Nombre comercial', value: c.nombre_comercial })
   }
   if (nombreCompleto) {
     datosGenerales.push({ label: 'Nombre completo', value: nombreCompleto })
@@ -430,7 +436,7 @@ const sections = computed<DetailSection[]>(() => {
 
   datosGenerales.push({
     label: 'Documento',
-    value: `${cliente.nombre_tipo_documento ?? 'Doc.'} ${cliente.numero_documento}`,
+    value: `${c.nombre_tipo_documento ?? 'Doc.'} ${c.numero_documento}`,
   })
 
   return [
@@ -438,40 +444,35 @@ const sections = computed<DetailSection[]>(() => {
     {
       title: 'Contacto y ubicación',
       items: [
-        { label: 'Teléfono', value: cliente.telefono ?? null },
-        { label: 'Correo', value: cliente.email ?? null },
-        { label: 'Dirección', value: cliente.direccion ?? null, fullWidth: true },
-        { label: 'Referencia', value: cliente.referencia ?? null, fullWidth: true },
-        { label: 'País', value: cliente.nombre_pais ?? formatId(cliente.id_pais) },
+        { label: 'Teléfono', value: c.telefono ?? null },
+        { label: 'Correo', value: c.email ?? null },
+        { label: 'Dirección', value: c.direccion ?? null, fullWidth: true },
+        { label: 'Referencia', value: c.referencia ?? null, fullWidth: true },
+        { label: 'País', value: c.nombre_pais ?? formatId(c.id_pais) },
         {
           label: 'Departamento',
-          value: cliente.nombre_departamento ?? formatId(cliente.id_departamento),
+          value: c.nombre_departamento ?? formatId(c.id_departamento),
         },
-        { label: 'Provincia', value: cliente.nombre_provincia ?? formatId(cliente.id_provincia) },
-        { label: 'Distrito', value: cliente.nombre_distrito ?? formatId(cliente.id_distrito) },
+        { label: 'Provincia', value: c.nombre_provincia ?? formatId(c.id_provincia) },
+        { label: 'Distrito', value: c.nombre_distrito ?? formatId(c.id_distrito) },
       ],
     },
   ]
 })
 
-/* ---------------- Información relacionada (pestañas) ---------------- */
-
 type RelatedTabKey = 'contactos' | 'direcciones' | 'choferes' | 'vehiculos'
 
 const activeTab = ref<RelatedTabKey>('contactos')
+const idCliente = computed(() => cliente.value?.id)
 
-const idCliente = computed(() => props.cliente?.id)
+const shouldFetchRelatedData = computed(() => open.value && Boolean(idCliente.value))
 
-const isTabActive = (tab: RelatedTabKey) => computed(() => open.value && activeTab.value === tab && Boolean(idCliente.value))
-
-// Contactos
 const contactosFilters = computed<ContactoListFilters>(() => ({
   idCliente: idCliente.value,
   limite: 50,
   soloActivos: null,
 }))
-const contactosEnabled = isTabActive('contactos')
-const contactosQuery = useContactosQuery(contactosFilters, contactosEnabled)
+const contactosQuery = useContactosQuery(contactosFilters, shouldFetchRelatedData)
 const contactosItems = computed<Contacto[]>(() => contactosQuery.data.value?.data ?? [])
 
 // Direcciones
@@ -480,8 +481,7 @@ const direccionesFilters = computed<DireccionListFilters>(() => ({
   limite: 50,
   soloActivos: null,
 }))
-const direccionesEnabled = isTabActive('direcciones')
-const direccionesQuery = useDireccionesQuery(direccionesFilters, direccionesEnabled)
+const direccionesQuery = useDireccionesQuery(direccionesFilters, shouldFetchRelatedData)
 const direccionesItems = computed<Direccion[]>(() => direccionesQuery.data.value?.data ?? [])
 
 // Choferes
@@ -490,8 +490,7 @@ const choferesFilters = computed<ChoferListFilters>(() => ({
   limite: 50,
   isActivos: null,
 }))
-const choferesEnabled = isTabActive('choferes')
-const choferesQuery = useChoferesQuery(choferesFilters, choferesEnabled)
+const choferesQuery = useChoferesQuery(choferesFilters, shouldFetchRelatedData)
 const choferesItems = computed<Chofer[]>(() => choferesQuery.data.value?.data ?? [])
 
 // Vehículos
@@ -500,8 +499,7 @@ const vehiculosFilters = computed<VehiculoListFilters>(() => ({
   limite: 50,
   isActivos: null,
 }))
-const vehiculosEnabled = isTabActive('vehiculos')
-const vehiculosQuery = useVehiculosQuery(vehiculosFilters, vehiculosEnabled)
+const vehiculosQuery = useVehiculosQuery(vehiculosFilters, shouldFetchRelatedData)
 const vehiculosItems = computed<Vehiculo[]>(() => vehiculosQuery.data.value?.data ?? [])
 
 interface RelatedTab {

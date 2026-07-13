@@ -378,6 +378,7 @@ import {
   useUpdateClienteMutation,
 } from '@/modules/clientes/composables/useClienteMutations'
 import { documentoYaRegistrado } from '@/modules/clientes/composables/useValidarDocumentoCliente'
+import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
 import { toClienteFormSchema } from '@/modules/clientes/validation/clienteFormSchema'
 import type {
   Cliente,
@@ -407,6 +408,12 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const createMutation = useCreateClienteMutation()
 const updateMutation = useUpdateClienteMutation()
+
+// Al abrir en modo edición, se vuelve a pedir el cliente al backend
+// en vez de confiar solo en la fila que ya estaba en la tabla.
+const idParaEditar = computed(() => (props.mode === 'edit' ? props.cliente?.id : undefined))
+const detailQuery = useClienteDetailQuery(idParaEditar, open)
+const clienteData = computed(() => detailQuery.data.value ?? props.cliente ?? null)
 
 const isCheckingDocumento = ref(false)
 const documentoDuplicado = ref(false)
@@ -628,39 +635,40 @@ const checkDocumento = async () => {
 }
 
 const syncFormValues = async () => {
+  const cliente = clienteData.value
   resetForm({
     values: {
-      idTipoDocumento: props.cliente?.id_tipo_documento ?? '',
-      numeroDocumento: props.cliente?.numero_documento ?? '',
-      codigoInterno: props.cliente?.codigo_interno ?? '',
-      idTipoCliente: props.cliente?.id_tipo_cliente ?? '',
-      idTipoPersona: props.cliente?.id_tipo_persona ?? '',
-      razonSocial: props.cliente?.razon_social ?? '',
-      nombreComercial: props.cliente?.nombre_comercial ?? '',
-      nombres: props.cliente?.nombres ?? '',
-      apellidoPaterno: props.cliente?.apellido_paterno ?? '',
-      apellidoMaterno: props.cliente?.apellido_materno ?? '',
-      telefono: props.cliente?.telefono ?? '',
-      email: props.cliente?.email ?? '',
-      direccion: props.cliente?.direccion ?? '',
-      referencia: props.cliente?.referencia ?? '',
-      idDistrito: props.cliente?.id_distrito ?? undefined,
-      observacion: props.cliente?.observacion ?? '',
+      idTipoDocumento: cliente?.id_tipo_documento ?? '',
+      numeroDocumento: cliente?.numero_documento ?? '',
+      codigoInterno: cliente?.codigo_interno ?? '',
+      idTipoCliente: cliente?.id_tipo_cliente ?? '',
+      idTipoPersona: cliente?.id_tipo_persona ?? '',
+      razonSocial: cliente?.razon_social ?? '',
+      nombreComercial: cliente?.nombre_comercial ?? '',
+      nombres: cliente?.nombres ?? '',
+      apellidoPaterno: cliente?.apellido_paterno ?? '',
+      apellidoMaterno: cliente?.apellido_materno ?? '',
+      telefono: cliente?.telefono ?? '',
+      email: cliente?.email ?? '',
+      direccion: cliente?.direccion ?? '',
+      referencia: cliente?.referencia ?? '',
+      idDistrito: cliente?.id_distrito ?? undefined,
+      observacion: cliente?.observacion ?? '',
     },
   })
 
-  esAgentePercepcion.value = props.cliente?.es_agente_percepcion ?? false
-  esBuenContribuyente.value = props.cliente?.es_buen_contribuyente ?? false
-  esAgenteRetenedor.value = props.cliente?.es_agente_retenedor ?? false
-  afectoRus.value = props.cliente?.afecto_rus ?? false
-  sunatActivo.value = props.cliente?.situacion_sunat === 'ACTIVO'
-  sunatHabido.value = props.cliente?.estado_contribuyente_sunat === 'HABIDO'
+  esAgentePercepcion.value = cliente?.es_agente_percepcion ?? false
+  esBuenContribuyente.value = cliente?.es_buen_contribuyente ?? false
+  esAgenteRetenedor.value = cliente?.es_agente_retenedor ?? false
+  afectoRus.value = cliente?.afecto_rus ?? false
+  sunatActivo.value = cliente?.situacion_sunat === 'ACTIVO'
+  sunatHabido.value = cliente?.estado_contribuyente_sunat === 'HABIDO'
   documentoDuplicado.value = false
 
   isSyncingUbigeo = true
-  idPaisUI.value = props.cliente?.id_pais ?? ''
-  idDepartamentoUI.value = props.cliente?.id_departamento ?? ''
-  idProvinciaUI.value = props.cliente?.id_provincia ?? ''
+  idPaisUI.value = cliente?.id_pais ?? ''
+  idDepartamentoUI.value = cliente?.id_departamento ?? ''
+  idProvinciaUI.value = cliente?.id_provincia ?? ''
   await nextTick()
   isSyncingUbigeo = false
 }
@@ -754,6 +762,14 @@ watch(
   () => props.cliente,
   () => {
     if (open.value) {
+      syncFormValues()
+    }
+  },
+)
+watch(
+  () => detailQuery.data.value,
+  (data) => {
+    if (open.value && data) {
       syncFormValues()
     }
   },

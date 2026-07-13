@@ -16,14 +16,16 @@
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppSelect
+      <SearchableSelect
         v-model="idCliente"
         label="Cliente / Proveedor"
-        placeholder="Sin cliente asignado"
+        placeholder="Busca por razón social, nombres o documento..."
+        empty-option-label="Sin cliente asignado"
+        :model-label="clienteLabelActual"
         v-bind="idClienteAttrs"
         :disabled="isSubmitting"
         :error="errors.idCliente"
-        :options="clienteOptions"
+        :search-fn="searchClientes"
       />
 
       <div class="grid gap-3 sm:grid-cols-3">
@@ -178,16 +180,19 @@ import type {
   Chofer,
   ChoferFormMode,
 } from '@/modules/choferes/interfaces/chofer.interface'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
+
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface ChoferFormModalProps {
   mode: ChoferFormMode
   chofer?: Chofer | null
-  clientes: Cliente[]
   defaultClienteId?: number | null
 }
 
@@ -200,7 +205,6 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
-
 const createMutation = useCreateChoferMutation()
 const updateMutation = useUpdateChoferMutation()
 
@@ -216,9 +220,23 @@ const listaCategoriaLicenciaId = computed(() => ListaIds.CATEGORIA_LICENCIA)
 const categoriaLicenciaQuery = useListaOpcionesQuery(listaCategoriaLicenciaId)
 const categoriaLicenciaOptions = computed(() => toSelectOptions(categoriaLicenciaQuery.data.value))
 
-const getClienteNombre = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
+const getClienteNombreEmbebido = (row: any): string | null => {
+  if (row.cliente_razon_social) return row.cliente_razon_social
 
+  const nombreCompleto = [row.cliente_nombres, row.cliente_apellido_paterno, row.cliente_apellido_materno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return nombreCompleto || row.cliente_numero_documento || null
+}
+
+const clienteLabelActual = computed(() =>
+  props.chofer ? getClienteNombreEmbebido(props.chofer) : null,
+)
+
+const getClienteNombre = (cliente: Cliente): string => {
+  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
   if (esJuridica && cliente.razon_social) {
     return cliente.razon_social
   }
@@ -231,18 +249,25 @@ const getClienteNombre = (cliente: Cliente) => {
   return nombreCompleto || cliente.razon_social || cliente.numero_documento
 }
 
-const clienteOptions = computed(() => [
-  { value: '', label: 'Sin cliente asignado' },
-  ...props.clientes.map((cliente) => ({
+// 3. Resuelve el fetch en el mismo componente
+const searchClientes = async (query: string): Promise<SelectOption[]> => {
+  const response = await clientesService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 20,
+    soloActivos: 1,
+  })
+
+  return response.data.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
-  })),
-])
+  }))
+}
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      idCliente: yup.number().optional(),
+      idCliente: yup.number().optional().nullable(),
       nombres: requiredString('Los nombres'),
       apellidoPaterno: optionalString(),
       apellidoMaterno: optionalString(),
