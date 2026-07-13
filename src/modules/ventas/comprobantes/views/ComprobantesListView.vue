@@ -49,58 +49,82 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
+        <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
 
-        <button
-          v-if="canView && puedePdf(row)"
-          type="button"
-          title="Descargar PDF A4"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-500/10 disabled:opacity-60"
-          :disabled="pdfBusyId === row.id"
-          @click="descargarPdf(row, 'a4')"
-        >
-          <AppIcon :name="ICONS.download" :size="16" />
-        </button>
+          <button
+            v-if="canView && puedePdf(row)"
+            type="button"
+            title="Descargar PDF A4"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            :disabled="pdfBusyId === row.id"
+            @click="descargarPdf(row, 'a4')"
+          >
+            <AppIcon :name="ICONS.download" :size="15" />
+          </button>
 
-        <button
-          v-if="canView && puedePdf(row)"
-          type="button"
-          title="Imprimir ticketera 80mm"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-600 hover:bg-brand-500/10 disabled:opacity-60"
-          :disabled="pdfBusyId === row.id"
-          @click="imprimirPdf(row, 'ticket')"
-        >
-          <AppIcon :name="ICONS.receipt" :size="16" />
-        </button>
+          <button
+            v-if="canView && puedePdf(row)"
+            type="button"
+            title="Imprimir A4"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            :disabled="pdfBusyId === row.id"
+            @click="imprimirPdf(row, 'a4')"
+          >
+            <AppIcon :name="ICONS.printer" :size="15" />
+          </button>
 
-        <button
-          v-if="canEmit && puedeEmitir(row)"
-          type="button"
-          title="Emitir SUNAT"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
-          :disabled="emitMutation.isPending.value"
-          @click="emitirComprobante(row)"
-        >
-          <AppIcon :name="ICONS.plug" :size="16" />
-        </button>
+          <button
+            v-if="canView && puedePdf(row)"
+            type="button"
+            title="Descargar ticketera 80mm"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-500 text-brand-600 transition hover:bg-brand-500/10 disabled:opacity-60"
+            :disabled="pdfBusyId === row.id"
+            @click="descargarPdf(row, 'ticket')"
+          >
+            <AppIcon :name="ICONS.ticket" :size="15" />
+          </button>
 
-        <button
-          v-if="canDelete && puedeEliminar(row)"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-        </button>
+          <button
+            v-if="canView && puedePdf(row)"
+            type="button"
+            title="Imprimir ticket 80mm"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-500 text-brand-600 transition hover:bg-brand-500/10 disabled:opacity-60"
+            :disabled="pdfBusyId === row.id"
+            @click="imprimirPdf(row, 'ticket')"
+          >
+            <AppIcon :name="ICONS.printer" :size="15" />
+          </button>
+
+          <button
+            v-if="canEmit && puedeEmitir(row)"
+            type="button"
+            title="Emitir SUNAT"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-success-500 text-success-600 transition hover:bg-success-500/10 disabled:opacity-60"
+            :disabled="emitMutation.isPending.value"
+            @click="emitirComprobante(row)"
+          >
+            <AppIcon :name="ICONS.plug" :size="15" />
+          </button>
+
+          <button
+            v-if="canDelete && puedeEliminar(row)"
+            type="button"
+            title="Eliminar"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-500 text-error-500 transition hover:bg-error-500/10"
+            @click="openDeleteModal(row)"
+          >
+            <AppIcon :name="ICONS.trash" :size="15" />
+          </button>
+        </div>
       </template>
 
       <template #footer>

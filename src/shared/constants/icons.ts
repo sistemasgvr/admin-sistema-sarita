@@ -63,6 +63,8 @@ export const ICONS = {
   printer: 'lucide:printer',
   fileText: 'lucide:file-text',
   receipt: 'lucide:receipt',
+  /** Ticket / voucher (sin símbolo $) */
+  ticket: 'lucide:ticket',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]
