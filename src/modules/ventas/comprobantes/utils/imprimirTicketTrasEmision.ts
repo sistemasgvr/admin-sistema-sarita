@@ -1,26 +1,20 @@
-import { empresasService } from '@/modules/configuracion/empresas/services/empresas.service'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import {
-  buildTicketHtml,
-  openTicketPrintWindow,
-  writeAndPrintTicket,
-} from '@/modules/ventas/comprobantes/utils/comprobanteTicket'
+  openPdfPrintWindow,
+  printBlobInWindow,
+} from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 
 /**
  * Abre la ventana YA (en el clic del usuario) y luego emite/consulta.
  * Chrome bloquea window.open si se llama después de un await (p. ej. Emitir SUNAT).
  */
 export function abrirVentanaTicketAlClic(): Window | null {
-  return openTicketPrintWindow()
+  return openPdfPrintWindow()
 }
 
 export async function cargarEImprimirTicketEnVentana(win: Window, id: number) {
-  const [detalle, empresas] = await Promise.all([
-    comprobantesService.obtenerPorId(id),
-    empresasService.listar({ pagina: 1, limite: 1 }),
-  ])
-
-  writeAndPrintTicket(win, buildTicketHtml(detalle, empresas.data[0] ?? null))
+  const blob = await comprobantesService.obtenerPdf(id, 'ticket')
+  printBlobInWindow(win, blob)
 }
 
 export function debeImprimirTrasEmision(estadoSunat: string) {
@@ -29,8 +23,7 @@ export function debeImprimirTrasEmision(estadoSunat: string) {
 }
 
 /**
- * Flujo POS: abrir ventana en el mismo clic → emitir → imprimir ticket.
- * Evita el bloqueo de pop-ups de Chrome tras await.
+ * Flujo POS: abrir ventana en el mismo clic → emitir → imprimir ticket PDF 80mm.
  */
 export async function emitirConImpresionTicket(options: {
   comprobanteId: number
@@ -60,7 +53,7 @@ export async function emitirConImpresionTicket(options: {
 
 /** Impresión manual (botón Imprimir ticket): abre ventana sincronamente. */
 export async function imprimirTicketPorComprobanteId(id: number) {
-  const win = openTicketPrintWindow()
+  const win = openPdfPrintWindow()
 
   if (!win) {
     throw new Error(

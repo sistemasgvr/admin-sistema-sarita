@@ -140,19 +140,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import {
   downloadBlob,
-  printBlob,
+  openPdfPrintWindow,
+  printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
-import {
-  buildTicketHtml,
-  downloadTicketHtml,
-  printTicketHtml,
-} from '@/modules/ventas/comprobantes/utils/comprobanteTicket'
 import { AppBadge, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -174,7 +169,6 @@ const open = computed({
 
 const comprobanteIdRef = ref<number | null>(null)
 const comprobanteQuery = useComprobanteQuery(comprobanteIdRef)
-const empresaQuery = useEmpresaActualQuery()
 const pdfBusy = ref(false)
 
 watch(
@@ -206,27 +200,15 @@ const sunatBadgeColor = computed(() => {
 const formatMoney = (value: number) =>
   new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
 
-function ticketHtml() {
-  const c = comprobante.value
-  if (!c) throw new Error('Comprobante inválido')
-  return buildTicketHtml(c, empresaQuery.data.value ?? null)
-}
-
 async function descargarPdf(formato: ComprobantePdfFormato) {
   pdfBusy.value = true
   try {
     const c = comprobante.value
     if (!c) throw new Error('Comprobante inválido')
 
-    if (formato === 'ticket') {
-      downloadTicketHtml(ticketHtml(), `${c.serie}-${c.numero}-ticket.html`)
-      toastSuccess('Ticketera descargada (abre e imprime en 80mm)')
-      return
-    }
-
-    const blob = await comprobantesService.obtenerPdf(c.id, 'a4')
-    downloadBlob(blob, `${c.serie}-${c.numero}-a4.pdf`)
-    toastSuccess('PDF A4 descargado')
+    const blob = await comprobantesService.obtenerPdf(c.id, formato)
+    downloadBlob(blob, `${c.serie}-${c.numero}-${formato}.pdf`)
+    toastSuccess(formato === 'ticket' ? 'PDF ticketera 80mm descargado' : 'PDF A4 descargado')
   } catch (error) {
     toastApiError(error, 'No se pudo generar el documento')
   } finally {
@@ -236,22 +218,23 @@ async function descargarPdf(formato: ComprobantePdfFormato) {
 
 async function imprimirPdf(formato: ComprobantePdfFormato) {
   pdfBusy.value = true
-  try {
-    if (formato === 'ticket') {
-      printTicketHtml(ticketHtml())
-      return
-    }
+  const win = openPdfPrintWindow()
+  if (!win) {
+    pdfBusy.value = false
+    toastWarning(
+      'El navegador bloqueó la ventana de impresión. Permite ventanas emergentes en la URL.',
+    )
+    return
+  }
 
+  try {
     const id = props.comprobanteId
     if (!id) throw new Error('Comprobante inválido')
-    const blob = await comprobantesService.obtenerPdf(id, 'a4')
-    printBlob(blob)
+    const blob = await comprobantesService.obtenerPdf(id, formato)
+    printBlobInWindow(win, blob)
   } catch (error) {
-    if (error instanceof Error && error.message.includes('bloqueó')) {
-      toastWarning(error.message)
-    } else {
-      toastApiError(error, 'No se pudo abrir para imprimir')
-    }
+    win.close()
+    toastApiError(error, 'No se pudo abrir para imprimir')
   } finally {
     pdfBusy.value = false
   }

@@ -166,18 +166,13 @@ import type {
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import {
   downloadBlob,
-  printBlob,
+  openPdfPrintWindow,
+  printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import {
-  buildTicketHtml,
-  downloadTicketHtml,
-  printTicketHtml,
-} from '@/modules/ventas/comprobantes/utils/comprobanteTicket'
-import {
   emitirConImpresionTicket,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
-import { empresasService } from '@/modules/configuracion/empresas/services/empresas.service'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
@@ -269,27 +264,12 @@ function puedePdf(row: ComprobanteListItem) {
   return row.nombre_estado_sunat === 'ACEPTADO'
 }
 
-async function obtenerTicketHtml(row: ComprobanteListItem) {
-  const [detalle, empresas] = await Promise.all([
-    comprobantesService.obtenerPorId(row.id),
-    empresasService.listar({ pagina: 1, limite: 1 }),
-  ])
-  return buildTicketHtml(detalle, empresas.data[0] ?? null)
-}
-
 async function descargarPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {
   pdfBusyId.value = row.id
   try {
-    if (formato === 'ticket') {
-      const html = await obtenerTicketHtml(row)
-      downloadTicketHtml(html, `${row.serie}-${row.numero}-ticket.html`)
-      toastSuccess('Ticketera descargada (abre e imprime en 80mm)')
-      return
-    }
-
-    const blob = await comprobantesService.obtenerPdf(row.id, 'a4')
-    downloadBlob(blob, `${row.serie}-${row.numero}-a4.pdf`)
-    toastSuccess('PDF A4 descargado')
+    const blob = await comprobantesService.obtenerPdf(row.id, formato)
+    downloadBlob(blob, `${row.serie}-${row.numero}-${formato}.pdf`)
+    toastSuccess(formato === 'ticket' ? 'PDF ticketera 80mm descargado' : 'PDF A4 descargado')
   } catch (error) {
     toastApiError(error, 'No se pudo generar el documento')
   } finally {
@@ -299,21 +279,21 @@ async function descargarPdf(row: ComprobanteListItem, formato: ComprobantePdfFor
 
 async function imprimirPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {
   pdfBusyId.value = row.id
-  try {
-    if (formato === 'ticket') {
-      const html = await obtenerTicketHtml(row)
-      printTicketHtml(html)
-      return
-    }
+  const win = openPdfPrintWindow()
+  if (!win) {
+    pdfBusyId.value = null
+    toastWarning(
+      'El navegador bloqueó la ventana de impresión. Permite ventanas emergentes en la URL.',
+    )
+    return
+  }
 
-    const blob = await comprobantesService.obtenerPdf(row.id, 'a4')
-    printBlob(blob)
+  try {
+    const blob = await comprobantesService.obtenerPdf(row.id, formato)
+    printBlobInWindow(win, blob)
   } catch (error) {
-    if (error instanceof Error && error.message.includes('bloqueó')) {
-      toastWarning(error.message)
-    } else {
-      toastApiError(error, 'No se pudo abrir para imprimir')
-    }
+    win.close()
+    toastApiError(error, 'No se pudo abrir para imprimir')
   } finally {
     pdfBusyId.value = null
   }
