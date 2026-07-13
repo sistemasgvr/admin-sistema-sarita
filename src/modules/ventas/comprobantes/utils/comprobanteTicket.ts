@@ -120,13 +120,24 @@ export function buildTicketHtml(comprobante: Comprobante, empresa: Empresa | nul
 </html>`
 }
 
-export function printTicketHtml(html: string) {
-  const win = window.open('', '_blank', 'noopener,noreferrer,width=420,height=720')
+export function openTicketPrintWindow(): Window | null {
+  // No usar noopener: en Chrome window.open(..., 'noopener') devuelve null
+  // aunque sí abra una ventana about:blank.
+  const win = window.open('', '_blank', 'width=420,height=720')
 
-  if (!win) {
-    throw new Error('El navegador bloqueó la ventana de impresión')
-  }
+  if (!win) return null
 
+  win.document.open()
+  win.document.write(`<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8" /><title>Ticket</title></head>
+<body style="font-family:sans-serif;padding:16px;font-size:14px;">
+  Preparando ticket para impresión...
+</body></html>`)
+  win.document.close()
+  return win
+}
+
+export function writeAndPrintTicket(win: Window, html: string) {
   win.document.open()
   win.document.write(html)
   win.document.close()
@@ -140,8 +151,20 @@ export function printTicketHtml(html: string) {
     }
   }
 
-  win.addEventListener('load', triggerPrint)
-  setTimeout(triggerPrint, 300)
+  // document.write no dispara load de forma fiable; imprimir tras un tick
+  setTimeout(triggerPrint, 250)
+}
+
+export function printTicketHtml(html: string) {
+  const win = openTicketPrintWindow()
+
+  if (!win) {
+    throw new Error(
+      'El navegador bloqueó la ventana de impresión. En el candado de la URL, permite ventanas emergentes.',
+    )
+  }
+
+  writeAndPrintTicket(win, html)
 }
 
 export function downloadTicketHtml(html: string, filename: string) {

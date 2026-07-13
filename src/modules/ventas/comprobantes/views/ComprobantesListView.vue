@@ -175,8 +175,7 @@ import {
   printTicketHtml,
 } from '@/modules/ventas/comprobantes/utils/comprobanteTicket'
 import {
-  debeImprimirTrasEmision,
-  imprimirTicketPorComprobanteId,
+  emitirConImpresionTicket,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { empresasService } from '@/modules/configuracion/empresas/services/empresas.service'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -334,18 +333,20 @@ async function emitirComprobante(row: ComprobanteListItem) {
   const userId = authStore.user?.id
   if (!userId) return
 
-  const data = await emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
+  try {
+    const resultado = await emitirConImpresionTicket({
+      comprobanteId: row.id,
+      emitir: () =>
+        emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId }),
+    })
 
-  if (debeImprimirTrasEmision(data.sunat.estado)) {
-    try {
-      await imprimirTicketPorComprobanteId(row.id)
-    } catch (error) {
+    if (resultado === 'sin_ventana') {
       toastWarning(
-        error instanceof Error && error.message.includes('bloqueó')
-          ? error.message
-          : 'Emitido OK, pero no se pudo abrir la impresión del ticket',
+        'Emitido OK. Permite ventanas emergentes en la URL para imprimir el ticket automáticamente.',
       )
     }
+  } catch {
+    // mutateAsync ya muestra el toast de error
   }
 }
 
