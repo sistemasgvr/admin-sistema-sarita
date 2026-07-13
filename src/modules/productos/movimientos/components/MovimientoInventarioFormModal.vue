@@ -85,8 +85,8 @@
                 v-model="cantidad"
                 label="Cantidad"
                 type="number"
-                min="0.0001"
-                step="0.0001"
+                :min="NUMBER_MIN.unit"
+                :step="NUMBER_STEP.unit"
                 required
                 v-bind="cantidadAttrs"
                 :disabled="isSubmitting"
@@ -173,6 +173,7 @@ import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
@@ -250,7 +251,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
         .number()
         .transform((value, originalValue) => (originalValue === '' ? undefined : value))
         .optional()
-        .min(0.0001, 'La cantidad debe ser mayor a cero'),
+        .integer('La cantidad debe ser un número entero')
+        .min(1, 'La cantidad debe ser mayor a cero'),
       idTipoDocumentoRef: yup
         .mixed<string | number>()
         .transform((value) => (value === '' ? undefined : value))

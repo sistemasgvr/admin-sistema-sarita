@@ -85,8 +85,8 @@
                 v-model="capacidad"
                 label="Capacidad"
                 type="number"
-                min="0"
-                step="0.0001"
+                :min="NUMBER_MIN.measure"
+                :step="NUMBER_STEP.measure"
                 v-bind="capacidadAttrs"
                 :disabled="isSubmitting"
               />
@@ -117,8 +117,8 @@
               v-model="costoProducto"
               label="Costo producto"
               type="number"
-              min="0"
-              step="0.01"
+              :min="NUMBER_MIN.money"
+              :step="NUMBER_STEP.money"
               v-bind="costoProductoAttrs"
               :disabled="isSubmitting"
             />
@@ -127,8 +127,8 @@
               v-model="costoFlete"
               label="Costo flete"
               type="number"
-              min="0"
-              step="0.01"
+              :min="NUMBER_MIN.money"
+              :step="NUMBER_STEP.money"
               v-bind="costoFleteAttrs"
               :disabled="isSubmitting"
             />
@@ -137,8 +137,8 @@
               v-model="porcentajeMargen"
               label="Margen %"
               type="number"
-              min="0"
-              step="0.01"
+              :min="NUMBER_MIN.money"
+              :step="NUMBER_STEP.money"
               v-bind="porcentajeMargenAttrs"
               :disabled="isSubmitting"
             />
@@ -147,8 +147,8 @@
               v-model="precioFinal"
               label="Precio final"
               type="number"
-              min="0"
-              step="0.01"
+              :min="NUMBER_MIN.money"
+              :step="NUMBER_STEP.money"
               v-bind="precioFinalAttrs"
               :disabled="isSubmitting"
             />
@@ -157,8 +157,8 @@
               v-model="precioGarantia"
               label="Precio garantía"
               type="number"
-              min="0"
-              step="0.01"
+              :min="NUMBER_MIN.money"
+              :step="NUMBER_STEP.money"
               v-bind="precioGarantiaAttrs"
               :disabled="isSubmitting"
             />
@@ -207,6 +207,7 @@ import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

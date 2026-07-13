@@ -63,16 +63,28 @@
             required
             @update:model-value="onProductoChange"
           />
-          <AppInput v-model="cantidad" label="Cantidad / m³" type="number" min="0.0001" step="0.0001" />
+          <AppInput
+            v-model="cantidad"
+            label="Cantidad / m³"
+            type="number"
+            :min="NUMBER_MIN.measurePositive"
+            :step="NUMBER_STEP.measure"
+          />
           <AppInput
             v-model="capacidad"
             label="Capacidad cilindro"
             type="number"
-            min="0"
-            step="0.0001"
+            :min="NUMBER_MIN.measure"
+            :step="NUMBER_STEP.measure"
             placeholder="Opcional"
           />
-          <AppInput v-model="precioUnitario" label="Precio unitario" type="number" min="0" step="0.01" />
+          <AppInput
+            v-model="precioUnitario"
+            label="Precio unitario"
+            type="number"
+            :min="NUMBER_MIN.money"
+            :step="NUMBER_STEP.money"
+          />
         </div>
 
         <div class="mt-4">
@@ -116,6 +128,7 @@ import {
   emitirConImpresionTicket,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { toastWarning } from '@/shared/composables/useToast'
 
 const {

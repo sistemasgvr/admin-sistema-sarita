@@ -81,8 +81,8 @@
               v-model="capacidad"
               label="Capacidad"
               type="number"
-              min="0"
-              step="0.0001"
+              :min="NUMBER_MIN.measure"
+              :step="NUMBER_STEP.measure"
               v-bind="capacidadAttrs"
               :disabled="isSubmitting"
               :error="errors.capacidad"
@@ -277,6 +277,7 @@ import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 

@@ -85,15 +85,15 @@
                 v-model="linea.cantidad"
                 label="Cant."
                 type="number"
-                min="0.0001"
-                step="0.0001"
+                :min="NUMBER_MIN.unit"
+                :step="NUMBER_STEP.unit"
               />
               <AppInput
                 v-model="linea.precioUnitario"
                 label="P. unit."
                 type="number"
-                min="0"
-                step="0.01"
+                :min="NUMBER_MIN.money"
+                :step="NUMBER_STEP.money"
               />
             </div>
 
@@ -149,6 +149,7 @@ import {
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
@@ -348,7 +349,7 @@ function agregarProducto(producto: Producto) {
   const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
 
   if (existente) {
-    existente.cantidad = Number(existente.cantidad || 0) + 1
+    existente.cantidad = Math.max(1, Math.round(Number(existente.cantidad || 0) + 1))
     toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
     return
   }

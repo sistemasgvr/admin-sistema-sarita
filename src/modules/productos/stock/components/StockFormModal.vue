@@ -69,8 +69,8 @@
               v-model="stockCantidad"
               label="Cantidad en stock"
               type="number"
-              min="0"
-              step="0.0001"
+              :min="NUMBER_MIN.unitZero"
+              :step="NUMBER_STEP.unit"
               placeholder="0"
               required
               v-bind="stockCantidadAttrs"
@@ -82,8 +82,8 @@
               v-model="stockMinimo"
               label="Stock mínimo"
               type="number"
-              min="0"
-              step="0.0001"
+              :min="NUMBER_MIN.unitZero"
+              :step="NUMBER_STEP.unit"
               placeholder="0"
               required
               v-bind="stockMinimoAttrs"
@@ -132,6 +132,7 @@ import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 
 interface StockFormModalProps {
   mode: StockFormMode
@@ -175,11 +176,13 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       stock: yup
         .number()
         .typeError('Ingresa una cantidad válida')
+        .integer('La cantidad debe ser un número entero')
         .min(0, 'La cantidad no puede ser negativa')
         .required('La cantidad es obligatoria'),
       stockMinimo: yup
         .number()
         .typeError('Ingresa un valor válido')
+        .integer('El stock mínimo debe ser un número entero')
         .min(0, 'El stock mínimo no puede ser negativo')
         .required('El stock mínimo es obligatorio'),
     }),
