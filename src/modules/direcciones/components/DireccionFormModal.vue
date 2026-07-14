@@ -114,6 +114,20 @@
         :error="errors.referencia"
       />
 
+      <div>
+        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Ubicación en el mapa
+        </label>
+        <MapaLeaflet
+          v-model:latitud="latitud"
+          v-model:longitud="longitud"
+          height="320px"
+          :searchable="true"
+          :draggable-marker="true"
+          :readonly="false"
+        />
+      </div>
+
       <AppCheckbox
         v-model="esPrincipal"
         :disabled="isSubmitting"
@@ -166,7 +180,7 @@ import type {
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppCheckbox, AppInput, AppModal, AppSelect, MapaLeaflet } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
@@ -253,6 +267,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       direccion: requiredString('La dirección'),
       idDistrito: yup.number().optional(),
       referencia: optionalString(),
+      latitud: yup.number().optional(),
+      longitud: yup.number().optional(),
       esPrincipal: yup.boolean().default(false),
     }),
   ),
@@ -262,6 +278,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     direccion: '',
     idDistrito: undefined as number | undefined,
     referencia: '',
+    latitud: undefined as number | undefined,
+    longitud: undefined as number | undefined,
     esPrincipal: false,
   },
 })
@@ -271,6 +289,8 @@ const [descripcion, descripcionAttrs] = defineField('descripcion')
 const [direccion, direccionAttrs] = defineField('direccion')
 const [idDistrito, idDistritoAttrs] = defineField('idDistrito')
 const [referencia, referenciaAttrs] = defineField('referencia')
+const [latitud] = defineField('latitud')
+const [longitud] = defineField('longitud')
 const [esPrincipal] = defineField('esPrincipal')
 
 const idPaisUI = ref<number | ''>('')
@@ -316,6 +336,8 @@ const syncFormValues = async () => {
       direccion: d?.direccion ?? '',
       idDistrito: d?.id_distrito ?? undefined,
       referencia: d?.referencia ?? '',
+      latitud: d?.latitud ?? undefined,
+      longitud: d?.longitud ?? undefined,
       esPrincipal: d?.es_principal ?? false,
     },
   })
@@ -348,6 +370,8 @@ const onSubmit = handleSubmit(async (values) => {
         idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
         idDistrito: values.idDistrito ? Number(values.idDistrito) : undefined,
         referencia: values.referencia || undefined,
+        latitud: values.latitud || undefined,
+        longitud: values.longitud  || undefined,
         esPrincipal: values.esPrincipal ?? false,
       })
     } else if (props.direccion) {
@@ -362,6 +386,8 @@ const onSubmit = handleSubmit(async (values) => {
           idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
           idDistrito: values.idDistrito ? Number(values.idDistrito) : undefined,
           referencia: values.referencia || undefined,
+          latitud: values.latitud || undefined,
+          longitud: values.longitud  || undefined,
           esPrincipal: values.esPrincipal ?? false,
         },
       })

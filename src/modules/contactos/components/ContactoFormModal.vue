@@ -154,7 +154,7 @@ import type {
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppCheckbox, AppInput, AppModal } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'

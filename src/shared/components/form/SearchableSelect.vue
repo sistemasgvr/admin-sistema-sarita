@@ -7,7 +7,6 @@
 
     <div class="relative">
       <input
-        ref="inputRef"
         type="text"
         class="h-11 w-full rounded-lg border bg-transparent px-4 py-2.5 pr-9 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:outline-none focus:ring-3 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:disabled:bg-white/[0.03] dark:disabled:text-white/40"
         :class="
@@ -133,8 +132,6 @@ const emit = defineEmits<{
 }>()
 
 const rootRef = ref<HTMLElement | null>(null)
-const inputRef = ref<HTMLInputElement | null>(null)
-
 const query = ref('')
 const menuOpen = ref(false)
 const loading = ref(false)

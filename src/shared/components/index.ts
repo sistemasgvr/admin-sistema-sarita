@@ -9,3 +9,4 @@ export { default as AppBadgeList } from '@/shared/components/ui/AppBadgeList.vue
 export { default as AppModal } from '@/shared/components/ui/AppModal.vue'
 export { default as AppPagination } from '@/shared/components/ui/AppPagination.vue'
 export { default as AppTable } from '@/shared/components/ui/AppTable.vue'
+export { default as MapaLeaflet } from '@/shared/components/map/MapaLeaflet.vue'

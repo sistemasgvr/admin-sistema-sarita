@@ -39,6 +39,18 @@
             </dd>
           </div>
         </dl>
+
+        <div v-if="section.showMap && cliente?.latitud && cliente?.longitud" class="mt-3">
+          <MapaLeaflet
+            :latitud="cliente.latitud"
+            :longitud="cliente.longitud"
+            :height="'280px'"
+            :searchable="false"
+            :draggable-marker="false"
+            :readonly="true"
+            :zoom="16"
+          />
+        </div>
       </section>
 
       <section
@@ -223,9 +235,23 @@
                   <p class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
                     {{ getUbigeoTexto(dir) }}
                   </p>
-                  <p v-if="dir.referencia" class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-                    Referencia: {{ dir.referencia }}
-                  </p>
+                  <div class="mt-1 space-y-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                    <p v-if="dir.referencia">
+                      Referencia: {{ dir.referencia }}
+                    </p>
+                    <p v-if="dir.latitud && dir.longitud">
+                        <AppIcon :name="ICONS.mapPin" :size="13" />
+                        {{ dir.latitud }}, {{ dir.longitud }}
+                      <a
+                        :href="`https://www.google.com/maps/search/?api=1&query=${dir.latitud},${dir.longitud}`"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1 font-medium text-brand-500 hover:text-brand-600"
+                      >
+                      Ver en Google Maps
+                      </a>
+                    </p>
+                  </div>
                 </div>
               </div>
             </RelatedListState>
@@ -339,7 +365,7 @@
 import { computed, ref, watch } from 'vue'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppBadge, AppModal, MapaLeaflet } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS, type IconName } from '@/shared/constants/icons'
 import { formatDate, formatDateTime } from '@/shared/utils/date'
@@ -409,6 +435,7 @@ interface DetailItem {
 interface DetailSection {
   title: string
   items: DetailItem[]
+  showMap?: boolean
 }
 
 const sections = computed<DetailSection[]>(() => {
@@ -443,6 +470,7 @@ const sections = computed<DetailSection[]>(() => {
     { title: 'Datos generales', items: datosGenerales },
     {
       title: 'Contacto y ubicación',
+      showMap: true,
       items: [
         { label: 'Teléfono', value: c.telefono ?? null },
         { label: 'Correo', value: c.email ?? null },

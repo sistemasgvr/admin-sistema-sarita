@@ -27,4 +27,9 @@ export const clientesMenuSubItems: AdminMenuSubItem[] = [
     path: '/admin/clientes/choferes',
     permission: PermisoBanderas.CHOFERES_LISTAR,
   },
+  {
+    name: 'Mapa',
+    path: '/admin/clientes/mapa',
+    permission: PermisoBanderas.CLIENTES_LISTAR,
+  },
 ]

@@ -15,6 +15,8 @@ export interface Cliente {
   numero_documento: string
   direccion?: string | null
   referencia?: string | null
+  latitud?: number | null
+  longitud?: number | null
   telefono?: string | null
   email?: string | null
   id_departamento?: number | null
@@ -64,6 +66,8 @@ export interface ClientePayload {
   numeroDocumento: string
   direccion?: string
   referencia?: string
+  latitud?: number | null
+  longitud?: number | null
   telefono?: string
   email?: string
   idPais?: number

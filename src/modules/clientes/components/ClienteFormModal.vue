@@ -214,7 +214,6 @@
             :disabled="isSubmitting"
             :error="errors.direccion"
           />
-
           <AppInput
             v-model="referencia"
             label="Referencia"
@@ -223,6 +222,19 @@
             :disabled="isSubmitting"
             :error="errors.referencia"
           />
+          <div class="sm:col-span-2">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Ubicación en el mapa
+            </label>
+            <MapaLeaflet
+              v-model:latitud="latitud"
+              v-model:longitud="longitud"
+              height="300px"
+              :searchable="true"
+              :draggable-marker="true"
+              :readonly="false"
+            />
+          </div>
         </div>
         <div class="mt-3 grid grid-cols-2 gap-3">
           <AppSelect
@@ -386,7 +398,7 @@ import type {
   ClientePayload,
 } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppCheckbox, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { AppCheckbox, AppInput, AppModal, AppSelect, AppTextarea, MapaLeaflet } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
@@ -419,7 +431,7 @@ const isCheckingDocumento = ref(false)
 const documentoDuplicado = ref(false)
 const isConsultandoDocumento = ref(false)
 
-// --- Catálogos dinámicos (Tipo Persona / Tipo Cliente / Tipo Documento) ---
+// Catálogos dinámicos (Tipo Persona / Tipo Cliente / Tipo Documento)
 const listaTipoPersonaId = ref(ListaIds.TIPO_PERSONA)
 const listaTipoClienteId = ref(ListaIds.TIPO_CLIENTE)
 const listaTipoDocumentoId = ref(ListaIds.TIPO_DOCUMENTO)
@@ -458,6 +470,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, setFieldErro
     email: '',
     direccion: '',
     referencia: '',
+    latitud: undefined,
+    longitud: undefined,
     idDistrito: undefined,
     observacion: '',
   },
@@ -476,6 +490,8 @@ const [telefono, telefonoAttrs] = defineField('telefono')
 const [email, emailAttrs] = defineField('email')
 const [direccion, direccionAttrs] = defineField('direccion')
 const [referencia, referenciaAttrs] = defineField('referencia')
+const [latitud] = defineField('latitud')
+const [longitud] = defineField('longitud')
 const [idDistrito] = defineField('idDistrito')
 const [observacion, observacionAttrs] = defineField('observacion')
 
@@ -590,7 +606,7 @@ const handleConsultarDocumento = async () => {
     toastWarning('Selecciona primero el tipo de documento')
     return
   }
-  
+
   limpiarCamposConsulta()
 
   isConsultandoDocumento.value = true
@@ -652,6 +668,8 @@ const syncFormValues = async () => {
       email: cliente?.email ?? '',
       direccion: cliente?.direccion ?? '',
       referencia: cliente?.referencia ?? '',
+      latitud: cliente?.latitud ?? undefined,
+      longitud: cliente?.longitud ?? undefined,
       idDistrito: cliente?.id_distrito ?? undefined,
       observacion: cliente?.observacion ?? '',
     },
@@ -687,6 +705,8 @@ const limpiarCamposConsulta = () => {
   idDepartamentoUI.value = ''
   idProvinciaUI.value = ''
   idDistrito.value = undefined
+  latitud.value = undefined
+  longitud.value = undefined
 }
 
 const handleClose = () => {
@@ -717,6 +737,8 @@ const onSubmit = handleSubmit(async (values) => {
     email: values.email || undefined,
     direccion: values.direccion || undefined,
     referencia: values.referencia || undefined,
+    latitud: values.latitud || undefined,
+    longitud: values.longitud || undefined,
     idPais: idPaisUI.value ? Number(idPaisUI.value) : undefined,
     idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
     idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,

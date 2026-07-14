@@ -32,10 +32,42 @@
           >
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">{{ item.label }}</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ item.value ?? '—' }}
+              <template v-if="item.isLink && item.linkHref">
+                <AppIcon :name="ICONS.mapPin" :size="14" />
+                  {{ item.value }}
+                <a
+                  :href="item.linkHref"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1 text-brand-500 hover:text-brand-600"
+                >
+                Ver en Google Maps
+                </a>
+              </template>
+              <template v-else>
+                {{ item.value ?? '—' }}
+              </template>
             </dd>
           </div>
         </dl>
+      </section>
+
+      <section
+        v-if="direccion.latitud && direccion.longitud"
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Ubicación en el mapa
+        </h5>
+        <MapaLeaflet
+          :latitud="direccion.latitud"
+          :longitud="direccion.longitud"
+          :height="'280px'"
+          :searchable="false"
+          :draggable-marker="false"
+          :readonly="true"
+          :zoom="30"
+        />
       </section>
 
       <section
@@ -87,7 +119,8 @@
 import { computed } from 'vue'
 import type { Direccion } from '@/modules/direcciones/interfaces/direccion.interface'
 import { useDireccionDetailQuery } from '@/modules/direcciones/composables/useDireccionDetailQuery'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppBadge, AppModal, MapaLeaflet } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { formatDateTime } from '@/shared/utils/date'
 
@@ -127,6 +160,8 @@ interface DetailItem {
   label: string
   value: string | null
   fullWidth?: boolean
+  isLink?: boolean
+  linkHref?: string
 }
 
 interface DetailSection {
@@ -146,6 +181,17 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Descripción', value: d.descripcion ?? null },
         { label: 'Dirección', value: d.direccion, fullWidth: true },
         { label: 'Referencia', value: d.referencia ?? null, fullWidth: true },
+        {
+          label: 'Coordenadas',
+          value: d.latitud && d.longitud
+            ? `${d.latitud}, ${d.longitud}`
+            : null,
+          fullWidth: true,
+          isLink: true,
+          linkHref: d.latitud && d.longitud
+            ? `https://www.google.com/maps/search/?api=1&query=${d.latitud},${d.longitud}`
+            : undefined,
+        },
       ],
     },
     {
