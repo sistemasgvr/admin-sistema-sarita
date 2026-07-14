@@ -1,45 +1,47 @@
 <template>
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section class="space-y-4">
-      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <AppSelect
-            v-model="idTipoComprobante"
-            label="Tipo"
-            placeholder="Selecciona"
-            :options="tipoComprobanteOptions"
-            :disabled="catalogosQuery.isLoading.value"
-          />
-          <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
-          <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
-          <AppInput v-model="fecha" label="Fecha" type="date" />
-        </div>
+      <FormCardsLayout>
+        <DetailSectionCard title="Comprobante" :icon="ICONS.receipt">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <AppSelect
+              v-model="idTipoComprobante"
+              label="Tipo"
+              placeholder="Selecciona"
+              :options="tipoComprobanteOptions"
+              :disabled="catalogosQuery.isLoading.value"
+            />
+            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
+            <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
+            <AppInput v-model="fecha" label="Fecha" type="date" />
+          </div>
 
-        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <AppSelectSearch
-            v-model="idCliente"
-            v-model:search="clienteBuscar"
-            remote
-            label="Cliente"
-            placeholder="Selecciona cliente"
-            search-placeholder="Razón social, documento o código..."
-            :options="clienteOptions"
-            :loading="clientesQuery.isFetching.value"
-            :disabled="clientesQuery.isLoading.value"
-          />
-          <AppSelectSearch
-            v-model="idAlmacen"
-            v-model:search="almacenBuscar"
-            label="Almacén"
-            placeholder="Selecciona almacén"
-            search-placeholder="Nombre..."
-            :options="almacenOptions"
-            :loading="almacenesQuery.isLoading.value"
-            :disabled="almacenesQuery.isLoading.value"
-            :required="requiereAlmacen"
-          />
-        </div>
-      </div>
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <AppSelectSearch
+              v-model="idCliente"
+              v-model:search="clienteBuscar"
+              remote
+              label="Cliente"
+              placeholder="Selecciona cliente"
+              search-placeholder="Razón social, documento o código..."
+              :options="clienteOptions"
+              :loading="clientesQuery.isFetching.value"
+              :disabled="clientesQuery.isLoading.value"
+            />
+            <AppSelectSearch
+              v-model="idAlmacen"
+              v-model:search="almacenBuscar"
+              label="Almacén"
+              placeholder="Selecciona almacén"
+              search-placeholder="Nombre..."
+              :options="almacenOptions"
+              :loading="almacenesQuery.isLoading.value"
+              :disabled="almacenesQuery.isLoading.value"
+              :required="requiereAlmacen"
+            />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
 
       <PosProductPicker
         v-model:search="buscar"
@@ -53,14 +55,13 @@
       />
     </section>
 
-    <aside class="space-y-4 xl:sticky xl:top-4 xl:self-start">
-      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <div class="mb-3 flex items-center justify-between">
-          <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Carrito</h3>
+    <aside class="space-y-4 xl:sticky xl:top-20 xl:self-start">
+      <DetailSectionCard title="Carrito" :icon="ICONS.boxes">
+        <template #actions>
           <span class="text-xs text-gray-500 dark:text-gray-400">
             {{ lineasActivas.length }} ítem{{ lineasActivas.length === 1 ? '' : 's' }}
           </span>
-        </div>
+        </template>
 
         <div
           v-if="lineasActivas.length === 0"
@@ -113,7 +114,7 @@
             </p>
           </div>
         </div>
-      </div>
+      </DetailSectionCard>
 
       <PosResumenAside
         v-model:glosa="glosa"
@@ -160,6 +161,8 @@ import {
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'

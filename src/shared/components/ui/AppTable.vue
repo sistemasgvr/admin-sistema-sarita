@@ -95,7 +95,7 @@
 
           <footer
             v-if="showActions"
-            class="flex flex-wrap items-center gap-1 border-t border-gray-100 pt-3 dark:border-gray-800 sm:gap-2"
+            class="flex flex-wrap items-center justify-evenly gap-1 border-t border-gray-100 pt-3 dark:border-gray-800 sm:gap-2"
           >
             <slot name="actions" :row="row" :index="index" />
           </footer>

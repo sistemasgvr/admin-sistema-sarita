@@ -198,6 +198,7 @@ import {
   emitirConImpresionTicket,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -207,10 +208,7 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
-const breadcrumbItems = [
-  { label: 'Ventas', path: '/admin/ventas/pos' },
-  { label: 'Comprobantes' },
-]
+const breadcrumbItems = ventasBreadcrumbItems('Comprobantes')
 
 const authStore = useAuthStore()
 

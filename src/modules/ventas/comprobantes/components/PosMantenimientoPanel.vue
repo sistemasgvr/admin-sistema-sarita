@@ -1,94 +1,95 @@
 <template>
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-    <section class="space-y-4">
-      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Registra el mantenimiento del cilindro (P.H., válvula, etc.) y genera el comprobante al cliente.
-        </p>
+    <section>
+      <FormCardsLayout>
+        <DetailSectionCard title="Comprobante y servicio" :icon="ICONS.receipt">
+          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
+            Registra el mantenimiento del cilindro (P.H., válvula, etc.) y genera el comprobante al
+            cliente.
+          </p>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <AppSelect
-            v-model="idTipoComprobante"
-            label="Comprobante"
-            placeholder="Selecciona"
-            :options="tipoComprobanteOptions"
-            :disabled="catalogosQuery.isLoading.value"
-          />
-          <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
-          <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
-          <AppInput v-model="fecha" label="Fecha" type="date" />
-        </div>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <AppSelect
+              v-model="idTipoComprobante"
+              label="Comprobante"
+              placeholder="Selecciona"
+              :options="tipoComprobanteOptions"
+              :disabled="catalogosQuery.isLoading.value"
+            />
+            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
+            <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
+            <AppInput v-model="fecha" label="Fecha" type="date" />
+          </div>
 
-        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <AppSelectSearch
-            v-model="idCliente"
-            v-model:search="clienteBuscar"
-            remote
-            label="Cliente"
-            placeholder="Selecciona cliente"
-            search-placeholder="Razón social, documento o código..."
-            :options="clienteOptions"
-            :loading="clientesQuery.isFetching.value"
-            :disabled="clientesQuery.isLoading.value"
-            required
-          />
-          <div class="min-w-0">
-            <PosBalonSelectField
-              v-model="idBalon"
-              mode="general"
-              :id-cliente="idCliente"
-              label="Cilindro"
-              placeholder="Selecciona cilindro"
-              register-label="Registrar cilindro"
-              empty-text="Sin cilindros."
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <AppSelectSearch
+              v-model="idCliente"
+              v-model:search="clienteBuscar"
+              remote
+              label="Cliente"
+              placeholder="Selecciona cliente"
+              search-placeholder="Razón social, documento o código..."
+              :options="clienteOptions"
+              :loading="clientesQuery.isFetching.value"
+              :disabled="clientesQuery.isLoading.value"
               required
             />
+            <div class="min-w-0">
+              <PosBalonSelectField
+                v-model="idBalon"
+                mode="general"
+                :id-cliente="idCliente"
+                label="Cilindro"
+                placeholder="Selecciona cilindro"
+                register-label="Registrar cilindro"
+                empty-text="Sin cilindros."
+                required
+              />
+            </div>
           </div>
-        </div>
 
-        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <AppSelectSearch
-            v-model="idTipoMantenimiento"
-            v-model:search="tipoMantenimientoBuscar"
-            label="Tipo de mantenimiento"
-            placeholder="P.H., válvula, etc."
-            search-placeholder="Buscar tipo..."
-            :options="tipoMantenimientoOptions"
-            :loading="tiposMantenimientoQuery.isFetching.value"
-            :disabled="tiposMantenimientoQuery.isFetching.value"
-          />
-          <AppSelectSearch
-            v-model="idProducto"
-            v-model:search="servicioBuscar"
-            label="Servicio"
-            placeholder="Selecciona servicio"
-            search-placeholder="Código o nombre..."
-            :options="servicioOptions"
-            :loading="productosQuery.isLoading.value"
-            :disabled="productosQuery.isLoading.value"
-            required
-            @update:model-value="onServicioChange"
-          />
-        </div>
-      </div>
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <AppSelectSearch
+              v-model="idTipoMantenimiento"
+              v-model:search="tipoMantenimientoBuscar"
+              label="Tipo de mantenimiento"
+              placeholder="P.H., válvula, etc."
+              search-placeholder="Buscar tipo..."
+              :options="tipoMantenimientoOptions"
+              :loading="tiposMantenimientoQuery.isFetching.value"
+              :disabled="tiposMantenimientoQuery.isFetching.value"
+            />
+            <AppSelectSearch
+              v-model="idProducto"
+              v-model:search="servicioBuscar"
+              label="Servicio"
+              placeholder="Selecciona servicio"
+              search-placeholder="Código o nombre..."
+              :options="servicioOptions"
+              :loading="productosQuery.isLoading.value"
+              :disabled="productosQuery.isLoading.value"
+              required
+              @update:model-value="onServicioChange"
+            />
+          </div>
+        </DetailSectionCard>
 
-      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <h3 class="mb-4 text-sm font-semibold text-gray-800 dark:text-white/90">Detalle del mantenimiento</h3>
+        <DetailSectionCard title="Detalle del mantenimiento" :icon="ICONS.construction">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <AppInput v-model="fechaIngreso" label="Fecha ingreso" type="date" />
+            <AppInput v-model="fechaSalida" label="Fecha salida" type="date" />
+            <AppInput v-model="costo" label="Costo / importe" type="number" min="0" step="0.01" />
+          </div>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <AppInput v-model="fechaIngreso" label="Fecha ingreso" type="date" />
-          <AppInput v-model="fechaSalida" label="Fecha salida" type="date" />
-          <AppInput v-model="costo" label="Costo / importe" type="number" min="0" step="0.01" />
-        </div>
-
-        <div class="mt-4 space-y-4">
-          <AppInput v-model="descripcion" label="Descripción" placeholder="Detalle del trabajo" />
-          <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
-        </div>
-      </div>
+          <div class="mt-5 space-y-4">
+            <AppInput v-model="descripcion" label="Descripción" placeholder="Detalle del trabajo" />
+            <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </section>
 
-    <aside class="xl:sticky xl:top-4 xl:self-start">
+    <aside class="xl:sticky xl:top-20 xl:self-start">
       <PosResumenAside
         v-model:glosa="observacion"
         :totales="totales"
@@ -124,10 +125,11 @@ import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
-import {
-  emitirConImpresionTicket,
-} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import { emitirConImpresionTicket } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 

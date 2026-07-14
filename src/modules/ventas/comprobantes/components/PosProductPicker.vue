@@ -3,11 +3,18 @@
     <div
       class="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800 lg:flex-row lg:items-center"
     >
-      <div class="flex shrink-0 items-baseline gap-2">
-        <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Catálogo</h3>
-        <span class="text-xs text-gray-500 dark:text-gray-400">
-          {{ productos.length }}<span v-if="total != null">/{{ total }}</span>
+      <div class="flex shrink-0 items-center gap-2.5">
+        <span
+          class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
+        >
+          <AppIcon :name="ICONS.package" :size="16" />
         </span>
+        <div class="flex items-baseline gap-2">
+          <h3 class="text-sm font-semibold text-gray-800 dark:text-white/90">Catálogo</h3>
+          <span class="text-xs text-gray-500 dark:text-gray-400">
+            {{ productos.length }}<span v-if="total != null">/{{ total }}</span>
+          </span>
+        </div>
       </div>
 
       <AppListToolbar

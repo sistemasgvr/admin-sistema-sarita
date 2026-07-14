@@ -28,6 +28,7 @@ import PosAccesoriosPanel from '@/modules/ventas/comprobantes/components/PosAcce
 import PosAlquilerPanel from '@/modules/ventas/comprobantes/components/PosAlquilerPanel.vue'
 import PosMantenimientoPanel from '@/modules/ventas/comprobantes/components/PosMantenimientoPanel.vue'
 import PosRecargaPanel from '@/modules/ventas/comprobantes/components/PosRecargaPanel.vue'
+import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppTabs } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
@@ -38,7 +39,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const breadcrumbItems = [{ label: 'Ventas', path: '/admin/ventas/pos' }, { label: 'Mostrador' }]
+const breadcrumbItems = ventasBreadcrumbItems('Mostrador')
 
 const TAB_KEYS = ['accesorios', 'recarga', 'alquiler', 'mantenimiento'] as const
 type TabKey = (typeof TAB_KEYS)[number]

@@ -1,52 +1,53 @@
 <template>
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-    <section class="space-y-4">
-      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se genera boleta o factura.
-        </p>
+    <section>
+      <FormCardsLayout>
+        <DetailSectionCard title="Comprobante y cliente" :icon="ICONS.receipt">
+          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
+            Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se
+            genera boleta o factura.
+          </p>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <AppSelect
-            v-model="idTipoComprobante"
-            label="Comprobante"
-            placeholder="Selecciona"
-            :options="tipoComprobanteOptions"
-            :disabled="catalogosQuery.isLoading.value"
-          />
-          <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
-          <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
-          <AppInput v-model="fecha" label="Fecha" type="date" />
-        </div>
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <AppSelect
+              v-model="idTipoComprobante"
+              label="Comprobante"
+              placeholder="Selecciona"
+              :options="tipoComprobanteOptions"
+              :disabled="catalogosQuery.isLoading.value"
+            />
+            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
+            <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
+            <AppInput v-model="fecha" label="Fecha" type="date" />
+          </div>
 
-        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <AppSelectSearch
-            v-model="idCliente"
-            v-model:search="clienteBuscar"
-            remote
-            label="Cliente"
-            placeholder="Selecciona cliente"
-            search-placeholder="Razón social, documento o código..."
-            :options="clienteOptions"
-            :loading="clientesQuery.isFetching.value"
-            :disabled="clientesQuery.isLoading.value"
-            required
-          />
-          <AppSelectSearch
-            v-model="idAlmacen"
-            v-model:search="almacenBuscar"
-            label="Almacén (stock gas)"
-            placeholder="Selecciona almacén"
-            search-placeholder="Nombre..."
-            :options="almacenOptions"
-            :loading="almacenesQuery.isLoading.value"
-            :disabled="almacenesQuery.isLoading.value"
-            required
-          />
-        </div>
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <AppSelectSearch
+              v-model="idCliente"
+              v-model:search="clienteBuscar"
+              remote
+              label="Cliente"
+              placeholder="Selecciona cliente"
+              search-placeholder="Razón social, documento o código..."
+              :options="clienteOptions"
+              :loading="clientesQuery.isFetching.value"
+              :disabled="clientesQuery.isLoading.value"
+              required
+            />
+            <AppSelectSearch
+              v-model="idAlmacen"
+              v-model:search="almacenBuscar"
+              label="Almacén (stock gas)"
+              placeholder="Selecciona almacén"
+              search-placeholder="Nombre..."
+              :options="almacenOptions"
+              :loading="almacenesQuery.isLoading.value"
+              :disabled="almacenesQuery.isLoading.value"
+              required
+            />
+          </div>
 
-        <div class="mt-4">
-          <div class="min-w-0 overflow-hidden">
+          <div class="mt-5 min-w-0 overflow-hidden">
             <PosBalonSelectField
               v-model="idBalon"
               mode="cliente"
@@ -58,56 +59,54 @@
               required
             />
           </div>
-        </div>
-      </div>
+        </DetailSectionCard>
 
-      <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <h3 class="mb-4 text-sm font-semibold text-gray-800 dark:text-white/90">Datos de recarga</h3>
+        <DetailSectionCard title="Datos de recarga" :icon="ICONS.cylinder">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <AppSelectSearch
+              v-model="idProducto"
+              v-model:search="gasBuscar"
+              label="Gas"
+              placeholder="Selecciona gas"
+              search-placeholder="Código o nombre..."
+              :options="productoOptions"
+              :loading="productosQuery.isLoading.value"
+              :disabled="productosQuery.isLoading.value"
+              required
+              @update:model-value="onProductoChange"
+            />
+            <AppInput
+              v-model="cantidad"
+              label="Cantidad / m³"
+              type="number"
+              :min="NUMBER_MIN.measurePositive"
+              :step="NUMBER_STEP.measure"
+            />
+            <AppInput
+              v-model="capacidad"
+              label="Capacidad cilindro"
+              type="number"
+              :min="NUMBER_MIN.measure"
+              :step="NUMBER_STEP.measure"
+              placeholder="Opcional"
+            />
+            <AppInput
+              v-model="precioUnitario"
+              label="Precio unitario"
+              type="number"
+              :min="NUMBER_MIN.money"
+              :step="NUMBER_STEP.money"
+            />
+          </div>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <AppSelectSearch
-            v-model="idProducto"
-            v-model:search="gasBuscar"
-            label="Gas"
-            placeholder="Selecciona gas"
-            search-placeholder="Código o nombre..."
-            :options="productoOptions"
-            :loading="productosQuery.isLoading.value"
-            :disabled="productosQuery.isLoading.value"
-            required
-            @update:model-value="onProductoChange"
-          />
-          <AppInput
-            v-model="cantidad"
-            label="Cantidad / m³"
-            type="number"
-            :min="NUMBER_MIN.measurePositive"
-            :step="NUMBER_STEP.measure"
-          />
-          <AppInput
-            v-model="capacidad"
-            label="Capacidad cilindro"
-            type="number"
-            :min="NUMBER_MIN.measure"
-            :step="NUMBER_STEP.measure"
-            placeholder="Opcional"
-          />
-          <AppInput
-            v-model="precioUnitario"
-            label="Precio unitario"
-            type="number"
-            :min="NUMBER_MIN.money"
-            :step="NUMBER_STEP.money"
-          />
-        </div>
-
-        <div class="mt-4">
-          <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
-        </div>
-      </div>
+          <div class="mt-5">
+            <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
+          </div>
+        </DetailSectionCard>
+      </FormCardsLayout>
     </section>
 
-    <aside class="xl:sticky xl:top-4 xl:self-start">
+    <aside class="xl:sticky xl:top-20 xl:self-start">
       <PosResumenAside
         v-model:glosa="observacion"
         :totales="totales"
@@ -139,10 +138,11 @@ import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
-import {
-  emitirConImpresionTicket,
-} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import { emitirConImpresionTicket } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { toastWarning } from '@/shared/composables/useToast'
 
@@ -201,9 +201,7 @@ const productoOptions = computed(() =>
 )
 
 const totales = computed(() =>
-  calcularTotalesDesdeImporte(
-    Number(cantidad.value || 0) * Number(precioUnitario.value || 0),
-  ),
+  calcularTotalesDesdeImporte(Number(cantidad.value || 0) * Number(precioUnitario.value || 0)),
 )
 
 const puedeGuardar = computed(() => {
