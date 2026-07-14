@@ -183,6 +183,7 @@ import type {
 } from '@/modules/choferes/interfaces/chofer.interface'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import { getClienteNombrePrincipal } from '@/modules/clientes/utils/clienteNombre'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
@@ -214,20 +215,7 @@ const choferActual = computed<Chofer | null>(
   () => choferDetailQuery.data.value ?? props.chofer ?? null,
 )
 
-const getClienteNombre = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-
-  if (esJuridica && cliente.razon_social) {
-    return cliente.razon_social
-  }
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
-}
+const getClienteNombre = (cliente: Cliente) => getClienteNombrePrincipal(cliente)
 
 const searchClientes = async (query: string): Promise<SelectOption[]> => {
   const response = await clientesService.listar({

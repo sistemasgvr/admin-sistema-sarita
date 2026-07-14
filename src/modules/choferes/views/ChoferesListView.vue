@@ -183,7 +183,7 @@ const authStore = useAuthStore()
 const route = useRoute()
 
 const breadcrumbItems: BreadcrumbItem[] = [
-  { label: 'Clientes', to: '/admin/clientes' },
+  { label: 'Flota' },
   { label: 'Choferes' },
 ]
 

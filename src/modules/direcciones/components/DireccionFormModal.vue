@@ -179,6 +179,7 @@ import type {
 } from '@/modules/direcciones/interfaces/direccion.interface'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import { getClienteNombrePrincipal } from '@/modules/clientes/utils/clienteNombre'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal, AppSelect, MapaLeaflet } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
@@ -211,20 +212,7 @@ const direccionActual = computed<Direccion | null>(
   () => direccionDetailQuery.data.value ?? props.direccion ?? null,
 )
 
-const getClienteNombre = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-
-  if (esJuridica && cliente.razon_social) {
-    return cliente.razon_social
-  }
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
-}
+const getClienteNombre = (cliente: Cliente) => getClienteNombrePrincipal(cliente)
 
 const searchClientes = async (query: string): Promise<SelectOption[]> => {
   const response = await clientesService.listar({

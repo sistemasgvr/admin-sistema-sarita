@@ -36,6 +36,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { getClienteNombrePrincipal } from '@/modules/clientes/utils/clienteNombre'
 import type {
   Cliente,
   ClienteEstadoFiltro,
@@ -87,15 +88,7 @@ let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
 
 function getClienteNombre(cliente: Cliente): string {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-  if (esJuridica && cliente.razon_social) return cliente.razon_social
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
+  return getClienteNombrePrincipal(cliente)
 }
 
 function initMap() {

@@ -166,6 +166,7 @@ import type {
   ClienteFormMode,
   ClienteListFilters,
 } from '@/modules/clientes/interfaces/cliente.interface'
+import { getClienteNombrePrincipal } from '@/modules/clientes/utils/clienteNombre'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
@@ -237,20 +238,7 @@ const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CLIENT
 const isLoading = computed(() => clientesQuery.isFetching.value)
 const rows = computed(() => clientesQuery.data.value?.data ?? [])
 
-const getNombrePrincipal = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-
-  if (esJuridica && cliente.razon_social) {
-    return cliente.razon_social
-  }
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
-}
+const getNombrePrincipal = (cliente: Cliente) => getClienteNombrePrincipal(cliente)
 
 const columns = computed<TableColumn<Cliente>[]>(() => [
   { key: 'cliente', label: 'Cliente' },

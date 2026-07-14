@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import {
@@ -59,6 +60,8 @@ export function usePosComprobanteForm(options?: {
   const numero = ref('')
   const fecha = ref(new Date().toISOString().slice(0, 10))
   const idCliente = ref<number | ''>('')
+  /** Snapshot del cliente elegido; no depende del cache de búsqueda. */
+  const clienteSeleccionadoCache = ref<Cliente | null>(null)
 
   const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
 
@@ -83,16 +86,40 @@ export function usePosComprobanteForm(options?: {
     return opcion?.codigo ?? ''
   })
 
-  const clienteOptions = computed(() =>
-    (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+  const clienteOptions = computed(() => {
+    const options = (clientesQuery.data.value?.data ?? []).map((cliente) => ({
       value: cliente.id,
-      label: `${cliente.razon_social ?? cliente.numero_documento} — ${cliente.numero_documento}`,
-    })),
+      label: getClienteOptionLabel(cliente),
+    }))
+
+    const cached = clienteSeleccionadoCache.value
+    if (cached && !options.some((option) => option.value === cached.id)) {
+      options.unshift({
+        value: cached.id,
+        label: getClienteOptionLabel(cached),
+      })
+    }
+
+    return options
+  })
+
+  const clienteSeleccionado = computed(
+    () =>
+      clienteSeleccionadoCache.value ??
+      (clientesQuery.data.value?.data ?? []).find((cliente) => cliente.id === idCliente.value),
   )
 
-  const clienteSeleccionado = computed(() =>
-    (clientesQuery.data.value?.data ?? []).find((cliente) => cliente.id === idCliente.value),
-  )
+  watch(idCliente, (value) => {
+    if (!value) {
+      clienteSeleccionadoCache.value = null
+      return
+    }
+
+    const fromList = (clientesQuery.data.value?.data ?? []).find((cliente) => cliente.id === value)
+    if (fromList) {
+      clienteSeleccionadoCache.value = fromList
+    }
+  })
 
   const idAfectacionGravado = computed(() => {
     const opcion = (catalogosQuery.data.value?.afectacionesIgv ?? []).find(
@@ -206,6 +233,7 @@ export function usePosComprobanteForm(options?: {
    */
   async function reiniciarTrasOperacion() {
     idCliente.value = ''
+    clienteSeleccionadoCache.value = null
     clienteBuscar.value = ''
     fecha.value = new Date().toISOString().slice(0, 10)
     await refrescarSiguienteNumero()
@@ -236,13 +264,15 @@ export function usePosComprobanteForm(options?: {
   }
 }
 
-function clienteDocumentoEsRuc(cliente: Cliente | undefined) {
+function clienteDocumentoEsRuc(cliente: Cliente | null | undefined) {
   if (!cliente) return false
 
   const tipo = (cliente.nombre_tipo_documento ?? '').toUpperCase()
   const doc = (cliente.numero_documento ?? '').trim()
 
-  return tipo.includes('RUC') || doc.length === 11
+  if (tipo.includes('RUC')) return /^\d{11}$/.test(doc)
+  // Sin tipo claro: solo aceptar exactamente 11 dígitos numéricos
+  return /^\d{11}$/.test(doc)
 }
 
 export function formatPosMoney(value: number) {
