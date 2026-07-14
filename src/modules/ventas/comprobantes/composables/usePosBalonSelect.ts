@@ -12,6 +12,7 @@ function formatBalonLabel(balon: {
   nombre_tipo_balon?: string | null
   nombre_estado_balon?: string | null
   nombre_producto_gas?: string | null
+  nombre_propietario?: string | null
 }) {
   const parts = [balon.codigo_balon]
 
@@ -23,7 +24,14 @@ function formatBalonLabel(balon: {
     parts.push(balon.nombre_producto_gas)
   }
 
-  if (balon.nombre_estado_balon) {
+  const propietario = (balon.nombre_propietario ?? '').trim().toUpperCase()
+  const estado = (balon.nombre_estado_balon ?? '').trim().toUpperCase()
+
+  if (propietario === 'CLIENTE') {
+    parts.push('(Propio del cliente)')
+  } else if (estado === 'PRESTADO_CLIENTE') {
+    parts.push('(Prestado al cliente)')
+  } else if (balon.nombre_estado_balon) {
     parts.push(`(${formatListaOpcionLabel(balon.nombre_estado_balon)})`)
   }
 
@@ -61,8 +69,9 @@ export function usePosBalonSelect(options: {
       buscar: term || undefined,
     }
 
-    if (options.mode === 'cliente' && options.idCliente.value) {
-      filters.idClienteUbicacion = Number(options.idCliente.value)
+    // Recarga / general: prestados (ubicación) + propios (propietario)
+    if ((options.mode === 'cliente' || options.mode === 'general') && options.idCliente.value) {
+      filters.idClienteRelacionado = Number(options.idCliente.value)
     }
 
     if (options.mode === 'alquiler') {
@@ -73,10 +82,6 @@ export function usePosBalonSelect(options: {
       if (options.idAlmacen?.value) {
         filters.idAlmacen = Number(options.idAlmacen.value)
       }
-    }
-
-    if (options.mode === 'general' && options.idCliente.value) {
-      filters.idClienteUbicacion = Number(options.idCliente.value)
     }
 
     balonesFilters.value = filters
@@ -112,6 +117,7 @@ export function usePosBalonSelect(options: {
 
     if (options.mode === 'cliente' || options.mode === 'general') {
       if (options.idCliente.value) {
+        // Nuevo balón desde Recarga: propio del cliente (viene con el suyo)
         preset.idClienteUbicacion = Number(options.idCliente.value)
 
         if (propietarioClienteId.value) {

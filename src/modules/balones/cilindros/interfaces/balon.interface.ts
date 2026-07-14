@@ -96,6 +96,8 @@ export interface BalonListFilters {
   idAlmacen?: number
   idEstadoBalon?: number
   idClienteUbicacion?: number
+  /** Prestado (ubicación) o propio del cliente (propietario). */
+  idClienteRelacionado?: number
   idMarcaCilindro?: number
   phVencida?: boolean
   phPorVencerDias?: number

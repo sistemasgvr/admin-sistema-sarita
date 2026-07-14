@@ -3,7 +3,7 @@
     <section class="space-y-4">
       <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
         <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          El cliente trae su cilindro. Ustedes llenan el gas y se genera boleta o factura.
+          Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se genera boleta o factura.
         </p>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -52,9 +52,9 @@
               mode="cliente"
               :id-cliente="idCliente"
               label="Balón del cliente"
-              placeholder="Selecciona cilindro"
-              register-label="Registrar balón del cliente"
-              empty-text="Sin balones del cliente."
+              placeholder="Prestado o propio del cliente"
+              register-label="Registrar balón propio del cliente"
+              empty-text="Sin balones prestados ni propios. Registra el del cliente."
               required
             />
           </div>
