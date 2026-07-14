@@ -19,6 +19,9 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
 
   // TipoDocumentoRef
   FACTURA: 'primary',
+  BOLETA: 'success',
+  NOTA_CREDITO: 'warning',
+  NOTA_DEBITO: 'error',
   GRE: 'neutral',
   PRESTAMO: 'warning',
   ALQUILER: 'primary',
@@ -89,10 +92,7 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   RECHAZADO: 'error',
   OBSERVADO: 'warning',
 
-  // TipoComprobante (nombre)
-  BOLETA: 'success',
-  NOTA_CREDITO: 'warning',
-  NOTA_DEBITO: 'error',
+  // TipoComprobante (nombre) — reutiliza códigos de TipoDocumentoRef arriba
   GUIA_REMISION: 'neutral',
 
   // Códigos SUNAT frecuentes
