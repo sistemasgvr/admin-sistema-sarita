@@ -32,7 +32,7 @@
             :disabled="clientesQuery.isLoading.value"
             required
           />
-          <div class="min-w-0">
+          <div class="min-w-0 overflow-hidden">
             <PosBalonSelectField
               v-model="idBalon"
               mode="cliente"

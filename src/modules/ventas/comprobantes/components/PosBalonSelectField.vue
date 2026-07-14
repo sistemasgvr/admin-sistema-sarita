@@ -1,24 +1,25 @@
 <template>
   <div class="flex w-full min-w-0 items-end gap-2">
-    <AppSelectSearch
-      v-model="model"
-      v-model:search="balonBuscar"
-      remote
-      class="min-w-0 flex-1"
-      :label="label"
-      :placeholder="placeholder"
-      :required="required"
-      search-placeholder="Código, serie o tipo..."
-      :options="balonOptions"
-      :loading="balonesQuery.isFetching.value"
-      :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
-      :empty-text="emptyText"
-    />
+    <div class="min-w-0 flex-1 overflow-hidden">
+      <AppSelectSearch
+        v-model="model"
+        v-model:search="balonBuscar"
+        remote
+        :label="label"
+        :placeholder="placeholder"
+        :required="required"
+        search-placeholder="Código, serie o tipo..."
+        :options="balonOptions"
+        :loading="balonesQuery.isFetching.value"
+        :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
+        :empty-text="emptyText"
+      />
+    </div>
 
     <button
       v-if="canRegister && !disabled && !balonSelectDisabled"
       type="button"
-      class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
+      class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
       :title="registerLabel"
       @click="balonModalOpen = true"
     >
