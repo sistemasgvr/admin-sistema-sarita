@@ -65,6 +65,8 @@ export const ICONS = {
   receipt: 'lucide:receipt',
   /** Ticket / voucher (sin símbolo $) */
   ticket: 'lucide:ticket',
+  refreshCw: 'lucide:refresh-cw',
+  ban: 'lucide:ban',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

@@ -116,6 +116,26 @@
           </button>
 
           <button
+            v-if="canConsultarCdr && puedeConsultarCdr(row)"
+            type="button"
+            title="Consultar CDR SUNAT"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openCdrModal(row)"
+          >
+            <AppIcon :name="ICONS.refreshCw" :size="15" />
+          </button>
+
+          <button
+            v-if="canAnular && puedeAnular(row)"
+            type="button"
+            title="Anular (comunicación de baja)"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-warning-500 text-warning-600 transition hover:bg-warning-500/10"
+            @click="openAnularModal(row)"
+          >
+            <AppIcon :name="ICONS.ban" :size="15" />
+          </button>
+
+          <button
             v-if="canDelete && puedeEliminar(row)"
             type="button"
             title="Eliminar"
@@ -138,6 +158,10 @@
     </AppTable>
 
     <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
+
+    <ComprobanteCdrModal v-model="cdrModalOpen" :comprobante="comprobanteToCdr" />
+
+    <ComprobanteAnularModal v-model="anularModalOpen" :comprobante="comprobanteToAnular" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -185,6 +209,8 @@ import {
   useDeleteComprobanteMutation,
   useEmitirComprobanteMutation,
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
+import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import type {
   ComprobanteListFilters,
@@ -239,13 +265,24 @@ const clientesQuery = useClientesQuery(clientesFilters)
 const detailModalOpen = ref(false)
 const comprobanteToViewId = ref<number | null>(null)
 
+const cdrModalOpen = ref(false)
+const comprobanteToCdr = ref<ComprobanteListItem | null>(null)
+
 const deleteModalOpen = ref(false)
 const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
+
+const anularModalOpen = ref(false)
+const comprobanteToAnular = ref<ComprobanteListItem | null>(null)
+
 const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
 const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
+const canConsultarCdr = computed(() =>
+  authStore.hasPermission(PermisoBanderas.COMPROBANTES_CONSULTAR_CDR),
+)
+const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 
 const isLoading = computed(() => comprobantesQuery.isFetching.value)
@@ -351,15 +388,34 @@ function formatMoney(value: number) {
 }
 
 function puedeEmitir(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO'
+  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
 function puedeEliminar(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO'
+  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
 function puedePdf(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat === 'ACEPTADO'
+  return row.nombre_estado_sunat === 'ACEPTADO' || row.nombre_estado_sunat === 'BAJA'
+}
+
+function puedeConsultarCdr(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat === 'PENDIENTE' || row.nombre_estado_sunat === 'ACEPTADO'
+}
+
+function puedeAnular(row: ComprobanteListItem) {
+  if (row.nombre_estado_sunat !== 'ACEPTADO') return false
+  const codigo = String(row.codigo_tipo_comprobante ?? '')
+  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
+  // Comunicación de baja: facturas y notas (no boletas)
+  if (codigo === '01' || codigo === '07' || codigo === '08') return true
+  return (
+    nombre.includes('FACTURA') ||
+    nombre.includes('NOTA_CREDITO') ||
+    nombre.includes('NOTA_DEBITO') ||
+    nombre.includes('NOTA CREDITO') ||
+    nombre.includes('NOTA DEBITO')
+  ) && !nombre.includes('BOLETA')
 }
 
 async function descargarPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {
@@ -405,6 +461,16 @@ function openDetailModal(row: ComprobanteListItem) {
 function openDeleteModal(row: ComprobanteListItem) {
   comprobanteToDelete.value = row
   deleteModalOpen.value = true
+}
+
+function openAnularModal(row: ComprobanteListItem) {
+  comprobanteToAnular.value = row
+  anularModalOpen.value = true
+}
+
+function openCdrModal(row: ComprobanteListItem) {
+  comprobanteToCdr.value = row
+  cdrModalOpen.value = true
 }
 
 async function emitirComprobante(row: ComprobanteListItem) {

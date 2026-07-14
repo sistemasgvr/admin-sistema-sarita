@@ -60,3 +60,44 @@ export function useDeleteComprobanteMutation() {
     },
   })
 }
+
+export function useConsultarCdrComprobanteMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
+      comprobantesService.consultarCdr(id, idUsuarioAuditoria),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
+      toastSuccess(`CDR actualizado: ${data.sunat.estado}`)
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo consultar el CDR')
+    },
+  })
+}
+
+export function useAnularComprobanteMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idUsuarioAuditoria,
+      motivo,
+    }: {
+      id: number
+      idUsuarioAuditoria: number
+      motivo: string
+    }) => comprobantesService.anular(id, idUsuarioAuditoria, motivo),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
+      toastSuccess(`Anulación enviada: ${data.sunat.estado}`)
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo anular el comprobante')
+    },
+  })
+}

@@ -93,7 +93,7 @@ export interface EmitirComprobanteResponse {
   comprobante: Comprobante
   sunat: {
     estado: string
-    hash: string | null
+    hash?: string | null
     ticket: string | null
     respuesta: unknown
   }

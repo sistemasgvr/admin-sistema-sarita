@@ -45,6 +45,19 @@ export const comprobantesService = {
     })
   },
 
+  consultarCdr(id: number, idUsuarioAuditoria: number) {
+    return apiPost<EmitirComprobanteResponse>(`/comprobantes/${id}/consultar-cdr`, {
+      idUsuarioAuditoria,
+    })
+  },
+
+  anular(id: number, idUsuarioAuditoria: number, motivo: string) {
+    return apiPost<EmitirComprobanteResponse>(`/comprobantes/${id}/anular`, {
+      idUsuarioAuditoria,
+      motivo,
+    })
+  },
+
   obtenerPdf(id: number, formato: ComprobantePdfFormato = 'a4') {
     return apiGetBlob(`/comprobantes/${id}/pdf`, {
       params: { formato },
