@@ -17,6 +17,8 @@ export interface Direccion {
   id_distrito?: number | null
   nombre_distrito?: string | null
   referencia?: string | null
+  latitud ? : number |null
+  longitud ? : number |null
   es_principal: boolean
   estado: number
   id_usuario_creacion?: number | null
@@ -43,8 +45,11 @@ export interface CreateDireccionPayload {
   direccion: string
   descripcion?: string
   idDepartamento?: number
+  idPais?: number
   idProvincia?: number
   idDistrito?: number
+  latitud?: number | null
+  longitud?: number | null
   referencia?: string
   esPrincipal?: boolean
 }
@@ -53,10 +58,13 @@ export interface UpdateDireccionPayload {
   idUsuarioAuditoria: number
   direccion?: string
   descripcion?: string
+  idPais?: number
   idDepartamento?: number
   idProvincia?: number
   idDistrito?: number
   referencia?: string
+  latitud?: number | null
+  longitud?: number | null
   esPrincipal?: boolean
 }
 

@@ -39,6 +39,18 @@
             </dd>
           </div>
         </dl>
+
+        <div v-if="section.showMap && cliente?.latitud && cliente?.longitud" class="mt-3">
+          <MapaLeaflet
+            :latitud="cliente.latitud"
+            :longitud="cliente.longitud"
+            :height="'280px'"
+            :searchable="false"
+            :draggable-marker="false"
+            :readonly="true"
+            :zoom="16"
+          />
+        </div>
       </section>
 
       <section
@@ -63,47 +75,7 @@
         </div>
       </section>
 
-      <section
-        v-if="cliente.observacion"
-        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-      >
-        <h5 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">Observación</h5>
-        <p class="text-sm text-gray-600 dark:text-gray-400">{{ cliente.observacion }}</p>
-      </section>
 
-      <section
-        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-      >
-        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
-          Auditoría
-        </h5>
-        <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Creado por</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ cliente.nombre_usuario_creacion ?? '—' }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha de creación</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(cliente.fecha_creacion) }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Modificado por</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ cliente.nombre_usuario_modificacion ?? '—' }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Última modificación</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(cliente.fecha_modificacion) }}
-            </dd>
-          </div>
-        </dl>
-      </section>
 
       <section
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
@@ -223,9 +195,23 @@
                   <p class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
                     {{ getUbigeoTexto(dir) }}
                   </p>
-                  <p v-if="dir.referencia" class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-                    Referencia: {{ dir.referencia }}
-                  </p>
+                  <div class="mt-1 space-y-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                    <p v-if="dir.referencia">
+                      Referencia: {{ dir.referencia }}
+                    </p>
+                    <p v-if="dir.latitud && dir.longitud">
+                        <AppIcon :name="ICONS.mapPin" :size="13" />
+                        {{ dir.latitud }}, {{ dir.longitud }}
+                      <a
+                        :href="`https://www.google.com/maps/search/?api=1&query=${dir.latitud},${dir.longitud}`"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-1 font-medium text-brand-500 hover:text-brand-600"
+                      >
+                      Ver en Google Maps
+                      </a>
+                    </p>
+                  </div>
                 </div>
               </div>
             </RelatedListState>
@@ -338,7 +324,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
-import { AppBadge, AppModal } from '@/shared/components'
+import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
+import { AppBadge, AppModal, MapaLeaflet } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS, type IconName } from '@/shared/constants/icons'
 import { formatDate, formatDateTime } from '@/shared/utils/date'
@@ -363,6 +350,11 @@ interface ClienteDetailModalProps {
 const props = defineProps<ClienteDetailModalProps>()
 
 const open = defineModel<boolean>({ default: false })
+
+const idReferencia = computed(() => props.cliente?.id)
+const clienteDetailQuery = useClienteDetailQuery(idReferencia, open)
+const cliente = computed<Cliente | null>(() => clienteDetailQuery.data.value ?? props.cliente ?? null)
+//const isLoadingCliente = computed(() => clienteDetailQuery.isLoading.value && !props.cliente)
 
 const getNombreCliente = (cliente: Cliente) => {
   if (cliente.razon_social) return cliente.razon_social
@@ -403,26 +395,27 @@ interface DetailItem {
 interface DetailSection {
   title: string
   items: DetailItem[]
+  showMap?: boolean
 }
 
 const sections = computed<DetailSection[]>(() => {
-  const cliente = props.cliente
-  if (!cliente) return []
+  const c = cliente.value
+  if (!c) return []
 
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
+  const nombreCompleto = [c.nombres, c.apellido_paterno, c.apellido_materno]
     .filter(Boolean)
     .join(' ')
     .trim()
 
   const datosGenerales: DetailItem[] = [
-    { label: 'Código interno', value: cliente.codigo_interno || null },
+    { label: 'Código interno', value: c.codigo_interno || null },
   ]
 
-  if (cliente.razon_social) {
-    datosGenerales.push({ label: 'Razón social', value: cliente.razon_social })
+  if (c.razon_social) {
+    datosGenerales.push({ label: 'Razón social', value: c.razon_social })
   }
-  if (cliente.nombre_comercial) {
-    datosGenerales.push({ label: 'Nombre comercial', value: cliente.nombre_comercial })
+  if (c.nombre_comercial) {
+    datosGenerales.push({ label: 'Nombre comercial', value: c.nombre_comercial })
   }
   if (nombreCompleto) {
     datosGenerales.push({ label: 'Nombre completo', value: nombreCompleto })
@@ -430,48 +423,63 @@ const sections = computed<DetailSection[]>(() => {
 
   datosGenerales.push({
     label: 'Documento',
-    value: `${cliente.nombre_tipo_documento ?? 'Doc.'} ${cliente.numero_documento}`,
+    value: `${c.nombre_tipo_documento ?? 'Doc.'} ${c.numero_documento}`,
   })
 
-  return [
+  const result: DetailSection[] = [
     { title: 'Datos generales', items: datosGenerales },
     {
       title: 'Contacto y ubicación',
+      showMap: true,
       items: [
-        { label: 'Teléfono', value: cliente.telefono ?? null },
-        { label: 'Correo', value: cliente.email ?? null },
-        { label: 'Dirección', value: cliente.direccion ?? null, fullWidth: true },
-        { label: 'Referencia', value: cliente.referencia ?? null, fullWidth: true },
-        { label: 'País', value: cliente.nombre_pais ?? formatId(cliente.id_pais) },
+        { label: 'Teléfono', value: c.telefono ?? null },
+        { label: 'Correo', value: c.email ?? null },
+        { label: 'Dirección', value: c.direccion ?? null, fullWidth: true },
+        { label: 'Referencia', value: c.referencia ?? null, fullWidth: true },
+        { label: 'País', value: c.nombre_pais ?? formatId(c.id_pais) },
         {
           label: 'Departamento',
-          value: cliente.nombre_departamento ?? formatId(cliente.id_departamento),
+          value: c.nombre_departamento ?? formatId(c.id_departamento),
         },
-        { label: 'Provincia', value: cliente.nombre_provincia ?? formatId(cliente.id_provincia) },
-        { label: 'Distrito', value: cliente.nombre_distrito ?? formatId(cliente.id_distrito) },
+        { label: 'Provincia', value: c.nombre_provincia ?? formatId(c.id_provincia) },
+        { label: 'Distrito', value: c.nombre_distrito ?? formatId(c.id_distrito) },
       ],
     },
   ]
-})
 
-/* ---------------- Información relacionada (pestañas) ---------------- */
+  if (c.observacion) {
+    result.push({
+      title: 'Observación',
+      items: [{ label: '', value: c.observacion, fullWidth: true }],
+    })
+  }
+
+  result.push({
+    title: 'Auditoría',
+    items: [
+      { label: 'Creado por', value: c.nombre_usuario_creacion ?? null },
+      { label: 'Fecha de creación', value: formatDateTime(c.fecha_creacion) },
+      { label: 'Modificado por', value: c.nombre_usuario_modificacion ?? null },
+      { label: 'Última modificación', value: formatDateTime(c.fecha_modificacion) },
+    ],
+  })
+
+  return result
+})
 
 type RelatedTabKey = 'contactos' | 'direcciones' | 'choferes' | 'vehiculos'
 
 const activeTab = ref<RelatedTabKey>('contactos')
+const idCliente = computed(() => cliente.value?.id)
 
-const idCliente = computed(() => props.cliente?.id)
+const shouldFetchRelatedData = computed(() => open.value && Boolean(idCliente.value))
 
-const isTabActive = (tab: RelatedTabKey) => computed(() => open.value && activeTab.value === tab && Boolean(idCliente.value))
-
-// Contactos
 const contactosFilters = computed<ContactoListFilters>(() => ({
   idCliente: idCliente.value,
   limite: 50,
   soloActivos: null,
 }))
-const contactosEnabled = isTabActive('contactos')
-const contactosQuery = useContactosQuery(contactosFilters, contactosEnabled)
+const contactosQuery = useContactosQuery(contactosFilters, shouldFetchRelatedData)
 const contactosItems = computed<Contacto[]>(() => contactosQuery.data.value?.data ?? [])
 
 // Direcciones
@@ -480,8 +488,7 @@ const direccionesFilters = computed<DireccionListFilters>(() => ({
   limite: 50,
   soloActivos: null,
 }))
-const direccionesEnabled = isTabActive('direcciones')
-const direccionesQuery = useDireccionesQuery(direccionesFilters, direccionesEnabled)
+const direccionesQuery = useDireccionesQuery(direccionesFilters, shouldFetchRelatedData)
 const direccionesItems = computed<Direccion[]>(() => direccionesQuery.data.value?.data ?? [])
 
 // Choferes
@@ -490,8 +497,7 @@ const choferesFilters = computed<ChoferListFilters>(() => ({
   limite: 50,
   isActivos: null,
 }))
-const choferesEnabled = isTabActive('choferes')
-const choferesQuery = useChoferesQuery(choferesFilters, choferesEnabled)
+const choferesQuery = useChoferesQuery(choferesFilters, shouldFetchRelatedData)
 const choferesItems = computed<Chofer[]>(() => choferesQuery.data.value?.data ?? [])
 
 // Vehículos
@@ -500,8 +506,7 @@ const vehiculosFilters = computed<VehiculoListFilters>(() => ({
   limite: 50,
   isActivos: null,
 }))
-const vehiculosEnabled = isTabActive('vehiculos')
-const vehiculosQuery = useVehiculosQuery(vehiculosFilters, vehiculosEnabled)
+const vehiculosQuery = useVehiculosQuery(vehiculosFilters, shouldFetchRelatedData)
 const vehiculosItems = computed<Vehiculo[]>(() => vehiculosQuery.data.value?.data ?? [])
 
 interface RelatedTab {

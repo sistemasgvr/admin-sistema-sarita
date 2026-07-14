@@ -16,14 +16,16 @@
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppSelect
+      <SearchableSelect
         v-model="idCliente"
         label="Cliente / Proveedor"
-        placeholder="Sin cliente asignado"
+        placeholder="Busca por razón social, nombres o documento..."
+        empty-option-label="Sin cliente asignado"
+        :model-label="clienteLabelActual"
         v-bind="idClienteAttrs"
         :disabled="isSubmitting"
         :error="errors.idCliente"
-        :options="clienteOptions"
+        :search-fn="searchClientes"
       />
 
       <div class="grid gap-3 sm:grid-cols-3">
@@ -174,20 +176,23 @@ import {
   useCreateChoferMutation,
   useUpdateChoferMutation,
 } from '@/modules/choferes/composables/useChoferMutations'
+import { useChoferDetailQuery } from '@/modules/choferes/composables/useChoferDetailQuery'
 import type {
   Chofer,
   ChoferFormMode,
 } from '@/modules/choferes/interfaces/chofer.interface'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface ChoferFormModalProps {
   mode: ChoferFormMode
   chofer?: Chofer | null
-  clientes: Cliente[]
   defaultClienteId?: number | null
 }
 
@@ -203,18 +208,11 @@ const authStore = useAuthStore()
 
 const createMutation = useCreateChoferMutation()
 const updateMutation = useUpdateChoferMutation()
-
-const listaTipoDocumentoId = computed(() => ListaIds.TIPO_DOCUMENTO)
-const tipoDocumentoQuery = useListaOpcionesQuery(listaTipoDocumentoId)
-const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
-
-const listaTipoLicenciaId = computed(() => ListaIds.TIPO_LICENCIA)
-const tipoLicenciaQuery = useListaOpcionesQuery(listaTipoLicenciaId)
-const tipoLicenciaOptions = computed(() => toSelectOptions(tipoLicenciaQuery.data.value))
-
-const listaCategoriaLicenciaId = computed(() => ListaIds.CATEGORIA_LICENCIA)
-const categoriaLicenciaQuery = useListaOpcionesQuery(listaCategoriaLicenciaId)
-const categoriaLicenciaOptions = computed(() => toSelectOptions(categoriaLicenciaQuery.data.value))
+const idReferencia = computed(() => props.chofer?.id)
+const choferDetailQuery = useChoferDetailQuery(idReferencia, open)
+const choferActual = computed<Chofer | null>(
+  () => choferDetailQuery.data.value ?? props.chofer ?? null,
+)
 
 const getClienteNombre = (cliente: Cliente) => {
   const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
@@ -231,18 +229,51 @@ const getClienteNombre = (cliente: Cliente) => {
   return nombreCompleto || cliente.razon_social || cliente.numero_documento
 }
 
-const clienteOptions = computed(() => [
-  { value: '', label: 'Sin cliente asignado' },
-  ...props.clientes.map((cliente) => ({
+const searchClientes = async (query: string): Promise<SelectOption[]> => {
+  const response = await clientesService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 20,
+    soloActivos: 1,
+  })
+
+  return response.data.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
-  })),
-])
+  }))
+}
+
+const listaTipoDocumentoId = computed(() => ListaIds.TIPO_DOCUMENTO)
+const tipoDocumentoQuery = useListaOpcionesQuery(listaTipoDocumentoId)
+const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
+
+const listaTipoLicenciaId = computed(() => ListaIds.TIPO_LICENCIA)
+const tipoLicenciaQuery = useListaOpcionesQuery(listaTipoLicenciaId)
+const tipoLicenciaOptions = computed(() => toSelectOptions(tipoLicenciaQuery.data.value))
+
+const listaCategoriaLicenciaId = computed(() => ListaIds.CATEGORIA_LICENCIA)
+const categoriaLicenciaQuery = useListaOpcionesQuery(listaCategoriaLicenciaId)
+const categoriaLicenciaOptions = computed(() => toSelectOptions(categoriaLicenciaQuery.data.value))
+
+// Label inicial del cliente ya asociado al chofer, tomado de los campos
+// "cliente_*" que ya vienen en el registro (evita una petición extra).
+const clienteLabelActual = computed(() => {
+  const c = choferActual.value
+  if (!c) return null
+  if (c.cliente_razon_social) return c.cliente_razon_social
+
+  const nombreCompleto = [c.cliente_nombres, c.cliente_apellido_paterno, c.cliente_apellido_materno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return nombreCompleto || c.cliente_numero_documento || null
+})
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      idCliente: yup.number().optional(),
+      idCliente: yup.number().optional().nullable(),
       nombres: requiredString('Los nombres'),
       apellidoPaterno: optionalString(),
       apellidoMaterno: optionalString(),
@@ -286,23 +317,22 @@ const [fechaEmision, fechaEmisionAttrs] = defineField('fechaEmision')
 const [fechaVencimiento, fechaVencimientoAttrs] = defineField('fechaVencimiento')
 
 const syncFormValues = () => {
+  const c = choferActual.value
+
   resetForm({
     values: {
-      idCliente:
-        props.chofer?.id_cliente ??
-        props.defaultClienteId ??
-        undefined,
-      nombres: props.chofer?.nombres ?? '',
-      apellidoPaterno: props.chofer?.apellido_paterno ?? '',
-      apellidoMaterno: props.chofer?.apellido_materno ?? '',
-      idTipoDocumento: props.chofer?.id_tipo_documento ?? undefined,
-      numeroDocumento: props.chofer?.numero_documento ?? '',
-      telefono: props.chofer?.telefono ?? '',
-      codigoLicencia: props.chofer?.codigo_licencia ?? '',
-      idTipoLicencia: props.chofer?.id_tipo_licencia ?? undefined,
-      idCategoriaLicencia: props.chofer?.id_categoria_licencia ?? undefined,
-      fechaEmision: props.chofer?.fecha_emision ?? '',
-      fechaVencimiento: props.chofer?.fecha_vencimiento ?? '',
+      idCliente: c?.id_cliente ?? props.defaultClienteId ?? undefined,
+      nombres: c?.nombres ?? '',
+      apellidoPaterno: c?.apellido_paterno ?? '',
+      apellidoMaterno: c?.apellido_materno ?? '',
+      idTipoDocumento: c?.id_tipo_documento ?? undefined,
+      numeroDocumento: c?.numero_documento ?? '',
+      telefono: c?.telefono ?? '',
+      codigoLicencia: c?.codigo_licencia ?? '',
+      idTipoLicencia: c?.id_tipo_licencia ?? undefined,
+      idCategoriaLicencia: c?.id_categoria_licencia ?? undefined,
+      fechaEmision: c?.fecha_emision ?? '',
+      fechaVencimiento: c?.fecha_vencimiento ?? '',
     },
   })
 }
@@ -354,6 +384,15 @@ watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
+      syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => choferDetailQuery.data.value,
+  () => {
+    if (open.value) {
       syncFormValues()
     }
   },

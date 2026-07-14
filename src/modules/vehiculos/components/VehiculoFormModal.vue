@@ -17,14 +17,16 @@
       @submit="onSubmit"
     >
       <div class="grid gap-3 sm:grid-cols-2">
-        <AppSelect
+        <SearchableSelect
           v-model="idCliente"
           label="Cliente / Proveedor dueño"
-          placeholder="Sin cliente asignado"
+          placeholder="Busca por razón social, nombres o documento..."
+          empty-option-label="Sin cliente asignado"
+          :model-label="clienteLabelActual"
           v-bind="idClienteAttrs"
           :disabled="isSubmitting"
           :error="errors.idCliente"
-          :options="clienteOptions"
+          :search-fn="searchClientes"
         />
 
         <AppSelect
@@ -163,20 +165,23 @@ import {
   useCreateVehiculoMutation,
   useUpdateVehiculoMutation,
 } from '@/modules/vehiculos/composables/useVehiculoMutations'
+import { useVehiculoDetailQuery } from '@/modules/vehiculos/composables/useVehiculoDetailQuery'
 import type {
   Vehiculo,
   VehiculoFormMode,
 } from '@/modules/vehiculos/interfaces/vehiculo.interface'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface VehiculoFormModalProps {
   mode: VehiculoFormMode
   vehiculo?: Vehiculo | null
-  clientes: Cliente[]
   defaultClienteId?: number | null
 }
 
@@ -192,6 +197,15 @@ const authStore = useAuthStore()
 
 const createMutation = useCreateVehiculoMutation()
 const updateMutation = useUpdateVehiculoMutation()
+
+// Al editar, la fila de la tabla puede venir incompleta o desactualizada.
+// Se consulta el detalle real (GET /vehiculos/:id) y se usa como fuente
+// de verdad; mientras carga, se muestra lo que ya trae la fila.
+const idReferencia = computed(() => props.vehiculo?.id)
+const vehiculoDetailQuery = useVehiculoDetailQuery(idReferencia, open)
+const vehiculoActual = computed<Vehiculo | null>(
+  () => vehiculoDetailQuery.data.value ?? props.vehiculo ?? null,
+)
 
 const listaTipoVehiculoId = computed(() => ListaIds.TIPO_VEHICULO)
 const tipoVehiculoQuery = useListaOpcionesQuery(listaTipoVehiculoId)
@@ -212,13 +226,32 @@ const getClienteNombre = (cliente: Cliente) => {
   return nombreCompleto || cliente.razon_social || cliente.numero_documento
 }
 
-const clienteOptions = computed(() => [
-  { value: '', label: 'Sin cliente asignado' },
-  ...props.clientes.map((cliente) => ({
+const searchClientes = async (query: string): Promise<SelectOption[]> => {
+  const response = await clientesService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 20,
+    soloActivos: 1,
+  })
+
+  return response.data.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
-  })),
-])
+  }))
+}
+
+const clienteLabelActual = computed(() => {
+  const v = vehiculoActual.value
+  if (!v) return null
+  if (v.cliente_razon_social) return v.cliente_razon_social
+
+  const nombreCompleto = [v.cliente_nombres, v.cliente_apellido_paterno, v.cliente_apellido_materno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return nombreCompleto || v.cliente_numero_documento || null
+})
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
@@ -264,22 +297,21 @@ const [certificadoInscripcion, certificadoInscripcionAttrs] = defineField('certi
 const [certificado2, certificado2Attrs] = defineField('certificado2')
 
 const syncFormValues = () => {
+  const v = vehiculoActual.value
+
   resetForm({
     values: {
-      idCliente:
-        props.vehiculo?.id_cliente ??
-        props.defaultClienteId ??
-        undefined,
-      idTipoVehiculo: props.vehiculo?.id_tipo_vehiculo ?? undefined,
-      placa: props.vehiculo?.placa ?? '',
-      placa2: props.vehiculo?.placa2 ?? '',
-      marca: props.vehiculo?.marca ?? '',
-      marca2: props.vehiculo?.marca2 ?? '',
-      modelo: props.vehiculo?.modelo ?? '',
-      anio: props.vehiculo?.anio ?? undefined,
-      color: props.vehiculo?.color ?? '',
-      certificadoInscripcion: props.vehiculo?.certificado_inscripcion ?? '',
-      certificado2: props.vehiculo?.certificado2 ?? '',
+      idCliente: v?.id_cliente ?? props.defaultClienteId ?? undefined,
+      idTipoVehiculo: v?.id_tipo_vehiculo ?? undefined,
+      placa: v?.placa ?? '',
+      placa2: v?.placa2 ?? '',
+      marca: v?.marca ?? '',
+      marca2: v?.marca2 ?? '',
+      modelo: v?.modelo ?? '',
+      anio: v?.anio ?? undefined,
+      color: v?.color ?? '',
+      certificadoInscripcion: v?.certificado_inscripcion ?? '',
+      certificado2: v?.certificado2 ?? '',
     },
   })
 }
@@ -330,6 +362,15 @@ watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
+      syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => vehiculoDetailQuery.data.value,
+  () => {
+    if (open.value) {
       syncFormValues()
     }
   },

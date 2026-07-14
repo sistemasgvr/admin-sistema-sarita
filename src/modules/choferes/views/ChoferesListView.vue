@@ -67,6 +67,14 @@
 
       <template #actions="{ row }">
         <button
+          type="button"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
@@ -99,10 +107,11 @@
       v-model="formModalOpen"
       :mode="formMode"
       :chofer="selectedChofer"
-      :clientes="clientes"
       :default-cliente-id="idClienteFiltro ? Number(idClienteFiltro) : null"
       @saved="onChoferSaved"
     />
+
+    <ChoferDetailModal v-model="detailModalOpen" :chofer="choferToView" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -144,6 +153,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import ChoferDetailModal from '@/modules/choferes/components/ChoferDetailModal.vue'
 import ChoferFormModal from '@/modules/choferes/components/ChoferFormModal.vue'
 import { useDeleteChoferMutation } from '@/modules/choferes/composables/useChoferMutations'
 import { useChoferesQuery } from '@/modules/choferes/composables/useChoferesQuery'
@@ -153,8 +163,6 @@ import type {
   ChoferFormMode,
   ChoferListFilters,
 } from '@/modules/choferes/interfaces/chofer.interface'
-import { clientesService } from '@/modules/clientes/services/clientes.service'
-import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
@@ -179,7 +187,6 @@ const breadcrumbItems: BreadcrumbItem[] = [
   { label: 'Choferes' },
 ]
 
-const clientes = ref<Cliente[]>([])
 const idClienteFiltro = ref<string | number>('')
 const buscar = ref('')
 const mostrarChoferes = ref<ChoferEstadoFiltro>('activos')
@@ -218,6 +225,9 @@ const formModalOpen = ref(false)
 const formMode = ref<ChoferFormMode>('create')
 const selectedChofer = ref<Chofer | null>(null)
 
+const detailModalOpen = ref(false)
+const choferToView = ref<Chofer | null>(null)
+
 const deleteModalOpen = ref(false)
 const choferToDelete = ref<Chofer | null>(null)
 
@@ -254,29 +264,6 @@ const getClienteNombre = (chofer: Chofer) => {
   return nombreCompleto || chofer.cliente_numero_documento || 'Sin cliente asignado'
 }
 
-/* const getClienteSelectNombre = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-
-  if (esJuridica && cliente.razon_social) {
-    return cliente.razon_social
-  }
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
-} */
-/* 
-const clienteFilterOptions = computed(() => [
-  { value: '', label: 'Todos los clientes' },
-  ...clientes.value.map((cliente) => ({
-    value: cliente.id,sZ|
-    label: getClienteSelectNombre(cliente),
-  })),
-]) */
-
 const columns = computed<TableColumn<Chofer>[]>(() => [
   { key: 'chofer', label: 'Chofer' },
   { key: 'cliente', label: 'Cliente / Proveedor' },
@@ -286,14 +273,7 @@ const columns = computed<TableColumn<Chofer>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-onMounted(async () => {
-  try {
-    const response = await clientesService.listar({ pagina: 1, limite: 100, soloActivos: 1 })
-    clientes.value = response.data
-  } catch {
-    clientes.value = []
-  }
-
+onMounted(() => {
   const idClienteQuery = route.query.idCliente
   if (idClienteQuery) {
     idClienteFiltro.value = Number(idClienteQuery)
@@ -348,6 +328,11 @@ const openEditModal = (chofer: Chofer) => {
   formMode.value = 'edit'
   selectedChofer.value = chofer
   formModalOpen.value = true
+}
+
+const openDetailModal = (chofer: Chofer) => {
+  choferToView.value = chofer
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (chofer: Chofer) => {

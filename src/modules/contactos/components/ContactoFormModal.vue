@@ -16,15 +16,17 @@
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppSelect
+      <SearchableSelect
         v-model="idCliente"
         label="Cliente / Proveedor"
-        placeholder="Selecciona un cliente"
+        placeholder="Busca por razón social, nombres o documento..."
         required
+        :clearable="false"
+        :model-label="clienteLabelActual"
         v-bind="idClienteAttrs"
         :disabled="isSubmitting || isClienteLocked"
         :error="errors.idCliente"
-        :options="clienteOptions"
+        :search-fn="searchClientes"
       />
 
       <div class="grid gap-3 sm:grid-cols-3">
@@ -144,19 +146,22 @@ import {
   useCreateContactoMutation,
   useUpdateContactoMutation,
 } from '@/modules/contactos/composables/useContactoMutations'
+import { useContactoDetailQuery } from '@/modules/contactos/composables/useContactoDetailQuery'
 import type {
   Contacto,
   ContactoFormMode,
 } from '@/modules/contactos/interfaces/contacto.interface'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppCheckbox, AppInput, AppModal } from '@/shared/components'
+import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface ContactoFormModalProps {
   mode: ContactoFormMode
   contacto?: Contacto | null
-  clientes: Cliente[]
   defaultClienteId?: number | null
   lockCliente?: boolean
 }
@@ -174,6 +179,12 @@ const authStore = useAuthStore()
 const createMutation = useCreateContactoMutation()
 const updateMutation = useUpdateContactoMutation()
 
+const idReferencia = computed(() => props.contacto?.id)
+const contactoDetailQuery = useContactoDetailQuery(idReferencia, open)
+const contactoActual = computed<Contacto | null>(
+  () => contactoDetailQuery.data.value ?? props.contacto ?? null,
+)
+
 const getClienteNombre = (cliente: Cliente) => {
   const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
 
@@ -189,12 +200,32 @@ const getClienteNombre = (cliente: Cliente) => {
   return nombreCompleto || cliente.razon_social || cliente.numero_documento
 }
 
-const clienteOptions = computed(() =>
-  props.clientes.map((cliente) => ({
+const searchClientes = async (query: string): Promise<SelectOption[]> => {
+  const response = await clientesService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 20,
+    soloActivos: 1,
+  })
+
+  return response.data.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
-  })),
-)
+  }))
+}
+
+const clienteLabelActual = computed(() => {
+  const c = contactoActual.value
+  if (!c) return null
+  if (c.cliente_razon_social) return c.cliente_razon_social
+
+  const nombreCompleto = [c.cliente_nombres, c.cliente_apellido_paterno, c.cliente_apellido_materno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return nombreCompleto || c.cliente_numero_documento || null
+})
 
 const isClienteLocked = computed(
   () => props.mode === 'create' && props.lockCliente && !!props.defaultClienteId,
@@ -241,21 +272,20 @@ const [telefono3, telefono3Attrs] = defineField('telefono3')
 const [esPrincipal] = defineField('esPrincipal')
 
 const syncFormValues = () => {
+  const c = contactoActual.value
+
   resetForm({
     values: {
-      idCliente:
-        props.contacto?.id_cliente ??
-        props.defaultClienteId ??
-        undefined,
-      nombre: props.contacto?.nombre ?? '',
-      apellidoPaterno: props.contacto?.apellido_paterno ?? '',
-      apellidoMaterno: props.contacto?.apellido_materno ?? '',
-      direccion: props.contacto?.direccion ?? '',
-      email: props.contacto?.email ?? '',
-      telefono1: props.contacto?.telefono1 ?? '',
-      telefono2: props.contacto?.telefono2 ?? '',
-      telefono3: props.contacto?.telefono3 ?? '',
-      esPrincipal: props.contacto?.es_principal ?? false,
+      idCliente: c?.id_cliente ?? props.defaultClienteId ?? undefined,
+      nombre: c?.nombre ?? '',
+      apellidoPaterno: c?.apellido_paterno ?? '',
+      apellidoMaterno: c?.apellido_materno ?? '',
+      direccion: c?.direccion ?? '',
+      email: c?.email ?? '',
+      telefono1: c?.telefono1 ?? '',
+      telefono2: c?.telefono2 ?? '',
+      telefono3: c?.telefono3 ?? '',
+      esPrincipal: c?.es_principal ?? false,
     },
   })
 }
@@ -305,6 +335,15 @@ watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
+      syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => contactoDetailQuery.data.value,
+  () => {
+    if (open.value) {
       syncFormValues()
     }
   },
