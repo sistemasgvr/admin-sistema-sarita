@@ -1,5 +1,7 @@
 import { ICONS } from '@/shared/constants/icons'
 import { productosMenuSubItems } from '@/modules/productos/config/productos-menu'
+import { balonesMenuSubItems } from '@/modules/balones/config/balones-menu'
+import { ventasMenuSubItems } from '@/modules/ventas/config/ventas-menu'
 import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
 import { clientesMenuSubItems } from '@/modules/clientes/config/clientes-menu'
 
@@ -45,7 +47,23 @@ export const adminMenuGroups: AdminMenuGroup[] = [
       {
         icon: ICONS.package,
         name: 'Productos',
+        path: '/admin/productos',
+        permission: PermisoBanderas.PRODUCTOS_HUB_VER,
         subItems: productosMenuSubItems,
+      },
+      {
+        icon: ICONS.cylinder,
+        name: 'Balones',
+        path: '/admin/balones',
+        permission: PermisoBanderas.BALONES_HUB_VER,
+        subItems: balonesMenuSubItems,
+      },
+      {
+        icon: ICONS.creditCard,
+        name: 'Ventas',
+        path: '/admin/ventas/pos',
+        permission: PermisoBanderas.VENTAS_VER,
+        subItems: ventasMenuSubItems,
       },
     ],
   },

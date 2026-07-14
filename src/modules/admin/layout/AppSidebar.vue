@@ -1,7 +1,7 @@
 <template>
   <aside
     :class="[
-      'fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200',
+      'fixed top-16 bottom-0 left-0 z-99999 flex flex-col border-r border-gray-200 bg-white px-5 text-gray-900 transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-900 lg:top-0 lg:mt-0 lg:h-screen',
       {
         'lg:w-[290px]': isExpanded || isMobileOpen || isHovered,
         'lg:w-[90px]': !isExpanded && !isHovered,
@@ -15,7 +15,7 @@
   >
     <div
       :class="[
-        'py-8 flex',
+        'hidden py-8 lg:flex',
         !isExpanded && !isHovered ? 'lg:justify-center' : 'justify-start',
       ]"
     >
@@ -38,8 +38,8 @@
         />
       </router-link>
     </div>
-    <div class="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-      <nav class="mb-6">
+    <div class="flex min-h-0 flex-1 flex-col overflow-y-auto pt-4 duration-300 ease-linear no-scrollbar lg:pt-0">
+      <nav class="mb-6 pb-6">
         <div class="flex flex-col gap-4">
           <div v-for="(menuGroup, groupIndex) in visibleMenuGroups" :key="groupIndex">
             <h2
@@ -162,13 +162,16 @@ import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 const route = useRoute()
 const { visibleMenuGroups } = useAdminMenu()
-const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar()
+const { isExpanded, isMobileOpen, isHovered, expandedSubmenus, collapsedSubmenus } = useSidebar()
 
 const submenuKey = (groupIndex: number, itemIndex: number) => `${groupIndex}-${itemIndex}`
 
-const isActive = (path: string) => route.path === path
+/** Resalta hubs y rutas hijas (ej. /admin/configuracion → /admin/configuracion/sucursales). */
+const isActive = (path: string) =>
+  route.path === path || route.path.startsWith(`${path}/`)
 
-const isSubmenuRouteActive = (path: string) => route.path === path
+const isSubmenuRouteActive = (path: string) =>
+  route.path === path || route.path.startsWith(`${path}/`)
 
 const isParentItemActive = (item: AdminMenuItem) => {
   if (item.path && (route.path === item.path || route.path.startsWith(`${item.path}/`))) {
@@ -189,39 +192,52 @@ const hasActiveSubmenuRoute = (groupIndex: number, itemIndex: number) => {
   return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path)) ?? false
 }
 
+const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {
+  const key = submenuKey(groupIndex, itemIndex)
+
+  if (collapsedSubmenus.value.has(key)) return false
+  if (expandedSubmenus.value.has(key)) return true
+
+  return hasActiveSubmenuRoute(groupIndex, itemIndex)
+}
+
 const toggleSubmenu = (groupIndex: number, itemIndex: number) => {
   const key = submenuKey(groupIndex, itemIndex)
 
   if (isSubmenuOpen(groupIndex, itemIndex)) {
-    openSubmenu.value = `closed:${key}`
-    return
+    expandedSubmenus.value.delete(key)
+    if (hasActiveSubmenuRoute(groupIndex, itemIndex)) {
+      collapsedSubmenus.value.add(key)
+    }
+  } else {
+    collapsedSubmenus.value.delete(key)
+    expandedSubmenus.value.add(key)
   }
 
-  openSubmenu.value = key
-}
-
-const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {
-  const key = submenuKey(groupIndex, itemIndex)
-
-  if (openSubmenu.value === `closed:${key}`) return false
-  if (openSubmenu.value === key) return true
-
-  return hasActiveSubmenuRoute(groupIndex, itemIndex)
+  expandedSubmenus.value = new Set(expandedSubmenus.value)
+  collapsedSubmenus.value = new Set(collapsedSubmenus.value)
 }
 
 watch(
   () => route.path,
   () => {
+    let changed = false
+
     visibleMenuGroups.value.forEach((group, groupIndex) => {
       group.items.forEach((item, itemIndex) => {
         if (!item.subItems?.length) return
 
         const key = submenuKey(groupIndex, itemIndex)
-        if (hasActiveSubmenuRoute(groupIndex, itemIndex) && openSubmenu.value === `closed:${key}`) {
-          openSubmenu.value = null
+        if (hasActiveSubmenuRoute(groupIndex, itemIndex) && collapsedSubmenus.value.has(key)) {
+          collapsedSubmenus.value.delete(key)
+          changed = true
         }
       })
     })
+
+    if (changed) {
+      collapsedSubmenus.value = new Set(collapsedSubmenus.value)
+    }
   },
 )
 

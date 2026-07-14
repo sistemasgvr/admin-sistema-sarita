@@ -52,6 +52,8 @@ export const configuracionHubItems: ConfiguracionHubItem[] = [
     path: '/admin/configuracion/sunat',
     icon: ICONS.fileKey,
     permission: PermisoBanderas.CONFIGURACION_SUNAT_VER,
+    // Facturación va por APIs Perú (.env); no exponer esta pantalla por ahora.
+    hidden: true,
   },
   {
     key: 'servicios',

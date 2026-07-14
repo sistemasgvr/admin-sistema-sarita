@@ -1,27 +1,41 @@
 <template>
   <div
     v-if="showPagination"
-    class="flex flex-col gap-4 border-t border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-gray-800"
+    class="flex flex-col gap-2 border-t border-gray-200 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-4 dark:border-gray-800"
   >
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-      <p v-if="showSummary" class="text-sm text-gray-500 dark:text-gray-400">
-        Mostrando
-        <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.from }}</span>
-        -
-        <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.to }}</span>
-        de
-        <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.total }}</span>
+    <div class="flex items-center justify-between gap-2 sm:justify-start sm:gap-4">
+      <p v-if="showSummary" class="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+        <span class="sm:hidden">
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.from }}</span>
+          –
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.to }}</span>
+          de
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.total }}</span>
+        </span>
+        <span class="hidden sm:inline">
+          Mostrando
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.from }}</span>
+          -
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.to }}</span>
+          de
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ summary.total }}</span>
+        </span>
       </p>
 
-      <div v-if="showPageSize" class="flex items-center gap-2">
-        <label :for="pageSizeId" class="text-sm text-gray-500 dark:text-gray-400">
+      <div v-if="showPageSize" class="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <label
+          :for="pageSizeId"
+          class="hidden text-sm text-gray-500 dark:text-gray-400 sm:inline"
+        >
           Por página
         </label>
         <select
           :id="pageSizeId"
           v-model.number="limiteModel"
-          class="form-control h-9 w-[88px] appearance-none bg-none px-3 py-1.5 text-sm"
+          class="form-control h-8 w-[4.25rem] appearance-none bg-none px-2 py-1 text-xs sm:h-9 sm:w-[88px] sm:px-3 sm:py-1.5 sm:text-sm"
           :disabled="disabled"
+          :title="`Por página: ${limiteModel}`"
+          :aria-label="`Por página: ${limiteModel}`"
         >
           <option
             v-for="option in pageSizeOptions"
@@ -35,21 +49,25 @@
       </div>
     </div>
 
-    <nav class="flex items-center justify-center gap-2 sm:justify-end" aria-label="Paginación">
+    <nav
+      class="flex items-center justify-center gap-1 sm:justify-end sm:gap-2"
+      aria-label="Paginación"
+    >
       <button
         type="button"
-        class="flex h-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+        class="flex h-8 min-w-8 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-9 sm:px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
         :disabled="disabled || paginaModel <= 1"
         aria-label="Página anterior"
         @click="goToPage(paginaModel - 1)"
       >
-        <AppIcon :name="ICONS.chevronLeft" :size="18" />
+        <AppIcon :name="ICONS.chevronLeft" :size="16" class="sm:hidden" />
+        <AppIcon :name="ICONS.chevronLeft" :size="18" class="hidden sm:block" />
       </button>
 
       <template v-for="(item, index) in pageItems" :key="`${item}-${index}`">
         <span
           v-if="item === 'ellipsis'"
-          class="flex h-9 min-w-9 items-center justify-center px-1 text-sm text-gray-400"
+          class="flex h-8 min-w-7 items-center justify-center px-0.5 text-xs text-gray-400 sm:h-9 sm:min-w-9 sm:px-1 sm:text-sm"
         >
           ...
         </span>
@@ -57,7 +75,7 @@
         <button
           v-else
           type="button"
-          class="flex h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50"
+          class="flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-9 sm:px-3 sm:text-sm"
           :class="
             item === paginaModel
               ? 'border-brand-500 bg-brand-500 text-white hover:bg-brand-600 dark:border-brand-500 dark:bg-brand-500'
@@ -73,12 +91,13 @@
 
       <button
         type="button"
-        class="flex h-9 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+        class="flex h-8 min-w-8 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-9 sm:px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
         :disabled="disabled || paginaModel >= totalPages"
         aria-label="Página siguiente"
         @click="goToPage(paginaModel + 1)"
       >
-        <AppIcon :name="ICONS.chevronRight" :size="18" />
+        <AppIcon :name="ICONS.chevronRight" :size="16" class="sm:hidden" />
+        <AppIcon :name="ICONS.chevronRight" :size="18" class="hidden sm:block" />
       </button>
     </nav>
   </div>

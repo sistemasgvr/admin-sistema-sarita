@@ -9,34 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por nombre o correo..."
-              />
-            </div>
-
-            <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="estadoFilter"
-                :options="estadoFilterOptions"
-              />
-            </div>
-          </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo usuario
-          </button>
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Nombre o correo..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo
+            </button>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-estado="{ value }">
@@ -64,31 +55,34 @@
         <button
           v-if="canEdit && row.estado"
           type="button"
+          title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Editar
+          <!-- Editar -->
         </button>
 
         <button
           v-if="canDeactivate && row.estado && row.id !== currentUserId"
           type="button"
+          title="Desactivar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeactivateModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Desactivar
+          <!-- Desactivar -->
         </button>
 
         <button
           v-if="canActivate && !row.estado"
           type="button"
+          title="Activar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
           @click="openActivateModal(row)"
         >
           <AppIcon :name="ICONS.check" :size="16" />
-          Activar
+          <!-- Activar -->
         </button>
       </template>
 
@@ -198,31 +192,38 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
   AppBadgeList,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatDateTime } from '@/shared/utils/date'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const estadoFilter = ref<UsuarioEstadoFiltro>('activos')
+const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
 const pagina = ref(1)
 const limite = ref(10)
 
-const estadoFilterOptions: SelectOption[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'activos', label: 'Activos' },
-  { value: 'inactivos', label: 'Inactivos' },
-]
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar estado',
+    options: [
+      { value: 'todos', label: 'Todos' },
+      { value: 'activos', label: 'Activo' },
+      { value: 'inactivos', label: 'Inactivo' },
+    ],
+  },
+])
 
 const filters = ref<UsuarioListFilters>({
   buscar: '',
@@ -269,33 +270,32 @@ const columns = computed<TableColumn<Usuario>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+const syncFilters = () => {
+  const active = dynamicFilters.value
+
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    estado: (active.estado as UsuarioEstadoFiltro | undefined) ?? 'activos',
+  }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
-watch(estadoFilter, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    estado: value,
-    pagina: 1,
-  }
-})
-
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {

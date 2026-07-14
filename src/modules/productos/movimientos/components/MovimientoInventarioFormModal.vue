@@ -12,113 +12,124 @@
   >
     <form
       id="movimiento-form"
-      class="space-y-4"
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div
-        v-if="mode === 'edit' && movimiento"
-        class="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm dark:border-gray-800 dark:bg-white/[0.03]"
-      >
-        <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ movimiento.nombre_tipo_movimiento }} — {{ formatCantidad(movimiento.cantidad) }}
-        </p>
-        <p class="mt-1 text-gray-600 dark:text-gray-400">
-          {{ movimiento.codigo_producto }} — {{ movimiento.nombre_producto }}
-        </p>
-        <p class="text-gray-500 dark:text-gray-400">
-          {{ movimiento.nombre_almacen }}
-        </p>
-      </div>
+      <FormCardsLayout>
+        <DetailSectionCard
+          v-if="mode === 'edit' && movimiento"
+          title="Movimiento"
+          :icon="ICONS.arrowLeftRight"
+          :full-width="true"
+        >
+          <div class="text-sm">
+            <p class="font-medium text-gray-800 dark:text-white/90">
+              {{ movimiento.nombre_tipo_movimiento }} — {{ formatCantidad(movimiento.cantidad) }}
+            </p>
+            <p class="mt-1 text-gray-600 dark:text-gray-400">
+              {{ movimiento.codigo_producto }} — {{ movimiento.nombre_producto }}
+            </p>
+            <p class="text-gray-500 dark:text-gray-400">
+              {{ movimiento.nombre_almacen }}
+            </p>
+          </div>
+        </DetailSectionCard>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput
-          v-model="fecha"
-          label="Fecha"
-          type="date"
-          required
-          v-bind="fechaAttrs"
-          :disabled="isSubmitting"
-          :error="errors.fecha"
-        />
+        <DetailSectionCard title="Datos del movimiento" :icon="ICONS.arrowLeftRight">
+          <div class="space-y-4">
+            <AppInput
+              v-model="fecha"
+              label="Fecha"
+              type="date"
+              required
+              v-bind="fechaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.fecha"
+            />
 
-        <template v-if="mode === 'create'">
-          <AppSelect
-            v-model="idAlmacen"
-            label="Almacén"
-            placeholder="Selecciona almacén"
-            required
-            v-bind="idAlmacenAttrs"
-            :disabled="isSubmitting"
-            :error="errors.idAlmacen"
-            :options="almacenOptions"
-          />
+            <template v-if="mode === 'create'">
+              <AppSelect
+                v-model="idAlmacen"
+                label="Almacén"
+                placeholder="Selecciona almacén"
+                required
+                v-bind="idAlmacenAttrs"
+                :disabled="isSubmitting"
+                :error="errors.idAlmacen"
+                :options="almacenOptions"
+              />
 
-          <AppSelect
-            v-model="idProducto"
-            label="Producto"
-            placeholder="Selecciona producto"
-            required
-            v-bind="idProductoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.idProducto"
-            :options="productoOptions"
-          />
+              <AppSelect
+                v-model="idProducto"
+                label="Producto"
+                placeholder="Selecciona producto"
+                required
+                v-bind="idProductoAttrs"
+                :disabled="isSubmitting"
+                :error="errors.idProducto"
+                :options="productoOptions"
+              />
 
-          <AppSelect
-            v-model="idTipoMovimiento"
-            label="Tipo de movimiento"
-            placeholder="Selecciona tipo"
-            required
-            v-bind="idTipoMovimientoAttrs"
-            :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
-            :error="errors.idTipoMovimiento"
-            :options="tipoMovimientoOptions"
-          />
+              <AppSelect
+                v-model="idTipoMovimiento"
+                label="Tipo de movimiento"
+                placeholder="Selecciona tipo"
+                required
+                v-bind="idTipoMovimientoAttrs"
+                :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
+                :error="errors.idTipoMovimiento"
+                :options="tipoMovimientoOptions"
+              />
 
+              <AppInput
+                v-model="cantidad"
+                label="Cantidad"
+                type="number"
+                :min="NUMBER_MIN.unit"
+                :step="NUMBER_STEP.unit"
+                required
+                v-bind="cantidadAttrs"
+                :disabled="isSubmitting"
+                :error="errors.cantidad"
+              />
+            </template>
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Referencia" :icon="ICONS.clipboardList">
+          <div class="space-y-4">
+            <AppSelect
+              v-model="idTipoDocumentoRef"
+              label="Documento origen"
+              placeholder="Opcional"
+              v-bind="idTipoDocumentoRefAttrs"
+              :disabled="isSubmitting || tiposDocumentoQuery.isFetching.value"
+              :options="tipoDocumentoOptions"
+            />
+
+            <AppInput
+              v-model="idDocumentoRef"
+              label="ID documento ref."
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Opcional"
+              v-bind="idDocumentoRefAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Glosa" :icon="ICONS.messageSquare" :full-width="true">
           <AppInput
-            v-model="cantidad"
-            label="Cantidad"
-            type="number"
-            min="0.0001"
-            step="0.0001"
-            required
-            v-bind="cantidadAttrs"
+            v-model="glosa"
+            label="Glosa"
+            placeholder="Detalle del movimiento"
+            v-bind="glosaAttrs"
             :disabled="isSubmitting"
-            :error="errors.cantidad"
           />
-        </template>
-      </div>
-
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppSelect
-          v-model="idTipoDocumentoRef"
-          label="Documento origen"
-          placeholder="Opcional"
-          v-bind="idTipoDocumentoRefAttrs"
-          :disabled="isSubmitting || tiposDocumentoQuery.isFetching.value"
-          :options="tipoDocumentoOptions"
-        />
-
-        <AppInput
-          v-model="idDocumentoRef"
-          label="ID documento ref."
-          type="number"
-          min="1"
-          step="1"
-          placeholder="Opcional"
-          v-bind="idDocumentoRefAttrs"
-          :disabled="isSubmitting"
-        />
-      </div>
-
-      <AppInput
-        v-model="glosa"
-        label="Glosa"
-        placeholder="Detalle del movimiento"
-        v-bind="glosaAttrs"
-        :disabled="isSubmitting"
-      />
+        </DetailSectionCard>
+      </FormCardsLayout>
     </form>
 
     <template #footer>
@@ -159,6 +170,10 @@ import type {
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
+import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
@@ -236,7 +251,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
         .number()
         .transform((value, originalValue) => (originalValue === '' ? undefined : value))
         .optional()
-        .min(0.0001, 'La cantidad debe ser mayor a cero'),
+        .integer('La cantidad debe ser un número entero')
+        .min(1, 'La cantidad debe ser mayor a cero'),
       idTipoDocumentoRef: yup
         .mixed<string | number>()
         .transform((value) => (value === '' ? undefined : value))

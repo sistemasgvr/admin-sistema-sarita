@@ -9,44 +9,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
-            <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="idAlmacenFiltro"
-                label="Almacén"
-                placeholder="Todos los almacenes"
-                :options="almacenFilterOptions"
-                :disabled="isLoadingAlmacenes"
-              />
-            </div>
-
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por almacén, código o producto..."
-              />
-            </div>
-
-            <div class="flex shrink-0 items-end pb-1">
-              <AppCheckbox
-                v-model="soloBajoMinimo"
-                label="Solo bajo mínimo"
-              />
-            </div>
-          </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Registrar stock
-          </button>
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Almacén, código o producto..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo
+            </button>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-almacen="{ row }">
@@ -105,23 +86,35 @@
 
       <template #actions="{ row }">
         <button
+          v-if="canView"
+          type="button"
+          title="Ver"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
+          title="Ajustar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Ajustar
+          <!-- Ajustar -->
         </button>
 
         <button
           v-if="canDelete"
           type="button"
+          title="Eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Eliminar
+          <!-- Eliminar -->
         </button>
       </template>
 
@@ -143,6 +136,8 @@
       :productos="productos"
       @saved="onStockSaved"
     />
+
+    <StockDetailModal v-model="detailModalOpen" :stock="stockToView" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -192,6 +187,7 @@ import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almac
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
+import StockDetailModal from '@/modules/productos/stock/components/StockDetailModal.vue'
 import { useDeleteStockMutation } from '@/modules/productos/stock/composables/useStockMutations'
 import { useStockQuery } from '@/modules/productos/stock/composables/useStockQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -203,16 +199,15 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppCheckbox,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -222,8 +217,7 @@ const almacenes = ref<Almacen[]>([])
 const productos = ref<Producto[]>([])
 const isLoadingAlmacenes = ref(false)
 
-const idAlmacenFiltro = ref<string | number>('')
-const soloBajoMinimo = ref(false)
+const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
@@ -244,21 +238,37 @@ const selectedStock = ref<Stock | null>(null)
 const deleteModalOpen = ref(false)
 const stockToDelete = ref<Stock | null>(null)
 
+const detailModalOpen = ref(false)
+const stockToView = ref<Stock | null>(null)
+
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_ELIMINAR))
 
 const isLoading = computed(() => stockQuery.isFetching.value)
 const rows = computed(() => stockQuery.data.value?.data ?? [])
 
-const almacenFilterOptions = computed(() => [
-  { value: '', label: 'Todos los almacenes' },
-  ...almacenes.value.map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre_sucursal
-      ? `${almacen.nombre} (${almacen.nombre_sucursal})`
-      : almacen.nombre,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idAlmacen',
+    label: 'Almacén',
+    type: 'select',
+    placeholder: 'Seleccionar almacén',
+    disabled: isLoadingAlmacenes.value,
+    options: almacenes.value.map((almacen) => ({
+      value: almacen.id,
+      label: almacen.nombre_sucursal
+        ? `${almacen.nombre} (${almacen.nombre_sucursal})`
+        : almacen.nombre,
+    })),
+  },
+  {
+    key: 'soloBajoMinimo',
+    label: 'Bajo mínimo',
+    type: 'checkbox',
+    placeholder: 'Solo bajo mínimo',
+  },
 ])
 
 const columns = computed<TableColumn<Stock>[]>(() => [
@@ -301,42 +311,33 @@ onMounted(() => {
   loadCatalogos()
 })
 
-watch(idAlmacenFiltro, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    idAlmacen: value ? Number(value) : undefined,
-    pagina: 1,
-  }
-})
+const syncFilters = () => {
+  const active = dynamicFilters.value
 
-watch(soloBajoMinimo, (value) => {
-  pagina.value = 1
   filters.value = {
-    ...filters.value,
-    soloBajoMinimo: value ? true : undefined,
-    pagina: 1,
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    soloBajoMinimo: active.soloBajoMinimo === true ? true : undefined,
   }
-})
+}
 
-watch(buscar, (value) => {
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {
@@ -349,6 +350,11 @@ const openEditModal = (stock: Stock) => {
   formMode.value = 'edit'
   selectedStock.value = stock
   formModalOpen.value = true
+}
+
+const openDetailModal = (stock: Stock) => {
+  stockToView.value = stock
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (stock: Stock) => {

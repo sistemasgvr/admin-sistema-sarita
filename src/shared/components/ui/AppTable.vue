@@ -6,7 +6,105 @@
       <slot name="toolbar" />
     </div>
 
-    <div class="w-full min-w-0 overflow-x-auto custom-scrollbar">
+    <!-- Vista móvil: tarjetas -->
+    <div class="md:hidden">
+      <div
+        v-if="loading"
+        class="flex min-h-[min(50dvh,22rem)] items-center justify-center px-4 py-12 text-center sm:px-6"
+      >
+        <slot name="loading">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Cargando registros...</p>
+        </slot>
+      </div>
+
+      <div
+        v-else-if="!rows.length"
+        class="flex min-h-[min(50dvh,22rem)] items-center justify-center px-4 py-12 text-center sm:px-6"
+      >
+        <slot name="empty">
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ emptyText }}</p>
+        </slot>
+      </div>
+
+      <div v-else class="divide-y divide-gray-200 dark:divide-gray-700">
+        <article
+          v-for="(row, index) in rows"
+          :key="resolveTableRowKey(row, index, rowKey)"
+          class="p-4"
+        >
+          <header
+            v-if="mobileLayout.primary || mobileLayout.badge"
+            class="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 dark:border-gray-800"
+          >
+            <div v-if="mobileLayout.primary" class="min-w-0 flex-1">
+              <slot
+                :name="`cell-${mobileLayout.primary.key}`"
+                :row="row"
+                :value="getTableCellValue(row, mobileLayout.primary.key)"
+                :index="index"
+                :column="mobileLayout.primary"
+              >
+                <p class="font-medium text-brand-600 text-theme-sm dark:text-brand-400">
+                  {{ formatTableCellValue(row, mobileLayout.primary) }}
+                </p>
+              </slot>
+            </div>
+
+            <div v-if="mobileLayout.badge" class="shrink-0">
+              <slot
+                :name="`cell-${mobileLayout.badge.key}`"
+                :row="row"
+                :value="getTableCellValue(row, mobileLayout.badge.key)"
+                :index="index"
+                :column="mobileLayout.badge"
+              >
+                <p class="text-theme-xs text-gray-500 dark:text-gray-400">
+                  {{ formatTableCellValue(row, mobileLayout.badge) }}
+                </p>
+              </slot>
+            </div>
+          </header>
+
+          <div
+            v-if="mobileLayout.fields.length"
+            class="grid grid-cols-2 gap-x-4 gap-y-3 py-3"
+          >
+            <div
+              v-for="column in mobileLayout.fields"
+              :key="column.key"
+              :class="column.cellClass"
+            >
+              <p class="text-theme-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                {{ column.label }}
+              </p>
+              <div class="mt-0.5 min-w-0 text-theme-sm text-gray-800 dark:text-white/90">
+                <slot
+                  :name="`cell-${column.key}`"
+                  :row="row"
+                  :value="getTableCellValue(row, column.key)"
+                  :index="index"
+                  :column="column"
+                >
+                  <p class="truncate text-gray-600 dark:text-gray-300">
+                    {{ formatTableCellValue(row, column) }}
+                  </p>
+                </slot>
+              </div>
+            </div>
+          </div>
+
+          <footer
+            v-if="showActions"
+            class="flex flex-wrap items-center justify-evenly gap-1 border-t border-gray-100 pt-3 dark:border-gray-800 sm:gap-2"
+          >
+            <slot name="actions" :row="row" :index="index" />
+          </footer>
+        </article>
+      </div>
+    </div>
+
+    <!-- Vista escritorio: tabla -->
+    <div class="hidden w-full min-w-0 overflow-x-auto custom-scrollbar md:block">
       <table class="w-full">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-700">
@@ -106,6 +204,7 @@ import {
   formatTableCellValue,
   getTableAlignClass,
   getTableCellValue,
+  resolveMobileLayout,
   resolveTableRowKey,
 } from '@/shared/utils/table'
 
@@ -118,6 +217,10 @@ interface AppTableProps {
   showActions?: boolean
   actionsLabel?: string
   actionsHeaderClass?: string
+  /** Sobrescribe la columna principal en vista móvil (por defecto: primera columna). */
+  mobilePrimaryKey?: string
+  /** Sobrescribe la columna de estado/badge en vista móvil (por defecto: detecta «estado»). */
+  mobileBadgeKey?: string
 }
 
 const props = withDefaults(defineProps<AppTableProps>(), {
@@ -129,6 +232,13 @@ const props = withDefaults(defineProps<AppTableProps>(), {
 })
 
 const visibleColumns = computed(() => props.columns.filter((column) => !column.hidden))
+
+const mobileLayout = computed(() =>
+  resolveMobileLayout(visibleColumns.value, {
+    primaryKey: props.mobilePrimaryKey,
+    badgeKey: props.mobileBadgeKey,
+  }),
+)
 
 const totalColumns = computed(
   () => visibleColumns.value.length + (props.showActions ? 1 : 0),

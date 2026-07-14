@@ -9,25 +9,22 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="w-full sm:max-w-sm">
-            <AppInput
-              v-model="buscar"
-              type="search"
-              placeholder="Buscar por código, nombre o URL..."
-            />
-          </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo servicio
-          </button>
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          search-placeholder="Código, nombre o URL..."
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo
+            </button>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-tiene_contrasena="{ row }">
@@ -40,21 +37,23 @@
         <button
           v-if="canEdit"
           type="button"
+          title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Editar
+          <!-- Editar -->
         </button>
 
         <button
           v-if="canDelete"
           type="button"
+          title="Eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Eliminar
+          <!-- Eliminar -->
         </button>
       </template>
 
@@ -123,7 +122,7 @@ import type {
   ConfiguracionServicioListFilters,
 } from '@/modules/configuracion/servicios/interfaces/configuracion-servicio.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppInput, AppModal, AppPagination, AppTable } from '@/shared/components'
+import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -175,24 +174,24 @@ const columns = computed<TableColumn<ConfiguracionServicio>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+const syncFilters = () => {
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+  }
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openCreateModal = () => {

@@ -9,57 +9,48 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por nombre o ubicación..."
-              />
-            </div>
-
-            <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="idSucursalFilter"
-                placeholder="Todas las sucursales"
-                :options="sucursalFilterOptions"
-                :disabled="isLoadingSucursales"
-              />
-            </div>
-          </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo almacén
-          </button>
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Nombre o ubicación..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo
+            </button>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #actions="{ row }">
         <button
           v-if="canEdit"
           type="button"
+          title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          Editar
+          <!-- Editar -->
         </button>
 
         <button
           v-if="canDelete"
           type="button"
+          title="Eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          Eliminar
+          <!-- Eliminar -->
         </button>
       </template>
 
@@ -130,18 +121,19 @@ import type {
 import { sucursalesService } from '@/modules/configuracion/sucursales/services/sucursales.service'
 import type { Sucursal } from '@/modules/configuracion/sucursales/interfaces/sucursal.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
-const idSucursalFilter = ref<string | number>('')
 
 const filters = ref<AlmacenListFilters>({
   buscar: '',
@@ -169,12 +161,18 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ALMACEN
 const isLoading = computed(() => almacenesQuery.isFetching.value)
 const rows = computed(() => almacenesQuery.data.value?.data ?? [])
 
-const sucursalFilterOptions = computed(() => [
-  { value: '', label: 'Todas las sucursales' },
-  ...sucursales.value.map((sucursal) => ({
-    value: sucursal.id,
-    label: sucursal.nombre,
-  })),
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idSucursal',
+    label: 'Sucursal',
+    type: 'select',
+    placeholder: 'Seleccionar sucursal',
+    disabled: isLoadingSucursales.value,
+    options: sucursales.value.map((sucursal) => ({
+      value: sucursal.id,
+      label: sucursal.nombre,
+    })),
+  },
 ])
 
 const columns = computed<TableColumn<Almacen>[]>(() => [
@@ -197,33 +195,32 @@ const loadSucursales = async () => {
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+const syncFilters = () => {
+  const active = dynamicFilters.value
+
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idSucursal: active.idSucursal != null ? Number(active.idSucursal) : undefined,
+  }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
-})
-
-watch(idSucursalFilter, (value) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    idSucursal: value ? Number(value) : undefined,
-    pagina: 1,
-  }
+  syncFilters()
 })
 
 onMounted(() => {

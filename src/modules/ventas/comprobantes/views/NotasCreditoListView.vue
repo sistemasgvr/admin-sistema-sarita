@@ -1,0 +1,510 @@
+<template>
+  <div>
+    <PageBreadcrumb page-title="Notas de crédito" :items="breadcrumbItems" />
+
+    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+      <template #toolbar>
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="NC, origen o cliente..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="origenModalOpen = true"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nueva nota de crédito
+            </button>
+          </template>
+        </AppListToolbar>
+      </template>
+
+      <template #cell-comprobante="{ row }">
+        <p class="font-medium text-gray-800 dark:text-white/90">
+          {{ row.serie }}-{{ row.numero }}
+        </p>
+        <p v-if="row.nombre_motivo_nota || row.codigo_motivo_nota" class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+          {{ formatMotivo(row) }}
+        </p>
+      </template>
+
+      <template #cell-origen="{ row }">
+        <template v-if="row.serie_comprobante_origen && row.numero_comprobante_origen">
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{ row.serie_comprobante_origen }}-{{ row.numero_comprobante_origen }}
+          </p>
+          <div class="mt-1">
+            <ListaOpcionBadge
+              :value="
+                row.nombre_tipo_comprobante_origen ?? row.codigo_tipo_comprobante_origen
+              "
+            />
+          </div>
+        </template>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
+      <template #cell-nombre_cliente="{ value }">
+        <span v-if="value">{{ value }}</span>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
+      <template #cell-total_importe="{ value }">
+        <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
+      </template>
+
+      <template #cell-nombre_estado_sunat="{ value }">
+        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" raw />
+      </template>
+
+      <template #actions="{ row }">
+        <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
+
+          <button
+            v-if="canEdit && puedeEditar(row)"
+            type="button"
+            title="Editar nota"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openEditModal(row)"
+          >
+            <AppIcon :name="ICONS.pencil" :size="15" />
+          </button>
+
+          <button
+            v-if="canEmit && puedeEmitir(row)"
+            type="button"
+            title="Emitir SUNAT"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-success-500 text-success-600 transition hover:bg-success-500/10 disabled:opacity-60"
+            :disabled="emitMutation.isPending.value"
+            @click="emitirComprobante(row)"
+          >
+            <AppIcon :name="ICONS.plug" :size="15" />
+          </button>
+
+          <button
+            v-if="canConsultarCdr && puedeConsultarCdr(row)"
+            type="button"
+            title="Consultar CDR SUNAT"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openCdrModal(row)"
+          >
+            <AppIcon :name="ICONS.refreshCw" :size="15" />
+          </button>
+
+          <button
+            v-if="canAnular && puedeAnular(row)"
+            type="button"
+            title="Anular (comunicación de baja)"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-warning-500 text-warning-600 transition hover:bg-warning-500/10"
+            @click="openAnularModal(row)"
+          >
+            <AppIcon :name="ICONS.ban" :size="15" />
+          </button>
+
+          <button
+            v-if="canView && puedePdf(row)"
+            type="button"
+            title="Descargar PDF"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300"
+            :disabled="pdfBusyId === row.id"
+            @click="descargarPdf(row, 'a4')"
+          >
+            <AppIcon :name="ICONS.download" :size="15" />
+          </button>
+
+          <button
+            v-if="canDelete && puedeEliminar(row)"
+            type="button"
+            title="Eliminar"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-500 text-error-500 transition hover:bg-error-500/10"
+            @click="openDeleteModal(row)"
+          >
+            <AppIcon :name="ICONS.trash" :size="15" />
+          </button>
+        </div>
+      </template>
+
+      <template #footer>
+        <AppPagination
+          v-model:pagina="pagina"
+          v-model:limite="limite"
+          :meta="comprobantesQuery.data.value?.meta"
+          :disabled="isLoading"
+        />
+      </template>
+    </AppTable>
+
+    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+      Usa
+      <strong class="font-medium text-gray-700 dark:text-gray-200">Nueva nota de crédito</strong>
+      para buscar una boleta o factura aceptada y generar la NC.
+    </p>
+
+    <NotaCreditoOrigenModal v-model="origenModalOpen" @selected="onOrigenSelected" />
+
+    <ComprobanteNotaCreditoModal
+      v-model="notaCreditoModalOpen"
+      :comprobante="comprobanteOrigen"
+    />
+
+    <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
+    <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
+    <ComprobanteCdrModal v-model="cdrModalOpen" :comprobante="comprobanteToCdr" />
+    <ComprobanteAnularModal v-model="anularModalOpen" :comprobante="comprobanteToAnular" />
+
+    <AppModal
+      v-model="deleteModalOpen"
+      title="Eliminar nota de crédito"
+      subtitle="Solo se pueden eliminar notas no aceptadas por SUNAT."
+      size="sm"
+    >
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        ¿Confirmas que deseas eliminar
+        <span class="font-medium text-gray-800 dark:text-white/90">
+          {{ comprobanteToDelete?.serie }}-{{ comprobanteToDelete?.numero }}
+        </span>
+        ?
+      </p>
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
+          :disabled="deleteMutation.isPending.value"
+          @click="deleteModalOpen = false"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-70 sm:w-auto"
+          :disabled="deleteMutation.isPending.value"
+          @click="confirmDelete"
+        >
+          {{ deleteMutation.isPending.value ? 'Eliminando...' : 'Eliminar' }}
+        </button>
+      </template>
+    </AppModal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import {
+  useComprobanteCatalogosPosQuery,
+  useComprobantesQuery,
+} from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
+import {
+  useDeleteComprobanteMutation,
+  useEmitirComprobanteMutation,
+} from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
+import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
+import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
+import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
+import ComprobanteNotaCreditoModal from '@/modules/ventas/comprobantes/components/ComprobanteNotaCreditoModal.vue'
+import NotaCreditoOrigenModal from '@/modules/ventas/comprobantes/components/NotaCreditoOrigenModal.vue'
+import type {
+  ComprobanteListFilters,
+  ComprobanteListItem,
+} from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import {
+  downloadBlob,
+  type ComprobantePdfFormato,
+} from '@/modules/ventas/comprobantes/utils/comprobantePdf'
+import { emitirConImpresionTicket } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { ICONS } from '@/shared/constants/icons'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
+import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+const breadcrumbItems = ventasBreadcrumbItems('Notas de crédito')
+const authStore = useAuthStore()
+
+const buscar = ref('')
+const dynamicFilters = ref<DynamicFilterValues>({})
+const pagina = ref(1)
+const limite = ref(10)
+
+const filters = ref<ComprobanteListFilters>({
+  buscar: '',
+  pagina: 1,
+  limite: 10,
+})
+
+const comprobantesQuery = useComprobantesQuery(filters)
+const catalogosQuery = useComprobanteCatalogosPosQuery()
+const emitMutation = useEmitirComprobanteMutation()
+const deleteMutation = useDeleteComprobanteMutation()
+
+const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
+const clientesQuery = useClientesQuery(clientesFilters)
+
+const detailModalOpen = ref(false)
+const comprobanteToViewId = ref<number | null>(null)
+const editModalOpen = ref(false)
+const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
+const cdrModalOpen = ref(false)
+const comprobanteToCdr = ref<ComprobanteListItem | null>(null)
+const deleteModalOpen = ref(false)
+const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
+const anularModalOpen = ref(false)
+const comprobanteToAnular = ref<ComprobanteListItem | null>(null)
+const pdfBusyId = ref<number | null>(null)
+
+const origenModalOpen = ref(false)
+const notaCreditoModalOpen = ref(false)
+const comprobanteOrigen = ref<ComprobanteListItem | null>(null)
+
+const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
+const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
+const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
+const canConsultarCdr = computed(() =>
+  authStore.hasPermission(PermisoBanderas.COMPROBANTES_CONSULTAR_CDR),
+)
+const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
+const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
+
+const idTipoNotaCredito = computed(() => {
+  const tipos = catalogosQuery.data.value?.tiposComprobante ?? []
+  return (
+    tipos.find(
+      (t) =>
+        t.descripcion === '07' ||
+        t.nombre.toUpperCase().includes('NOTA_CREDITO') ||
+        t.nombre.toUpperCase().includes('NOTA CREDITO'),
+    )?.id ?? null
+  )
+})
+
+const isLoading = computed(
+  () =>
+    comprobantesQuery.isFetching.value ||
+    (catalogosQuery.isLoading.value && idTipoNotaCredito.value == null),
+)
+
+const rows = computed(() => {
+  if (idTipoNotaCredito.value == null) return []
+  return comprobantesQuery.data.value?.data ?? []
+})
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  { key: 'fechaDesde', label: 'Desde', type: 'date' },
+  { key: 'fechaHasta', label: 'Hasta', type: 'date' },
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    placeholder: 'Seleccionar cliente',
+    disabled: clientesQuery.isLoading.value,
+    options: (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+      value: cliente.id,
+      label:
+        cliente.razon_social ||
+        [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
+        cliente.numero_documento,
+    })),
+  },
+  {
+    key: 'idEstadoSunat',
+    label: 'Estado SUNAT',
+    type: 'select',
+    placeholder: 'Pendiente, aceptado...',
+    disabled: catalogosQuery.isLoading.value || catalogosQuery.isFetching.value,
+    options: toSelectOptions(catalogosQuery.data.value?.estadosSunat),
+  },
+  {
+    key: 'serie',
+    label: 'Serie',
+    type: 'text',
+    placeholder: 'BC01 / FC01',
+  },
+])
+
+const columns: TableColumn[] = [
+  { key: 'comprobante', label: 'Nota de crédito', mobile: 'primary' },
+  { key: 'origen', label: 'Documento origen' },
+  { key: 'nombre_cliente', label: 'Cliente' },
+  { key: 'fecha', label: 'Fecha' },
+  { key: 'total_importe', label: 'Total', align: 'right' },
+  { key: 'nombre_estado_sunat', label: 'SUNAT', mobile: 'badge' },
+]
+
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
+
+function syncFilters() {
+  const active = dynamicFilters.value
+  const serie = active.serie != null ? String(active.serie).trim() : ''
+  const idTipo = idTipoNotaCredito.value
+
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    // Sin id de NC aún: no listar otros tipos por error
+    idTipoComprobante: idTipo ?? -1,
+    fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
+    fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
+    idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
+    idEstadoSunat:
+      active.idEstadoSunat != null ? Number(active.idEstadoSunat) : undefined,
+    serie: serie || undefined,
+  }
+}
+
+function onFiltersChange() {
+  pagina.value = 1
+  syncFilters()
+}
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
+})
+
+watch([pagina, limite], () => {
+  syncFilters()
+})
+
+watch(
+  idTipoNotaCredito,
+  (id) => {
+    if (id != null) syncFilters()
+  },
+  { immediate: true },
+)
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
+}
+
+function formatMotivo(row: ComprobanteListItem) {
+  return formatListaOpcionLabel(row.nombre_motivo_nota, row.codigo_motivo_nota)
+}
+
+function puedeEmitir(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
+}
+
+function puedeEditar(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
+}
+
+function puedeEliminar(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
+}
+
+function puedePdf(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat === 'ACEPTADO' || row.nombre_estado_sunat === 'BAJA'
+}
+
+function puedeConsultarCdr(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat === 'PENDIENTE' || row.nombre_estado_sunat === 'ACEPTADO'
+}
+
+function puedeAnular(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat === 'ACEPTADO'
+}
+
+async function descargarPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {
+  pdfBusyId.value = row.id
+  try {
+    const blob = await comprobantesService.obtenerPdf(row.id, formato)
+    downloadBlob(blob, `${row.serie}-${row.numero}-${formato}.pdf`)
+    toastSuccess('PDF descargado')
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el documento')
+  } finally {
+    pdfBusyId.value = null
+  }
+}
+
+function openDetailModal(row: ComprobanteListItem) {
+  comprobanteToViewId.value = row.id
+  detailModalOpen.value = true
+}
+
+function openEditModal(row: ComprobanteListItem) {
+  comprobanteToEdit.value = row
+  editModalOpen.value = true
+}
+
+function openDeleteModal(row: ComprobanteListItem) {
+  comprobanteToDelete.value = row
+  deleteModalOpen.value = true
+}
+
+function openAnularModal(row: ComprobanteListItem) {
+  comprobanteToAnular.value = row
+  anularModalOpen.value = true
+}
+
+function openCdrModal(row: ComprobanteListItem) {
+  comprobanteToCdr.value = row
+  cdrModalOpen.value = true
+}
+
+function onOrigenSelected(row: ComprobanteListItem) {
+  comprobanteOrigen.value = row
+  notaCreditoModalOpen.value = true
+}
+
+async function emitirComprobante(row: ComprobanteListItem) {
+  const userId = authStore.user?.id
+  if (!userId) return
+
+  try {
+    const resultado = await emitirConImpresionTicket({
+      comprobanteId: row.id,
+      emitir: () =>
+        emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId }),
+    })
+
+    if (resultado === 'sin_ventana') {
+      toastWarning(
+        'Emitido OK. Permite ventanas emergentes en la URL para imprimir el ticket automáticamente.',
+      )
+    }
+  } catch {
+    // toast en mutación
+  }
+}
+
+async function confirmDelete() {
+  const row = comprobanteToDelete.value
+  const userId = authStore.user?.id
+  if (!row || !userId) return
+
+  await deleteMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
+  deleteModalOpen.value = false
+  comprobanteToDelete.value = null
+}
+</script>
