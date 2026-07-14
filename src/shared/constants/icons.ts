@@ -9,6 +9,7 @@ export const ICONS = {
   chevronLeft: 'lucide:chevron-left',
   chevronRight: 'lucide:chevron-right',
   ellipsis: 'lucide:ellipsis',
+  ellipsisVertical: 'lucide:ellipsis-vertical',
   userCircle: 'lucide:user-circle',
   logOut: 'lucide:log-out',
   sun: 'lucide:sun',

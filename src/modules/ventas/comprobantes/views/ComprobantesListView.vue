@@ -49,7 +49,7 @@
       </template>
 
       <template #actions="{ row }">
-        <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+        <div class="inline-flex items-center justify-end gap-1.5">
           <button
             v-if="canView"
             type="button"
@@ -60,110 +60,10 @@
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
 
-          <button
-            v-if="canView && puedePdf(row)"
-            type="button"
-            title="Descargar PDF A4"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            :disabled="pdfBusyId === row.id"
-            @click="descargarPdf(row, 'a4')"
-          >
-            <AppIcon :name="ICONS.download" :size="15" />
-          </button>
-
-          <button
-            v-if="canView && puedePdf(row)"
-            type="button"
-            title="Imprimir A4"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            :disabled="pdfBusyId === row.id"
-            @click="imprimirPdf(row, 'a4')"
-          >
-            <AppIcon :name="ICONS.printer" :size="15" />
-          </button>
-
-          <button
-            v-if="canView && puedePdf(row)"
-            type="button"
-            title="Descargar ticketera 80mm"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-500 text-brand-600 transition hover:bg-brand-500/10 disabled:opacity-60"
-            :disabled="pdfBusyId === row.id"
-            @click="descargarPdf(row, 'ticket')"
-          >
-            <AppIcon :name="ICONS.ticket" :size="15" />
-          </button>
-
-          <button
-            v-if="canView && puedePdf(row)"
-            type="button"
-            title="Imprimir ticket 80mm"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-500 text-brand-600 transition hover:bg-brand-500/10 disabled:opacity-60"
-            :disabled="pdfBusyId === row.id"
-            @click="imprimirPdf(row, 'ticket')"
-          >
-            <AppIcon :name="ICONS.printer" :size="15" />
-          </button>
-
-          <button
-            v-if="canEdit && puedeEditar(row)"
-            type="button"
-            title="Editar comprobante"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openEditModal(row)"
-          >
-            <AppIcon :name="ICONS.pencil" :size="15" />
-          </button>
-
-          <button
-            v-if="canEmit && puedeEmitir(row)"
-            type="button"
-            title="Emitir SUNAT"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-success-500 text-success-600 transition hover:bg-success-500/10 disabled:opacity-60"
-            :disabled="emitMutation.isPending.value"
-            @click="emitirComprobante(row)"
-          >
-            <AppIcon :name="ICONS.plug" :size="15" />
-          </button>
-
-          <button
-            v-if="canCreate && puedeNotaCredito(row)"
-            type="button"
-            title="Nota de crédito"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-500 text-brand-600 transition hover:bg-brand-500/10"
-            @click="openNotaCreditoModal(row)"
-          >
-            <AppIcon :name="ICONS.fileText" :size="15" />
-          </button>
-
-          <button
-            v-if="canConsultarCdr && puedeConsultarCdr(row)"
-            type="button"
-            title="Consultar CDR SUNAT"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openCdrModal(row)"
-          >
-            <AppIcon :name="ICONS.refreshCw" :size="15" />
-          </button>
-
-          <button
-            v-if="canAnular && puedeAnular(row)"
-            type="button"
-            title="Anular (comunicación de baja)"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-warning-500 text-warning-600 transition hover:bg-warning-500/10"
-            @click="openAnularModal(row)"
-          >
-            <AppIcon :name="ICONS.ban" :size="15" />
-          </button>
-
-          <button
-            v-if="canDelete && puedeEliminar(row)"
-            type="button"
-            title="Eliminar"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-500 text-error-500 transition hover:bg-error-500/10"
-            @click="openDeleteModal(row)"
-          >
-            <AppIcon :name="ICONS.trash" :size="15" />
-          </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            @select="(key) => onActionSelect(key, row)"
+          />
         </div>
       </template>
 
@@ -260,11 +160,12 @@ import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
+import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -467,6 +368,112 @@ function puedeAnular(row: ComprobanteListItem) {
     nombre.includes('NOTA CREDITO') ||
     nombre.includes('NOTA DEBITO')
   ) && !nombre.includes('BOLETA')
+}
+
+function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
+  return [
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      hidden: !(canEdit.value && puedeEditar(row)),
+    },
+    {
+      key: 'emit',
+      label: 'Emitir SUNAT',
+      icon: ICONS.plug,
+      disabled: emitMutation.isPending.value,
+      hidden: !(canEmit.value && puedeEmitir(row)),
+    },
+    {
+      key: 'nota-credito',
+      label: 'Nota de crédito',
+      icon: ICONS.fileText,
+      hidden: !(canCreate.value && puedeNotaCredito(row)),
+    },
+    {
+      key: 'cdr',
+      label: 'Consultar CDR',
+      icon: ICONS.refreshCw,
+      hidden: !(canConsultarCdr.value && puedeConsultarCdr(row)),
+    },
+    {
+      key: 'anular',
+      label: 'Anular en SUNAT',
+      icon: ICONS.ban,
+      hidden: !(canAnular.value && puedeAnular(row)),
+    },
+    {
+      key: 'pdf-a4',
+      label: 'Descargar PDF A4',
+      icon: ICONS.download,
+      disabled: pdfBusyId.value === row.id,
+      hidden: !(canView.value && puedePdf(row)),
+    },
+    {
+      key: 'print-a4',
+      label: 'Imprimir A4',
+      icon: ICONS.printer,
+      disabled: pdfBusyId.value === row.id,
+      hidden: !(canView.value && puedePdf(row)),
+    },
+    {
+      key: 'pdf-ticket',
+      label: 'Descargar ticket 80mm',
+      icon: ICONS.ticket,
+      disabled: pdfBusyId.value === row.id,
+      hidden: !(canView.value && puedePdf(row)),
+    },
+    {
+      key: 'print-ticket',
+      label: 'Imprimir ticket 80mm',
+      icon: ICONS.printer,
+      disabled: pdfBusyId.value === row.id,
+      hidden: !(canView.value && puedePdf(row)),
+    },
+    {
+      key: 'delete',
+      label: 'Eliminar',
+      icon: ICONS.trash,
+      danger: true,
+      hidden: !(canDelete.value && puedeEliminar(row)),
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: ComprobanteListItem) {
+  switch (key) {
+    case 'edit':
+      openEditModal(row)
+      break
+    case 'emit':
+      void emitirComprobante(row)
+      break
+    case 'nota-credito':
+      openNotaCreditoModal(row)
+      break
+    case 'cdr':
+      openCdrModal(row)
+      break
+    case 'anular':
+      openAnularModal(row)
+      break
+    case 'pdf-a4':
+      void descargarPdf(row, 'a4')
+      break
+    case 'print-a4':
+      void imprimirPdf(row, 'a4')
+      break
+    case 'pdf-ticket':
+      void descargarPdf(row, 'ticket')
+      break
+    case 'print-ticket':
+      void imprimirPdf(row, 'ticket')
+      break
+    case 'delete':
+      openDeleteModal(row)
+      break
+  }
 }
 
 async function descargarPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {

@@ -64,7 +64,7 @@
       </template>
 
       <template #actions="{ row }">
-        <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+        <div class="inline-flex items-center justify-end gap-1.5">
           <button
             v-if="canView"
             type="button"
@@ -75,67 +75,10 @@
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
 
-          <button
-            v-if="canEdit && puedeEditar(row)"
-            type="button"
-            title="Editar nota"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openEditModal(row)"
-          >
-            <AppIcon :name="ICONS.pencil" :size="15" />
-          </button>
-
-          <button
-            v-if="canEmit && puedeEmitir(row)"
-            type="button"
-            title="Emitir SUNAT"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-success-500 text-success-600 transition hover:bg-success-500/10 disabled:opacity-60"
-            :disabled="emitMutation.isPending.value"
-            @click="emitirComprobante(row)"
-          >
-            <AppIcon :name="ICONS.plug" :size="15" />
-          </button>
-
-          <button
-            v-if="canConsultarCdr && puedeConsultarCdr(row)"
-            type="button"
-            title="Consultar CDR SUNAT"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openCdrModal(row)"
-          >
-            <AppIcon :name="ICONS.refreshCw" :size="15" />
-          </button>
-
-          <button
-            v-if="canAnular && puedeAnular(row)"
-            type="button"
-            title="Anular (comunicación de baja)"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-warning-500 text-warning-600 transition hover:bg-warning-500/10"
-            @click="openAnularModal(row)"
-          >
-            <AppIcon :name="ICONS.ban" :size="15" />
-          </button>
-
-          <button
-            v-if="canView && puedePdf(row)"
-            type="button"
-            title="Descargar PDF"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300"
-            :disabled="pdfBusyId === row.id"
-            @click="descargarPdf(row, 'a4')"
-          >
-            <AppIcon :name="ICONS.download" :size="15" />
-          </button>
-
-          <button
-            v-if="canDelete && puedeEliminar(row)"
-            type="button"
-            title="Eliminar"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-error-500 text-error-500 transition hover:bg-error-500/10"
-            @click="openDeleteModal(row)"
-          >
-            <AppIcon :name="ICONS.trash" :size="15" />
-          </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            @select="(key) => onActionSelect(key, row)"
+          />
         </div>
       </template>
 
@@ -233,12 +176,13 @@ import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
+import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -432,6 +376,73 @@ function puedeConsultarCdr(row: ComprobanteListItem) {
 
 function puedeAnular(row: ComprobanteListItem) {
   return row.nombre_estado_sunat === 'ACEPTADO'
+}
+
+function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
+  return [
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      hidden: !(canEdit.value && puedeEditar(row)),
+    },
+    {
+      key: 'emit',
+      label: 'Emitir SUNAT',
+      icon: ICONS.plug,
+      disabled: emitMutation.isPending.value,
+      hidden: !(canEmit.value && puedeEmitir(row)),
+    },
+    {
+      key: 'cdr',
+      label: 'Consultar CDR',
+      icon: ICONS.refreshCw,
+      hidden: !(canConsultarCdr.value && puedeConsultarCdr(row)),
+    },
+    {
+      key: 'anular',
+      label: 'Anular en SUNAT',
+      icon: ICONS.ban,
+      hidden: !(canAnular.value && puedeAnular(row)),
+    },
+    {
+      key: 'pdf-a4',
+      label: 'Descargar PDF',
+      icon: ICONS.download,
+      disabled: pdfBusyId.value === row.id,
+      hidden: !(canView.value && puedePdf(row)),
+    },
+    {
+      key: 'delete',
+      label: 'Eliminar',
+      icon: ICONS.trash,
+      danger: true,
+      hidden: !(canDelete.value && puedeEliminar(row)),
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: ComprobanteListItem) {
+  switch (key) {
+    case 'edit':
+      openEditModal(row)
+      break
+    case 'emit':
+      void emitirComprobante(row)
+      break
+    case 'cdr':
+      openCdrModal(row)
+      break
+    case 'anular':
+      openAnularModal(row)
+      break
+    case 'pdf-a4':
+      void descargarPdf(row, 'a4')
+      break
+    case 'delete':
+      openDeleteModal(row)
+      break
+  }
 }
 
 async function descargarPdf(row: ComprobanteListItem, formato: ComprobantePdfFormato) {
