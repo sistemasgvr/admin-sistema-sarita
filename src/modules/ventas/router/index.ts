@@ -27,6 +27,17 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'resumen-diario',
+        name: 'admin-ventas-resumen-diario',
+        component: () =>
+          import('@/modules/ventas/comprobantes/views/ResumenDiarioView.vue'),
+        meta: {
+          title: 'Resumen diario',
+          module: 'ventas',
+          permission: PermisoBanderas.COMPROBANTES_EMITIR,
+        },
+      },
+      {
         path: '',
         redirect: { name: 'admin-ventas-pos' },
       },

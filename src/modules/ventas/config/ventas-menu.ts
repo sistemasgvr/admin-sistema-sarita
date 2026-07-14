@@ -12,4 +12,9 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     path: '/admin/ventas/comprobantes',
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
+  {
+    name: 'Resumen diario',
+    path: '/admin/ventas/resumen-diario',
+    permission: PermisoBanderas.COMPROBANTES_EMITIR,
+  },
 ]

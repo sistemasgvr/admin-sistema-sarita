@@ -105,6 +105,16 @@
           </button>
 
           <button
+            v-if="canEdit && puedeEditar(row)"
+            type="button"
+            title="Editar comprobante"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openEditModal(row)"
+          >
+            <AppIcon :name="ICONS.pencil" :size="15" />
+          </button>
+
+          <button
             v-if="canEmit && puedeEmitir(row)"
             type="button"
             title="Emitir SUNAT"
@@ -113,6 +123,16 @@
             @click="emitirComprobante(row)"
           >
             <AppIcon :name="ICONS.plug" :size="15" />
+          </button>
+
+          <button
+            v-if="canCreate && puedeNotaCredito(row)"
+            type="button"
+            title="Nota de crédito"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-500 text-brand-600 transition hover:bg-brand-500/10"
+            @click="openNotaCreditoModal(row)"
+          >
+            <AppIcon :name="ICONS.fileText" :size="15" />
           </button>
 
           <button
@@ -158,6 +178,13 @@
     </AppTable>
 
     <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
+
+    <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
+
+    <ComprobanteNotaCreditoModal
+      v-model="notaCreditoModalOpen"
+      :comprobante="comprobanteToNotaCredito"
+    />
 
     <ComprobanteCdrModal v-model="cdrModalOpen" :comprobante="comprobanteToCdr" />
 
@@ -212,6 +239,8 @@ import {
 import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
+import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
+import ComprobanteNotaCreditoModal from '@/modules/ventas/comprobantes/components/ComprobanteNotaCreditoModal.vue'
 import type {
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -265,6 +294,12 @@ const clientesQuery = useClientesQuery(clientesFilters)
 const detailModalOpen = ref(false)
 const comprobanteToViewId = ref<number | null>(null)
 
+const editModalOpen = ref(false)
+const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
+
+const notaCreditoModalOpen = ref(false)
+const comprobanteToNotaCredito = ref<ComprobanteListItem | null>(null)
+
 const cdrModalOpen = ref(false)
 const comprobanteToCdr = ref<ComprobanteListItem | null>(null)
 
@@ -278,6 +313,7 @@ const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
+const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
 const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
 const canConsultarCdr = computed(() =>
   authStore.hasPermission(PermisoBanderas.COMPROBANTES_CONSULTAR_CDR),
@@ -391,6 +427,10 @@ function puedeEmitir(row: ComprobanteListItem) {
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
+function puedeEditar(row: ComprobanteListItem) {
+  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
+}
+
 function puedeEliminar(row: ComprobanteListItem) {
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
@@ -401,6 +441,17 @@ function puedePdf(row: ComprobanteListItem) {
 
 function puedeConsultarCdr(row: ComprobanteListItem) {
   return row.nombre_estado_sunat === 'PENDIENTE' || row.nombre_estado_sunat === 'ACEPTADO'
+}
+
+function puedeNotaCredito(row: ComprobanteListItem) {
+  if (row.nombre_estado_sunat !== 'ACEPTADO') return false
+  const codigo = String(row.codigo_tipo_comprobante ?? '')
+  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
+  if (codigo === '01' || codigo === '03') return true
+  return (
+    (nombre.includes('FACTURA') || nombre.includes('BOLETA')) &&
+    !nombre.includes('NOTA')
+  )
 }
 
 function puedeAnular(row: ComprobanteListItem) {
@@ -456,6 +507,16 @@ async function imprimirPdf(row: ComprobanteListItem, formato: ComprobantePdfForm
 function openDetailModal(row: ComprobanteListItem) {
   comprobanteToViewId.value = row.id
   detailModalOpen.value = true
+}
+
+function openEditModal(row: ComprobanteListItem) {
+  comprobanteToEdit.value = row
+  editModalOpen.value = true
+}
+
+function openNotaCreditoModal(row: ComprobanteListItem) {
+  comprobanteToNotaCredito.value = row
+  notaCreditoModalOpen.value = true
 }
 
 function openDeleteModal(row: ComprobanteListItem) {

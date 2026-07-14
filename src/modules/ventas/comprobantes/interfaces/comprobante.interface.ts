@@ -45,6 +45,17 @@ export interface Comprobante extends ComprobanteListItem {
   hash_documento?: string | null
   xml_firmado?: string | null
   ticket_sunat?: string | null
+  id_comprobante_origen?: number | null
+  serie_comprobante_origen?: string | null
+  numero_comprobante_origen?: string | null
+  codigo_tipo_comprobante_origen?: string | null
+  id_motivo_nota?: number | null
+  codigo_motivo_nota?: string | null
+  nombre_motivo_nota?: string | null
+  id_moneda?: number | null
+  id_medio_pago?: number | null
+  id_almacen?: number | null
+  id_tipo_operacion_sunat?: number | null
   detalles: ComprobanteDetalle[]
   cuotas?: unknown[]
 }
@@ -81,6 +92,21 @@ export interface CreateComprobantePayload {
   fecha: string
   idCliente: number
   detalles: ComprobanteDetallePayload[]
+  idTipoOperacionSunat?: number
+  idComprobanteOrigen?: number
+  idMotivoNota?: number
+  idMoneda?: number
+  idMedioPago?: number
+  idAlmacen?: number
+  glosa?: string
+  observaciones?: string
+}
+
+export interface UpdateComprobantePayload {
+  idUsuarioAuditoria: number
+  fecha?: string
+  idCliente?: number
+  detalles?: ComprobanteDetallePayload[]
   idTipoOperacionSunat?: number
   idMoneda?: number
   idMedioPago?: number
@@ -119,6 +145,111 @@ export interface ComprobanteCatalogosPos {
   mediosPago: ListaOpcionBasica[]
   tiposOperacionSunat: ListaOpcionBasica[]
   estadosSunat: ListaOpcionBasica[]
+  motivosNotaCredito: ListaOpcionBasica[]
+}
+
+export interface ComprobanteResumenDiarioItem {
+  id: number
+  codigo_tipo_comprobante?: string | null
+  nombre_tipo_comprobante?: string | null
+  serie: string
+  numero: string
+  fecha: string
+  id_cliente: number
+  nombre_cliente?: string | null
+  documento_cliente?: string | null
+  nombre_estado_sunat?: string | null
+  total_importe?: number | null
+}
+
+export interface ResumenDiarioPreview {
+  fecha: string
+  cantidad: number
+  total: number
+  items: ComprobanteResumenDiarioItem[]
+}
+
+export interface ResumenDiarioListItem {
+  id: number
+  fecha: string
+  correlativo: string
+  identificador?: string | null
+  ticket_sunat?: string | null
+  id_estado_sunat?: number | null
+  nombre_estado_sunat?: string | null
+  moneda?: string | null
+  cantidad_docs: number
+  total_importe: number
+  total_igv?: number | null
+  total_valor_venta?: number | null
+  fecha_creacion?: string | null
+  nombre_usuario_creacion?: string | null
+}
+
+export interface ResumenDiarioDetalle {
+  id: number
+  id_resumen: number
+  id_comprobante: number
+  item: number
+  serie?: string | null
+  numero?: string | null
+  codigo_tipo_comprobante?: string | null
+  nombre_tipo_comprobante?: string | null
+  fecha_comprobante?: string | null
+  total_importe?: number | null
+  nombre_estado_sunat?: string | null
+  nombre_cliente?: string | null
+  documento_cliente?: string | null
+}
+
+export interface ResumenDiario extends ResumenDiarioListItem {
+  cdr_respuesta?: string | null
+  observacion?: string | null
+  detalles: ResumenDiarioDetalle[]
+}
+
+export interface ResumenDiarioListFilters {
+  buscar?: string
+  pagina?: number
+  limite?: number
+  idEstadoSunat?: number
+  fechaDesde?: string
+  fechaHasta?: string
+}
+
+export interface EnviarResumenDiarioPayload {
+  idUsuarioAuditoria: number
+  fecha: string
+  correlativo?: string
+  idsComprobante?: number[]
+}
+
+export interface EnviarResumenDiarioResponse {
+  resumen: ResumenDiario
+  fecha: string
+  correlativo: string
+  cantidad: number
+  items: ComprobanteResumenDiarioItem[]
+  sunat: {
+    estado: string
+    ticket: string | null
+    respuesta: unknown
+  }
+}
+
+export interface ConsultarEstadoResumenResponse {
+  resumen: ResumenDiario
+  sunat: {
+    estado: string
+    ticket: string | null
+    respuesta: unknown
+  }
+}
+
+export interface SiguienteCorrelativoResumenResponse {
+  fecha: string
+  ultimo_correlativo: string | null
+  correlativo: string
 }
 
 export interface PosLineItem {
