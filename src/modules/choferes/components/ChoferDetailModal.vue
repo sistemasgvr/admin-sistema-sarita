@@ -40,38 +40,6 @@
           </div>
         </dl>
       </section>
-
-      <section
-        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-      >
-        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Auditoría</h5>
-        <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Creado por</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ chofer.nombre_usuario_creacion ?? '—' }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha de creación</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(chofer.fecha_creacion) }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Modificado por</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ chofer.nombre_usuario_modificacion ?? '—' }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Última modificación</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(chofer.fecha_modificacion) }}
-            </dd>
-          </div>
-        </dl>
-      </section>
     </div>
 
     <template #footer>
@@ -152,6 +120,15 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Categoría', value: c.nombre_categoria_licencia ?? null },
         { label: 'Fecha de emisión', value: c.fecha_emision ?? null },
         { label: 'Fecha de vencimiento', value: c.fecha_vencimiento ?? null },
+      ],
+    },
+    {
+      title: 'Auditoría',
+      items: [
+        { label: 'Creado por', value: c.nombre_usuario_creacion ?? null },
+        { label: 'Fecha de creación', value: formatDateTime(c.fecha_creacion) },
+        { label: 'Modificado por', value: c.nombre_usuario_modificacion ?? null },
+        { label: 'Última modificación', value: formatDateTime(c.fecha_modificacion) },
       ],
     },
   ]
