@@ -177,7 +177,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useComprobantesQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
+import {
+  useComprobanteCatalogosPosQuery,
+  useComprobantesQuery,
+} from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import {
   useDeleteComprobanteMutation,
   useEmitirComprobanteMutation,
@@ -199,6 +202,8 @@ import {
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -224,8 +229,12 @@ const filters = ref<ComprobanteListFilters>({
 })
 
 const comprobantesQuery = useComprobantesQuery(filters)
+const catalogosQuery = useComprobanteCatalogosPosQuery()
 const emitMutation = useEmitirComprobanteMutation()
 const deleteMutation = useDeleteComprobanteMutation()
+
+const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
+const clientesQuery = useClientesQuery(clientesFilters)
 
 const detailModalOpen = ref(false)
 const comprobanteToViewId = ref<number | null>(null)
@@ -242,7 +251,54 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 const isLoading = computed(() => comprobantesQuery.isFetching.value)
 const rows = computed(() => comprobantesQuery.data.value?.data ?? [])
 
-const filterFields = computed<DynamicFilterFieldDef[]>(() => [])
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'fechaDesde',
+    label: 'Desde',
+    type: 'date',
+  },
+  {
+    key: 'fechaHasta',
+    label: 'Hasta',
+    type: 'date',
+  },
+  {
+    key: 'idTipoComprobante',
+    label: 'Tipo',
+    type: 'select',
+    placeholder: 'Boleta, factura...',
+    disabled: catalogosQuery.isLoading.value || catalogosQuery.isFetching.value,
+    options: toSelectOptions(catalogosQuery.data.value?.tiposComprobante),
+  },
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    placeholder: 'Seleccionar cliente',
+    disabled: clientesQuery.isLoading.value,
+    options: (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+      value: cliente.id,
+      label:
+        cliente.razon_social ||
+        [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
+        cliente.numero_documento,
+    })),
+  },
+  {
+    key: 'idEstadoSunat',
+    label: 'Estado SUNAT',
+    type: 'select',
+    placeholder: 'Pendiente, aceptado...',
+    disabled: catalogosQuery.isLoading.value || catalogosQuery.isFetching.value,
+    options: toSelectOptions(catalogosQuery.data.value?.estadosSunat),
+  },
+  {
+    key: 'serie',
+    label: 'Serie',
+    type: 'text',
+    placeholder: 'B001 / F001',
+  },
+])
 
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
@@ -252,17 +308,43 @@ const columns: TableColumn[] = [
   { key: 'nombre_estado_sunat', label: 'SUNAT', mobile: 'badge' },
 ]
 
-watch([buscar, pagina, limite, dynamicFilters], () => {
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
+
+function syncFilters() {
+  const active = dynamicFilters.value
+  const serie = active.serie != null ? String(active.serie).trim() : ''
+
   filters.value = {
-    buscar: buscar.value,
+    buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
+    fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
+    fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
+    idTipoComprobante:
+      active.idTipoComprobante != null ? Number(active.idTipoComprobante) : undefined,
+    idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
+    idEstadoSunat:
+      active.idEstadoSunat != null ? Number(active.idEstadoSunat) : undefined,
+    serie: serie || undefined,
   }
-})
+}
 
 function onFiltersChange() {
   pagina.value = 1
+  syncFilters()
 }
+
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
+})
+
+watch([pagina, limite], () => {
+  syncFilters()
+})
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
