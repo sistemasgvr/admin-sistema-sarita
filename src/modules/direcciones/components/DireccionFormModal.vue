@@ -16,16 +16,23 @@
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppSelect
+      <SearchableSelect
         v-model="idCliente"
         label="Cliente / Proveedor"
-        placeholder="Selecciona un cliente"
+        placeholder="Busca por razón social, nombres o documento..."
         required
+        :clearable="false"
+        :model-label="clienteLabelActual"
         v-bind="idClienteAttrs"
-        :disabled="isSubmitting || isClienteLocked"
+        :disabled="isSubmitting"
         :error="errors.idCliente"
-        :options="clienteOptions"
+        :search-fn="searchClientes"
       />
+      <p
+        v-if="isClienteLocked"
+        class="-mt-2 text-theme-xs text-gray-500 dark:text-gray-400"
+      >
+      </p>
 
       <div class="grid gap-3 sm:grid-cols-2">
         <AppInput
@@ -151,19 +158,22 @@ import {
   useCreateDireccionMutation,
   useUpdateDireccionMutation,
 } from '@/modules/direcciones/composables/useDireccionMutations'
+import { useDireccionDetailQuery } from '@/modules/direcciones/composables/useDireccionDetailQuery'
 import type {
   Direccion,
   DireccionFormMode,
 } from '@/modules/direcciones/interfaces/direccion.interface'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
+import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface DireccionFormModalProps {
   mode: DireccionFormMode
   direccion?: Direccion | null
-  clientes: Cliente[]
   defaultClienteId?: number | null
   lockCliente?: boolean
 }
@@ -181,6 +191,12 @@ const authStore = useAuthStore()
 const createMutation = useCreateDireccionMutation()
 const updateMutation = useUpdateDireccionMutation()
 
+const idReferencia = computed(() => props.direccion?.id)
+const direccionDetailQuery = useDireccionDetailQuery(idReferencia, open)
+const direccionActual = computed<Direccion | null>(
+  () => direccionDetailQuery.data.value ?? props.direccion ?? null,
+)
+
 const getClienteNombre = (cliente: Cliente) => {
   const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
 
@@ -196,16 +212,33 @@ const getClienteNombre = (cliente: Cliente) => {
   return nombreCompleto || cliente.razon_social || cliente.numero_documento
 }
 
-const clienteOptions = computed(() =>
-  props.clientes.map((cliente) => ({
+const searchClientes = async (query: string): Promise<SelectOption[]> => {
+  const response = await clientesService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 20,
+    soloActivos: 1,
+  })
+
+  return response.data.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
-  })),
-)
+  }))
+}
 
-// El cliente de una dirección no se puede reasignar una vez creada (la API
-// no acepta idCliente en la actualización), así que en modo edición siempre
-// queda bloqueado. En modo creación se bloquea si viene un cliente por defecto.
+const clienteLabelActual = computed(() => {
+  const d = direccionActual.value
+  if (!d) return null
+  if (d.cliente_razon_social) return d.cliente_razon_social
+
+  const nombreCompleto = [d.cliente_nombres, d.cliente_apellido_paterno, d.cliente_apellido_materno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return nombreCompleto || d.cliente_numero_documento || null
+})
+
 const isClienteLocked = computed(
   () =>
     props.mode === 'edit' ||
@@ -274,24 +307,23 @@ watch(idProvinciaUI, () => {
 })
 
 const syncFormValues = async () => {
+  const d = direccionActual.value
+
   resetForm({
     values: {
-      idCliente:
-        props.direccion?.id_cliente ??
-        props.defaultClienteId ??
-        undefined,
-      descripcion: props.direccion?.descripcion ?? '',
-      direccion: props.direccion?.direccion ?? '',
-      idDistrito: props.direccion?.id_distrito ?? undefined,
-      referencia: props.direccion?.referencia ?? '',
-      esPrincipal: props.direccion?.es_principal ?? false,
+      idCliente: d?.id_cliente ?? props.defaultClienteId ?? undefined,
+      descripcion: d?.descripcion ?? '',
+      direccion: d?.direccion ?? '',
+      idDistrito: d?.id_distrito ?? undefined,
+      referencia: d?.referencia ?? '',
+      esPrincipal: d?.es_principal ?? false,
     },
   })
 
   isSyncingUbigeo = true
-  idPaisUI.value = props.direccion?.id_pais ?? paisesQuery.data.value?.[0]?.id ?? ''
-  idDepartamentoUI.value = props.direccion?.id_departamento ?? ''
-  idProvinciaUI.value = props.direccion?.id_provincia ?? ''
+  idPaisUI.value = d?.id_pais ?? paisesQuery.data.value?.[0]?.id ?? ''
+  idDepartamentoUI.value = d?.id_departamento ?? ''
+  idProvinciaUI.value = d?.id_provincia ?? ''
   await nextTick()
   isSyncingUbigeo = false
 }
@@ -311,6 +343,7 @@ const onSubmit = handleSubmit(async (values) => {
         idCliente: Number(values.idCliente),
         direccion: values.direccion,
         descripcion: values.descripcion || undefined,
+        idPais: idPaisUI.value ? Number(idPaisUI.value) : undefined,
         idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
         idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
         idDistrito: values.idDistrito ? Number(values.idDistrito) : undefined,
@@ -324,6 +357,7 @@ const onSubmit = handleSubmit(async (values) => {
           idUsuarioAuditoria: currentUserId,
           direccion: values.direccion,
           descripcion: values.descripcion || undefined,
+          idPais: idPaisUI.value ? Number(idPaisUI.value) : undefined,
           idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
           idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
           idDistrito: values.idDistrito ? Number(values.idDistrito) : undefined,
@@ -346,6 +380,15 @@ watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
+      syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => direccionDetailQuery.data.value,
+  () => {
+    if (open.value) {
       syncFormValues()
     }
   },

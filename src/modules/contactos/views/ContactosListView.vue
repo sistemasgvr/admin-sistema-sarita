@@ -70,6 +70,14 @@
 
       <template #actions="{ row }">
         <button
+          type="button"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
@@ -102,11 +110,12 @@
       v-model="formModalOpen"
       :mode="formMode"
       :contacto="selectedContacto"
-      :clientes="clientes"
       :default-cliente-id="idClienteFiltro ? Number(idClienteFiltro) : null"
       :lock-cliente="false"
       @saved="onContactoSaved"
     />
+
+    <ContactoDetailModal v-model="detailModalOpen" :contacto="contactoToView" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -148,6 +157,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import ContactoDetailModal from '@/modules/contactos/components/ContactoDetailModal.vue'
 import ContactoFormModal from '@/modules/contactos/components/ContactoFormModal.vue'
 import {
   useDeleteContactoMutation,
@@ -159,8 +169,6 @@ import type {
   ContactoFormMode,
   ContactoListFilters,
 } from '@/modules/contactos/interfaces/contacto.interface'
-import { clientesService } from '@/modules/clientes/services/clientes.service'
-import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
@@ -185,7 +193,6 @@ const breadcrumbItems: BreadcrumbItem[] = [
   { label: 'Contactos' },
 ]
 
-const clientes = ref<Cliente[]>([])
 const idClienteFiltro = ref<string | number>('')
 const buscar = ref('')
 const mostrarContactos = ref<ContactoEstadoFiltro>('activos')
@@ -224,6 +231,9 @@ const formModalOpen = ref(false)
 const formMode = ref<ContactoFormMode>('create')
 const selectedContacto = ref<Contacto | null>(null)
 
+const detailModalOpen = ref(false)
+const contactoToView = ref<Contacto | null>(null)
+
 const deleteModalOpen = ref(false)
 const contactoToDelete = ref<Contacto | null>(null)
 
@@ -258,29 +268,6 @@ const getContactoNombre = (contacto: Contacto) => {
     .trim()
 }
 
-const getClienteSelectNombre = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-
-  if (esJuridica && cliente.razon_social) {
-    return cliente.razon_social
-  }
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
-}
-
-const clienteFilterOptions = computed(() => [
-  { value: '', label: 'Todos los clientes' },
-  ...clientes.value.map((cliente) => ({
-    value: cliente.id,
-    label: getClienteSelectNombre(cliente),
-  })),
-])
-
 const columns = computed<TableColumn<Contacto>[]>(() => [
   { key: 'cliente', label: 'Cliente / Proveedor' },
   { key: 'contacto', label: 'Contacto' },
@@ -291,14 +278,7 @@ const columns = computed<TableColumn<Contacto>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-onMounted(async () => {
-  try {
-    const response = await clientesService.listar({ pagina: 1, limite: 100, soloActivos: 1 })
-    clientes.value = response.data
-  } catch {
-    clientes.value = []
-  }
-
+onMounted(() => {
   const idClienteQuery = route.query.idCliente
   if (idClienteQuery) {
     idClienteFiltro.value = Number(idClienteQuery)
@@ -353,6 +333,11 @@ const openEditModal = (contacto: Contacto) => {
   formMode.value = 'edit'
   selectedContacto.value = contacto
   formModalOpen.value = true
+}
+
+const openDetailModal = (contacto: Contacto) => {
+  contactoToView.value = contacto
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (contacto: Contacto) => {

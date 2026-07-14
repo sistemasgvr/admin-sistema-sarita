@@ -1,20 +1,17 @@
 <template>
   <AppModal
     v-model="open"
-    title="Detalle del chofer"
-    :subtitle="chofer ? getChoferNombre(chofer) : undefined"
+    title="Detalle del vehículo"
+    :subtitle="vehiculo ? vehiculo.placa : undefined"
     size="lg"
   >
-    <div v-if="chofer" class="space-y-4">
+    <div v-if="vehiculo" class="space-y-4">
       <div class="flex flex-wrap items-center gap-2">
-        <AppBadge :color="chofer.estado === 1 ? 'success' : 'error'">
-          {{ chofer.estado === 1 ? 'Activo' : 'Inactivo' }}
+        <AppBadge :color="vehiculo.estado === 1 ? 'success' : 'error'">
+          {{ vehiculo.estado === 1 ? 'Activo' : 'Inactivo' }}
         </AppBadge>
-        <AppBadge v-if="chofer.nombre_tipo_licencia" color="neutral">
-          {{ chofer.nombre_tipo_licencia }}
-        </AppBadge>
-        <AppBadge v-if="chofer.nombre_categoria_licencia" color="neutral">
-          Categoría {{ chofer.nombre_categoria_licencia }}
+        <AppBadge v-if="vehiculo.nombre_tipo_vehiculo" color="neutral">
+          {{ vehiculo.nombre_tipo_vehiculo }}
         </AppBadge>
       </div>
 
@@ -49,25 +46,25 @@
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Creado por</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ chofer.nombre_usuario_creacion ?? '—' }}
+              {{ vehiculo.nombre_usuario_creacion ?? '—' }}
             </dd>
           </div>
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha de creación</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(chofer.fecha_creacion) }}
+              {{ formatDateTime(vehiculo.fecha_creacion) }}
             </dd>
           </div>
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Modificado por</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ chofer.nombre_usuario_modificacion ?? '—' }}
+              {{ vehiculo.nombre_usuario_modificacion ?? '—' }}
             </dd>
           </div>
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Última modificación</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(chofer.fecha_modificacion) }}
+              {{ formatDateTime(vehiculo.fecha_modificacion) }}
             </dd>
           </div>
         </dl>
@@ -88,36 +85,35 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Chofer } from '@/modules/choferes/interfaces/chofer.interface'
-import { useChoferDetailQuery } from '@/modules/choferes/composables/useChoferDetailQuery'
+import type { Vehiculo } from '@/modules/vehiculos/interfaces/vehiculo.interface'
+import { useVehiculoDetailQuery } from '@/modules/vehiculos/composables/useVehiculoDetailQuery'
 import { AppBadge, AppModal } from '@/shared/components'
 import { formatDateTime } from '@/shared/utils/date'
 
-interface ChoferDetailModalProps {
-  chofer?: Chofer | null
+interface VehiculoDetailModalProps {
+  vehiculo?: Vehiculo | null
 }
 
-const props = defineProps<ChoferDetailModalProps>()
+const props = defineProps<VehiculoDetailModalProps>()
 
 const open = defineModel<boolean>({ default: false })
 
-const idReferencia = computed(() => props.chofer?.id)
-const choferDetailQuery = useChoferDetailQuery(idReferencia, open)
-const chofer = computed<Chofer | null>(() => choferDetailQuery.data.value ?? props.chofer ?? null)
+const idReferencia = computed(() => props.vehiculo?.id)
+const vehiculoDetailQuery = useVehiculoDetailQuery(idReferencia, open)
+const vehiculo = computed<Vehiculo | null>(
+  () => vehiculoDetailQuery.data.value ?? props.vehiculo ?? null,
+)
 
-const getClienteNombreEmbebido = (c: Chofer): string | null => {
-  if (c.cliente_razon_social) return c.cliente_razon_social
+const getClienteNombreEmbebido = (v: Vehiculo): string | null => {
+  if (v.cliente_razon_social) return v.cliente_razon_social
 
-  const nombreCompleto = [c.cliente_nombres, c.cliente_apellido_paterno, c.cliente_apellido_materno]
+  const nombreCompleto = [v.cliente_nombres, v.cliente_apellido_paterno, v.cliente_apellido_materno]
     .filter(Boolean)
     .join(' ')
     .trim()
 
-  return nombreCompleto || c.cliente_numero_documento || null
+  return nombreCompleto || v.cliente_numero_documento || null
 }
-
-const getChoferNombre = (chofer: Chofer) =>
-  [chofer.nombres, chofer.apellido_paterno, chofer.apellido_materno].filter(Boolean).join(' ').trim()
 
 interface DetailItem {
   label: string
@@ -131,27 +127,33 @@ interface DetailSection {
 }
 
 const sections = computed<DetailSection[]>(() => {
-  const c = chofer.value
-  if (!c) return []
+  const v = vehiculo.value
+  if (!v) return []
 
   return [
     {
       title: 'Datos generales',
       items: [
-        { label: 'Nombre completo', value: getChoferNombre(c) },
-        { label: 'Documento', value: `${c.nombre_tipo_documento ?? 'Doc.'} ${c.numero_documento}` },
-        { label: 'Teléfono', value: c.telefono ?? null },
-        { label: 'Cliente / Proveedor', value: getClienteNombreEmbebido(c) ?? 'Sin cliente asignado' },
+        { label: 'Placa', value: v.placa },
+        { label: 'Placa secundaria', value: v.placa2 ?? null },
+        { label: 'Cliente / Proveedor dueño', value: getClienteNombreEmbebido(v) ?? 'Sin cliente asignado' },
       ],
     },
     {
-      title: 'Licencia de conducir',
+      title: 'Características',
       items: [
-        { label: 'N° de licencia (brevete)', value: c.codigo_licencia ?? null },
-        { label: 'Tipo de licencia', value: c.nombre_tipo_licencia ?? null },
-        { label: 'Categoría', value: c.nombre_categoria_licencia ?? null },
-        { label: 'Fecha de emisión', value: c.fecha_emision ?? null },
-        { label: 'Fecha de vencimiento', value: c.fecha_vencimiento ?? null },
+        { label: 'Marca', value: v.marca ?? null },
+        { label: 'Marca secundaria', value: v.marca2 ?? null },
+        { label: 'Modelo', value: v.modelo ?? null },
+        { label: 'Año', value: v.anio ? String(v.anio) : null },
+        { label: 'Color', value: v.color ?? null },
+      ],
+    },
+    {
+      title: 'Documentación',
+      items: [
+        { label: 'Certificado de inscripción', value: v.certificado_inscripcion ?? null },
+        { label: 'Certificado secundario', value: v.certificado2 ?? null },
       ],
     },
   ]

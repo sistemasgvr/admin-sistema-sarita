@@ -43,6 +43,7 @@ export interface CreateDireccionPayload {
   direccion: string
   descripcion?: string
   idDepartamento?: number
+  idPais?: number
   idProvincia?: number
   idDistrito?: number
   referencia?: string
@@ -53,6 +54,7 @@ export interface UpdateDireccionPayload {
   idUsuarioAuditoria: number
   direccion?: string
   descripcion?: string
+  idPais?: number
   idDepartamento?: number
   idProvincia?: number
   idDistrito?: number

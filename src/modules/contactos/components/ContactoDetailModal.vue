@@ -1,20 +1,17 @@
 <template>
   <AppModal
     v-model="open"
-    title="Detalle del chofer"
-    :subtitle="chofer ? getChoferNombre(chofer) : undefined"
+    title="Detalle del contacto"
+    :subtitle="contacto ? getContactoNombre(contacto) : undefined"
     size="lg"
   >
-    <div v-if="chofer" class="space-y-4">
+    <div v-if="contacto" class="space-y-4">
       <div class="flex flex-wrap items-center gap-2">
-        <AppBadge :color="chofer.estado === 1 ? 'success' : 'error'">
-          {{ chofer.estado === 1 ? 'Activo' : 'Inactivo' }}
+        <AppBadge :color="contacto.estado === 1 ? 'success' : 'error'">
+          {{ contacto.estado === 1 ? 'Activo' : 'Inactivo' }}
         </AppBadge>
-        <AppBadge v-if="chofer.nombre_tipo_licencia" color="neutral">
-          {{ chofer.nombre_tipo_licencia }}
-        </AppBadge>
-        <AppBadge v-if="chofer.nombre_categoria_licencia" color="neutral">
-          Categoría {{ chofer.nombre_categoria_licencia }}
+        <AppBadge v-if="contacto.es_principal" color="primary" :icon="ICONS.star">
+          Principal
         </AppBadge>
       </div>
 
@@ -49,25 +46,25 @@
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Creado por</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ chofer.nombre_usuario_creacion ?? '—' }}
+              {{ contacto.nombre_usuario_creacion ?? '—' }}
             </dd>
           </div>
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha de creación</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(chofer.fecha_creacion) }}
+              {{ formatDateTime(contacto.fecha_creacion) }}
             </dd>
           </div>
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Modificado por</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ chofer.nombre_usuario_modificacion ?? '—' }}
+              {{ contacto.nombre_usuario_modificacion ?? '—' }}
             </dd>
           </div>
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Última modificación</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ formatDateTime(chofer.fecha_modificacion) }}
+              {{ formatDateTime(contacto.fecha_modificacion) }}
             </dd>
           </div>
         </dl>
@@ -88,24 +85,27 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Chofer } from '@/modules/choferes/interfaces/chofer.interface'
-import { useChoferDetailQuery } from '@/modules/choferes/composables/useChoferDetailQuery'
+import type { Contacto } from '@/modules/contactos/interfaces/contacto.interface'
+import { useContactoDetailQuery } from '@/modules/contactos/composables/useContactoDetailQuery'
 import { AppBadge, AppModal } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
 import { formatDateTime } from '@/shared/utils/date'
 
-interface ChoferDetailModalProps {
-  chofer?: Chofer | null
+interface ContactoDetailModalProps {
+  contacto?: Contacto | null
 }
 
-const props = defineProps<ChoferDetailModalProps>()
+const props = defineProps<ContactoDetailModalProps>()
 
 const open = defineModel<boolean>({ default: false })
 
-const idReferencia = computed(() => props.chofer?.id)
-const choferDetailQuery = useChoferDetailQuery(idReferencia, open)
-const chofer = computed<Chofer | null>(() => choferDetailQuery.data.value ?? props.chofer ?? null)
+const idReferencia = computed(() => props.contacto?.id)
+const contactoDetailQuery = useContactoDetailQuery(idReferencia, open)
+const contacto = computed<Contacto | null>(
+  () => contactoDetailQuery.data.value ?? props.contacto ?? null,
+)
 
-const getClienteNombreEmbebido = (c: Chofer): string | null => {
+const getClienteNombreEmbebido = (c: Contacto): string | null => {
   if (c.cliente_razon_social) return c.cliente_razon_social
 
   const nombreCompleto = [c.cliente_nombres, c.cliente_apellido_paterno, c.cliente_apellido_materno]
@@ -116,8 +116,8 @@ const getClienteNombreEmbebido = (c: Chofer): string | null => {
   return nombreCompleto || c.cliente_numero_documento || null
 }
 
-const getChoferNombre = (chofer: Chofer) =>
-  [chofer.nombres, chofer.apellido_paterno, chofer.apellido_materno].filter(Boolean).join(' ').trim()
+const getContactoNombre = (contacto: Contacto) =>
+  [contacto.nombre, contacto.apellido_paterno, contacto.apellido_materno].filter(Boolean).join(' ').trim()
 
 interface DetailItem {
   label: string
@@ -131,27 +131,25 @@ interface DetailSection {
 }
 
 const sections = computed<DetailSection[]>(() => {
-  const c = chofer.value
+  const c = contacto.value
   if (!c) return []
 
   return [
     {
       title: 'Datos generales',
       items: [
-        { label: 'Nombre completo', value: getChoferNombre(c) },
-        { label: 'Documento', value: `${c.nombre_tipo_documento ?? 'Doc.'} ${c.numero_documento}` },
-        { label: 'Teléfono', value: c.telefono ?? null },
-        { label: 'Cliente / Proveedor', value: getClienteNombreEmbebido(c) ?? 'Sin cliente asignado' },
+        { label: 'Nombre completo', value: getContactoNombre(c) },
+        { label: 'Cliente / Proveedor', value: getClienteNombreEmbebido(c) ?? null },
+        { label: 'Dirección', value: c.direccion ?? null, fullWidth: true },
       ],
     },
     {
-      title: 'Licencia de conducir',
+      title: 'Contacto',
       items: [
-        { label: 'N° de licencia (brevete)', value: c.codigo_licencia ?? null },
-        { label: 'Tipo de licencia', value: c.nombre_tipo_licencia ?? null },
-        { label: 'Categoría', value: c.nombre_categoria_licencia ?? null },
-        { label: 'Fecha de emisión', value: c.fecha_emision ?? null },
-        { label: 'Fecha de vencimiento', value: c.fecha_vencimiento ?? null },
+        { label: 'Correo', value: c.email ?? null },
+        { label: 'Teléfono 1', value: c.telefono1 ?? null },
+        { label: 'Teléfono 2', value: c.telefono2 ?? null },
+        { label: 'Teléfono 3', value: c.telefono3 ?? null },
       ],
     },
   ]

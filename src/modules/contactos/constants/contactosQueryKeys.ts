@@ -5,4 +5,6 @@ export const contactosQueryKeys = {
   lists: () => [...contactosQueryKeys.all, 'list'] as const,
   list: (filters: ContactoListFilters) =>
     [...contactosQueryKeys.lists(), filters] as const,
+  details: () => [...contactosQueryKeys.all, 'detail'] as const,
+  detail: (id: number) => [...contactosQueryKeys.details(), id] as const,
 }

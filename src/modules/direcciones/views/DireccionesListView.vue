@@ -75,6 +75,14 @@
 
       <template #actions="{ row }">
         <button
+          type="button"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          @click="openDetailModal(row)"
+        >
+          <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
           v-if="canEdit"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
@@ -107,11 +115,12 @@
       v-model="formModalOpen"
       :mode="formMode"
       :direccion="selectedDireccion"
-      :clientes="clientes"
       :default-cliente-id="idClienteFiltro ? Number(idClienteFiltro) : null"
       :lock-cliente="false"
       @saved="onDireccionSaved"
     />
+
+    <DireccionDetailModal v-model="detailModalOpen" :direccion="direccionToView" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -153,6 +162,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import DireccionDetailModal from '@/modules/direcciones/components/DireccionDetailModal.vue'
 import DireccionFormModal from '@/modules/direcciones/components/DireccionFormModal.vue'
 import { useDeleteDireccionMutation } from '@/modules/direcciones/composables/useDireccionMutations'
 import { useDireccionesQuery } from '@/modules/direcciones/composables/useDireccionesQuery'
@@ -162,8 +172,6 @@ import type {
   DireccionFormMode,
   DireccionListFilters,
 } from '@/modules/direcciones/interfaces/direccion.interface'
-import { clientesService } from '@/modules/clientes/services/clientes.service'
-import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
@@ -188,7 +196,6 @@ const breadcrumbItems: BreadcrumbItem[] = [
   { label: 'Direcciones' },
 ]
 
-const clientes = ref<Cliente[]>([])
 const idClienteFiltro = ref<string | number>('')
 const buscar = ref('')
 const mostrarDirecciones = ref<DireccionEstadoFiltro>('activos')
@@ -226,6 +233,9 @@ const deleteMutation = useDeleteDireccionMutation()
 const formModalOpen = ref(false)
 const formMode = ref<DireccionFormMode>('create')
 const selectedDireccion = ref<Direccion | null>(null)
+
+const detailModalOpen = ref(false)
+const direccionToView = ref<Direccion | null>(null)
 
 const deleteModalOpen = ref(false)
 const direccionToDelete = ref<Direccion | null>(null)
@@ -267,29 +277,6 @@ const getUbicacion = (direccion: Direccion) => {
     .join(' | ')
 }
 
-/* const getClienteSelectNombre = (cliente: Cliente) => {
-  const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
-
-  if (esJuridica && cliente.razon_social) {
-    return cliente.razon_social
-  }
-
-  const nombreCompleto = [cliente.nombres, cliente.apellido_paterno, cliente.apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  return nombreCompleto || cliente.razon_social || cliente.numero_documento
-}
-
-const clienteFilterOptions = computed(() => [
-  { value: '', label: 'Todos los clientes' },
-  ...clientes.value.map((cliente) => ({
-    value: cliente.id,
-    label: getClienteSelectNombre(cliente),
-  })),
-])
- */
 const columns = computed<TableColumn<Direccion>[]>(() => [
   { key: 'cliente', label: 'Cliente / Proveedor' },
   { key: 'direccion', label: 'Dirección', class: 'max-width' },
@@ -299,14 +286,7 @@ const columns = computed<TableColumn<Direccion>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-onMounted(async () => {
-  try {
-    const response = await clientesService.listar({ pagina: 1, limite: 100, soloActivos: 1 })
-    clientes.value = response.data
-  } catch {
-    clientes.value = []
-  }
-
+onMounted(() => {
   const idClienteQuery = route.query.idCliente
   if (idClienteQuery) {
     idClienteFiltro.value = Number(idClienteQuery)
@@ -361,6 +341,11 @@ const openEditModal = (direccion: Direccion) => {
   formMode.value = 'edit'
   selectedDireccion.value = direccion
   formModalOpen.value = true
+}
+
+const openDetailModal = (direccion: Direccion) => {
+  direccionToView.value = direccion
+  detailModalOpen.value = true
 }
 
 const openDeleteModal = (direccion: Direccion) => {

@@ -194,7 +194,7 @@ const onInput = (event: Event) => {
 const onFocus = () => {
   menuOpen.value = true
   if (!options.value.length && !loading.value) {
-    runSearch(query.value.trim())
+    runSearch('')
   }
 }
 
