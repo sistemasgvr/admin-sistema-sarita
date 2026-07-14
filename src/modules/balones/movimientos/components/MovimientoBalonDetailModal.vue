@@ -7,9 +7,10 @@
   >
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
-        <AppBadge v-if="movimiento?.nombre_tipo_movimiento" color="primary">
-          {{ movimiento.nombre_tipo_movimiento }}
-        </AppBadge>
+        <ListaOpcionBadge
+          v-if="movimiento?.nombre_tipo_movimiento"
+          :value="movimiento.nombre_tipo_movimiento"
+        />
       </template>
 
       <template v-if="movimiento?.observacion" #extra>
@@ -38,7 +39,7 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { formatDetailDateTime } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useMovimientoBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppModal, ListaOpcionBadge } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{ movimientoId?: number | null }>()

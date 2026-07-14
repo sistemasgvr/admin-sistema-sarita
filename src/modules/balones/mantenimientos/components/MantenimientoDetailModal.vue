@@ -7,12 +7,14 @@
   >
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
-        <AppBadge v-if="mantenimiento?.nombre_tipo_mantenimiento" color="primary">
-          {{ formatListaOpcionLabel(mantenimiento.nombre_tipo_mantenimiento) }}
-        </AppBadge>
-        <AppBadge v-if="mantenimiento?.nombre_estado" color="neutral">
-          {{ formatListaOpcionLabel(mantenimiento.nombre_estado) }}
-        </AppBadge>
+        <ListaOpcionBadge
+          v-if="mantenimiento?.nombre_tipo_mantenimiento"
+          :value="mantenimiento.nombre_tipo_mantenimiento"
+        />
+        <ListaOpcionBadge
+          v-if="mantenimiento?.nombre_estado"
+          :value="mantenimiento.nombre_estado"
+        />
         <AppBadge
           :color="mantenimiento?.es_externo ? 'warning' : undefined"
           :variant="mantenimiento?.es_externo ? undefined : 'light'"
@@ -65,10 +67,9 @@ import {
   formatDetailMoney,
   formatDetailYesNo,
 } from '@/shared/components/detail/detailFormatters'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{ mantenimientoId?: number | null }>()

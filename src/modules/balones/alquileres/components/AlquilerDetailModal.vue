@@ -7,9 +7,7 @@
   >
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
-        <AppBadge v-if="alquiler?.nombre_estado" color="primary">
-          {{ formatListaOpcionLabel(alquiler.nombre_estado) }}
-        </AppBadge>
+        <ListaOpcionBadge v-if="alquiler?.nombre_estado" :value="alquiler.nombre_estado" />
         <AppBadge color="neutral">{{ detalleRows.length }} cilindros</AppBadge>
       </template>
 
@@ -56,12 +54,11 @@ import {
   formatDetailListaOpcion,
   formatDetailMoney,
 } from '@/shared/components/detail/detailFormatters'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import type { AlquilerDetalleListFilters } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
-import { AppBadge, AppModal, AppTable } from '@/shared/components'
+import { AppBadge, AppModal, AppTable, ListaOpcionBadge } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 

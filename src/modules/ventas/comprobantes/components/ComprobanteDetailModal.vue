@@ -31,10 +31,17 @@
           <p class="text-gray-700 dark:text-gray-300">{{ comprobante.fecha }}</p>
         </div>
         <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Tipo</p>
+          <ListaOpcionBadge
+            :value="comprobante.nombre_tipo_comprobante ?? comprobante.codigo_tipo_comprobante"
+          />
+        </div>
+        <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Estado SUNAT</p>
-          <AppBadge variant="light" :color="sunatBadgeColor">
-            {{ comprobante.nombre_estado_sunat ?? 'PENDIENTE' }}
-          </AppBadge>
+          <ListaOpcionBadge
+            :value="comprobante.nombre_estado_sunat ?? 'PENDIENTE'"
+            raw
+          />
         </div>
       </div>
 
@@ -148,7 +155,7 @@ import {
   printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppModal, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
@@ -188,13 +195,6 @@ const comprobante = computed(() => comprobanteQuery.data.value)
 const puedePdf = computed(() => {
   const estado = comprobante.value?.nombre_estado_sunat?.toUpperCase()
   return estado === 'ACEPTADO' || Boolean(comprobante.value?.hash_documento)
-})
-
-const sunatBadgeColor = computed(() => {
-  const estado = comprobante.value?.nombre_estado_sunat?.toUpperCase()
-  if (estado === 'ACEPTADO') return 'success'
-  if (estado === 'RECHAZADO') return 'error'
-  return 'warning'
 })
 
 const formatMoney = (value: number) =>

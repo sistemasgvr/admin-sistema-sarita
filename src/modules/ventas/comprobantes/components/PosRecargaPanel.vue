@@ -32,6 +32,20 @@
             :disabled="clientesQuery.isLoading.value"
             required
           />
+          <AppSelectSearch
+            v-model="idAlmacen"
+            v-model:search="almacenBuscar"
+            label="Almacén (stock gas)"
+            placeholder="Selecciona almacén"
+            search-placeholder="Nombre..."
+            :options="almacenOptions"
+            :loading="almacenesQuery.isLoading.value"
+            :disabled="almacenesQuery.isLoading.value"
+            required
+          />
+        </div>
+
+        <div class="mt-4">
           <div class="min-w-0 overflow-hidden">
             <PosBalonSelectField
               v-model="idBalon"
@@ -116,6 +130,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useCreateRecargaClienteMutation } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
@@ -151,6 +166,11 @@ const {
 const createMutation = useCreateRecargaClienteMutation()
 const emitMutation = useEmitirComprobanteMutation()
 
+const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+const idAlmacen = ref<number | ''>('')
+const almacenBuscar = ref('')
+
 const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
 const productosQuery = useProductosQuery(productosFilters)
 
@@ -165,6 +185,13 @@ const observacion = ref('')
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
+
+const almacenOptions = computed(() =>
+  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
+    value: almacen.id,
+    label: almacen.nombre,
+  })),
+)
 
 const productoOptions = computed(() =>
   (productosQuery.data.value?.data ?? []).map((producto) => ({
@@ -182,6 +209,7 @@ const totales = computed(() =>
 const puedeGuardar = computed(() => {
   return (
     Boolean(idCliente.value) &&
+    Boolean(idAlmacen.value) &&
     Boolean(idBalon.value) &&
     Boolean(idProducto.value) &&
     Boolean(idTipoComprobante.value) &&
@@ -214,6 +242,11 @@ async function registrarRecarga() {
     return
   }
 
+  if (!idAlmacen.value) {
+    toastWarning('Selecciona el almacén para descontar el gas del stock')
+    return
+  }
+
   const result = await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     idCliente: Number(idCliente.value),
@@ -224,6 +257,7 @@ async function registrarRecarga() {
     idTipoComprobante: Number(idTipoComprobante.value),
     serie: serie.value.trim(),
     capacidad: capacidad.value !== '' ? Number(capacidad.value) : undefined,
+    idAlmacen: Number(idAlmacen.value),
     observacion: observacion.value || undefined,
   })
 
@@ -235,6 +269,8 @@ async function registrarRecarga() {
 async function limpiarTrasEmitir() {
   idBalon.value = ''
   idProducto.value = ''
+  idAlmacen.value = ''
+  almacenBuscar.value = ''
   gasBuscar.value = ''
   cantidad.value = 1
   capacidad.value = ''
@@ -245,6 +281,7 @@ async function limpiarTrasEmitir() {
   comprobanteGuardadoNumero.value = null
   await reiniciarTrasOperacion()
   await productosQuery.refetch()
+  await almacenesQuery.refetch()
 }
 
 async function emitirComprobante() {

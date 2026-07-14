@@ -241,17 +241,31 @@ const updateDropdownPosition = () => {
   const viewportPadding = 8
   const gap = 4
   const maxDropdownHeight = 288
+  // Preferir abajo; solo voltear si abajo casi no cabe una lista usable
+  const minSpaceToPreferDown = 160
   const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
   const spaceAbove = rect.top - viewportPadding
-  const openUpward = spaceBelow < maxDropdownHeight && spaceAbove > spaceBelow
+  const openUpward = spaceBelow < minSpaceToPreferDown && spaceAbove > spaceBelow
 
-  const availableHeight = openUpward ? spaceAbove : spaceBelow
-  const dropdownHeight = Math.min(maxDropdownHeight, Math.max(availableHeight, 160))
+  let dropdownHeight = Math.min(
+    maxDropdownHeight,
+    Math.max(0, (openUpward ? spaceAbove : spaceBelow) - gap),
+  )
+
+  let top = openUpward ? rect.top - gap - dropdownHeight : rect.bottom + gap
+
+  if (top < viewportPadding) {
+    top = viewportPadding
+    dropdownHeight = Math.min(dropdownHeight, Math.max(0, rect.top - gap - top))
+  }
+
+  const maxBottom = window.innerHeight - viewportPadding
+  if (top + dropdownHeight > maxBottom) {
+    dropdownHeight = Math.max(0, maxBottom - top)
+  }
 
   dropdownStyle.value = {
-    top: openUpward
-      ? `${rect.top - gap - dropdownHeight}px`
-      : `${rect.bottom + gap}px`,
+    top: `${top}px`,
     left: `${rect.left}px`,
     width: `${rect.width}px`,
   }

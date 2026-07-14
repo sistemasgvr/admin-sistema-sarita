@@ -49,8 +49,7 @@
       </template>
 
       <template #cell-nombre_estado="{ value }">
-        <span v-if="value">{{ formatListaOpcionLabel(value) }}</span>
-        <span v-else class="text-gray-400">—</span>
+        <ListaOpcionBadge :value="value as string" />
       </template>
 
       <template #cell-total_detalles="{ value }">
@@ -167,14 +166,13 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const authStore = useAuthStore()
 

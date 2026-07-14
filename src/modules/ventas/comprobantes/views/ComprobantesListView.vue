@@ -28,9 +28,11 @@
         <p class="font-medium text-gray-800 dark:text-white/90">
           {{ row.serie }}-{{ row.numero }}
         </p>
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          {{ row.nombre_tipo_comprobante ?? row.codigo_tipo_comprobante }}
-        </p>
+        <div class="mt-1">
+          <ListaOpcionBadge
+            :value="row.nombre_tipo_comprobante ?? row.codigo_tipo_comprobante"
+          />
+        </div>
       </template>
 
       <template #cell-nombre_cliente="{ value }">
@@ -43,9 +45,7 @@
       </template>
 
       <template #cell-nombre_estado_sunat="{ value }">
-        <AppBadge variant="light" :color="sunatBadgeColor(String(value ?? ''))">
-          {{ value ?? 'PENDIENTE' }}
-        </AppBadge>
+        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" raw />
       </template>
 
       <template #actions="{ row }">
@@ -199,7 +199,7 @@ import {
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
@@ -268,12 +268,6 @@ function onFiltersChange() {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
-}
-
-function sunatBadgeColor(estado: string) {
-  if (estado.toUpperCase() === 'ACEPTADO') return 'success'
-  if (estado.toUpperCase() === 'RECHAZADO') return 'error'
-  return 'warning'
 }
 
 function puedeEmitir(row: ComprobanteListItem) {

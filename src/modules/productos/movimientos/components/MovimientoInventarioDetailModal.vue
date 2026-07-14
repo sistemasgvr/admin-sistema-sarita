@@ -7,16 +7,10 @@
   >
     <DetailCardsLayout :loading="false" :sections="sections">
       <template #badges>
-        <AppBadge
+        <ListaOpcionBadge
           v-if="movimiento?.nombre_tipo_movimiento"
-          :color="
-            movimiento.nombre_tipo_movimiento.toUpperCase().includes('SALIDA')
-              ? 'error'
-              : 'success'
-          "
-        >
-          {{ formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) }}
-        </AppBadge>
+          :value="movimiento.nombre_tipo_movimiento"
+        />
       </template>
     </DetailCardsLayout>
 
@@ -44,7 +38,7 @@ import {
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import type { MovimientoInventario } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppModal, ListaOpcionBadge } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{

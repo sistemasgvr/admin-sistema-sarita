@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { alquileresDetalleQueryKeys } from '@/modules/balones/alquileres/constants/alquileresDetalleQueryKeys'
 import { alquileresQueryKeys } from '@/modules/balones/alquileres/constants/alquileresQueryKeys'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
 import { alquileresDetalleService } from '@/modules/balones/alquileres/services/alquileres-detalle.service'
 import type {
   CreateAlquilerDetallePayload,
@@ -20,6 +21,7 @@ export function useCreateAlquilerDetalleMutation() {
         queryKey: alquileresQueryKeys.detail(variables.idAlquiler),
       })
       queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
       toastSuccess('Cilindro agregado al alquiler')
     },
     onError: (error) => {

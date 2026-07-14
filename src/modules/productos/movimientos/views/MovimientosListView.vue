@@ -46,12 +46,7 @@
       </template>
 
       <template #cell-nombre_tipo_movimiento="{ value }">
-        <AppBadge
-          variant="light"
-          :color="String(value).toUpperCase().includes('SALIDA') ? 'error' : 'success'"
-        >
-          {{ formatListaOpcionLabel(value as string) }}
-        </AppBadge>
+        <ListaOpcionBadge :value="value as string" />
       </template>
 
       <template #cell-cantidad="{ value }">
@@ -188,11 +183,11 @@ import type {
 } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
-  AppBadge,
   AppListToolbar,
   AppModal,
   AppPagination,
   AppTable,
+  ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -200,7 +195,6 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const authStore = useAuthStore()
 const breadcrumbItems = productosBreadcrumbItems('Movimientos')

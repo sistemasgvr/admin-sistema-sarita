@@ -31,7 +31,7 @@
       </template>
 
       <template #cell-nombre_tipo_catalogo="{ value }">
-        <AppBadge variant="light" color="primary">{{ value }}</AppBadge>
+        <ListaOpcionBadge :value="value as string" raw />
       </template>
 
       <template #cell-producto="{ row }">
@@ -165,11 +165,11 @@ import type {
 } from '@/modules/productos/catalogo-precios/interfaces/catalogo-precio.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
-  AppBadge,
   AppListToolbar,
   AppModal,
   AppPagination,
   AppTable,
+  ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'

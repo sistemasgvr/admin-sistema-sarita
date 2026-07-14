@@ -15,7 +15,7 @@
           <AppInput v-model="fecha" label="Fecha" type="date" />
         </div>
 
-        <div class="mt-4">
+        <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           <AppSelectSearch
             v-model="idCliente"
             v-model:search="clienteBuscar"
@@ -26,6 +26,17 @@
             :options="clienteOptions"
             :loading="clientesQuery.isFetching.value"
             :disabled="clientesQuery.isLoading.value"
+          />
+          <AppSelectSearch
+            v-model="idAlmacen"
+            v-model:search="almacenBuscar"
+            label="Almacén"
+            placeholder="Selecciona almacén"
+            search-placeholder="Nombre..."
+            :options="almacenOptions"
+            :loading="almacenesQuery.isLoading.value"
+            :disabled="almacenesQuery.isLoading.value"
+            :required="requiereAlmacen"
           />
         </div>
       </div>
@@ -131,6 +142,7 @@ import { subCategoriasProductoService } from '@/modules/productos/sub-categorias
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
 import {
@@ -177,6 +189,11 @@ const {
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
 
+const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+const idAlmacen = ref<number | ''>('')
+const almacenBuscar = ref('')
+
 const categorias = ref<CategoriaProducto[]>([])
 const subCategorias = ref<SubCategoriaProducto[]>([])
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -199,6 +216,13 @@ const comprobanteGuardadoNumero = ref<string | null>(null)
 const lineas = ref<PosLineItem[]>([])
 
 const productosBase = computed(() => productosQuery.data.value?.data ?? [])
+
+const almacenOptions = computed(() =>
+  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
+    value: almacen.id,
+    label: almacen.nombre,
+  })),
+)
 
 const productos = computed(() => {
   const marca = dynamicFilters.value.marca
@@ -323,6 +347,10 @@ const lineasActivas = computed(() =>
   lineas.value.filter((linea) => linea.idProducto && Number(linea.cantidad) > 0),
 )
 
+const requiereAlmacen = computed(() =>
+  lineasActivas.value.some((linea) => linea.afectaStock !== false),
+)
+
 const totales = computed(() => {
   const importeConIgv = lineasActivas.value.reduce(
     (sum, linea) => sum + calcularImporteLinea(linea),
@@ -332,7 +360,10 @@ const totales = computed(() => {
 })
 
 const puedeGuardar = computed(
-  () => comprobanteBaseValido() && lineasActivas.value.length > 0,
+  () =>
+    comprobanteBaseValido() &&
+    lineasActivas.value.length > 0 &&
+    (!requiereAlmacen.value || Boolean(idAlmacen.value)),
 )
 
 function crearLineaDesdeProducto(producto: Producto): PosLineItem {
@@ -344,6 +375,7 @@ function crearLineaDesdeProducto(producto: Producto): PosLineItem {
     cantidad: 1,
     precioUnitario: Number(producto.precio ?? 0),
     idAfectacionIgv: idAfectacionGravado.value,
+    afectaStock: producto.afecta_stock !== false,
   }
 }
 
@@ -381,6 +413,11 @@ async function guardarComprobante() {
     return
   }
 
+  if (requiereAlmacen.value && !idAlmacen.value) {
+    toastWarning('Selecciona el almacén para descontar stock')
+    return
+  }
+
   const comprobante = await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     idTipoComprobante: Number(idTipoComprobante.value),
@@ -388,6 +425,7 @@ async function guardarComprobante() {
     numero: numero.value || undefined,
     fecha: fecha.value,
     idCliente: Number(idCliente.value),
+    idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
     detalles: lineasActivas.value.map((linea) => ({
       idProducto: Number(linea.idProducto),
       cantidad: Number(linea.cantidad),
@@ -410,11 +448,14 @@ async function guardarComprobante() {
 async function limpiarTrasEmitir() {
   lineas.value = []
   glosa.value = ''
+  idAlmacen.value = ''
+  almacenBuscar.value = ''
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null
   comprobanteGuardadoNumero.value = null
   await reiniciarTrasOperacion()
   await productosQuery.refetch()
+  await almacenesQuery.refetch()
 }
 
 async function emitirComprobante() {

@@ -7,12 +7,11 @@
   >
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
-        <AppBadge v-if="prestamo?.nombre_tipo_prestamo" color="primary">
-          {{ formatListaOpcionLabel(prestamo.nombre_tipo_prestamo) }}
-        </AppBadge>
-        <AppBadge v-if="prestamo?.nombre_estado" color="neutral">
-          {{ formatListaOpcionLabel(prestamo.nombre_estado) }}
-        </AppBadge>
+        <ListaOpcionBadge
+          v-if="prestamo?.nombre_tipo_prestamo"
+          :value="prestamo.nombre_tipo_prestamo"
+        />
+        <ListaOpcionBadge v-if="prestamo?.nombre_estado" :value="prestamo.nombre_estado" />
         <AppBadge color="neutral">{{ detalleRows.length }} cilindros</AppBadge>
       </template>
 
@@ -58,12 +57,11 @@ import {
   formatDetailDateTime,
   formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import type { PrestamoDetalleListFilters } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
-import { AppBadge, AppModal, AppTable } from '@/shared/components'
+import { AppBadge, AppModal, AppTable, ListaOpcionBadge } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 

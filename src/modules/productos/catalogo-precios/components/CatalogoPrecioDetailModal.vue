@@ -7,9 +7,11 @@
   >
     <DetailCardsLayout :loading="false" :sections="sections">
       <template #badges>
-        <AppBadge v-if="catalogoPrecio?.nombre_tipo_catalogo" color="primary">
-          {{ catalogoPrecio.nombre_tipo_catalogo }}
-        </AppBadge>
+        <ListaOpcionBadge
+          v-if="catalogoPrecio?.nombre_tipo_catalogo"
+          :value="catalogoPrecio.nombre_tipo_catalogo"
+          raw
+        />
         <AppBadge v-if="catalogoPrecio?.periodo" color="neutral">
           {{ catalogoPrecio.periodo }}
         </AppBadge>
@@ -38,7 +40,7 @@ import {
 } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import type { CatalogoPrecio } from '@/modules/productos/catalogo-precios/interfaces/catalogo-precio.interface'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{

@@ -129,4 +129,5 @@ export interface PosLineItem {
   cantidad: number
   precioUnitario: number
   idAfectacionIgv?: number
+  afectaStock?: boolean
 }
