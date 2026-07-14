@@ -171,6 +171,7 @@ const {
   idTipoOperacionVentaInterna,
   comprobanteBaseValido,
   mensajeValidacionComprobante,
+  reiniciarTrasOperacion,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateComprobanteMutation()
@@ -406,6 +407,16 @@ async function guardarComprobante() {
   comprobanteGuardadoNumero.value = comprobante.numero
 }
 
+async function limpiarTrasEmitir() {
+  lineas.value = []
+  glosa.value = ''
+  comprobanteGuardadoId.value = null
+  comprobanteGuardadoSerie.value = null
+  comprobanteGuardadoNumero.value = null
+  await reiniciarTrasOperacion()
+  await productosQuery.refetch()
+}
+
 async function emitirComprobante() {
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
@@ -426,6 +437,8 @@ async function emitirComprobante() {
         'Emitido OK. Permite ventanas emergentes en la URL para imprimir el ticket automáticamente.',
       )
     }
+
+    await limpiarTrasEmitir()
   } catch {
     // mutateAsync ya muestra el toast de error
   }

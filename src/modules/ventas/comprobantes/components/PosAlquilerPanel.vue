@@ -352,6 +352,8 @@ const {
 
   mensajeValidacionComprobante,
 
+  reiniciarTrasOperacion,
+
 } = usePosComprobanteForm()
 
 
@@ -746,6 +748,26 @@ async function registrarAlquiler() {
 
 
 
+async function limpiarTrasEmitir() {
+  idBalon.value = ''
+  idAlmacen.value = ''
+  idProducto.value = ''
+  almacenBuscar.value = ''
+  servicioBuscar.value = ''
+  fechaInicio.value = new Date().toISOString().slice(0, 10)
+  fechaFinPactada.value = ''
+  tarifaDiaria.value = 0
+  importeCobrar.value = 0
+  observacion.value = ''
+  importeEditadoManual.value = false
+  comprobanteGuardadoId.value = null
+  comprobanteGuardadoSerie.value = null
+  comprobanteGuardadoNumero.value = null
+  await reiniciarTrasOperacion()
+  await productosQuery.refetch()
+  await almacenesQuery.refetch()
+}
+
 async function emitirComprobante() {
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
@@ -766,6 +788,8 @@ async function emitirComprobante() {
         'Emitido OK. Permite ventanas emergentes en la URL para imprimir el ticket automáticamente.',
       )
     }
+
+    await limpiarTrasEmitir()
   } catch {
     // mutateAsync ya muestra el toast de error
   }

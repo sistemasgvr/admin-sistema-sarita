@@ -149,6 +149,7 @@ const {
   idTipoOperacionVentaInterna,
   comprobanteBaseValido,
   mensajeValidacionComprobante,
+  reiniciarTrasOperacion,
 } = usePosComprobanteForm()
 
 const createComprobanteMutation = useCreateComprobanteMutation()
@@ -283,6 +284,24 @@ async function registrarMantenimiento() {
   }
 }
 
+async function limpiarTrasEmitir() {
+  idBalon.value = ''
+  idTipoMantenimiento.value = ''
+  idProducto.value = ''
+  tipoMantenimientoBuscar.value = ''
+  servicioBuscar.value = ''
+  fechaIngreso.value = new Date().toISOString().slice(0, 10)
+  fechaSalida.value = ''
+  costo.value = 0
+  descripcion.value = ''
+  observacion.value = ''
+  comprobanteGuardadoId.value = null
+  comprobanteGuardadoSerie.value = null
+  comprobanteGuardadoNumero.value = null
+  await reiniciarTrasOperacion()
+  await productosQuery.refetch()
+}
+
 async function emitirComprobante() {
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
@@ -303,6 +322,8 @@ async function emitirComprobante() {
         'Emitido OK. Permite ventanas emergentes en la URL para imprimir el ticket automáticamente.',
       )
     }
+
+    await limpiarTrasEmitir()
   } catch {
     // mutateAsync ya muestra el toast de error
   }

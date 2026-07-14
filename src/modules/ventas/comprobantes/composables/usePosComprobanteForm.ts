@@ -200,6 +200,17 @@ export function usePosComprobanteForm(options?: {
     return mensajeValidacionComprobante() === null
   }
 
+  /**
+   * Limpia cliente y deja listo el POS para la siguiente venta.
+   * Conserva tipo/serie y pide el siguiente correlativo.
+   */
+  async function reiniciarTrasOperacion() {
+    idCliente.value = ''
+    clienteBuscar.value = ''
+    fecha.value = new Date().toISOString().slice(0, 10)
+    await refrescarSiguienteNumero()
+  }
+
   return {
     authStore,
     catalogosQuery,
@@ -221,6 +232,7 @@ export function usePosComprobanteForm(options?: {
     comprobanteBaseValido,
     mensajeValidacionComprobante,
     refrescarSiguienteNumero,
+    reiniciarTrasOperacion,
   }
 }
 

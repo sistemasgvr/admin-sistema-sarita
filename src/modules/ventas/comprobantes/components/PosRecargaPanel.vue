@@ -145,6 +145,7 @@ const {
   tipoComprobanteOptions,
   clienteOptions,
   mensajeValidacionComprobante,
+  reiniciarTrasOperacion,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateRecargaClienteMutation()
@@ -231,6 +232,21 @@ async function registrarRecarga() {
   comprobanteGuardadoNumero.value = result.comprobante.numero
 }
 
+async function limpiarTrasEmitir() {
+  idBalon.value = ''
+  idProducto.value = ''
+  gasBuscar.value = ''
+  cantidad.value = 1
+  capacidad.value = ''
+  precioUnitario.value = 0
+  observacion.value = ''
+  comprobanteGuardadoId.value = null
+  comprobanteGuardadoSerie.value = null
+  comprobanteGuardadoNumero.value = null
+  await reiniciarTrasOperacion()
+  await productosQuery.refetch()
+}
+
 async function emitirComprobante() {
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
@@ -251,6 +267,8 @@ async function emitirComprobante() {
         'Emitido OK. Permite ventanas emergentes en la URL para imprimir el ticket automáticamente.',
       )
     }
+
+    await limpiarTrasEmitir()
   } catch {
     // mutateAsync ya muestra el toast de error
   }
