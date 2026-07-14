@@ -27,6 +27,17 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'notas-credito',
+        name: 'admin-ventas-notas-credito',
+        component: () =>
+          import('@/modules/ventas/comprobantes/views/NotasCreditoListView.vue'),
+        meta: {
+          title: 'Notas de crédito',
+          module: 'ventas',
+          permission: PermisoBanderas.COMPROBANTES_LISTAR,
+        },
+      },
+      {
         path: 'resumen-diario',
         name: 'admin-ventas-resumen-diario',
         component: () =>

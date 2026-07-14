@@ -14,6 +14,14 @@ export interface ComprobanteListItem {
   nombre_estado?: string | null
   id_estado_sunat?: number | null
   nombre_estado_sunat?: string | null
+  id_comprobante_origen?: number | null
+  serie_comprobante_origen?: string | null
+  numero_comprobante_origen?: string | null
+  codigo_tipo_comprobante_origen?: string | null
+  nombre_tipo_comprobante_origen?: string | null
+  id_motivo_nota?: number | null
+  nombre_motivo_nota?: string | null
+  codigo_motivo_nota?: string | null
 }
 
 export interface ComprobanteDetalle {
