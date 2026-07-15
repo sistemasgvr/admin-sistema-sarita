@@ -305,6 +305,55 @@
               </div>
             </RelatedListState>
           </div>
+
+          <!-- Cuentas Bancarias -->
+          <div v-if="activeTab === 'cuentas-bancarias'">
+            <RelatedListState
+              :loading="cuentasBancariasQuery.isLoading.value"
+              :error="cuentasBancariasQuery.isError.value"
+              :empty="!cuentasBancariasItems.length"
+              empty-text="Este cliente no tiene cuentas bancarias registradas."
+              @retry="cuentasBancariasQuery.refetch()"
+            >
+              <div class="space-y-2">
+                <div
+                  v-for="cuenta in cuentasBancariasItems"
+                  :key="cuenta.id"
+                  class="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+                >
+                  <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                        {{ cuenta.titular || '—' }}
+                      </p>
+                      <p class="text-theme-xs text-gray-500 dark:text-gray-400">
+                        {{ [cuenta.nombre_banco, cuenta.nombre_tipo_cuenta].filter(Boolean).join(' / ') }}
+                      </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <AppBadge v-if="cuenta.es_principal" size="sm" color="primary" :icon="ICONS.star">
+                        Principal
+                      </AppBadge>
+                      <AppBadge size="sm" :color="cuenta.estado === 1 ? 'success' : 'error'">
+                        {{ cuenta.estado === 1 ? 'Activo' : 'Inactivo' }}
+                      </AppBadge>
+                    </div>
+                  </div>
+                  <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                    <span v-if="cuenta.numero_cuenta" class="font-mono">
+                      {{ cuenta.numero_cuenta }}
+                    </span>
+                    <span v-if="cuenta.numero_cuenta_interbancaria" class="font-mono">
+                      CCI: {{ cuenta.numero_cuenta_interbancaria }}
+                    </span>
+                    <span v-if="cuenta.telefono_billetera">
+                      {{ cuenta.telefono_billetera }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </RelatedListState>
+          </div>
         </div>
       </section>
     </div>
@@ -342,6 +391,9 @@ import type { Chofer, ChoferListFilters } from '@/modules/choferes/interfaces/ch
 
 import { useVehiculosQuery } from '@/modules/vehiculos/composables/useVehiculosQuery'
 import type { Vehiculo, VehiculoListFilters } from '@/modules/vehiculos/interfaces/vehiculo.interface'
+
+import { useCuentasBancariasQuery } from '@/modules/cuentas-bancarias/composables/useCuentasBancariasQuery'
+import type { CuentaBancaria, CuentaBancariaListFilters } from '@/modules/cuentas-bancarias/interfaces/cuenta-bancaria.interface'
 
 interface ClienteDetailModalProps {
   cliente?: Cliente | null
@@ -467,7 +519,7 @@ const sections = computed<DetailSection[]>(() => {
   return result
 })
 
-type RelatedTabKey = 'contactos' | 'direcciones' | 'choferes' | 'vehiculos'
+type RelatedTabKey = 'contactos' | 'direcciones' | 'choferes' | 'vehiculos' | 'cuentas-bancarias'
 
 const activeTab = ref<RelatedTabKey>('contactos')
 const idCliente = computed(() => cliente.value?.id)
@@ -509,6 +561,15 @@ const vehiculosFilters = computed<VehiculoListFilters>(() => ({
 const vehiculosQuery = useVehiculosQuery(vehiculosFilters, shouldFetchRelatedData)
 const vehiculosItems = computed<Vehiculo[]>(() => vehiculosQuery.data.value?.data ?? [])
 
+// Cuentas Bancarias
+const cuentasBancariasFilters = computed<CuentaBancariaListFilters>(() => ({
+  idCliente: idCliente.value,
+  limite: 50,
+  isActivos: null,
+}))
+const cuentasBancariasQuery = useCuentasBancariasQuery(cuentasBancariasFilters, shouldFetchRelatedData)
+const cuentasBancariasItems = computed<CuentaBancaria[]>(() => cuentasBancariasQuery.data.value?.data ?? [])
+
 interface RelatedTab {
   key: RelatedTabKey
   label: string
@@ -543,6 +604,14 @@ const relatedTabs = computed<RelatedTab[]>(() => [
     icon: ICONS.car,
     count:
       vehiculosQuery.data.value?.meta.total ?? (vehiculosQuery.isSuccess.value ? vehiculosItems.value.length : null),
+  },
+  {
+    key: 'cuentas-bancarias',
+    label: 'Cuentas Bancarias',
+    icon: ICONS.building2,
+    count:
+      cuentasBancariasQuery.data.value?.meta.total ??
+      (cuentasBancariasQuery.isSuccess.value ? cuentasBancariasItems.value.length : null),
   },
 ])
 

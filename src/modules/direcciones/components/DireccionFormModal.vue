@@ -125,6 +125,7 @@
           :searchable="true"
           :draggable-marker="true"
           :readonly="false"
+          :resolve-google-maps-link="resolverCoordenadasDesdeLink"
         />
       </div>
 
@@ -173,6 +174,7 @@ import {
   useUpdateDireccionMutation,
 } from '@/modules/direcciones/composables/useDireccionMutations'
 import { useDireccionDetailQuery } from '@/modules/direcciones/composables/useDireccionDetailQuery'
+import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
 import type {
   Direccion,
   DireccionFormMode,
@@ -258,6 +260,15 @@ const isClienteLocked = computed(
     props.mode === 'edit' ||
     (props.mode === 'create' && props.lockCliente && !!props.defaultClienteId),
 )
+
+const resolverCoordenadasDesdeLink = async (link: string) => {
+  try {
+    const { latitud, longitud } = await direccionesService.coordenadasDesdeLink(link)
+    return { lat: latitud, lng: longitud }
+  } catch {
+    return null
+  }
+}
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
