@@ -16,6 +16,7 @@ import { contactosRoutes } from '@/modules/contactos/router'
 import { direccionesRoutes } from '@/modules/direcciones/router'
 import { choferesRoutes } from '@/modules/choferes/router'
 import { vehiculosRoutes } from '@/modules/vehiculos/router'
+import { cuentasBancariasRoutes } from '@/modules/cuentas-bancarias/router'
 
 const adminChildren: RouteRecordRaw[] = [
   {
@@ -35,6 +36,7 @@ const adminChildren: RouteRecordRaw[] = [
   ...ventasRoutes,
   ...choferesRoutes,
   ...vehiculosRoutes,
+  ...cuentasBancariasRoutes,
   {
     path: ':pathMatch(.*)*',
     name: 'admin-not-found',

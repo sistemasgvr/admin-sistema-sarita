@@ -4,7 +4,6 @@ import { balonesMenuSubItems } from '@/modules/balones/config/balones-menu'
 import { ventasMenuSubItems } from '@/modules/ventas/config/ventas-menu'
 import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
 import { clientesMenuSubItems } from '@/modules/clientes/config/clientes-menu'
-
 export interface AdminMenuSubItem {
   name: string
   path: string

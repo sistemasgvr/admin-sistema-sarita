@@ -31,7 +31,7 @@
         class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-[1px] dark:bg-gray-900/60"
       >
         <p class="rounded-lg bg-white px-4 py-2 text-sm text-gray-500 shadow-theme-md dark:bg-gray-800 dark:text-gray-400">
-          Busca una dirección o haz clic en el mapa para colocar un marcador
+          Busca una dirección, pega tus coordenadas o haz clic en el mapa para colocar un marcador
         </p>
       </div>
     </div>
@@ -82,6 +82,7 @@ const props = withDefaults(
     searchable?: boolean
     draggableMarker?: boolean
     readonly?: boolean
+    resolveGoogleMapsLink?: (link: string) => Promise<{ lat: number; lng: number } | null>
   }>(),
   {
     latitud: null,
@@ -189,12 +190,78 @@ function clearMarker() {
   emit('update:longitud', null)
 }
 
+const googleMapsUrlRegex = /google\.[a-z]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps/i
+
+function parseCoordsInput(value: string): { lat: number; lng: number } | null {
+  const cleaned = value.replace(/\s+/g, '').replace(/[−–—]/g, '-')
+  const match = cleaned.match(/^(-?\d+\.?\d*)\s*[,;]\s*(-?\d+\.?\d*)$/)
+  if (match) {
+    const lat = Number.parseFloat(match[1])
+    const lng = Number.parseFloat(match[2])
+    if (Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { lat, lng }
+    }
+  }
+  return null
+}
+
+function extractCoordsFromGoogleMapsUrl(url: string): { lat: number; lng: number } | null {
+  const atMatch = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+  if (atMatch) {
+    const lat = Number.parseFloat(atMatch[1])
+    const lng = Number.parseFloat(atMatch[2])
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
+  }
+  const queryMatch = url.match(/[?&]q=(-?\d+\.?\d*)\s*%2C\s*(-?\d+\.?\d*)/)
+  if (queryMatch) {
+    const lat = Number.parseFloat(queryMatch[1])
+    const lng = Number.parseFloat(queryMatch[2])
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
+  }
+  const dMatch = url.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/)
+  if (dMatch) {
+    const lat = Number.parseFloat(dMatch[1])
+    const lng = Number.parseFloat(dMatch[2])
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
+  }
+  return null
+}
+
 async function searchAddress() {
   const query = searchQuery.value.trim()
   if (!query || !map) return
 
   isSearching.value = true
   try {
+    const coords = parseCoordsInput(query)
+    if (coords) {
+      placeMarker(coords.lat, coords.lng)
+      map.setView([coords.lat, coords.lng], 18)
+      searchResult.value = `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
+      return
+    }
+
+    const isGoogleMaps = googleMapsUrlRegex.test(query)
+    if (isGoogleMaps && props.resolveGoogleMapsLink) {
+      const result = await props.resolveGoogleMapsLink(query)
+      if (result) {
+        placeMarker(result.lat, result.lng)
+        map.setView([result.lat, result.lng], 18)
+        searchResult.value = `Coordenadas desde link`
+      }
+      return
+    }
+
+    if (isGoogleMaps) {
+      const coordsFromUrl = extractCoordsFromGoogleMapsUrl(query)
+      if (coordsFromUrl) {
+        placeMarker(coordsFromUrl.lat, coordsFromUrl.lng)
+        map.setView([coordsFromUrl.lat, coordsFromUrl.lng], 18)
+        searchResult.value = `Coordenadas desde Google Maps`
+        return
+      }
+    }
+
     const params = new URLSearchParams({
       format: 'json',
       q: query,

@@ -233,6 +233,7 @@
               :searchable="true"
               :draggable-marker="true"
               :readonly="false"
+              :resolve-google-maps-link="resolverCoordenadasDesdeLink"
             />
           </div>
         </div>
@@ -398,6 +399,7 @@ import type {
   ClientePayload,
 } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
 import { AppCheckbox, AppInput, AppModal, AppSelect, AppTextarea, MapaLeaflet } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -430,6 +432,15 @@ const clienteData = computed(() => detailQuery.data.value ?? props.cliente ?? nu
 const isCheckingDocumento = ref(false)
 const documentoDuplicado = ref(false)
 const isConsultandoDocumento = ref(false)
+
+const resolverCoordenadasDesdeLink = async (link: string) => {
+  try {
+    const { latitud, longitud } = await direccionesService.coordenadasDesdeLink(link)
+    return { lat: latitud, lng: longitud }
+  } catch {
+    return null
+  }
+}
 
 // Catálogos dinámicos (Tipo Persona / Tipo Cliente / Tipo Documento)
 const listaTipoPersonaId = ref(ListaIds.TIPO_PERSONA)
