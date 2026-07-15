@@ -16,23 +16,21 @@
               :options="tipoComprobanteOptions"
               :disabled="catalogosQuery.isLoading.value"
             />
-            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
-            <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
+            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" disabled />
+            <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <AppSelectSearch
+            <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
-              remote
-              label="Cliente"
-              placeholder="Selecciona cliente"
-              search-placeholder="Razón social, documento o código..."
               :options="clienteOptions"
               :loading="clientesQuery.isFetching.value"
               :disabled="clientesQuery.isLoading.value"
+              :can-create="canCreateCliente"
               required
+              @created="seleccionarCliente"
             />
             <div class="min-w-0">
               <PosBalonSelectField
@@ -116,6 +114,7 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
+import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
 import {
   useCreateComprobanteMutation,
@@ -144,6 +143,7 @@ const {
   fecha,
   idCliente,
   canEmit,
+  canCreateCliente,
   tipoComprobanteOptions,
   clienteOptions,
   idAfectacionGravado,
@@ -152,6 +152,7 @@ const {
   comprobanteBaseValido,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
+  seleccionarCliente,
 } = usePosComprobanteForm()
 
 const createComprobanteMutation = useCreateComprobanteMutation()

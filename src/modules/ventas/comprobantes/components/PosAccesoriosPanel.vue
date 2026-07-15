@@ -11,22 +11,20 @@
               :options="tipoComprobanteOptions"
               :disabled="catalogosQuery.isLoading.value"
             />
-            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
-            <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
+            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" disabled />
+            <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <AppSelectSearch
+            <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
-              remote
-              label="Cliente"
-              placeholder="Selecciona cliente"
-              search-placeholder="Razón social, documento o código..."
               :options="clienteOptions"
               :loading="clientesQuery.isFetching.value"
               :disabled="clientesQuery.isLoading.value"
+              :can-create="canCreateCliente"
+              @created="seleccionarCliente"
             />
             <AppSelectSearch
               v-model="idAlmacen"
@@ -144,12 +142,14 @@ import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/in
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
 import {
   useCreateComprobanteMutation,
   useEmitirComprobanteMutation,
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import {
   calcularTotalesDesdeImporte,
   formatPosMoney,
@@ -179,6 +179,7 @@ const {
   fecha,
   idCliente,
   canEmit,
+  canCreateCliente,
   tipoComprobanteOptions,
   clienteOptions,
   idAfectacionGravado,
@@ -187,6 +188,7 @@ const {
   comprobanteBaseValido,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
+  seleccionarCliente,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateComprobanteMutation()
@@ -196,6 +198,8 @@ const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
 const almacenBuscar = ref('')
+const almacenesData = computed(() => almacenesQuery.data.value?.data)
+const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
 
 const categorias = ref<CategoriaProducto[]>([])
 const subCategorias = ref<SubCategoriaProducto[]>([])
@@ -459,6 +463,7 @@ async function limpiarTrasEmitir() {
   await reiniciarTrasOperacion()
   await productosQuery.refetch()
   await almacenesQuery.refetch()
+  aplicarAlmacenPorDefecto()
 }
 
 async function emitirComprobante() {

@@ -239,6 +239,17 @@ export function usePosComprobanteForm(options?: {
     await refrescarSiguienteNumero()
   }
 
+  /** Selecciona un cliente recién creado/cargado sin depender del resultado de búsqueda. */
+  function seleccionarCliente(cliente: Cliente) {
+    clienteSeleccionadoCache.value = cliente
+    idCliente.value = cliente.id
+    clienteBuscar.value = ''
+  }
+
+  const canCreateCliente = computed(() =>
+    authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
+  )
+
   return {
     authStore,
     catalogosQuery,
@@ -250,6 +261,7 @@ export function usePosComprobanteForm(options?: {
     fecha,
     idCliente,
     canEmit,
+    canCreateCliente,
     tipoComprobanteOptions,
     codigoTipoComprobante,
     clienteOptions,
@@ -261,6 +273,7 @@ export function usePosComprobanteForm(options?: {
     mensajeValidacionComprobante,
     refrescarSiguienteNumero,
     reiniciarTrasOperacion,
+    seleccionarCliente,
   }
 }
 

@@ -16,23 +16,21 @@
               :options="tipoComprobanteOptions"
               :disabled="catalogosQuery.isLoading.value"
             />
-            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
-            <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
+            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" disabled />
+            <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <AppSelectSearch
+            <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
-              remote
-              label="Cliente"
-              placeholder="Selecciona cliente"
-              search-placeholder="Razón social, documento o código..."
               :options="clienteOptions"
               :loading="clientesQuery.isFetching.value"
               :disabled="clientesQuery.isLoading.value"
+              :can-create="canCreateCliente"
               required
+              @created="seleccionarCliente"
             />
             <AppSelectSearch
               v-model="idAlmacen"
@@ -132,8 +130,10 @@ import { useCreateRecargaClienteMutation } from '@/modules/balones/recargas/comp
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
+import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
 import { useEmitirComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
@@ -157,10 +157,12 @@ const {
   fecha,
   idCliente,
   canEmit,
+  canCreateCliente,
   tipoComprobanteOptions,
   clienteOptions,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
+  seleccionarCliente,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateRecargaClienteMutation()
@@ -170,6 +172,8 @@ const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
 const almacenBuscar = ref('')
+const almacenesData = computed(() => almacenesQuery.data.value?.data)
+const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
 
 const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
 const productosQuery = useProductosQuery(productosFilters)
@@ -280,6 +284,7 @@ async function limpiarTrasEmitir() {
   await reiniciarTrasOperacion()
   await productosQuery.refetch()
   await almacenesQuery.refetch()
+  aplicarAlmacenPorDefecto()
 }
 
 async function emitirComprobante() {
