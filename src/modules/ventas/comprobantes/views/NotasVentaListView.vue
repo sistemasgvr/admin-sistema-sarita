@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Comprobantes" :items="breadcrumbItems" />
+    <PageBreadcrumb page-title="Notas de venta" :items="breadcrumbItems" />
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
@@ -18,7 +18,7 @@
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva venta
+              Nueva nota de venta
             </RouterLink>
           </template>
         </AppListToolbar>
@@ -45,7 +45,7 @@
       </template>
 
       <template #cell-nombre_estado_sunat="{ value }">
-        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" raw />
+        <ListaOpcionBadge :value="String(value ?? 'NO_APLICA')" raw />
       </template>
 
       <template #actions="{ row }">
@@ -77,23 +77,19 @@
       </template>
     </AppTable>
 
+    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+      Las notas de venta son documentos internos (no se emiten a SUNAT). Usa
+      <strong class="font-medium text-gray-700 dark:text-gray-200">Nueva nota de venta</strong>
+      en el punto de venta.
+    </p>
+
     <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
-
     <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
-
-    <ComprobanteNotaCreditoModal
-      v-model="notaCreditoModalOpen"
-      :comprobante="comprobanteToNotaCredito"
-    />
-
-    <ComprobanteCdrModal v-model="cdrModalOpen" :comprobante="comprobanteToCdr" />
-
-    <ComprobanteAnularModal v-model="anularModalOpen" :comprobante="comprobanteToAnular" />
 
     <AppModal
       v-model="deleteModalOpen"
-      title="Eliminar comprobante"
-      subtitle="Solo se pueden eliminar comprobantes no aceptados por SUNAT."
+      title="Eliminar nota de venta"
+      subtitle="Documento interno; no afecta a SUNAT."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -132,15 +128,10 @@ import {
   useComprobanteCatalogosPosQuery,
   useComprobantesQuery,
 } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
-import {
-  useDeleteComprobanteMutation,
-  useEmitirComprobanteMutation,
-} from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
-import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
-import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
+import { useDeleteComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
-import ComprobanteNotaCreditoModal from '@/modules/ventas/comprobantes/components/ComprobanteNotaCreditoModal.vue'
+import { CODIGO_NOTA_VENTA } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
 import type {
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -152,12 +143,8 @@ import {
   printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
-import {
-  emitirConImpresionTicket,
-} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
-import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
@@ -169,8 +156,7 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
-const breadcrumbItems = ventasBreadcrumbItems('Comprobantes')
-
+const breadcrumbItems = ventasBreadcrumbItems('Notas de venta')
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -186,7 +172,6 @@ const filters = ref<ComprobanteListFilters>({
 
 const comprobantesQuery = useComprobantesQuery(filters)
 const catalogosQuery = useComprobanteCatalogosPosQuery()
-const emitMutation = useEmitirComprobanteMutation()
 const deleteMutation = useDeleteComprobanteMutation()
 
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
@@ -194,66 +179,43 @@ const clientesQuery = useClientesQuery(clientesFilters)
 
 const detailModalOpen = ref(false)
 const comprobanteToViewId = ref<number | null>(null)
-
 const editModalOpen = ref(false)
 const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
-
-const notaCreditoModalOpen = ref(false)
-const comprobanteToNotaCredito = ref<ComprobanteListItem | null>(null)
-
-const cdrModalOpen = ref(false)
-const comprobanteToCdr = ref<ComprobanteListItem | null>(null)
-
 const deleteModalOpen = ref(false)
 const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
-
-const anularModalOpen = ref(false)
-const comprobanteToAnular = ref<ComprobanteListItem | null>(null)
-
 const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
-const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
-const canConsultarCdr = computed(() =>
-  authStore.hasPermission(PermisoBanderas.COMPROBANTES_CONSULTAR_CDR),
-)
-const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 
-const isLoading = computed(() => comprobantesQuery.isFetching.value)
-const rows = computed(() => comprobantesQuery.data.value?.data ?? [])
+const idTipoNotaVenta = computed(() => {
+  const tipos = catalogosQuery.data.value?.tiposComprobante ?? []
+  return (
+    tipos.find(
+      (t) =>
+        t.descripcion === CODIGO_NOTA_VENTA ||
+        t.nombre.toUpperCase().includes('NOTA_VENTA') ||
+        t.nombre.toUpperCase().includes('NOTA DE VENTA'),
+    )?.id ?? null
+  )
+})
+
+const isLoading = computed(
+  () =>
+    comprobantesQuery.isFetching.value ||
+    (catalogosQuery.isLoading.value && idTipoNotaVenta.value == null),
+)
+
+const rows = computed(() => {
+  if (idTipoNotaVenta.value == null) return []
+  return comprobantesQuery.data.value?.data ?? []
+})
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
-  {
-    key: 'fechaDesde',
-    label: 'Desde',
-    type: 'date',
-  },
-  {
-    key: 'fechaHasta',
-    label: 'Hasta',
-    type: 'date',
-  },
-  {
-    key: 'idTipoComprobante',
-    label: 'Tipo',
-    type: 'select',
-    placeholder: 'Boleta, factura...',
-    disabled: catalogosQuery.isLoading.value || catalogosQuery.isFetching.value,
-    options: toSelectOptions(
-      (catalogosQuery.data.value?.tiposComprobante ?? []).filter((tipo) => {
-        const codigo = String(tipo.descripcion ?? '').toUpperCase()
-        const nombre = String(tipo.nombre ?? '').toUpperCase()
-        return (
-          codigo !== 'NV' &&
-          !nombre.includes('NOTA_VENTA') &&
-          !nombre.includes('NOTA DE VENTA')
-        )
-      }),
-    ),
-  },
+  { key: 'fechaDesde', label: 'Desde', type: 'date' },
+  { key: 'fechaHasta', label: 'Hasta', type: 'date' },
   {
     key: 'idCliente',
     label: 'Cliente',
@@ -269,27 +231,19 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     })),
   },
   {
-    key: 'idEstadoSunat',
-    label: 'Estado SUNAT',
-    type: 'select',
-    placeholder: 'Pendiente, aceptado...',
-    disabled: catalogosQuery.isLoading.value || catalogosQuery.isFetching.value,
-    options: toSelectOptions(catalogosQuery.data.value?.estadosSunat),
-  },
-  {
     key: 'serie',
     label: 'Serie',
     type: 'text',
-    placeholder: 'B001 / F001',
+    placeholder: 'NV01',
   },
 ])
 
 const columns: TableColumn[] = [
-  { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
+  { key: 'comprobante', label: 'Nota de venta', mobile: 'primary' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'fecha', label: 'Fecha' },
   { key: 'total_importe', label: 'Total', align: 'right' },
-  { key: 'nombre_estado_sunat', label: 'SUNAT', mobile: 'badge' },
+  { key: 'nombre_estado_sunat', label: 'Estado', mobile: 'badge' },
 ]
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
@@ -297,18 +251,16 @@ let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 function syncFilters() {
   const active = dynamicFilters.value
   const serie = active.serie != null ? String(active.serie).trim() : ''
+  const idTipo = idTipoNotaVenta.value
 
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
+    idTipoComprobante: idTipo ?? -1,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
-    idTipoComprobante:
-      active.idTipoComprobante != null ? Number(active.idTipoComprobante) : undefined,
     idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
-    idEstadoSunat:
-      active.idEstadoSunat != null ? Number(active.idEstadoSunat) : undefined,
     serie: serie || undefined,
   }
 }
@@ -330,69 +282,16 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
+watch(
+  idTipoNotaVenta,
+  (id) => {
+    if (id != null) syncFilters()
+  },
+  { immediate: true },
+)
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
-}
-
-function esNotaVenta(row: ComprobanteListItem) {
-  const codigo = String(row.codigo_tipo_comprobante ?? '').toUpperCase()
-  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
-  return codigo === 'NV' || nombre.includes('NOTA_VENTA') || nombre.includes('NOTA DE VENTA')
-}
-
-function puedeEmitir(row: ComprobanteListItem) {
-  if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
-
-function puedeEditar(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
-
-function puedeEliminar(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
-
-function puedePdf(row: ComprobanteListItem) {
-  return (
-    row.nombre_estado_sunat === 'ACEPTADO' ||
-    row.nombre_estado_sunat === 'BAJA' ||
-    row.nombre_estado_sunat === 'NO_APLICA' ||
-    esNotaVenta(row)
-  )
-}
-
-function puedeConsultarCdr(row: ComprobanteListItem) {
-  if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
-  return row.nombre_estado_sunat === 'PENDIENTE' || row.nombre_estado_sunat === 'ACEPTADO'
-}
-
-function puedeNotaCredito(row: ComprobanteListItem) {
-  if (esNotaVenta(row)) return false
-  if (row.nombre_estado_sunat !== 'ACEPTADO') return false
-  const codigo = String(row.codigo_tipo_comprobante ?? '')
-  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
-  if (codigo === '01' || codigo === '03') return true
-  return (
-    (nombre.includes('FACTURA') || nombre.includes('BOLETA')) &&
-    !nombre.includes('NOTA')
-  )
-}
-
-function puedeAnular(row: ComprobanteListItem) {
-  if (esNotaVenta(row)) return false
-  if (row.nombre_estado_sunat !== 'ACEPTADO') return false
-  const codigo = String(row.codigo_tipo_comprobante ?? '')
-  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
-  // Comunicación de baja: facturas y notas (no boletas)
-  if (codigo === '01' || codigo === '07' || codigo === '08') return true
-  return (
-    nombre.includes('FACTURA') ||
-    nombre.includes('NOTA_CREDITO') ||
-    nombre.includes('NOTA_DEBITO') ||
-    nombre.includes('NOTA CREDITO') ||
-    nombre.includes('NOTA DEBITO')
-  ) && !nombre.includes('BOLETA')
 }
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
@@ -401,67 +300,42 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
-      hidden: !(canEdit.value && puedeEditar(row)),
-    },
-    {
-      key: 'emit',
-      label: 'Emitir SUNAT',
-      icon: ICONS.plug,
-      disabled: emitMutation.isPending.value,
-      hidden: !(canEmit.value && puedeEmitir(row)),
-    },
-    {
-      key: 'nota-credito',
-      label: 'Nota de crédito',
-      icon: ICONS.fileText,
-      hidden: !(canCreate.value && puedeNotaCredito(row)),
-    },
-    {
-      key: 'cdr',
-      label: 'Consultar CDR',
-      icon: ICONS.refreshCw,
-      hidden: !(canConsultarCdr.value && puedeConsultarCdr(row)),
-    },
-    {
-      key: 'anular',
-      label: 'Anular en SUNAT',
-      icon: ICONS.ban,
-      hidden: !(canAnular.value && puedeAnular(row)),
+      hidden: !canEdit.value,
     },
     {
       key: 'pdf-a4',
       label: 'Descargar PDF A4',
       icon: ICONS.download,
       disabled: pdfBusyId.value === row.id,
-      hidden: !(canView.value && puedePdf(row)),
+      hidden: !canView.value,
     },
     {
       key: 'print-a4',
       label: 'Imprimir A4',
       icon: ICONS.printer,
       disabled: pdfBusyId.value === row.id,
-      hidden: !(canView.value && puedePdf(row)),
+      hidden: !canView.value,
     },
     {
       key: 'pdf-ticket',
       label: 'Descargar ticket 80mm',
       icon: ICONS.ticket,
       disabled: pdfBusyId.value === row.id,
-      hidden: !(canView.value && puedePdf(row)),
+      hidden: !canView.value,
     },
     {
       key: 'print-ticket',
       label: 'Imprimir ticket 80mm',
       icon: ICONS.printer,
       disabled: pdfBusyId.value === row.id,
-      hidden: !(canView.value && puedePdf(row)),
+      hidden: !canView.value,
     },
     {
       key: 'delete',
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
-      hidden: !(canDelete.value && puedeEliminar(row)),
+      hidden: !canDelete.value,
     },
   ]
 }
@@ -470,18 +344,6 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
     case 'edit':
       openEditModal(row)
-      break
-    case 'emit':
-      void emitirComprobante(row)
-      break
-    case 'nota-credito':
-      openNotaCreditoModal(row)
-      break
-    case 'cdr':
-      openCdrModal(row)
-      break
-    case 'anular':
-      openAnularModal(row)
       break
     case 'pdf-a4':
       void descargarPdf(row, 'a4')
@@ -546,45 +408,9 @@ function openEditModal(row: ComprobanteListItem) {
   editModalOpen.value = true
 }
 
-function openNotaCreditoModal(row: ComprobanteListItem) {
-  comprobanteToNotaCredito.value = row
-  notaCreditoModalOpen.value = true
-}
-
 function openDeleteModal(row: ComprobanteListItem) {
   comprobanteToDelete.value = row
   deleteModalOpen.value = true
-}
-
-function openAnularModal(row: ComprobanteListItem) {
-  comprobanteToAnular.value = row
-  anularModalOpen.value = true
-}
-
-function openCdrModal(row: ComprobanteListItem) {
-  comprobanteToCdr.value = row
-  cdrModalOpen.value = true
-}
-
-async function emitirComprobante(row: ComprobanteListItem) {
-  const userId = authStore.user?.id
-  if (!userId) return
-
-  try {
-    const resultado = await emitirConImpresionTicket({
-      comprobanteId: row.id,
-      emitir: () =>
-        emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId }),
-    })
-
-    if (resultado === 'sin_ventana') {
-      toastWarning(
-        'Emitido OK. Permite ventanas emergentes en la URL para imprimir el ticket automáticamente.',
-      )
-    }
-  } catch {
-    // mutateAsync ya muestra el toast de error
-  }
 }
 
 async function confirmDelete() {

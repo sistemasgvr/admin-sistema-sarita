@@ -3,6 +3,22 @@
     <section class="space-y-4">
       <FormCardsLayout>
         <DetailSectionCard title="Comprobante" :icon="ICONS.receipt">
+          <template #actions>
+            <button
+              type="button"
+              title="Restablecer formulario"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+              :disabled="
+                createMutation.isPending.value ||
+                emitMutation.isPending.value ||
+                imprimiendoTicket
+              "
+              @click="limpiarFormulario"
+            >
+              <AppIcon :name="ICONS.brushCleaning" :size="14" />
+              Limpiar
+            </button>
+          </template>
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelect
               v-model="idTipoComprobante"
@@ -119,8 +135,10 @@
         :totales="totales"
         :puede-guardar="puedeGuardar"
         :guardando="createMutation.isPending.value"
-        :emitiendo="emitMutation.isPending.value"
+        :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
         :can-emit="canEmit"
+        :can-print="canPrint"
+        :es-nota-venta="esNotaVenta"
         :comprobante-guardado-id="comprobanteGuardadoId"
         :comprobante-guardado-serie="comprobanteGuardadoSerie"
         :comprobante-guardado-numero="comprobanteGuardadoNumero"
@@ -158,6 +176,7 @@ import {
 import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
   emitirConImpresionTicket,
+  imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -179,8 +198,10 @@ const {
   fecha,
   idCliente,
   canEmit,
+  canPrint,
   canCreateCliente,
   tipoComprobanteOptions,
+  esNotaVenta,
   clienteOptions,
   idAfectacionGravado,
   idMonedaPen,
@@ -193,6 +214,7 @@ const {
 
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
+const imprimiendoTicket = ref(false)
 
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
@@ -452,7 +474,7 @@ async function guardarComprobante() {
   comprobanteGuardadoNumero.value = comprobante.numero
 }
 
-async function limpiarTrasEmitir() {
+async function limpiarFormulario() {
   lineas.value = []
   glosa.value = ''
   idAlmacen.value = ''
@@ -472,6 +494,20 @@ async function emitirComprobante() {
 
   const id = comprobanteGuardadoId.value
   try {
+    if (esNotaVenta.value) {
+      imprimiendoTicket.value = true
+      const resultado = await imprimirTicketSinEmision(id)
+      if (resultado === 'sin_ventana') {
+        toastWarning(
+          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+        )
+      } else {
+        toastSuccess('Ticket de nota de venta listo para imprimir')
+      }
+      await limpiarFormulario()
+      return
+    }
+
     const resultado = await emitirConImpresionTicket({
       comprobanteId: id,
       emitir: () =>
@@ -487,9 +523,11 @@ async function emitirComprobante() {
       )
     }
 
-    await limpiarTrasEmitir()
+    await limpiarFormulario()
   } catch {
     // mutateAsync ya muestra el toast de error
+  } finally {
+    imprimiendoTicket.value = false
   }
 }
 </script>

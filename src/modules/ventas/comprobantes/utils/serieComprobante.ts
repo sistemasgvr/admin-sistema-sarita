@@ -67,6 +67,14 @@ export const REGLAS_SERIE_COMPROBANTE: Record<string, ReglaSerieComprobante> = {
     mensajePrefijo: 'Para GUÍA DE REMISIÓN la serie debe empezar con T (ej. T001)',
     requiereRuc: false,
   },
+  NV: {
+    codigo: 'NV',
+    nombre: 'NOTA DE VENTA',
+    serieDefault: 'NV01',
+    prefijosPermitidos: ['N'],
+    mensajePrefijo: 'Para NOTA DE VENTA la serie debe empezar con NV (ej. NV01)',
+    requiereRuc: false,
+  },
 }
 
 function correlativoSerieDesde(serieActual: string, length = 2): string {
@@ -111,6 +119,10 @@ export function seriePorDefectoDesdeCodigo(
     return `T${correlativoSerieDesde(actual || '001', 3)}`
   }
 
+  if (codigo === 'NV') {
+    return `NV${correlativoSerieDesde(actual.replace(/^NV/i, '') || '01', 2)}`
+  }
+
   const regla = REGLAS_SERIE_COMPROBANTE[codigo]
   return regla?.serieDefault ?? (actual || 'B001')
 }
@@ -135,7 +147,12 @@ export function validarSerieParaTipo(
   }
 
   const primer = serieUpper.charAt(0)
-  if (!regla.prefijosPermitidos.includes(primer)) {
+
+  if (codigoTipo === 'NV') {
+    if (!serieUpper.startsWith('NV')) {
+      return regla.mensajePrefijo
+    }
+  } else if (!regla.prefijosPermitidos.includes(primer)) {
     return regla.mensajePrefijo
   }
 

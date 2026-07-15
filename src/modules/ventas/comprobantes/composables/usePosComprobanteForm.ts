@@ -1,8 +1,14 @@
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { CLIENTES_VARIOS_CODIGO } from '@/modules/clientes/constants/clientesVarios'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
+import {
+  CODIGO_NOTA_VENTA,
+  esNotaVentaCodigo,
+} from '@/modules/ventas/comprobantes/constants/tipoComprobante'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import {
   seriePorDefectoDesdeCodigo,
@@ -12,8 +18,8 @@ import {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
-/** Tipos de venta directa en mostrador (sin origen). NC/ND se emiten desde flujo de notas. */
-const CODIGOS_TIPO_POS = ['01', '03'] as const
+/** Tipos de venta directa en punto de venta (sin origen). NC/ND se emiten desde flujo de notas. */
+const CODIGOS_TIPO_POS = ['01', '03', CODIGO_NOTA_VENTA] as const
 
 export {
   seriePorDefectoDesdeCodigo,
@@ -62,8 +68,10 @@ export function usePosComprobanteForm(options?: {
   const idCliente = ref<number | ''>('')
   /** Snapshot del cliente elegido; no depende del cache de búsqueda. */
   const clienteSeleccionadoCache = ref<Cliente | null>(null)
+  const clientesVarios = ref<Cliente | null>(null)
 
   const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
+  const canPrint = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_LISTAR))
 
   const tipoComprobanteOptions = computed(() =>
     (catalogosQuery.data.value?.tiposComprobante ?? [])
@@ -72,11 +80,18 @@ export function usePosComprobanteForm(options?: {
           (item.descripcion ?? '') as (typeof CODIGOS_TIPO_POS)[number],
         ),
       )
-      .map((item) => ({
-        value: item.id,
-        label: `${item.nombre} (${item.descripcion})`,
-        codigo: item.descripcion ?? '',
-      })),
+      .map((item) => {
+        const codigo = item.descripcion ?? ''
+        const nombre =
+          codigo === CODIGO_NOTA_VENTA
+            ? 'NOTA DE VENTA'
+            : (item.nombre ?? '').replace(/_/g, ' ')
+        return {
+          value: item.id,
+          label: `${nombre} (${codigo})`,
+          codigo,
+        }
+      }),
   )
 
   const codigoTipoComprobante = computed(() => {
@@ -85,6 +100,8 @@ export function usePosComprobanteForm(options?: {
     )
     return opcion?.codigo ?? ''
   })
+
+  const esNotaVenta = computed(() => esNotaVentaCodigo(codigoTipoComprobante.value))
 
   const clienteOptions = computed(() => {
     const options = (clientesQuery.data.value?.data ?? []).map((cliente) => ({
@@ -227,18 +244,6 @@ export function usePosComprobanteForm(options?: {
     return mensajeValidacionComprobante() === null
   }
 
-  /**
-   * Limpia cliente y deja listo el POS para la siguiente venta.
-   * Conserva tipo/serie y pide el siguiente correlativo.
-   */
-  async function reiniciarTrasOperacion() {
-    idCliente.value = ''
-    clienteSeleccionadoCache.value = null
-    clienteBuscar.value = ''
-    fecha.value = new Date().toISOString().slice(0, 10)
-    await refrescarSiguienteNumero()
-  }
-
   /** Selecciona un cliente recién creado/cargado sin depender del resultado de búsqueda. */
   function seleccionarCliente(cliente: Cliente) {
     clienteSeleccionadoCache.value = cliente
@@ -246,9 +251,61 @@ export function usePosComprobanteForm(options?: {
     clienteBuscar.value = ''
   }
 
+  function aplicarClientesVariosPorDefecto() {
+    if (clientesVarios.value) {
+      seleccionarCliente(clientesVarios.value)
+    } else {
+      idCliente.value = ''
+      clienteSeleccionadoCache.value = null
+    }
+    clienteBuscar.value = ''
+  }
+
+  async function cargarClientesVarios() {
+    try {
+      const result = await clientesService.listar({
+        buscar: CLIENTES_VARIOS_CODIGO,
+        pagina: 1,
+        limite: 10,
+        soloActivos: 1,
+      })
+      const found =
+        (result.data ?? []).find(
+          (cliente) =>
+            (cliente.codigo_interno ?? '').toUpperCase() === CLIENTES_VARIOS_CODIGO,
+        ) ?? null
+      clientesVarios.value = found
+      if (found && !idCliente.value) {
+        seleccionarCliente(found)
+      }
+    } catch {
+      clientesVarios.value = null
+    }
+  }
+
+  /**
+   * Limpia datos operativos y deja listo el POS para la siguiente venta.
+   * Conserva tipo/serie, reaplica Clientes varios y pide el siguiente correlativo.
+   */
+  async function reiniciarTrasOperacion() {
+    aplicarClientesVariosPorDefecto()
+    fecha.value = new Date().toISOString().slice(0, 10)
+    await refrescarSiguienteNumero()
+  }
+
   const canCreateCliente = computed(() =>
     authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
   )
+
+  onMounted(() => {
+    void cargarClientesVarios()
+  })
+
+  watch(esNotaVenta, (activo) => {
+    if (activo && clientesVarios.value) {
+      seleccionarCliente(clientesVarios.value)
+    }
+  })
 
   return {
     authStore,
@@ -261,11 +318,14 @@ export function usePosComprobanteForm(options?: {
     fecha,
     idCliente,
     canEmit,
+    canPrint,
     canCreateCliente,
     tipoComprobanteOptions,
     codigoTipoComprobante,
+    esNotaVenta,
     clienteOptions,
     clienteSeleccionado,
+    clientesVarios,
     idAfectacionGravado,
     idMonedaPen,
     idTipoOperacionVentaInterna,

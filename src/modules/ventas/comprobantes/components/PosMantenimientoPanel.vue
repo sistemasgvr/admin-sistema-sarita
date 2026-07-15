@@ -3,6 +3,18 @@
     <section>
       <FormCardsLayout>
         <DetailSectionCard title="Comprobante y servicio" :icon="ICONS.receipt">
+          <template #actions>
+            <button
+              type="button"
+              title="Restablecer formulario"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+              :disabled="guardando || emitMutation.isPending.value || imprimiendoTicket"
+              @click="limpiarFormulario"
+            >
+              <AppIcon :name="ICONS.brushCleaning" :size="14" />
+              Limpiar
+            </button>
+          </template>
           <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
             Registra el mantenimiento del cilindro (P.H., válvula, etc.) y genera el comprobante al
             cliente.
@@ -93,8 +105,10 @@
         :totales="totales"
         :puede-guardar="puedeGuardar"
         :guardando="guardando"
-        :emitiendo="emitMutation.isPending.value"
+        :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
         :can-emit="canEmit"
+        :can-print="canPrint"
+        :es-nota-venta="esNotaVenta"
         :comprobante-guardado-id="comprobanteGuardadoId"
         :comprobante-guardado-serie="comprobanteGuardadoSerie"
         :comprobante-guardado-numero="comprobanteGuardadoNumero"
@@ -124,8 +138,12 @@ import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
-import { emitirConImpresionTicket } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import {
+  emitirConImpresionTicket,
+  imprimirTicketSinEmision,
+} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -143,8 +161,10 @@ const {
   fecha,
   idCliente,
   canEmit,
+  canPrint,
   canCreateCliente,
   tipoComprobanteOptions,
+  esNotaVenta,
   clienteOptions,
   idAfectacionGravado,
   idMonedaPen,
@@ -157,6 +177,7 @@ const {
 
 const createComprobanteMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
+const imprimiendoTicket = ref(false)
 
 const productosFilters = ref({ pagina: 1, limite: 100, esServicio: true })
 const productosQuery = useProductosQuery(productosFilters)
@@ -287,7 +308,7 @@ async function registrarMantenimiento() {
   }
 }
 
-async function limpiarTrasEmitir() {
+async function limpiarFormulario() {
   idBalon.value = ''
   idTipoMantenimiento.value = ''
   idProducto.value = ''
@@ -311,6 +332,20 @@ async function emitirComprobante() {
 
   const id = comprobanteGuardadoId.value
   try {
+    if (esNotaVenta.value) {
+      imprimiendoTicket.value = true
+      const resultado = await imprimirTicketSinEmision(id)
+      if (resultado === 'sin_ventana') {
+        toastWarning(
+          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+        )
+      } else {
+        toastSuccess('Ticket de nota de venta listo para imprimir')
+      }
+      await limpiarFormulario()
+      return
+    }
+
     const resultado = await emitirConImpresionTicket({
       comprobanteId: id,
       emitir: () =>
@@ -326,9 +361,11 @@ async function emitirComprobante() {
       )
     }
 
-    await limpiarTrasEmitir()
+    await limpiarFormulario()
   } catch {
     // mutateAsync ya muestra el toast de error
+  } finally {
+    imprimiendoTicket.value = false
   }
 }
 </script>

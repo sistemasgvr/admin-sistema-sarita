@@ -1,13 +1,13 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Mostrador" :items="breadcrumbItems" />
+    <PageBreadcrumb page-title="Punto de venta" :items="breadcrumbItems" />
 
     <AppTabs
       v-model="activeTab"
       :tabs="visibleTabs"
       inline
       full-width
-      aria-label="Operaciones de mostrador"
+      aria-label="Operaciones de punto de venta"
       class="mb-4"
     />
 
@@ -39,7 +39,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const breadcrumbItems = ventasBreadcrumbItems('Mostrador')
+const breadcrumbItems = ventasBreadcrumbItems('Punto de venta')
 
 const TAB_KEYS = ['accesorios', 'recarga', 'alquiler', 'mantenimiento'] as const
 type TabKey = (typeof TAB_KEYS)[number]
