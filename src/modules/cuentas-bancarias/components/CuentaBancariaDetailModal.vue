@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useCuentaBancariaDetailQuery } from '@/modules/cuentas-bancarias/composables/useCuentaBancariaDetailQuery'
 import type { CuentaBancaria } from '@/modules/cuentas-bancarias/interfaces/cuenta-bancaria.interface'
 import { AppBadge, AppModal } from '@/shared/components'

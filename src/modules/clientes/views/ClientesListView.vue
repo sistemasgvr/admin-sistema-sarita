@@ -271,7 +271,6 @@ const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR))
-const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_ELIMINAR))
 const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_RESTAURAR))
 
 const isLoading = computed(() => clientesQuery.isFetching.value)
@@ -348,10 +347,10 @@ const openDetailModal = (cliente: Cliente) => {
   detailModalOpen.value = true
 }
 
-const openDeleteModal = (cliente: Cliente) => {
+/* const openDeleteModal = (cliente: Cliente) => {
   clienteToDelete.value = cliente
   deleteModalOpen.value = true
-}
+} */
 
 const openBajaModal = (cliente: Cliente) => {
   clienteToBaja.value = cliente
