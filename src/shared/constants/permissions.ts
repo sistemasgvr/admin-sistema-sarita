@@ -144,6 +144,12 @@ export const PermisoBanderas = {
   VEHICULOS_EDITAR: 'vehiculos.editar',
   VEHICULOS_ELIMINAR: 'vehiculos.eliminar',
 
+  CUENTAS_BANCARIAS_LISTAR: 'cuentas_bancarias.listar',
+  CUENTAS_BANCARIAS_VER: 'cuentas_bancarias.ver',
+  CUENTAS_BANCARIAS_CREAR: 'cuentas_bancarias.crear',
+  CUENTAS_BANCARIAS_EDITAR: 'cuentas_bancarias.editar',
+  CUENTAS_BANCARIAS_ELIMINAR: 'cuentas_bancarias.eliminar',
+
 
   BALONES_HUB_VER: 'balones.ver',
 
@@ -217,6 +223,13 @@ export const PermisoBanderas = {
   GUIAS_REMISION_EDITAR: 'guias_remision.editar',
   GUIAS_REMISION_ELIMINAR: 'guias_remision.eliminar',
   GUIAS_REMISION_EMITIR: 'guias_remision.emitir',
+
+  BAJAS_CLIENTE_LISTAR: 'bajas_cliente.listar',
+  BAJAS_CLIENTE_VER: 'bajas_cliente.ver',
+  BAJAS_CLIENTE_SOLICITAR: 'bajas_cliente.solicitar',
+  BAJAS_CLIENTE_APROBAR: 'bajas_cliente.aprobar',
+  BAJAS_CLIENTE_RECHAZAR: 'bajas_cliente.rechazar',
+  BAJAS_CLIENTE_ELIMINAR: 'bajas_cliente.eliminar',
 } as const
 
 export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBanderas]

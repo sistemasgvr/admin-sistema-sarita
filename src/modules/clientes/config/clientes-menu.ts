@@ -32,4 +32,9 @@ export const clientesMenuSubItems: AdminMenuSubItem[] = [
     path: '/admin/clientes/mapa',
     permission: PermisoBanderas.CLIENTES_LISTAR,
   },
+  {
+    name: 'Cuentas Bancarias',
+    path: '/admin/clientes/cuentas-bancarias',
+    permission: PermisoBanderas.CUENTAS_BANCARIAS_LISTAR,
+  },
 ]

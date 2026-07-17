@@ -5,7 +5,7 @@ export const clientesRoutes: RouteRecordRaw[] = [
   {
     path: 'clientes',
     name: 'admin-clientes',
-    component: () => import('@/modules/clientes/views/ClientesListView.vue'),
+    component: () => import('@/modules/clientes/views/ClientesTabsView.vue'),
     meta: {
       title: 'Clientes',
       module: 'clientes',

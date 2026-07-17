@@ -13,6 +13,11 @@ import type {
   UpdateDireccionPayload,
 } from '@/modules/direcciones/interfaces/direccion.interface'
 
+export interface CoordenadasDesdeLinkResponse {
+  latitud: number
+  longitud: number
+}
+
 export const direccionesService = {
   listar(filters: DireccionListFilters = {}) {
     return apiGetPaginated<Direccion>('/direcciones', { params: filters })
@@ -34,5 +39,9 @@ export const direccionesService = {
     return apiDelete<DeleteDireccionResponse>(`/direcciones/${id}`, {
       data: { idUsuarioAuditoria },
     })
+  },
+
+  coordenadasDesdeLink(link: string) {
+    return apiPost<CoordenadasDesdeLinkResponse>('/direcciones/coordenadas-desde-link', { link })
   },
 }
