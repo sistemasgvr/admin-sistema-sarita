@@ -416,7 +416,7 @@ const props = defineProps<ClienteFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: [cliente: Cliente]
+  saved: []
 }>()
 
 const authStore = useAuthStore()
@@ -618,16 +618,16 @@ const handleConsultarDocumento = async () => {
     return
   }
 
+  limpiarCamposConsulta()
+
   isConsultandoDocumento.value = true
   try {
     if (tipo === 'DNI') {
       const data = await consultasService.consultarDni(numero)
-      limpiarCamposConsulta()
       aplicarDatosDni(data)
       toastSuccess('Datos de RENIEC cargados')
     } else if (tipo === 'RUC') {
       const data = await consultasService.consultarRuc(numero)
-      limpiarCamposConsulta()
       await aplicarDatosRuc(data)
       toastSuccess('Datos de SUNAT cargados')
     } else {
@@ -656,13 +656,6 @@ const checkDocumento = async () => {
     if (documentoDuplicado.value) {
       setFieldError('numeroDocumento', 'Este número de documento ya está registrado')
     }
-  } catch (error) {
-    documentoDuplicado.value = true
-    setFieldError(
-      'numeroDocumento',
-      'No se pudo validar el documento. Inténtalo de nuevo antes de guardar.',
-    )
-    toastApiError(error, 'No se pudo validar el número de documento')
   } finally {
     isCheckingDocumento.value = false
   }
@@ -735,23 +728,10 @@ const onSubmit = handleSubmit(async (values) => {
   const currentUserId = authStore.user?.id
   if (!currentUserId) return
 
-  try {
-    documentoDuplicado.value = await documentoYaRegistrado(
-      String(values.numeroDocumento),
-      props.mode === 'edit' ? props.cliente?.id : undefined,
-    )
-  } catch (error) {
-    toastApiError(error, 'No se pudo validar el número de documento')
-    return
-  }
-
   if (documentoDuplicado.value) {
     setFieldError('numeroDocumento', 'Este número de documento ya está registrado')
     return
   }
-
-  const esRuc =
-    (tipoDocumentoSeleccionado.value?.nombre ?? '').trim().toUpperCase() === 'RUC'
 
   const payload: ClientePayload = {
     idUsuarioAuditoria: currentUserId,
@@ -768,8 +748,8 @@ const onSubmit = handleSubmit(async (values) => {
     email: values.email || undefined,
     direccion: values.direccion || undefined,
     referencia: values.referencia || undefined,
-    latitud: values.latitud ?? undefined,
-    longitud: values.longitud ?? undefined,
+    latitud: values.latitud || undefined,
+    longitud: values.longitud || undefined,
     idPais: idPaisUI.value ? Number(idPaisUI.value) : undefined,
     idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
     idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
@@ -778,22 +758,16 @@ const onSubmit = handleSubmit(async (values) => {
     esBuenContribuyente: esBuenContribuyente.value,
     esAgenteRetenedor: esAgenteRetenedor.value,
     afectoRus: afectoRus.value,
-    situacionSunat: esRuc ? (sunatActivo.value ? 'ACTIVO' : 'BAJA') : undefined,
-    estadoContribuyenteSunat: esRuc
-      ? sunatHabido.value
-        ? 'HABIDO'
-        : 'NO HABIDO'
-      : undefined,
+    situacionSunat: sunatActivo.value ? 'ACTIVO' : 'BAJA',
+    estadoContribuyenteSunat: sunatHabido.value ? 'HABIDO' : 'NO HABIDO',
     observacion: values.observacion || undefined,
   }
 
   try {
-    let saved: Cliente
-
     if (props.mode === 'create') {
-      saved = await createMutation.mutateAsync(payload)
+      await createMutation.mutateAsync(payload)
     } else if (props.cliente) {
-      saved = await updateMutation.mutateAsync({
+      await updateMutation.mutateAsync({
         id: props.cliente.id,
         payload,
       })
@@ -801,7 +775,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved', saved)
+    emit('saved')
     open.value = false
   } catch {
     // toast en mutation

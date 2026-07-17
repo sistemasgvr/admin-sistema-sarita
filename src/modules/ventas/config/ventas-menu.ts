@@ -23,6 +23,11 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
   {
+    name: 'Guías de remisión',
+    path: '/admin/ventas/guias-remision',
+    permission: PermisoBanderas.GUIAS_REMISION_LISTAR,
+  },
+  {
     name: 'Resumen diario',
     path: '/admin/ventas/resumen-diario',
     permission: PermisoBanderas.COMPROBANTES_EMITIR,
