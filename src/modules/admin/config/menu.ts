@@ -64,6 +64,12 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         permission: PermisoBanderas.VENTAS_VER,
         subItems: ventasMenuSubItems,
       },
+      {
+        icon: ICONS.calendar,
+        name: 'Actividades',
+        path: '/admin/operativa/actividades',
+        permission: PermisoBanderas.ACTIVIDADES_LISTAR,
+      },
     ],
   },
   {
