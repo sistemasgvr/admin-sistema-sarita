@@ -35,7 +35,7 @@
             @click="openCreateModal"
           >
             <AppIcon :name="ICONS.plus" :size="18" />
-            Nueva dirección
+            Nueva
           </button>
         </div>
       </template>

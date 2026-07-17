@@ -21,7 +21,12 @@
       <section
         v-for="section in sections"
         :key="section.title"
-        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+        class="rounded-xl border p-4 shadow-theme-xs"
+        :class="
+          section.isWarning
+            ? 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10'
+            : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900/40'
+        "
       >
         <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
           {{ section.title }}
@@ -33,8 +38,22 @@
             :key="item.label"
             :class="item.fullWidth ? 'sm:col-span-2' : ''"
           >
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">{{ item.label }}</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+            <dt
+              :class="
+                section.isWarning
+                  ? 'text-theme-xs font-semibold text-amber-700 dark:text-amber-400'
+                  : 'text-theme-xs text-gray-500 dark:text-gray-400'
+              "
+            >
+              {{ item.label }}
+            </dt>
+            <dd
+              :class="
+                section.isWarning
+                  ? 'text-sm font-medium text-amber-800 dark:text-amber-200'
+                  : 'text-sm font-medium text-gray-800 dark:text-white/90'
+              "
+            >
               {{ item.value ?? '—' }}
             </dd>
           </div>
@@ -448,6 +467,7 @@ interface DetailSection {
   title: string
   items: DetailItem[]
   showMap?: boolean
+  isWarning?: boolean
 }
 
 const sections = computed<DetailSection[]>(() => {
@@ -499,7 +519,25 @@ const sections = computed<DetailSection[]>(() => {
     },
   ]
 
-  if (c.observacion) {
+  if (c.estado_baja_aprobacion) {
+    result.push({
+      title: 'Observación',
+      isWarning: true,
+      items: [
+        {
+          label: 'Solicitud de baja pendiente',
+          value: [
+            'El cliente actualmente tiene una solicitud de baja.',
+            c.motivo_baja_opciones ? `Motivo: ${c.motivo_baja_opciones}.` : '',
+            c.motivo_baja_detalle ? `Detalles: ${c.motivo_baja_detalle}` : '',
+          ]
+            .filter(Boolean)
+            .join(' ') || '—',
+          fullWidth: true,
+        },
+      ],
+    })
+  } else if (c.observacion) {
     result.push({
       title: 'Observación',
       items: [{ label: '', value: c.observacion, fullWidth: true }],

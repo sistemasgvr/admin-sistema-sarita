@@ -40,13 +40,13 @@
           <AppIcon :name="ICONS.eye" :size="16" />
         </button>
 
-        <button v-if="canAprobar" type="button" title="Aprobar"
+        <button v-if="canAprobar && row.nombre_estado_aprobacion === 'PENDIENTE'" type="button" title="Aprobar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-50 dark:text-success-400 dark:hover:bg-success-500/10"
           @click="openAprobarModal(row)">
           <AppIcon :name="ICONS.check" :size="16" />
         </button>
 
-        <button v-if="canAprobar" type="button" title="Rechazar"
+        <button v-if="canAprobar && row.nombre_estado_aprobacion === 'PENDIENTE'" type="button" title="Rechazar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openRechazarModal(row)">
           <AppIcon :name="ICONS.x" :size="16" />
@@ -60,54 +60,14 @@
     </AppTable>
 
     <AppModal v-model="detailModalOpen" title="Detalle de solicitud de baja"
-      :subtitle="solicitudSeleccionada?.nombre_cliente ?? ''" size="lg">
-      <div v-if="detailQuery.data.value" class="grid gap-4 sm:grid-cols-2">
-        <div>
-          <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Motivo</p>
-          <p class="text-sm text-gray-800 dark:text-white/90">
-            {{ detailQuery.data.value.nombre_motivo_baja ?? solicitudSeleccionada?.nombre_motivo_baja }}
-          </p>
-        </div>
-        <div>
-          <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Solicitante</p>
-          <p class="text-sm text-gray-800 dark:text-white/90">
-            {{ detailQuery.data.value.nombre_usuario_solicita ?? solicitudSeleccionada?.nombre_usuario_solicita }}
-          </p>
-        </div>
-        <div>
-          <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Solicitado el</p>
-          <p class="text-sm text-gray-800 dark:text-white/90">
-            {{ formatListDate(detailQuery.data.value.fecha_creacion ?? solicitudSeleccionada?.fecha_creacion) }}
-          </p>
-        </div>
-        <div v-if="detailQuery.data.value.cliente_direccion">
-          <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Dirección</p>
-          <p class="text-sm text-gray-800 dark:text-white/90">
-            {{ detailQuery.data.value.cliente_direccion }}
-          </p>
-        </div>
-        <div v-if="detailQuery.data.value.cliente_telefono">
-          <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Teléfono</p>
-          <p class="text-sm text-gray-800 dark:text-white/90">
-            {{ detailQuery.data.value.cliente_telefono }}
-          </p>
-        </div>
-        <div v-if="detailQuery.data.value.cliente_email">
-          <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Email</p>
-          <p class="text-sm text-gray-800 dark:text-white/90">
-            {{ detailQuery.data.value.cliente_email }}
-          </p>
-        </div>
-        <div v-if="detailQuery.data.value.motivo_detalle" class="sm:col-span-2">
-          <p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">Detalle</p>
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            {{ detailQuery.data.value.motivo_detalle }}
-          </p>
-        </div>
-      </div>
-      <div v-else-if="detailQuery.isLoading.value" class="py-8 text-center text-sm text-gray-500">
-        Cargando detalles...
-      </div>
+      :subtitle="solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.nombre_cliente ?? ''" size="lg">
+      <DetailCardsLayout :loading="detailQuery.isLoading.value" :sections="detailSections">
+        <template #badges>
+          <AppBadge :color="getEstadoColor(detailQuery.data.value?.nombre_estado_aprobacion ?? '')">
+            {{ detailQuery.data.value?.nombre_estado_aprobacion }}
+          </AppBadge>
+        </template>
+      </DetailCardsLayout>
 
       <template #footer>
         <button type="button"
@@ -147,13 +107,13 @@
     </AppModal>
 
     <AppModal v-model="rechazarModalOpen" title="Rechazar solicitud de baja"
-      :subtitle="solicitudSeleccionada?.nombre_cliente ?? ''" size="md">
+      :subtitle="solicitudSeleccionada?.nombre_cliente ?? ''" size="sm">
       <div class="space-y-4">
         <p class="text-sm text-gray-600 dark:text-gray-400">
           La solicitud quedará rechazada y el cliente seguirá activo en el sistema.
         </p>
-        <AppTextarea v-model="motivoRechazo" label="Motivo del rechazo (opcional)"
-          placeholder="Indica por qué se rechaza la solicitud..." :disabled="rechazarMutation.isPending.value" />
+        <!-- <AppTextarea v-model="motivoRechazo" label="Motivo del rechazo (opcional)"
+          placeholder="Indica por qué se rechaza la solicitud..." :disabled="rechazarMutation.isPending.value" /> -->
       </div>
 
       <template #footer>
@@ -180,13 +140,16 @@ import {
 } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteMutations'
 import { useBajaClienteDetailQuery } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteDetailQuery'
 import { useBajasClienteQuery } from '@/modules/clientes/bajas-cliente/composables/useBajasClienteQuery'
-import type { BajaCliente } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
+import type { BajaCliente, BajaClienteDetail } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable, AppTextarea } from '@/shared/components'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import type { IconName } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { formatListDate } from '@/shared/utils/date'
+import { formatListDate, formatDateTime } from '@/shared/utils/date'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 withDefaults(
@@ -246,6 +209,67 @@ const columns: TableColumn[] = [
   { key: 'fecha_creacion', label: 'Solicitado' },
   { key: 'nombre_estado_aprobacion', label: 'Estado' }
 ]
+
+const detailData = computed<BajaClienteDetail | null>(
+  () => detailQuery.data.value ?? null,
+)
+
+const detailSections = computed<DetailSection[]>(() => {
+  const d = detailData.value
+  if (!d) return []
+
+  const nombreCliente = [d.cliente_nombres, d.cliente_apellido_paterno, d.cliente_apellido_materno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  return [
+    {
+      title: 'Cliente',
+      icon: ICONS.building2,
+      items: [
+        { label: 'Razón social', value: d.cliente_razon_social || '—' },
+        { label: 'Nombre', value: nombreCliente || '—' },
+        { label: 'Documento', value: d.cliente_numero_documento || '—' },
+      ],
+    },
+    {
+      title: 'Solicitud',
+      icon: ICONS.fileText,
+      items: [
+        { label: 'Motivo de baja', value: d.nombre_motivo_baja || '—' },
+        { label: 'Detalle', value: d.motivo_detalle || '—', fullWidth: true },
+        { label: 'Solicitado el', value: d.fecha_baja ? formatListDate(d.fecha_baja) : '—' },
+        { label: 'Solicitante', value: d.nombre_usuario_solicita || '—' },
+      ],
+    },
+    {
+      title: 'Estado',
+      icon: ICONS.alertCircle,
+      items: [
+        { label: 'Estado', value: d.nombre_estado_aprobacion || '—' },
+        {
+          label: 'Autorizado por',
+          value: d.nombre_usuario_autoriza || '—',
+        },
+        {
+          label: 'Fecha de autorización',
+          value: d.fecha_autorizacion ? formatListDate(d.fecha_autorizacion) : '—',
+        },
+      ],
+    },
+    {
+      title: 'Auditoría',
+      icon: ICONS.history,
+      items: [
+        { label: 'Creado por', value: d.nombre_usuario_creacion || '—' },
+        { label: 'Fecha de creación', value: d.fecha_creacion ? formatDateTime(d.fecha_creacion) : '—' },
+        { label: 'Modificado por', value: d.nombre_usuario_modificacion || '—' },
+        { label: 'Última modificación', value: d.fecha_modificacion ? formatDateTime(d.fecha_modificacion) : '—' },
+      ],
+    },
+  ]
+})
 
 const getEstadoColor = (
   estado: string,
@@ -312,7 +336,6 @@ const confirmarRechazo = async () => {
       id: solicitud.id,
       payload: {
         idUsuarioAuditoria: userId,
-        motivoRechazo: motivoRechazo.value || undefined,
       },
     })
     rechazarModalOpen.value = false

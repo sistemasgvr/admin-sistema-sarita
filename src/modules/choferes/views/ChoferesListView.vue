@@ -39,7 +39,7 @@
             @click="openCreateModal"
           >
             <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo chofer
+            Nuevo
           </button>
         </div>
       </template>
