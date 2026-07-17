@@ -216,6 +216,13 @@ export const PermisoBanderas = {
   COMPROBANTES_ELIMINAR: 'comprobantes.eliminar',
   COMPROBANTES_EMITIR: 'comprobantes.emitir',
   COMPROBANTES_CONSULTAR_CDR: 'comprobantes.consultar_cdr',
+
+  BAJAS_CLIENTE_LISTAR: 'bajas_cliente.listar',
+  BAJAS_CLIENTE_VER: 'bajas_cliente.ver',
+  BAJAS_CLIENTE_SOLICITAR: 'bajas_cliente.solicitar',
+  BAJAS_CLIENTE_APROBAR: 'bajas_cliente.aprobar',
+  BAJAS_CLIENTE_RECHAZAR: 'bajas_cliente.rechazar',
+  BAJAS_CLIENTE_ELIMINAR: 'bajas_cliente.eliminar',
 } as const
 
 export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBanderas]

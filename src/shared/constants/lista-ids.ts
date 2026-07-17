@@ -58,6 +58,8 @@ export const ListaIds = {
   TIPO_CUENTA: 41,
   /** gen_lista.nombre = Banco (BCP, BBVA, etc.) */
   BANCO: 40,
+  /** gen_lista.nombre = MotivoBajaCliente */
+  MOTIVO_BAJA_CLIENTE: 46,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds

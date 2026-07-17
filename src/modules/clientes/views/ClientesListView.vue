@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Clientes" />
+    <PageBreadcrumb v-if="!embedded" page-title="Clientes" />
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
@@ -75,13 +75,23 @@
         </button>
 
         <button
+          v-if="canEdit && row.estado === 1"
+          type="button"
+          title="Solicitar baja"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+          @click="openBajaModal(row)"
+        >
+          <AppIcon :name="ICONS.archive" :size="16" />
+        </button>
+
+        <!-- <button
           v-if="canDelete && row.estado === 1"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-        </button>
+        </button> -->
 
         <button
           v-if="canRestore && row.estado !== 1"
@@ -113,6 +123,12 @@
     />
 
     <ClienteDetailModal v-model="detailModalOpen" :cliente="clienteToView" />
+
+    <ClienteBajaModal
+      v-model="bajaModalOpen"
+      :cliente="clienteToBaja"
+      @saved="onBajaSaved"
+    />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -153,6 +169,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/ClienteBajaModal.vue'
 import ClienteDetailModal from '@/modules/clientes/components/ClienteDetailModal.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import {
@@ -180,6 +197,15 @@ import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const authStore = useAuthStore()
 
@@ -226,6 +252,9 @@ const clienteToView = ref<Cliente | null>(null)
 
 const deleteModalOpen = ref(false)
 const clienteToDelete = ref<Cliente | null>(null)
+
+const bajaModalOpen = ref(false)
+const clienteToBaja = ref<Cliente | null>(null)
 
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
@@ -311,6 +340,15 @@ const openDetailModal = (cliente: Cliente) => {
 const openDeleteModal = (cliente: Cliente) => {
   clienteToDelete.value = cliente
   deleteModalOpen.value = true
+}
+
+const openBajaModal = (cliente: Cliente) => {
+  clienteToBaja.value = cliente
+  bajaModalOpen.value = true
+}
+
+const onBajaSaved = () => {
+  clienteToBaja.value = null
 }
 
 const confirmDelete = async () => {
