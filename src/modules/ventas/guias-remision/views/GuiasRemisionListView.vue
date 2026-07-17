@@ -61,7 +61,7 @@
 
           <AppActionMenu
             :items="actionItemsForRow(row)"
-            @select="(key) => onActionSelect(key, row)"
+            :execute="(key) => onActionSelect(key, row)"
           />
         </div>
       </template>
@@ -192,6 +192,7 @@ const guiaToViewId = ref<number | null>(null)
 const guiaToEditId = ref<number | null>(null)
 const deleteModalOpen = ref(false)
 const guiaToDelete = ref<GuiaRemisionListItem | null>(null)
+const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_VER))
@@ -305,31 +306,35 @@ function puedeConsultar(row: GuiaRemisionListItem) {
 }
 
 function actionItemsForRow(row: GuiaRemisionListItem): ActionMenuItem[] {
+  const busy = pdfBusyId.value !== null || emitMutation.isPending.value || consultarMutation.isPending.value
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !(canEdit.value && puedeEditar(row)),
     },
     {
       key: 'pdf',
       label: 'Descargar PDF',
       icon: ICONS.fileText,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
       key: 'emit',
       label: 'Emitir SUNAT',
       icon: ICONS.plug,
-      disabled: emitMutation.isPending.value,
+      disabled: busy,
       hidden: !(canEmit.value && puedeEmitir(row)),
     },
     {
       key: 'status',
       label: 'Consultar estado',
       icon: ICONS.refreshCw,
-      disabled: consultarMutation.isPending.value,
+      disabled: busy,
       hidden: !(canEmit.value && puedeConsultar(row)),
     },
     {
@@ -337,6 +342,7 @@ function actionItemsForRow(row: GuiaRemisionListItem): ActionMenuItem[] {
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
+      disabled: busy,
       hidden: !(canDelete.value && puedeEliminar(row)),
     },
   ]
@@ -346,20 +352,17 @@ function onActionSelect(key: string, row: GuiaRemisionListItem) {
   switch (key) {
     case 'edit':
       openEdit(row)
-      break
+      return
     case 'pdf':
-      void descargarPdf(row)
-      break
+      return descargarPdf(row)
     case 'emit':
-      void emitir(row)
-      break
+      return emitir(row)
     case 'status':
-      void consultarEstado(row)
-      break
+      return consultarEstado(row)
     case 'delete':
       guiaToDelete.value = row
       deleteModalOpen.value = true
-      break
+      return
   }
 }
 
@@ -384,12 +387,17 @@ function onGuiaSaved(id: number) {
 }
 
 async function descargarPdf(row: GuiaRemisionListItem) {
+  if (pdfBusyId.value !== null) return
+  pdfBusyId.value = row.id
+
   try {
     const blob = await guiasRemisionService.obtenerPdf(row.id)
     downloadBlob(blob, `GRE-${row.serie}-${row.numero}.pdf`)
     toastSuccess('PDF descargado')
   } catch (error) {
     toastApiError(error, 'No se pudo generar el PDF')
+  } finally {
+    pdfBusyId.value = null
   }
 }
 

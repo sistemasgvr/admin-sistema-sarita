@@ -62,7 +62,7 @@
 
           <AppActionMenu
             :items="actionItemsForRow(row)"
-            @select="(key) => onActionSelect(key, row)"
+            :execute="(key) => onActionSelect(key, row)"
           />
         </div>
       </template>
@@ -294,40 +294,43 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
 }
 
-function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
+function actionItemsForRow(_row: ComprobanteListItem): ActionMenuItem[] {
+  const busy = pdfBusyId.value !== null
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !canEdit.value,
     },
     {
       key: 'pdf-a4',
       label: 'Descargar PDF A4',
       icon: ICONS.download,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
       key: 'print-a4',
       label: 'Imprimir A4',
       icon: ICONS.printer,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
       key: 'pdf-ticket',
       label: 'Descargar ticket 80mm',
       icon: ICONS.ticket,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
       key: 'print-ticket',
       label: 'Imprimir ticket 80mm',
       icon: ICONS.printer,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
@@ -335,6 +338,7 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
+      disabled: busy,
       hidden: !canDelete.value,
     },
   ]
@@ -344,22 +348,18 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
     case 'edit':
       openEditModal(row)
-      break
+      return
     case 'pdf-a4':
-      void descargarPdf(row, 'a4')
-      break
+      return descargarPdf(row, 'a4')
     case 'print-a4':
-      void imprimirPdf(row, 'a4')
-      break
+      return imprimirPdf(row, 'a4')
     case 'pdf-ticket':
-      void descargarPdf(row, 'ticket')
-      break
+      return descargarPdf(row, 'ticket')
     case 'print-ticket':
-      void imprimirPdf(row, 'ticket')
-      break
+      return imprimirPdf(row, 'ticket')
     case 'delete':
       openDeleteModal(row)
-      break
+      return
   }
 }
 

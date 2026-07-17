@@ -77,7 +77,7 @@
 
           <AppActionMenu
             :items="actionItemsForRow(row)"
-            @select="(key) => onActionSelect(key, row)"
+            :execute="(key) => onActionSelect(key, row)"
           />
         </div>
       </template>
@@ -379,37 +379,42 @@ function puedeAnular(row: ComprobanteListItem) {
 }
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
+  const busy = pdfBusyId.value !== null || emitMutation.isPending.value
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !(canEdit.value && puedeEditar(row)),
     },
     {
       key: 'emit',
       label: 'Emitir SUNAT',
       icon: ICONS.plug,
-      disabled: emitMutation.isPending.value,
+      disabled: busy,
       hidden: !(canEmit.value && puedeEmitir(row)),
     },
     {
       key: 'cdr',
       label: 'Consultar CDR',
       icon: ICONS.refreshCw,
+      disabled: busy,
       hidden: !(canConsultarCdr.value && puedeConsultarCdr(row)),
     },
     {
       key: 'anular',
       label: 'Anular en SUNAT',
       icon: ICONS.ban,
+      disabled: busy,
       hidden: !(canAnular.value && puedeAnular(row)),
     },
     {
       key: 'pdf-a4',
       label: 'Descargar PDF',
       icon: ICONS.download,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !(canView.value && puedePdf(row)),
     },
     {
@@ -417,6 +422,7 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
+      disabled: busy,
       hidden: !(canDelete.value && puedeEliminar(row)),
     },
   ]
@@ -426,22 +432,20 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
     case 'edit':
       openEditModal(row)
-      break
+      return
     case 'emit':
-      void emitirComprobante(row)
-      break
+      return emitirComprobante(row)
     case 'cdr':
       openCdrModal(row)
-      break
+      return
     case 'anular':
       openAnularModal(row)
-      break
+      return
     case 'pdf-a4':
-      void descargarPdf(row, 'a4')
-      break
+      return descargarPdf(row, 'a4')
     case 'delete':
       openDeleteModal(row)
-      break
+      return
   }
 }
 

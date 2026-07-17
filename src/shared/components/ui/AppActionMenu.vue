@@ -6,10 +6,14 @@
       :aria-expanded="isOpen"
       aria-haspopup="menu"
       :title="title"
-      :disabled="disabled"
+      :disabled="disabled || pendingKey !== null"
       @click.stop="toggle"
     >
-      <AppIcon :name="ICONS.ellipsisVertical" :size="16" />
+      <AppIcon
+        :name="pendingKey ? ICONS.loader : ICONS.ellipsisVertical"
+        :size="16"
+        :class="{ 'animate-spin': pendingKey !== null }"
+      />
     </button>
 
     <Teleport to="body">
@@ -31,16 +35,19 @@
               ? 'text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10'
               : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/5'
           "
-          :disabled="item.disabled"
+          :disabled="isItemDisabled(item)"
           @click.stop="onSelect(item)"
         >
           <AppIcon
-            v-if="item.icon"
-            :name="item.icon"
+            v-if="isItemLoading(item) || item.icon"
+            :name="isItemLoading(item) ? ICONS.loader : (item.icon ?? ICONS.loader)"
             :size="15"
             class="shrink-0"
+            :class="{ 'animate-spin': isItemLoading(item) }"
           />
-          <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+          <span class="min-w-0 flex-1 truncate">
+            {{ isItemLoading(item) ? 'Procesando...' : item.label }}
+          </span>
         </button>
       </div>
     </Teleport>
@@ -58,6 +65,8 @@ const props = withDefaults(
     items: ActionMenuItem[]
     title?: string
     disabled?: boolean
+    /** Si retorna Promise, el menú queda abierto con loading solo en esa key. */
+    execute?: (key: string) => void | Promise<unknown>
   }>(),
   {
     title: 'Más acciones',
@@ -72,6 +81,8 @@ const emit = defineEmits<{
 const rootRef = ref<HTMLElement>()
 const menuRef = ref<HTMLElement>()
 const isOpen = ref(false)
+/** Key de la única acción en curso. El loading nunca se comparte entre ítems. */
+const pendingKey = ref<string | null>(null)
 const menuStyle = ref<{ top: string; left: string; width?: string }>({
   top: '0px',
   left: '0px',
@@ -108,25 +119,73 @@ function updatePosition() {
 }
 
 async function openMenu() {
-  if (props.disabled || !visibleItems.value.length) return
+  if (props.disabled || pendingKey.value || !visibleItems.value.length) return
   isOpen.value = true
   await nextTick()
   updatePosition()
 }
 
-function closeMenu() {
+function closeMenu(force = false) {
+  if (pendingKey.value && !force) return
   isOpen.value = false
 }
 
 function toggle() {
+  if (pendingKey.value) return
   if (isOpen.value) closeMenu()
   else void openMenu()
 }
 
-function onSelect(item: ActionMenuItem) {
-  if (item.disabled) return
-  closeMenu()
+function isItemLoading(item: ActionMenuItem) {
+  return pendingKey.value === item.key
+}
+
+function isItemDisabled(item: ActionMenuItem) {
+  if (pendingKey.value) return true
+  return item.disabled === true
+}
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (
+    value != null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    typeof (value as PromiseLike<unknown>).then === 'function'
+  )
+}
+
+async function runPendingAction(key: string, task: PromiseLike<unknown>) {
+  pendingKey.value = key
+  await nextTick()
+  updatePosition()
+
+  try {
+    await task
+  } catch {
+    // La acción consumidora muestra su propia notificación de error.
+  } finally {
+    pendingKey.value = null
+    closeMenu(true)
+  }
+}
+
+async function onSelect(item: ActionMenuItem) {
+  if (isItemDisabled(item) || pendingKey.value) return
+
+  if (props.execute) {
+    // Marcar loading de esta key antes de ejecutar, para no depender de flags del padre.
+    const result = props.execute(item.key)
+
+    if (isThenable(result)) {
+      await runPendingAction(item.key, result)
+      return
+    }
+
+    closeMenu()
+    return
+  }
+
   emit('select', item.key)
+  closeMenu()
 }
 
 function onPointerDown(event: MouseEvent) {
@@ -138,9 +197,18 @@ function onPointerDown(event: MouseEvent) {
 watch(
   () => props.items,
   () => {
-    if (isOpen.value && !visibleItems.value.length) closeMenu()
+    if (!isOpen.value) return
+    if (!visibleItems.value.length && !pendingKey.value) closeMenu()
   },
+  { deep: true },
 )
+
+watch(pendingKey, async (key) => {
+  if (key && isOpen.value) {
+    await nextTick()
+    updatePosition()
+  }
+})
 
 onMounted(() => {
   document.addEventListener('mousedown', onPointerDown)
