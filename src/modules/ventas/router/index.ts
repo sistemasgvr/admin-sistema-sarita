@@ -49,6 +49,17 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'guias-remision',
+        name: 'admin-ventas-guias-remision',
+        component: () =>
+          import('@/modules/ventas/guias-remision/views/GuiasRemisionListView.vue'),
+        meta: {
+          title: 'Guías de remisión',
+          module: 'ventas',
+          permission: PermisoBanderas.GUIAS_REMISION_LISTAR,
+        },
+      },
+      {
         path: 'resumen-diario',
         name: 'admin-ventas-resumen-diario',
         component: () =>
