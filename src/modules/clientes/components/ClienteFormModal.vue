@@ -416,7 +416,7 @@ const props = defineProps<ClienteFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [cliente: Cliente]
 }>()
 
 const authStore = useAuthStore()
@@ -764,10 +764,12 @@ const onSubmit = handleSubmit(async (values) => {
   }
 
   try {
+    let clienteGuardado: Cliente
+
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      clienteGuardado = await createMutation.mutateAsync(payload)
     } else if (props.cliente) {
-      await updateMutation.mutateAsync({
+      clienteGuardado = await updateMutation.mutateAsync({
         id: props.cliente.id,
         payload,
       })
@@ -775,7 +777,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved')
+    emit('saved', clienteGuardado)
     open.value = false
   } catch {
     // toast en mutation
