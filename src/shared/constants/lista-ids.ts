@@ -60,6 +60,13 @@ export const ListaIds = {
   BANCO: 40,
   /** gen_lista.nombre = MotivoBajaCliente */
   MOTIVO_BAJA_CLIENTE: 46,
+  /** gen_lista.nombre = TipoActividad */
+  TIPO_ACTIVIDAD: 48,
+  /** gen_lista.nombre = PrioridadActividad */
+  PRIORIDAD_ACTIVIDAD: 50,
+  /** gen_lista.nombre = EstadoActividad */
+  ESTADO_ACTIVIDAD: 49,
+
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds

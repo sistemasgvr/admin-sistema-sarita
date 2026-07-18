@@ -17,13 +17,26 @@ export interface BajaCliente {
 }
 
 export interface BajaClienteDetail extends BajaCliente {
+  //Datos del cliente
   cliente_razon_social?: string | null
   cliente_nombres?: string | null
   cliente_apellido_paterno?: string | null
   cliente_apellido_materno?: string | null
+  cliente_numero_documento?: string | null
   cliente_direccion?: string | null
   cliente_telefono?: string | null
   cliente_email?: string | null
+  //Datos de la solicitud de baja
+  fecha_baja?: string | null
+  id_usuario_autoriza?: number | null
+  nombre_usuario_autoriza?: string | null
+  fecha_autorizacion?: string | null
+  id_estado_aprobacion?: number | null
+  //Auditoria de las tablas
+  id_usuario_modificacion?: number | null
+  nombre_usuario_modificacion?: string | null
+  id_usuario_creacion?: number | null
+  nombre_usuario_creacion?: string | null
 }
 
 export interface BajaClienteListFilters {
@@ -48,5 +61,4 @@ export interface AprobarBajaClientePayload {
 
 export interface RechazarBajaClientePayload {
   idUsuarioAuditoria: number
-  motivoRechazo?: string
 }

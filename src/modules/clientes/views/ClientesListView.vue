@@ -32,9 +32,17 @@
       </template>
 
       <template #cell-cliente="{ row }">
-        <p class="truncate font-medium text-gray-800 dark:text-white/90">
-          {{ getNombrePrincipal(row) }}
-        </p>
+        <div class="flex flex-col gap-0.5">
+          <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
+            {{ row.razon_social }}
+          </p>
+          <p
+            v-if="row.nombres || row.apellido_paterno || row.apellido_materno"
+            class="truncate text-sm text-gray-500 dark:text-gray-400"
+          >
+            {{ [row.nombres, row.apellido_paterno, row.apellido_materno].filter(Boolean).join(' ') }}
+          </p>
+        </div>
         <AppBadge v-if="row.nombre_tipo_persona" size="sm" color="neutral" class="mt-1">
           {{ row.nombre_tipo_persona }}
         </AppBadge>
@@ -51,7 +59,10 @@
         </div>
       </template>
       <template #cell-estado="{ row }">
-        <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
+        <AppBadge v-if="row.estado_baja_aprobacion" color="warning">
+          Pendiente
+        </AppBadge>
+        <AppBadge v-else :color="row.estado === 1 ? 'success' : 'error'">
           {{ row.estado === 1 ? 'Activo' : 'Inactivo' }}
         </AppBadge>
       </template>
@@ -260,7 +271,6 @@ const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR))
-const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_ELIMINAR))
 const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_RESTAURAR))
 
 const isLoading = computed(() => clientesQuery.isFetching.value)
@@ -337,10 +347,10 @@ const openDetailModal = (cliente: Cliente) => {
   detailModalOpen.value = true
 }
 
-const openDeleteModal = (cliente: Cliente) => {
+/* const openDeleteModal = (cliente: Cliente) => {
   clienteToDelete.value = cliente
   deleteModalOpen.value = true
-}
+} */
 
 const openBajaModal = (cliente: Cliente) => {
   clienteToBaja.value = cliente

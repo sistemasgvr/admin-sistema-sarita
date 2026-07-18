@@ -35,6 +35,10 @@ export interface Cliente {
   estado_contribuyente_sunat?: string | null
   observacion?: string | null
   estado: number
+  id_baja_pendiente?: number | null
+  estado_baja_aprobacion?: string | null
+  motivo_baja_detalle?: string | null
+  motivo_baja_opciones?: string | null
   id_usuario_creacion?: number | null
   nombre_usuario_creacion?: string | null
   id_usuario_modificacion?: number | null
