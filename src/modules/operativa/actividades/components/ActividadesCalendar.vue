@@ -1,11 +1,13 @@
 <template>
-  <div class="actividades-calendar">
-    <FullCalendar ref="calendarRef" :options="calendarOptions" />
+  <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
+    <div class="actividades-calendar">
+      <FullCalendar ref="calendarRef" :options="calendarOptions" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -19,13 +21,25 @@ import type { Actividad } from '@/modules/operativa/actividades/interfaces/activ
 interface ActividadesCalendarProps {
   actividades: Actividad[]
   loading?: boolean
-  /** Vista inicial: dayGridMonth | timeGridWeek | timeGridDay | listWeek */
-  initialView?: string
 }
 
 const props = withDefaults(defineProps<ActividadesCalendarProps>(), {
   loading: false,
-  initialView: 'dayGridMonth',
+})
+
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth < 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 
 const emit = defineEmits<{
@@ -39,12 +53,20 @@ const emit = defineEmits<{
 
 const calendarRef = ref<InstanceType<typeof FullCalendar>>()
 
-// Paleta estable por id_estado_actividad. Los nombres/colores "reales" del
-// estado vienen del catálogo (gen_lista), aquí solo se asigna un color
-// determinista para diferenciarlos visualmente en el calendario.
-const ESTADO_COLORS = ['#1565c0', '#0b9444', '#e53935', '#f59e0b', '#7c3aed', '#0891b2', '#be185d']
+const COLORS = [
+  { bg: '#2563eb', border: '#1d4ed8' },
+  { bg: '#e11d48', border: '#be123c' },
+  { bg: '#65a30d', border: '#4d7c0f' },
+  { bg: '#d97706', border: '#b45309' },
+  { bg: '#0891b2', border: '#0e7490' },
+  { bg: '#7c3aed', border: '#6d28d9' },
+  { bg: '#be185d', border: '#9d174d' },
+  { bg: '#0d9488', border: '#0f766e' },
+  { bg: '#ea580c', border: '#c2410c' },
+  { bg: '#4f46e5', border: '#4338ca' },
+]
 
-const colorForEstado = (idEstado: number) => ESTADO_COLORS[idEstado % ESTADO_COLORS.length]
+const colorFor = (id: number) => COLORS[id % COLORS.length]
 
 const toIsoDateTime = (fecha: string, hora?: string | null) => {
   const datePart = fecha.slice(0, 10)
@@ -54,15 +76,16 @@ const toIsoDateTime = (fecha: string, hora?: string | null) => {
 
 const events = computed<EventInput[]>(() =>
   props.actividades.map((actividad) => {
-    const color = colorForEstado(actividad.id_estado_actividad)
+    const { bg, border } = colorFor(actividad.id)
 
     return {
       id: String(actividad.id),
       title: actividad.titulo,
       start: toIsoDateTime(actividad.fecha_programada, actividad.hora_inicio_estimada),
       end: toIsoDateTime(actividad.fecha_programada, actividad.hora_fin_estimada),
-      backgroundColor: color,
-      borderColor: color,
+      backgroundColor: bg,
+      borderColor: border,
+      textColor: '#fff',
       extendedProps: { actividad },
     }
   }),
@@ -70,14 +93,14 @@ const events = computed<EventInput[]>(() =>
 
 const calendarOptions = computed(() => ({
   plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
-  initialView: props.initialView,
+  initialView: isMobile.value ? 'listWeek' : 'dayGridMonth',
   locale: esLocale,
   height: 'auto',
   firstDay: 1,
   headerToolbar: {
-    left: 'prev,next today',
+    left: isMobile.value ? 'prev,next' : 'prev,next today',
     center: 'title',
-    right: 'dayGridMonth,timeGridWeek,listWeek',
+    right: isMobile.value ? 'dayGridMonth,timeGridWeek,listWeek' : 'dayGridMonth,timeGridWeek,listWeek',
   },
   buttonText: {
     today: 'Hoy',
@@ -88,7 +111,9 @@ const calendarOptions = computed(() => ({
   events: events.value,
   editable: false,
   selectable: true,
-  dayMaxEvents: 3,
+  dayMaxEvents: true,
+  eventOrder: 'start,-id',
+  eventDisplay: 'block',
   nowIndicator: true,
   eventClick: (info: EventClickArg) => {
     const actividad = info.event.extendedProps.actividad as Actividad
@@ -161,11 +186,57 @@ defineExpose({ calendarRef })
   cursor: pointer;
   border-radius: 6px;
   font-size: 0.75rem;
-  padding: 1px 4px;
+  padding: 2px 6px;
+  margin-bottom: 2px;
+}
+
+.actividades-calendar :deep(.fc-daygrid-day-events) {
+  min-height: auto;
+}
+
+.actividades-calendar :deep(.fc-event-title) {
+  font-weight: 500;
+}
+
+.actividades-calendar :deep(.fc-list-event:hover td) {
+  background-color: var(--fc-list-event-hover-bg-color);
+}
+
+.actividades-calendar :deep(.fc-list-event-graphic) {
+  padding-left: 8px;
+}
+
+.actividades-calendar :deep(.fc-list-event-dot) {
+  border-width: 4px;
 }
 
 .actividades-calendar :deep(.fc-daygrid-day):hover {
   background-color: var(--fc-neutral-bg-color);
   cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .actividades-calendar :deep(.fc-toolbar) {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .actividades-calendar :deep(.fc-toolbar-chunk) {
+    display: flex;
+    justify-content: center;
+  }
+
+  .actividades-calendar :deep(.fc-toolbar-title) {
+    font-size: 0.9rem;
+  }
+
+  .actividades-calendar :deep(.fc-button) {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .actividades-calendar :deep(.fc-today-button) {
+    display: none;
+  }
 }
 </style>
