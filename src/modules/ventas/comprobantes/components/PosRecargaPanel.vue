@@ -3,6 +3,22 @@
     <section>
       <FormCardsLayout>
         <DetailSectionCard title="Comprobante y cliente" :icon="ICONS.receipt">
+          <template #actions>
+            <button
+              type="button"
+              title="Restablecer formulario"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+              :disabled="
+                createMutation.isPending.value ||
+                emitMutation.isPending.value ||
+                imprimiendoTicket
+              "
+              @click="limpiarFormulario"
+            >
+              <AppIcon :name="ICONS.brushCleaning" :size="14" />
+              Limpiar
+            </button>
+          </template>
           <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
             Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se
             genera boleta o factura.
@@ -16,23 +32,21 @@
               :options="tipoComprobanteOptions"
               :disabled="catalogosQuery.isLoading.value"
             />
-            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" />
-            <AppInput v-model="numero" label="Número" placeholder="Automático" readonly />
+            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" disabled />
+            <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <AppSelectSearch
+            <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
-              remote
-              label="Cliente"
-              placeholder="Selecciona cliente"
-              search-placeholder="Razón social, documento o código..."
               :options="clienteOptions"
               :loading="clientesQuery.isFetching.value"
               :disabled="clientesQuery.isLoading.value"
+              :can-create="canCreateCliente"
               required
+              @created="seleccionarCliente"
             />
             <AppSelectSearch
               v-model="idAlmacen"
@@ -112,8 +126,10 @@
         :totales="totales"
         :puede-guardar="puedeGuardar"
         :guardando="createMutation.isPending.value"
-        :emitiendo="emitMutation.isPending.value"
+        :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
         :can-emit="canEmit"
+        :can-print="canPrint"
+        :es-nota-venta="esNotaVenta"
         :comprobante-guardado-id="comprobanteGuardadoId"
         :comprobante-guardado-serie="comprobanteGuardadoSerie"
         :comprobante-guardado-numero="comprobanteGuardadoNumero"
@@ -132,19 +148,25 @@ import { useCreateRecargaClienteMutation } from '@/modules/balones/recargas/comp
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
+import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
 import { useEmitirComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
-import { emitirConImpresionTicket } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import {
+  emitirConImpresionTicket,
+  imprimirTicketSinEmision,
+} from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
-import { toastWarning } from '@/shared/composables/useToast'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
 const {
   authStore,
@@ -157,19 +179,26 @@ const {
   fecha,
   idCliente,
   canEmit,
+  canPrint,
+  canCreateCliente,
   tipoComprobanteOptions,
+  esNotaVenta,
   clienteOptions,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
+  seleccionarCliente,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateRecargaClienteMutation()
 const emitMutation = useEmitirComprobanteMutation()
+const imprimiendoTicket = ref(false)
 
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
 const almacenBuscar = ref('')
+const almacenesData = computed(() => almacenesQuery.data.value?.data)
+const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
 
 const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
 const productosQuery = useProductosQuery(productosFilters)
@@ -264,7 +293,7 @@ async function registrarRecarga() {
   comprobanteGuardadoNumero.value = result.comprobante.numero
 }
 
-async function limpiarTrasEmitir() {
+async function limpiarFormulario() {
   idBalon.value = ''
   idProducto.value = ''
   idAlmacen.value = ''
@@ -280,6 +309,7 @@ async function limpiarTrasEmitir() {
   await reiniciarTrasOperacion()
   await productosQuery.refetch()
   await almacenesQuery.refetch()
+  aplicarAlmacenPorDefecto()
 }
 
 async function emitirComprobante() {
@@ -288,6 +318,20 @@ async function emitirComprobante() {
 
   const id = comprobanteGuardadoId.value
   try {
+    if (esNotaVenta.value) {
+      imprimiendoTicket.value = true
+      const resultado = await imprimirTicketSinEmision(id)
+      if (resultado === 'sin_ventana') {
+        toastWarning(
+          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+        )
+      } else {
+        toastSuccess('Ticket de nota de venta listo para imprimir')
+      }
+      await limpiarFormulario()
+      return
+    }
+
     const resultado = await emitirConImpresionTicket({
       comprobanteId: id,
       emitir: () =>
@@ -303,9 +347,11 @@ async function emitirComprobante() {
       )
     }
 
-    await limpiarTrasEmitir()
+    await limpiarFormulario()
   } catch {
     // mutateAsync ya muestra el toast de error
+  } finally {
+    imprimiendoTicket.value = false
   }
 }
 </script>

@@ -131,8 +131,14 @@
                           :class="[
                             'menu-dropdown-item',
                             {
-                              'menu-dropdown-item-active': isSubmenuRouteActive(subItem.path),
-                              'menu-dropdown-item-inactive': !isSubmenuRouteActive(subItem.path),
+                              'menu-dropdown-item-active': isSubmenuRouteActive(
+                                subItem.path,
+                                item.subItems,
+                              ),
+                              'menu-dropdown-item-inactive': !isSubmenuRouteActive(
+                                subItem.path,
+                                item.subItems,
+                              ),
                             },
                           ]"
                         >
@@ -154,7 +160,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useRoute } from 'vue-router'
-import type { AdminMenuItem } from '@/modules/admin/config/menu'
+import type { AdminMenuItem, AdminMenuSubItem } from '@/modules/admin/config/menu'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { useAdminMenu } from '@/modules/admin/composables/useAdminMenu'
@@ -166,30 +172,44 @@ const { isExpanded, isMobileOpen, isHovered, expandedSubmenus, collapsedSubmenus
 
 const submenuKey = (groupIndex: number, itemIndex: number) => `${groupIndex}-${itemIndex}`
 
-/** Resalta hubs y rutas hijas (ej. /admin/configuracion → /admin/configuracion/sucursales). */
-const isActive = (path: string) =>
+const matchesRoute = (path: string) =>
   route.path === path || route.path.startsWith(`${path}/`)
 
-const isSubmenuRouteActive = (path: string) =>
-  route.path === path || route.path.startsWith(`${path}/`)
+/** Resalta hubs y rutas hijas (ej. /admin/configuracion → /admin/configuracion/sucursales). */
+const isActive = (path: string) => matchesRoute(path)
+
+/**
+ * En submenús con rutas anidadas (ej. /admin/clientes y /admin/clientes/choferes),
+ * gana la coincidencia más específica para no resaltar dos ítems a la vez.
+ */
+const isSubmenuRouteActive = (path: string, siblings: AdminMenuSubItem[] = []) => {
+  if (!matchesRoute(path)) return false
+
+  const bestMatch = siblings
+    .map((sibling) => sibling.path)
+    .filter((siblingPath) => matchesRoute(siblingPath))
+    .sort((a, b) => b.length - a.length)[0]
+
+  return (bestMatch ?? path) === path
+}
 
 const isParentItemActive = (item: AdminMenuItem) => {
-  if (item.path && (route.path === item.path || route.path.startsWith(`${item.path}/`))) {
+  if (item.path && matchesRoute(item.path)) {
     return true
   }
 
-  return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path)) ?? false
+  return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path, item.subItems)) ?? false
 }
 
 const hasActiveSubmenuRoute = (groupIndex: number, itemIndex: number) => {
   const item = visibleMenuGroups.value[groupIndex]?.items[itemIndex]
   if (!item) return false
 
-  if (item.path && (route.path === item.path || route.path.startsWith(`${item.path}/`))) {
+  if (item.path && matchesRoute(item.path)) {
     return true
   }
 
-  return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path)) ?? false
+  return item.subItems?.some((subItem) => isSubmenuRouteActive(subItem.path, item.subItems)) ?? false
 }
 
 const isSubmenuOpen = (groupIndex: number, itemIndex: number) => {

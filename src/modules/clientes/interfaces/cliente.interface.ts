@@ -108,5 +108,5 @@ export interface ValidarDocumentoFilters {
 }
 
 export interface ValidarDocumentoResponse {
-  registrado: boolean
+  existe: boolean
 }

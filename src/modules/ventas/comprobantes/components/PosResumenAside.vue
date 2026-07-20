@@ -53,7 +53,7 @@
       </button>
 
       <button
-        v-if="comprobanteGuardadoId && canEmit"
+        v-if="comprobanteGuardadoId && (esNotaVenta ? canPrint : canEmit)"
         type="button"
         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-success-500 px-4 py-2.5 text-sm font-medium text-success-600 hover:bg-success-500/10 disabled:cursor-not-allowed disabled:opacity-70"
         :disabled="emitiendo"
@@ -64,15 +64,25 @@
           :size="16"
           :class="emitiendo ? 'animate-spin' : ''"
         />
-        {{ emitiendo ? 'Emitiendo...' : 'Emitir SUNAT' }}
+        {{
+          emitiendo
+            ? esNotaVenta
+              ? 'Imprimiendo...'
+              : 'Emitiendo...'
+            : esNotaVenta
+              ? 'Imprimir ticket'
+              : 'Emitir SUNAT'
+        }}
       </button>
 
       <RouterLink
-        :to="{ name: 'admin-ventas-comprobantes' }"
+        :to="{
+          name: esNotaVenta ? 'admin-ventas-notas-venta' : 'admin-ventas-comprobantes',
+        }"
         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
       >
         <AppIcon :name="ICONS.list" :size="16" />
-        Ver comprobantes
+        {{ esNotaVenta ? 'Ver notas de venta' : 'Ver comprobantes' }}
       </RouterLink>
     </div>
   </DetailSectionCard>
@@ -92,6 +102,8 @@ withDefaults(
     guardando?: boolean
     emitiendo?: boolean
     canEmit?: boolean
+    canPrint?: boolean
+    esNotaVenta?: boolean
     comprobanteGuardadoId?: number | null
     comprobanteGuardadoSerie?: string | null
     comprobanteGuardadoNumero?: string | null
@@ -101,6 +113,8 @@ withDefaults(
   {
     guardarLabel: 'Guardar',
     guardandoLabel: 'Guardando...',
+    canPrint: false,
+    esNotaVenta: false,
   },
 )
 

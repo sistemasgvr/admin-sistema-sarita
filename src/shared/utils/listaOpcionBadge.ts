@@ -94,13 +94,22 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
 
   // TipoComprobante (nombre) — reutiliza códigos de TipoDocumentoRef arriba
   GUIA_REMISION: 'neutral',
+  GRE_REMITENTE: 'neutral',
+  GRE_TRANSPORTISTA: 'primary',
+  ENVIADO: 'primary',
+  RECIBIDO: 'success',
 
-  // Códigos SUNAT frecuentes
+  // Códigos SUNAT frecuentes + nota de venta interna
   '01': 'primary',
   '03': 'success',
   '07': 'warning',
   '08': 'error',
   '09': 'neutral',
+  '31': 'primary',
+  NV: 'neutral',
+  NOTA_VENTA: 'neutral',
+  NO_APLICA: 'neutral',
+  BAJA: 'error',
 }
 
 /**

@@ -10,7 +10,7 @@ export const ventasRoutes: RouteRecordRaw[] = [
         name: 'admin-ventas-pos',
         component: () => import('@/modules/ventas/comprobantes/views/PosView.vue'),
         meta: {
-          title: 'Mostrador',
+          title: 'Punto de venta',
           module: 'ventas',
           permission: PermisoBanderas.COMPROBANTES_CREAR,
         },
@@ -27,6 +27,17 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'notas-venta',
+        name: 'admin-ventas-notas-venta',
+        component: () =>
+          import('@/modules/ventas/comprobantes/views/NotasVentaListView.vue'),
+        meta: {
+          title: 'Notas de venta',
+          module: 'ventas',
+          permission: PermisoBanderas.COMPROBANTES_LISTAR,
+        },
+      },
+      {
         path: 'notas-credito',
         name: 'admin-ventas-notas-credito',
         component: () =>
@@ -35,6 +46,17 @@ export const ventasRoutes: RouteRecordRaw[] = [
           title: 'Notas de crédito',
           module: 'ventas',
           permission: PermisoBanderas.COMPROBANTES_LISTAR,
+        },
+      },
+      {
+        path: 'guias-remision',
+        name: 'admin-ventas-guias-remision',
+        component: () =>
+          import('@/modules/ventas/guias-remision/views/GuiasRemisionListView.vue'),
+        meta: {
+          title: 'Guías de remisión',
+          module: 'ventas',
+          permission: PermisoBanderas.GUIAS_REMISION_LISTAR,
         },
       },
       {

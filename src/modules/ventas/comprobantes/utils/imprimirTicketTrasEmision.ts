@@ -68,3 +68,25 @@ export async function imprimirTicketPorComprobanteId(id: number) {
     throw error
   }
 }
+
+/**
+ * Nota de venta / impresión local: abre ventana en el clic e imprime ticket
+ * sin pasar por emisión SUNAT.
+ */
+export async function imprimirTicketSinEmision(
+  comprobanteId: number,
+): Promise<'impreso' | 'sin_ventana'> {
+  const win = abrirVentanaTicketAlClic()
+
+  if (!win) {
+    return 'sin_ventana'
+  }
+
+  try {
+    await cargarEImprimirTicketEnVentana(win, comprobanteId)
+    return 'impreso'
+  } catch (error) {
+    win.close()
+    throw error
+  }
+}

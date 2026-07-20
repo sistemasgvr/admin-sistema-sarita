@@ -3,7 +3,7 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 
 export const ventasMenuSubItems: AdminMenuSubItem[] = [
   {
-    name: 'Mostrador',
+    name: 'Punto de venta',
     path: '/admin/ventas/pos',
     permission: PermisoBanderas.COMPROBANTES_CREAR,
   },
@@ -13,9 +13,19 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
   {
+    name: 'Notas de venta',
+    path: '/admin/ventas/notas-venta',
+    permission: PermisoBanderas.COMPROBANTES_LISTAR,
+  },
+  {
     name: 'Notas de crédito',
     path: '/admin/ventas/notas-credito',
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
+  },
+  {
+    name: 'Guías de remisión',
+    path: '/admin/ventas/guias-remision',
+    permission: PermisoBanderas.GUIAS_REMISION_LISTAR,
   },
   {
     name: 'Resumen diario',

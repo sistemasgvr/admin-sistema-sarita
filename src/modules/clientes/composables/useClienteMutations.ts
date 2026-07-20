@@ -13,7 +13,7 @@ export function useCreateClienteMutation() {
   return useMutation({
     mutationFn: (payload: CreateClientePayload) => clientesService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.all })
       toastSuccess('Cliente creado correctamente')
     },
     onError: (error) => {
@@ -45,11 +45,11 @@ export function useDeleteClienteMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       clientesService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
-      toastSuccess('Cliente eliminado correctamente')
+      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.all })
+      toastSuccess('Cliente archivado correctamente')
     },
     onError: (error) => {
-      toastApiError(error, 'No se pudo eliminar el cliente')
+      toastApiError(error, 'No se pudo archivar el cliente')
     },
   })
 }
@@ -61,7 +61,7 @@ export function useRestaurarClienteMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       clientesService.restaurar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.all })
       toastSuccess('Cliente restaurado correctamente')
     },
     onError: (error) => {
