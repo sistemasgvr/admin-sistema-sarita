@@ -87,11 +87,12 @@
             <table class="min-w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800">
-                  <th class="pb-2 pr-4">Fecha</th>
+                  <th class="pb-2 pr-4">Prueba</th>
                   <th class="pb-2 pr-4">Vigencia</th>
                   <th class="pb-2 pr-4">Próxima</th>
                   <th class="pb-2 pr-4">Órgano</th>
-                  <th class="pb-2">Certificado</th>
+                  <th class="pb-2 pr-4">Certificado</th>
+                  <th class="pb-2">Observación</th>
                 </tr>
               </thead>
               <tbody>
@@ -100,9 +101,9 @@
                   :key="item.id"
                   class="border-b border-gray-50 dark:border-gray-800/80"
                 >
-                  <td class="py-2 pr-4 whitespace-nowrap">{{ formatDetailDate(item.fecha_prueba) }}</td>
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ formatMonthYear(item.fecha_prueba) }}</td>
                   <td class="py-2 pr-4">{{ item.vigencia_anios }} años</td>
-                  <td class="py-2 pr-4 whitespace-nowrap">{{ formatDetailDate(item.fecha_proxima) }}</td>
+                  <td class="py-2 pr-4 whitespace-nowrap">{{ formatMonthYear(item.fecha_proxima) }}</td>
                   <td class="py-2 pr-4">
                     {{
                       item.organo_inspector_no_aplica
@@ -110,7 +111,10 @@
                         : item.nombre_organo_inspector || '—'
                     }}
                   </td>
-                  <td class="py-2">{{ item.numero_certificado || '—' }}</td>
+                  <td class="py-2 pr-4">{{ item.numero_certificado || '—' }}</td>
+                  <td class="py-2 max-w-[14rem] truncate" :title="item.observacion || undefined">
+                    {{ item.observacion || '—' }}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -150,6 +154,7 @@ import {
   formatDetailDateTime,
   formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
+import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import {
@@ -215,7 +220,15 @@ const sections = computed<DetailSection[]>(() => {
       items: [
         { label: 'Tipo de balón', value: data.nombre_tipo_balon },
         { label: 'Gas', value: data.nombre_producto_gas },
+        {
+          label: 'Capacidad',
+          value:
+            data.capacidad != null
+              ? `${data.capacidad}${data.nombre_unidad_medida ? ` ${data.nombre_unidad_medida}` : ''}`
+              : undefined,
+        },
         { label: 'Propietario', value: formatDetailListaOpcion(data.nombre_propietario) },
+        { label: 'Planta', value: data.nombre_planta },
         { label: 'Referencia', value: formatDetailListaOpcion(data.nombre_referencia) },
         { label: 'Almacén', value: data.nombre_almacen },
         { label: 'Cliente ubicación', value: data.nombre_cliente_ubicacion },
@@ -226,14 +239,22 @@ const sections = computed<DetailSection[]>(() => {
       title: 'Prueba hidrostática',
       icon: ICONS.gauge,
       items: [
-        { label: 'Última P.H.', value: formatDetailDate(data.fecha_ultima_prueba_hidrostatica) },
+        {
+          label: 'Fabricación (lomo)',
+          value: formatMonthYear(
+            data.fecha_fabricacion,
+            data.mes_fabricacion,
+            data.anio_fabricacion,
+          ),
+        },
+        { label: 'Última P.H.', value: formatMonthYear(data.fecha_ultima_prueba_hidrostatica) },
         {
           label: 'Vigencia',
           value: data.vigencia_prueba_hidrostatica_anios
             ? `${data.vigencia_prueba_hidrostatica_anios} años`
             : undefined,
         },
-        { label: 'Próxima P.H.', value: formatDetailDate(data.fecha_proxima_prueba_hidrostatica) },
+        { label: 'Próxima P.H.', value: formatMonthYear(data.fecha_proxima_prueba_hidrostatica) },
         {
           label: 'Órgano inspector',
           value: data.organo_inspector_no_aplica
@@ -241,12 +262,6 @@ const sections = computed<DetailSection[]>(() => {
             : data.nombre_organo_inspector,
         },
         { label: 'Presión actual', value: data.presion_actual?.toString() },
-        {
-          label: 'Fabricación',
-          value: data.anio_fabricacion
-            ? String(data.anio_fabricacion)
-            : formatDetailDate(data.fecha_fabricacion),
-        },
       ],
     },
     {

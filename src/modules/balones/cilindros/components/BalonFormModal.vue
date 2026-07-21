@@ -124,6 +124,15 @@
               v-bind="idReferenciaAttrs"
               :error="errors.idReferencia"
             />
+            <AppSelect
+              v-model="idPlanta"
+              label="Planta"
+              placeholder="Opcional"
+              :options="clienteOptions"
+              :disabled="isSubmitting || clientesQuery.isLoading.value"
+              v-bind="idPlantaAttrs"
+              :error="errors.idPlanta"
+            />
           </div>
         </DetailSectionCard>
 
@@ -174,23 +183,25 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Datos técnicos" :icon="ICONS.gauge" :full-width="true">
+        <DetailSectionCard title="P.H. y datos técnicos" :icon="ICONS.gauge" :full-width="true">
           <div class="space-y-5">
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 lg:grid-cols-3">
-              <AppInput
-                v-model="fechaFabricacion"
-                label="Fecha fabricación"
-                type="date"
-                v-bind="fechaFabricacionAttrs"
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              <AppSelect
+                v-model="mesFabricacion"
+                label="Mes fabricación (pH)"
+                placeholder="Mes del lomo"
+                :options="mesOptions"
                 :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.fechaFabricacion"
+                v-bind="mesFabricacionAttrs"
+                :error="errors.mesFabricacion"
               />
               <AppInput
                 v-model="anioFabricacion"
-                label="Año fabricación"
+                label="Año fabricación (pH)"
                 type="number"
                 min="1900"
                 max="2100"
+                placeholder="Ej. 2021"
                 v-bind="anioFabricacionAttrs"
                 :disabled="isSubmitting || isLoadingBalon"
                 :error="errors.anioFabricacion"
@@ -205,6 +216,33 @@
                 :disabled="isSubmitting || isLoadingBalon"
                 :error="errors.presionActual"
               />
+              <div class="flex flex-col justify-end rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/[0.03]">
+                <span class="text-theme-xs text-gray-500 dark:text-gray-400">Vencimiento pH estimado</span>
+                <span class="font-medium text-gray-800 dark:text-white/90">
+                  {{ vencimientoPhEstimado }}
+                </span>
+                <span v-if="vigenciaTipoAnios" class="text-theme-xs text-gray-500">
+                  Vigencia tipo: {{ vigenciaTipoAnios }} años
+                </span>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <AppSelect
+                v-model="idOrganoInspector"
+                label="Órgano inspector"
+                :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                :options="organoInspectorOptions"
+                :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
+                v-bind="idOrganoInspectorAttrs"
+                :error="errors.idOrganoInspector"
+              />
+              <div class="flex items-end pb-2">
+                <AppCheckbox
+                  v-model="organoInspectorNoAplica"
+                  label="Sin órgano inspector"
+                  :disabled="isSubmitting"
+                />
+              </div>
             </div>
             <AppTextarea
               v-model="observacion"
@@ -221,9 +259,9 @@
           <p
             class="rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 text-sm leading-relaxed text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200"
           >
-            La <strong>prueba hidrostática</strong> se registra en
-            <strong>Mantenimientos</strong> (tipo P.H. o Recertificación). Aquí solo se consulta en
-            el detalle del cilindro.
+            Ingrese el <strong>mes y año</strong> grabados en el lomo; el sistema calcula el
+            vencimiento según la vigencia del tipo (5 u 10 años). Las renovaciones se registran en
+            <strong>Mantenimientos</strong> (P.H. / Recertificación).
           </p>
         </template>
       </FormCardsLayout>
@@ -272,7 +310,13 @@ import { useTiposBalonQuery } from '@/modules/balones/tipos-balon/composables/us
 import type { Balon, BalonFormMode, BalonFormPreset } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import {
+  addYearsMonthYear,
+  formatMonthYear,
+  MES_FABRICACION_OPTIONS,
+  toFirstOfMonthIso,
+} from '@/modules/balones/utils/formatMonthYear'
+import { AppCheckbox, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -323,11 +367,14 @@ const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
 const listaReferenciaId = ref(ListaIds.REFERENCIA_CILINDRO)
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
 const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
+const listaOrganoInspectorId = ref(ListaIds.ORGANO_INSPECTOR_CILINDRO)
 
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
 const referenciaQuery = useListaOpcionesQuery(listaReferenciaId)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
 const marcaQuery = useListaOpcionesQuery(listaMarcaId)
+const organoInspectorQuery = useListaOpcionesQuery(listaOrganoInspectorId)
+const mesOptions = MES_FABRICACION_OPTIONS
 
 const tipoBalonOptions = computed(() =>
   (tiposBalonQuery.data.value?.data ?? []).map((tipo) => ({
@@ -364,6 +411,13 @@ const estadoBalonOptions = computed(() => toSelectOptions(estadoBalonQuery.data.
 const referenciaOptions = computed(() => toSelectOptions(referenciaQuery.data.value))
 const propietarioOptions = computed(() => toSelectOptions(propietarioQuery.data.value))
 const marcaOptions = computed(() => toSelectOptions(marcaQuery.data.value))
+const organoInspectorOptions = computed(() =>
+  toSelectOptions(
+    organoInspectorQuery.data.value?.filter(
+      (opcion) => opcion.nombre?.toUpperCase() !== 'NO_APLICA',
+    ),
+  ),
+)
 
 const toDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '')
 
@@ -381,11 +435,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idPropietario: optionalNumber(),
       idClientePropietario: optionalNumber(),
       idReferencia: optionalNumber(),
+      idPlanta: optionalNumber(),
       idMarcaCilindro: optionalNumber(),
       idTipoBalon: optionalNumber(),
       idProductoGas: optionalNumber(),
       idEstadoBalon: optionalNumber(),
-      fechaFabricacion: optionalString(),
+      idOrganoInspector: optionalNumber(),
+      organoInspectorNoAplica: yup.boolean().optional(),
+      mesFabricacion: optionalNumber(),
       anioFabricacion: optionalNumber(),
       presionActual: optionalNumber(),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
@@ -403,11 +460,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idPropietario: undefined as number | undefined,
     idClientePropietario: undefined as number | undefined,
     idReferencia: undefined as number | undefined,
-      idMarcaCilindro: undefined as number | undefined,
-      idTipoBalon: undefined as number | undefined,
-      idProductoGas: undefined as number | undefined,
-      idEstadoBalon: undefined as number | undefined,
-      fechaFabricacion: '',
+    idPlanta: undefined as number | undefined,
+    idMarcaCilindro: undefined as number | undefined,
+    idTipoBalon: undefined as number | undefined,
+    idProductoGas: undefined as number | undefined,
+    idEstadoBalon: undefined as number | undefined,
+    idOrganoInspector: undefined as number | undefined,
+    organoInspectorNoAplica: false,
+    mesFabricacion: undefined as number | undefined,
     anioFabricacion: undefined as number | undefined,
     presionActual: undefined as number | undefined,
     observacion: '',
@@ -425,11 +485,14 @@ const [idClienteUbicacion, idClienteUbicacionAttrs] = defineField('idClienteUbic
 const [idPropietario, idPropietarioAttrs] = defineField('idPropietario')
 const [idClientePropietario, idClientePropietarioAttrs] = defineField('idClientePropietario')
 const [idReferencia, idReferenciaAttrs] = defineField('idReferencia')
+const [idPlanta, idPlantaAttrs] = defineField('idPlanta')
 const [idMarcaCilindro, idMarcaCilindroAttrs] = defineField('idMarcaCilindro')
 const [idTipoBalon, idTipoBalonAttrs] = defineField('idTipoBalon')
 const [idProductoGas, idProductoGasAttrs] = defineField('idProductoGas')
 const [idEstadoBalon, idEstadoBalonAttrs] = defineField('idEstadoBalon')
-const [fechaFabricacion, fechaFabricacionAttrs] = defineField('fechaFabricacion')
+const [idOrganoInspector, idOrganoInspectorAttrs] = defineField('idOrganoInspector')
+const [organoInspectorNoAplica] = defineField('organoInspectorNoAplica')
+const [mesFabricacion, mesFabricacionAttrs] = defineField('mesFabricacion')
 const [anioFabricacion, anioFabricacionAttrs] = defineField('anioFabricacion')
 const [presionActual, presionActualAttrs] = defineField('presionActual')
 const [observacion, observacionAttrs] = defineField('observacion')
@@ -442,10 +505,33 @@ const requiereClientePropietario = computed(
   () => propietarioSeleccionado.value?.nombre?.toUpperCase() === 'CLIENTE',
 )
 
+const tipoSeleccionado = computed(() =>
+  (tiposBalonQuery.data.value?.data ?? []).find((tipo) => tipo.id === Number(idTipoBalon.value)),
+)
+
+const vigenciaTipoAnios = computed(
+  () => tipoSeleccionado.value?.vigencia_ph_anios ?? undefined,
+)
+
+const vencimientoPhEstimado = computed(() => {
+  const years = vigenciaTipoAnios.value ?? 5
+  const next = addYearsMonthYear(
+    mesFabricacion.value != null ? Number(mesFabricacion.value) : null,
+    anioFabricacion.value != null ? Number(anioFabricacion.value) : null,
+    years,
+  )
+  if (!next) return '—'
+  return formatMonthYear(null, next.mes, next.anio)
+})
+
 watch(idPropietario, () => {
   if (!requiereClientePropietario.value) {
     idClientePropietario.value = undefined
   }
+})
+
+watch(organoInspectorNoAplica, (noAplica) => {
+  if (noAplica) idOrganoInspector.value = undefined
 })
 
 watch(codigoBalon, (codigo) => {
@@ -467,41 +553,58 @@ const buildPayload = (
     idPropietario?: number
     idClientePropietario?: number
     idReferencia?: number
+    idPlanta?: number
     idMarcaCilindro?: number
     idTipoBalon?: number
     idProductoGas?: number
     idEstadoBalon?: number
-    fechaFabricacion: string
+    idOrganoInspector?: number
+    organoInspectorNoAplica?: boolean
+    mesFabricacion?: number
     anioFabricacion?: number
     presionActual?: number
     observacion: string
   },
   userId: number,
-) => ({
-  idUsuarioAuditoria: userId,
-  codigoBalon: values.codigoBalon,
-  numeroSerie: values.numeroSerie || values.codigoBalon || undefined,
-  libroCilindro: values.libroCilindro || undefined,
-  paginaLibro: values.paginaLibro,
-  fechaRegistro: values.fechaRegistro || undefined,
-  numeroRecepcion: values.numeroRecepcion || undefined,
-  idAlmacen: values.idAlmacen,
-  idClienteUbicacion: values.idClienteUbicacion,
-  idPropietario: values.idPropietario,
-  idClientePropietario: requiereClientePropietario.value ? values.idClientePropietario : undefined,
-  idReferencia: values.idReferencia,
-  idMarcaCilindro: values.idMarcaCilindro,
-  idTipoBalon: values.idTipoBalon,
-  idProductoGas: values.idProductoGas,
-  idEstadoBalon: values.idEstadoBalon,
-  fechaFabricacion: values.fechaFabricacion || undefined,
-  anioFabricacion: values.anioFabricacion,
-  presionActual: values.presionActual,
-  observacion: values.observacion || undefined,
-})
+) => {
+  const mes = values.mesFabricacion != null ? Number(values.mesFabricacion) : undefined
+  const anio = values.anioFabricacion != null ? Number(values.anioFabricacion) : undefined
+
+  return {
+    idUsuarioAuditoria: userId,
+    codigoBalon: values.codigoBalon,
+    numeroSerie: values.numeroSerie || values.codigoBalon || undefined,
+    libroCilindro: values.libroCilindro || undefined,
+    paginaLibro: values.paginaLibro,
+    fechaRegistro: values.fechaRegistro || undefined,
+    numeroRecepcion: values.numeroRecepcion || undefined,
+    idAlmacen: values.idAlmacen,
+    idClienteUbicacion: values.idClienteUbicacion,
+    idPropietario: values.idPropietario,
+    idClientePropietario: requiereClientePropietario.value ? values.idClientePropietario : undefined,
+    idReferencia: values.idReferencia,
+    idPlanta: values.idPlanta,
+    idMarcaCilindro: values.idMarcaCilindro,
+    idTipoBalon: values.idTipoBalon,
+    idProductoGas: values.idProductoGas,
+    idEstadoBalon: values.idEstadoBalon,
+    idOrganoInspector: values.organoInspectorNoAplica ? undefined : values.idOrganoInspector,
+    organoInspectorNoAplica: values.organoInspectorNoAplica ?? false,
+    fechaFabricacion: toFirstOfMonthIso(mes, anio),
+    mesFabricacion: mes,
+    anioFabricacion: anio,
+    vigenciaPruebaHidrostaticaAnios: vigenciaTipoAnios.value,
+    presionActual: values.presionActual,
+    observacion: values.observacion || undefined,
+  }
+}
 
 const syncFormValues = () => {
   const data = balonDetalle.value
+  const mesFromDate =
+    data?.mes_fabricacion ??
+    (data?.fecha_fabricacion ? Number(data.fecha_fabricacion.slice(5, 7)) : undefined)
+
   resetForm({
     values: {
       codigoBalon: data?.codigo_balon ?? '',
@@ -515,11 +618,14 @@ const syncFormValues = () => {
       idPropietario: data?.id_propietario ?? undefined,
       idClientePropietario: data?.id_cliente_propietario ?? undefined,
       idReferencia: data?.id_referencia ?? undefined,
+      idPlanta: data?.id_planta ?? undefined,
       idMarcaCilindro: data?.id_marca_cilindro ?? undefined,
       idTipoBalon: data?.id_tipo_balon ?? undefined,
       idProductoGas: data?.id_producto_gas ?? undefined,
       idEstadoBalon: data?.id_estado_balon ?? undefined,
-      fechaFabricacion: toDateInput(data?.fecha_fabricacion),
+      idOrganoInspector: data?.id_organo_inspector ?? undefined,
+      organoInspectorNoAplica: data?.organo_inspector_no_aplica ?? false,
+      mesFabricacion: mesFromDate,
       anioFabricacion: data?.anio_fabricacion ?? undefined,
       presionActual: data?.presion_actual ?? undefined,
       observacion: data?.observacion ?? '',
@@ -541,11 +647,14 @@ const applyCreateForm = () => {
       idPropietario: props.preset?.idPropietario,
       idClientePropietario: props.preset?.idClientePropietario,
       idReferencia: undefined,
+      idPlanta: undefined,
       idMarcaCilindro: undefined,
       idTipoBalon: undefined,
       idProductoGas: undefined,
       idEstadoBalon: props.preset?.idEstadoBalon,
-      fechaFabricacion: '',
+      idOrganoInspector: undefined,
+      organoInspectorNoAplica: false,
+      mesFabricacion: undefined,
       anioFabricacion: undefined,
       presionActual: undefined,
       observacion: '',
@@ -568,7 +677,6 @@ const onSubmit = handleSubmit(async (values) => {
       libroCilindro: values.libroCilindro ?? '',
       fechaRegistro: values.fechaRegistro ?? '',
       numeroRecepcion: values.numeroRecepcion ?? '',
-      fechaFabricacion: values.fechaFabricacion ?? '',
       observacion: values.observacion ?? '',
     },
     currentUserId,

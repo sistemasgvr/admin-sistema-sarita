@@ -6,6 +6,38 @@
       :items="breadcrumbItems"
     />
 
+    <div
+      v-if="phAlertCount > 0 || phVencidaCount > 0"
+      class="mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div class="space-y-1">
+        <p v-if="phAlertCount > 0" class="font-medium">
+          {{ phAlertCount }} cilindro(s) con P.H. por vencer en ~3 meses
+        </p>
+        <p v-if="phVencidaCount > 0">
+          {{ phVencidaCount }} cilindro(s) con P.H. vencida
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-if="phAlertCount > 0"
+          type="button"
+          class="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-transparent dark:text-amber-200 dark:hover:bg-amber-500/10"
+          @click="aplicarAlertaPh(90)"
+        >
+          Ver por vencer
+        </button>
+        <button
+          v-if="phVencidaCount > 0"
+          type="button"
+          class="rounded-lg border border-error-300 bg-white px-3 py-1.5 text-xs font-medium text-error-700 hover:bg-error-50 dark:border-error-500/40 dark:bg-transparent dark:text-error-300"
+          @click="aplicarPhVencida"
+        >
+          Ver vencidas
+        </button>
+      </div>
+    </div>
+
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
@@ -38,9 +70,25 @@
         </p>
       </template>
 
-      <template #cell-nombre_marca_cilindro="{ value }">
-        <span v-if="value" class="whitespace-nowrap">{{ value }}</span>
-        <span v-else class="text-gray-400">—</span>
+      <template #cell-tipo_gas="{ row }">
+        <p class="truncate font-medium text-gray-800 dark:text-white/90">
+          {{ row.nombre_tipo_balon || '—' }}
+        </p>
+        <p class="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
+          {{ row.nombre_producto_gas || '—' }}
+        </p>
+      </template>
+
+      <template #cell-capacidad_marca="{ row }">
+        <p class="truncate whitespace-nowrap font-medium text-gray-800 dark:text-white/90">
+          <template v-if="row.capacidad != null">
+            {{ row.capacidad }}{{ row.nombre_unidad_medida ? ` ${row.nombre_unidad_medida}` : '' }}
+          </template>
+          <span v-else class="font-normal text-gray-400">—</span>
+        </p>
+        <p class="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
+          {{ row.nombre_marca_cilindro || '—' }}
+        </p>
       </template>
 
       <template #cell-nombre_estado_balon="{ row }">
@@ -49,7 +97,7 @@
 
       <template #cell-fecha_proxima_prueba_hidrostatica="{ row, value }">
         <div class="flex flex-col gap-1">
-          <span class="whitespace-nowrap">{{ formatCellDate(value) }}</span>
+          <span class="whitespace-nowrap">{{ formatMonthYear(value as string | null) }}</span>
           <AppBadge v-if="row.estado_ph" size="sm" :color="phBadgeColor(row.estado_ph)">
             PH {{ phBadgeLabel(row.estado_ph) }}
           </AppBadge>
@@ -57,48 +105,21 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-          <!-- Ver -->
-        </button>
-
-        <button
-          v-if="canEdit"
-          type="button"
-          title="Editar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Editar -->
-        </button>
-
-        <button
-          v-if="canEdit && puedeDarDeBaja(row)"
-          type="button"
-          title="Solicitar baja"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
-          @click="openBajaModal(row)"
-        >
-          <AppIcon :name="ICONS.archive" :size="16" />
-        </button>
-
-        <button
-          v-if="canDelete"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Eliminar -->
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -129,7 +150,7 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar cilindro"
-      subtitle="Esta acción dará de baja el registro del libro de cilindros."
+      subtitle="Solo para registros sin historial. Si el cilindro se perdió o deterioró, use Solicitar baja."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -137,7 +158,8 @@
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ balonToDelete?.codigo_balon }}
         </span>
-        ?
+        ? Los cilindros con movimientos, P.H. o baja deben solicitarse por el flujo de baja para
+        conservar el historial.
       </p>
 
       <template #footer>
@@ -182,15 +204,24 @@ import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaO
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
+import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 
 withDefaults(
   defineProps<{
@@ -216,6 +247,23 @@ const filters = ref<BalonListFilters>({
 
 const balonesQuery = useBalonesQuery(filters)
 const deleteMutation = useDeleteBalonMutation()
+
+const phAlertFilters = ref<BalonListFilters>({
+  pagina: 1,
+  limite: 1,
+  phPorVencerDias: 90,
+  soloBajas: false,
+})
+const phVencidaFilters = ref<BalonListFilters>({
+  pagina: 1,
+  limite: 1,
+  phVencida: true,
+  soloBajas: false,
+})
+const phAlertQuery = useBalonesQuery(phAlertFilters)
+const phVencidaQuery = useBalonesQuery(phVencidaFilters)
+const phAlertCount = computed(() => phAlertQuery.data.value?.meta?.total ?? 0)
+const phVencidaCount = computed(() => phVencidaQuery.data.value?.meta?.total ?? 0)
 
 const tiposBalonFilters = ref({ pagina: 1, limite: 200 })
 const tiposBalonQuery = useTiposBalonQuery(tiposBalonFilters)
@@ -250,9 +298,6 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.BALONES
 
 const isLoading = computed(() => balonesQuery.isFetching.value)
 const rows = computed(() => balonesQuery.data.value?.data ?? [])
-
-const formatCellDate = (value: unknown) =>
-  typeof value === 'string' && value ? value.slice(0, 10) : '—'
 
 const phBadgeLabel = (estado: EstadoPh) => {
   if (estado === 'VENCIDA') return 'vencida'
@@ -330,15 +375,20 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     type: 'checkbox',
     placeholder: 'Solo PH vencida',
   },
+  {
+    key: 'soloBajas',
+    label: 'Historial bajas',
+    type: 'checkbox',
+    placeholder: 'Solo dados de baja / robados',
+  },
 ])
 
 const columns = computed<TableColumn<Balon>[]>(() => [
   { key: 'codigo_balon', label: 'Código / Libro' },
-  { key: 'nombre_tipo_balon', label: 'Tipo' },
-  { key: 'nombre_marca_cilindro', label: 'Marca', cellClass: 'whitespace-nowrap' },
+  { key: 'tipo_gas', label: 'Tipo / Gas' },
+  { key: 'capacidad_marca', label: 'Capacidad / Marca', cellClass: 'whitespace-nowrap' },
   { key: 'nombre_estado_balon', label: 'Estado', cellClass: 'whitespace-nowrap' },
   { key: 'nombre_almacen', label: 'Almacén' },
-  { key: 'nombre_producto_gas', label: 'Gas' },
   {
     key: 'fecha_proxima_prueba_hidrostatica',
     label: 'Próx. P.H.',
@@ -363,7 +413,30 @@ const syncFilters = () => {
     phVencida: active.phVencida === true ? true : undefined,
     phPorVencerDias:
       active.phPorVencerDias != null ? Number(active.phPorVencerDias) : undefined,
+    soloBajas: active.soloBajas === true ? true : undefined,
   }
+}
+
+const aplicarAlertaPh = (dias: number) => {
+  dynamicFilters.value = {
+    ...dynamicFilters.value,
+    phPorVencerDias: dias,
+    phVencida: undefined,
+    soloBajas: undefined,
+  }
+  pagina.value = 1
+  syncFilters()
+}
+
+const aplicarPhVencida = () => {
+  dynamicFilters.value = {
+    ...dynamicFilters.value,
+    phVencida: true,
+    phPorVencerDias: undefined,
+    soloBajas: undefined,
+  }
+  pagina.value = 1
+  syncFilters()
 }
 
 const onFiltersChange = () => {
@@ -408,6 +481,36 @@ const openDeleteModal = (balon: Balon) => {
 const openBajaModal = (balon: Balon) => {
   balonToBajaId.value = balon.id
   bajaModalOpen.value = true
+}
+
+function actionItemsForRow(row: Balon): ActionMenuItem[] {
+  return [
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'baja',
+      label: 'Solicitar baja',
+      icon: ICONS.archive,
+      hidden: !(canEdit.value && puedeDarDeBaja(row)),
+    },
+    {
+      key: 'delete',
+      label: 'Eliminar',
+      icon: ICONS.trash,
+      danger: true,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: Balon) {
+  if (key === 'edit') openEditModal(row)
+  if (key === 'baja') openBajaModal(row)
+  if (key === 'delete') openDeleteModal(row)
 }
 
 const onBalonBajaSaved = () => {

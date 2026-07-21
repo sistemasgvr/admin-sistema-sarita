@@ -1,6 +1,6 @@
 <template>
   <label
-    class="relative flex cursor-pointer select-none items-center text-sm"
+    class="relative flex cursor-pointer select-none items-start gap-3 text-sm"
     :class="
       disabled
         ? 'text-gray-300 dark:text-gray-700'
@@ -18,7 +18,7 @@
       @change="onChange"
     />
     <span
-      class="mr-3 flex h-5 w-5 items-center justify-center rounded-md border-[1.25px] transition-colors"
+      class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-[1.25px] transition-colors"
       :class="
         model
           ? 'border-brand-500 bg-brand-500'
@@ -35,7 +35,7 @@
       />
     </span>
 
-    <span v-if="label || $slots.default">
+    <span v-if="label || $slots.default" class="min-w-0 leading-5">
       <slot>{{ label }}</slot>
     </span>
   </label>

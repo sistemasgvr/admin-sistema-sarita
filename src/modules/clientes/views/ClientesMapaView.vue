@@ -32,6 +32,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -45,9 +46,23 @@ import type {
 import { AppInput, AppSelect } from '@/shared/components'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
-const buscar = ref('')
+const route = useRoute()
+
+const initialBuscar =
+  typeof route.query.buscar === 'string'
+    ? route.query.buscar
+    : typeof route.query.idCliente === 'string'
+      ? ''
+      : ''
+
+const buscar = ref(initialBuscar)
 const mostrarClientes = ref<ClienteEstadoFiltro>('activos')
 const pagina = ref(1)
+const focusClienteId = ref<number | null>(
+  typeof route.query.idCliente === 'string' && Number(route.query.idCliente) > 0
+    ? Number(route.query.idCliente)
+    : null,
+)
 
 const estadoFiltroOptions: SelectOption[] = [
   { label: 'Todos', value: 'todos' },
@@ -68,7 +83,7 @@ const buildSoloActivos = (value: ClienteEstadoFiltro): number | undefined => {
 }
 
 const filters = ref<ClienteListFilters>({
-  buscar: '',
+  buscar: buscar.value.trim(),
   pagina: 1,
   limite: 200,
   soloActivos: 1,
@@ -78,7 +93,10 @@ const clientesQuery = useClientesQuery(filters)
 
 const clientesConUbicacion = computed(() => {
   const data = clientesQuery.data.value?.data ?? []
-  return data.filter((c) => c.latitud != null && c.longitud != null)
+  const withCoords = data.filter((c) => c.latitud != null && c.longitud != null)
+  if (focusClienteId.value == null) return withCoords
+  const focused = withCoords.filter((c) => c.id === focusClienteId.value)
+  return focused.length ? focused : withCoords
 })
 
 const clientesConCoordenadas = computed(() => clientesConUbicacion.value.length)
@@ -191,6 +209,22 @@ watch(
   () => clientesQuery.data.value?.data,
   () => {
     updateMarkers()
+  },
+)
+
+watch(
+  () => [route.query.idCliente, route.query.buscar] as const,
+  ([idCliente, buscarQuery]) => {
+    focusClienteId.value =
+      typeof idCliente === 'string' && Number(idCliente) > 0 ? Number(idCliente) : null
+    if (typeof buscarQuery === 'string' && buscarQuery.trim()) {
+      buscar.value = buscarQuery
+      filters.value = {
+        ...filters.value,
+        buscar: buscarQuery.trim(),
+        pagina: 1,
+      }
+    }
   },
 )
 

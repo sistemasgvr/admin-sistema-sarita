@@ -80,7 +80,7 @@
 
               <AppInput
                 v-model="fechaSalida"
-                label="Fecha salida"
+                :label="esTipoPh ? 'Fecha P.H. (mes/año)' : 'Fecha salida'"
                 type="date"
                 v-bind="fechaSalidaAttrs"
                 :disabled="isSubmitting"
@@ -113,8 +113,8 @@
               v-if="esTipoPh"
               class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300"
             >
-              La <strong>fecha de salida</strong> será la fecha de la prueba. Al guardar se actualizará
-              la P.H. vigente del cilindro.
+              Use cualquier día del <strong>mes y año</strong> de la prueba; el sistema guarda solo
+              mes/año. Al guardar se actualizará la P.H. vigente del cilindro.
             </p>
           </div>
         </DetailSectionCard>

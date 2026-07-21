@@ -57,9 +57,13 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'prestamos/antiguedad',
+        redirect: { name: 'admin-balones-prestamos', query: { tab: 'antiguedad' } },
+      },
+      {
         path: 'prestamos',
         name: 'admin-balones-prestamos',
-        component: () => import('@/modules/balones/prestamos/views/PrestamosListView.vue'),
+        component: () => import('@/modules/balones/prestamos/views/PrestamosTabsView.vue'),
         meta: {
           title: 'Préstamos',
           module: 'balones',

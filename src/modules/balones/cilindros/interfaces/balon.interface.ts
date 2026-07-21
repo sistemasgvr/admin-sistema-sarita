@@ -63,8 +63,13 @@ export interface Balon {
   id_organo_inspector?: number | null
   nombre_organo_inspector?: string | null
   organo_inspector_no_aplica?: boolean
+  id_planta?: number | null
+  nombre_planta?: string | null
   id_tipo_balon?: number | null
   nombre_tipo_balon?: string | null
+  capacidad?: number | null
+  peso_tipo_balon?: number | null
+  nombre_unidad_medida?: string | null
   vigencia_ph_tipo_anios?: number | null
   id_producto_gas?: number | null
   nombre_producto_gas?: string | null
@@ -76,10 +81,12 @@ export interface Balon {
   estado_ph?: EstadoPh | null
   fecha_fabricacion?: string | null
   anio_fabricacion?: number | null
+  mes_fabricacion?: number | null
   numero_recepcion?: string | null
   presion_actual?: number | null
   observacion?: string | null
   tiene_solicitud_baja_pendiente?: boolean
+  tiene_baja_aprobada?: boolean
   baja?: BalonBaja | null
   estado: number
   nombre_usuario_creacion?: string | null
@@ -101,6 +108,8 @@ export interface BalonListFilters {
   idMarcaCilindro?: number
   phVencida?: boolean
   phPorVencerDias?: number
+  /** true = historial de dados de baja/robados */
+  soloBajas?: boolean
 }
 
 export interface BalonPayload {
@@ -129,6 +138,8 @@ export interface BalonPayload {
   idOrganoInspector?: number
   organoInspectorNoAplica?: boolean
   anioFabricacion?: number
+  mesFabricacion?: number
+  idPlanta?: number
 }
 
 export type CreateBalonPayload = BalonPayload

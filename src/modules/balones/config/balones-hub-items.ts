@@ -51,7 +51,7 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'prestamos',
     title: 'Préstamos',
-    description: 'Préstamo de cilindros a clientes y terceros.',
+    description: 'Préstamos y control de antigüedad (30 / 90–180 / 180+ días).',
     path: '/admin/balones/prestamos',
     icon: ICONS.users,
     permission: PermisoBanderas.PRESTAMOS_BALON_LISTAR,

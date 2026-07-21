@@ -59,6 +59,8 @@ export const ICONS = {
   star: 'lucide:star',
   inbox: 'lucide:inbox',
   alertCircle: 'lucide:alert-circle',
+  alertTriangle: 'lucide:triangle-alert',
+  clock: 'lucide:clock',
   contact: 'lucide:contact',
   download: 'lucide:download',
   printer: 'lucide:printer',
