@@ -9,7 +9,9 @@ export function usePrestamosDetalleQuery(filters: Ref<PrestamoDetalleListFilters
     queryKey: computed(() => prestamosDetalleQueryKeys.list(filters.value)),
     queryFn: () => prestamosDetalleService.listar(filters.value),
     placeholderData: keepPreviousData,
-    enabled: computed(() => (filters.value.idPrestamo ?? 0) > 0),
+    enabled: computed(
+      () => (filters.value.idPrestamo ?? 0) > 0 || (filters.value.idBalon ?? 0) > 0,
+    ),
   })
 }
 

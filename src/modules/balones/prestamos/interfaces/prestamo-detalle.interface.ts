@@ -4,6 +4,10 @@ export interface PrestamoDetalle {
   numero_prestamo?: string | null
   id_balon?: number | null
   codigo_balon?: string | null
+  id_tipo_prestamo?: number | null
+  nombre_tipo_prestamo?: string | null
+  id_cliente?: number | null
+  nombre_cliente?: string | null
   id_producto?: number | null
   nombre_producto?: string | null
   motivo_especifico?: string | null

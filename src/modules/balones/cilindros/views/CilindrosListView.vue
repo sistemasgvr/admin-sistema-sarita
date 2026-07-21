@@ -111,7 +111,7 @@
             type="button"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openDetailModal(row)"
+            @click="openDetailView(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
@@ -138,8 +138,6 @@
       :balon-id="selectedBalonId"
       @saved="onBalonSaved"
     />
-
-    <BalonDetailModal v-model="detailModalOpen" :balon-id="balonToViewId" />
 
     <BalonBajaModal
       v-model="bajaModalOpen"
@@ -230,9 +228,9 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import BalonBajaModal from '@/modules/balones/cilindros/components/BalonBajaModal.vue'
-import BalonDetailModal from '@/modules/balones/cilindros/components/BalonDetailModal.vue'
 import BalonFormModal from '@/modules/balones/cilindros/components/BalonFormModal.vue'
 import {
   useDeleteBalonMutation,
@@ -280,6 +278,7 @@ withDefaults(
 )
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -327,9 +326,6 @@ const marcaQuery = useListaOpcionesQuery(listaMarcaId)
 const formModalOpen = ref(false)
 const formMode = ref<BalonFormMode>('create')
 const selectedBalonId = ref<number | null>(null)
-
-const detailModalOpen = ref(false)
-const balonToViewId = ref<number | null>(null)
 
 const deleteModalOpen = ref(false)
 const balonToDelete = ref<Balon | null>(null)
@@ -527,9 +523,8 @@ const openEditModal = (balon: Balon) => {
   formModalOpen.value = true
 }
 
-const openDetailModal = (balon: Balon) => {
-  balonToViewId.value = balon.id
-  detailModalOpen.value = true
+const openDetailView = (balon: Balon) => {
+  router.push({ name: 'admin-balones-cilindros-detalle', params: { id: String(balon.id) } })
 }
 
 const openDeleteModal = (balon: Balon) => {

@@ -4,6 +4,14 @@ export interface AlquilerDetalle {
   numero_alquiler?: string | null
   id_balon: number
   codigo_balon?: string | null
+  id_cliente?: number | null
+  nombre_cliente?: string | null
+  fecha_inicio?: string | null
+  fecha_fin_pactada?: string | null
+  fecha_fin_real?: string | null
+  tarifa_diaria?: number | null
+  id_estado?: number | null
+  nombre_estado?: string | null
   estado: number
   fecha_creacion: string
   fecha_modificacion?: string | null

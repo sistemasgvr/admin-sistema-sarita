@@ -6,6 +6,16 @@ export const balonesRoutes: RouteRecordRaw[] = [
     path: 'balones',
     children: [
       {
+        path: 'cilindros/:id(\\d+)',
+        name: 'admin-balones-cilindros-detalle',
+        component: () => import('@/modules/balones/cilindros/views/CilindroDetailView.vue'),
+        meta: {
+          title: 'Ficha del cilindro',
+          module: 'balones',
+          permission: PermisoBanderas.BALONES_VER,
+        },
+      },
+      {
         path: 'cilindros',
         name: 'admin-balones-cilindros',
         component: () => import('@/modules/balones/cilindros/views/CilindrosTabsView.vue'),

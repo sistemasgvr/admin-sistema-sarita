@@ -126,7 +126,6 @@
     </AppTable>
 
     <PrestamoDetailModal v-model="prestamoDetailOpen" :prestamo-id="prestamoToViewId" />
-    <BalonDetailModal v-model="balonDetailOpen" :balon-id="balonToViewId" />
   </div>
 </template>
 
@@ -134,7 +133,6 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import BalonDetailModal from '@/modules/balones/cilindros/components/BalonDetailModal.vue'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
 import { usePrestamosAntiguedadQuery } from '@/modules/balones/prestamos/composables/usePrestamosAntiguedadQuery'
@@ -196,8 +194,6 @@ const clientesQuery = useClientesQuery(clientesFilters)
 
 const prestamoDetailOpen = ref(false)
 const prestamoToViewId = ref<number | null>(null)
-const balonDetailOpen = ref(false)
-const balonToViewId = ref<number | null>(null)
 
 const breadcrumbItems = computed(() => [
   ...balonesBreadcrumbItems('Préstamos').slice(0, 1),
@@ -349,8 +345,10 @@ function openPrestamoDetail(row: PrestamoAntiguedadItem) {
 
 function openBalonDetail(row: PrestamoAntiguedadItem) {
   if (!row.id_balon) return
-  balonToViewId.value = row.id_balon
-  balonDetailOpen.value = true
+  router.push({
+    name: 'admin-balones-cilindros-detalle',
+    params: { id: String(row.id_balon) },
+  })
 }
 
 function openClienteMapa(row: PrestamoAntiguedadItem) {
