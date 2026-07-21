@@ -27,3 +27,11 @@ export function usePhHistorialQuery(id: Ref<number | null | undefined>) {
     enabled: computed(() => id.value != null && id.value > 0),
   })
 }
+
+export function useEstadoHistorialQuery(id: Ref<number | null | undefined>) {
+  return useQuery({
+    queryKey: computed(() => balonesQueryKeys.estadoHistorial(id.value ?? 0)),
+    queryFn: () => balonesService.listarEstadoHistorial(id.value!, { pagina: 1, limite: 50 }),
+    enabled: computed(() => id.value != null && id.value > 0),
+  })
+}

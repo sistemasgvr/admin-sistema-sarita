@@ -5,6 +5,7 @@ import type {
   CreateBalonPayload,
   DarBajaBalonPayload,
   RegistrarPhHistorialPayload,
+  RestaurarBalonPayload,
   UpdateBalonPayload,
 } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -91,11 +92,34 @@ export function useDarBajaBalonMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.baja(variables.id) })
+      queryClient.invalidateQueries({
+        queryKey: balonesQueryKeys.estadoHistorial(variables.id),
+      })
       queryClient.invalidateQueries({ queryKey: ['bajas-pendientes'] })
       toastSuccess('Solicitud de baja registrada. Un administrador debe aprobarla.')
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar la solicitud de baja')
+    },
+  })
+}
+
+export function useRestaurarBalonMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: RestaurarBalonPayload }) =>
+      balonesService.restaurar(id, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.id) })
+      queryClient.invalidateQueries({
+        queryKey: balonesQueryKeys.estadoHistorial(variables.id),
+      })
+      toastSuccess('Cilindro reactivado correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo reactivar el cilindro')
     },
   })
 }

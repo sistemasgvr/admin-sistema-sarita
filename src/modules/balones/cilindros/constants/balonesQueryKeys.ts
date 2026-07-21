@@ -7,5 +7,6 @@ export const balonesQueryKeys = {
   details: () => [...balonesQueryKeys.all, 'detail'] as const,
   detail: (id: number) => [...balonesQueryKeys.details(), id] as const,
   phHistorial: (id: number) => [...balonesQueryKeys.all, 'ph-historial', id] as const,
+  estadoHistorial: (id: number) => [...balonesQueryKeys.all, 'estado-historial', id] as const,
   baja: (id: number) => [...balonesQueryKeys.all, 'baja', id] as const,
 }

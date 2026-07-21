@@ -30,7 +30,7 @@
 
         <DetailSectionCard
           v-if="balon?.baja"
-          title="Baja del cilindro"
+          title="Baja vigente"
           :icon="ICONS.archive"
           :full-width="true"
         >
@@ -62,6 +62,69 @@
               {{ balon.baja.motivo_detalle }}
             </p>
           </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard
+          title="Historial de baja y activación"
+          :icon="ICONS.refreshCw"
+          :full-width="true"
+        >
+          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Registro de solicitudes, aprobaciones, rechazos y reactivaciones del cilindro.
+          </p>
+          <div v-if="estadoHistorialRows.length" class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800">
+                  <th class="pb-2 pr-4">Fecha</th>
+                  <th class="pb-2 pr-4">Evento</th>
+                  <th class="pb-2 pr-4">Motivo</th>
+                  <th class="pb-2 pr-4">Estado</th>
+                  <th class="pb-2 pr-4">Usuario</th>
+                  <th class="pb-2">Observación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in estadoHistorialRows"
+                  :key="item.id"
+                  class="border-b border-gray-50 dark:border-gray-800/80"
+                >
+                  <td class="py-2 pr-4 whitespace-nowrap">
+                    {{ formatDetailDateTime(item.fecha_evento) }}
+                  </td>
+                  <td class="py-2 pr-4 whitespace-nowrap">
+                    <AppBadge :color="eventoBadgeColor(item.tipo_evento)">
+                      {{ item.nombre_tipo_evento || item.tipo_evento }}
+                    </AppBadge>
+                  </td>
+                  <td class="py-2 pr-4">
+                    {{ formatDetailListaOpcion(item.nombre_motivo_baja) || '—' }}
+                  </td>
+                  <td class="py-2 pr-4">
+                    <div
+                      v-if="item.nombre_estado_anterior || item.nombre_estado_nuevo"
+                      class="inline-flex items-center gap-1.5 whitespace-nowrap"
+                    >
+                      <span>{{ formatDetailListaOpcion(item.nombre_estado_anterior) || '—' }}</span>
+                      <AppIcon
+                        :name="ICONS.chevronRight"
+                        :size="14"
+                        class="shrink-0 text-gray-400 dark:text-gray-500"
+                      />
+                      <span>{{ formatDetailListaOpcion(item.nombre_estado_nuevo) || '—' }}</span>
+                    </div>
+                    <template v-else>—</template>
+                  </td>
+                  <td class="py-2 pr-4">{{ item.nombre_usuario || '—' }}</td>
+                  <td class="py-2 max-w-[14rem] truncate" :title="item.observacion || undefined">
+                    {{ item.observacion || '—' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else class="text-sm text-gray-400">Sin eventos de baja o reactivación.</p>
         </DetailSectionCard>
 
         <DetailSectionCard
@@ -159,8 +222,10 @@ import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import {
   useBalonQuery,
+  useEstadoHistorialQuery,
   usePhHistorialQuery,
 } from '@/modules/balones/cilindros/composables/useBalonesQuery'
+import type { TipoEventoEstadoBalon } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import { AppBadge, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -175,12 +240,17 @@ const open = defineModel<boolean>({ default: false })
 const balonIdRef = toRef(() => (open.value ? props.balonId : null))
 const balonQuery = useBalonQuery(balonIdRef)
 const phHistorialQuery = usePhHistorialQuery(balonIdRef)
+const estadoHistorialQuery = useEstadoHistorialQuery(balonIdRef)
 
 const isLoading = computed(
-  () => balonQuery.isFetching.value || phHistorialQuery.isFetching.value,
+  () =>
+    balonQuery.isFetching.value ||
+    phHistorialQuery.isFetching.value ||
+    estadoHistorialQuery.isFetching.value,
 )
 const balon = computed(() => balonQuery.data.value ?? null)
 const phHistorialRows = computed(() => phHistorialQuery.data.value?.data ?? [])
+const estadoHistorialRows = computed(() => estadoHistorialQuery.data.value?.data ?? [])
 
 const phBadgeLabel = computed(() => {
   const estado = balon.value?.estado_ph
@@ -195,6 +265,13 @@ const phBadgeColor = computed((): BadgeColor => {
   if (estado === 'POR_VENCER') return 'warning'
   return 'success'
 })
+
+const eventoBadgeColor = (tipo: TipoEventoEstadoBalon | string): BadgeColor => {
+  if (tipo === 'BAJA_APROBADA') return 'error'
+  if (tipo === 'BAJA_RECHAZADA') return 'warning'
+  if (tipo === 'REACTIVACION') return 'success'
+  return 'neutral'
+}
 
 const sections = computed<DetailSection[]>(() => {
   const data = balon.value

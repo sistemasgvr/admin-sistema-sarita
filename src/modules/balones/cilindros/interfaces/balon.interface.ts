@@ -1,5 +1,30 @@
 export type EstadoPh = 'VENCIDA' | 'POR_VENCER' | 'VIGENTE'
-export type EstadoAprobacionBaja = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
+export type EstadoAprobacionBaja = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'REACTIVADA'
+
+export type TipoEventoEstadoBalon =
+  | 'SOLICITUD_BAJA'
+  | 'BAJA_APROBADA'
+  | 'BAJA_RECHAZADA'
+  | 'REACTIVACION'
+
+export interface BalonEstadoHistorial {
+  id: number
+  id_balon: number
+  tipo_evento: TipoEventoEstadoBalon
+  nombre_tipo_evento?: string | null
+  id_baja?: number | null
+  id_motivo_baja?: number | null
+  nombre_motivo_baja?: string | null
+  id_estado_anterior?: number | null
+  nombre_estado_anterior?: string | null
+  id_estado_nuevo?: number | null
+  nombre_estado_nuevo?: string | null
+  observacion?: string | null
+  id_usuario?: number | null
+  nombre_usuario?: string | null
+  fecha_evento?: string | null
+  fecha_creacion?: string | null
+}
 
 export interface BalonBaja {
   id: number
@@ -178,6 +203,12 @@ export interface DeleteBalonResponse {
   eliminado: boolean
   id: number
   error?: string
+}
+
+export interface RestaurarBalonPayload {
+  idUsuarioAuditoria: number
+  observacion?: string
+  idAlmacen?: number
 }
 
 export type BalonFormMode = 'create' | 'edit'

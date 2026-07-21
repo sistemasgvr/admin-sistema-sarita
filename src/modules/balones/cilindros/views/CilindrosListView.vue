@@ -181,6 +181,50 @@
         </button>
       </template>
     </AppModal>
+
+    <AppModal
+      v-model="restaurarModalOpen"
+      title="Reactivar cilindro"
+      subtitle="El cilindro volverá a estado EN_ALMACEN y quedará en el historial."
+      size="sm"
+    >
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        ¿Confirmas reactivar el cilindro
+        <span class="font-medium text-gray-800 dark:text-white/90">
+          {{ balonToRestaurar?.codigo_balon }}
+        </span>
+        ?
+      </p>
+      <label class="mt-4 block text-sm font-medium text-gray-700 dark:text-gray-300">
+        Observación (opcional)
+        <textarea
+          v-model="restaurarObservacion"
+          rows="3"
+          maxlength="500"
+          class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+          placeholder="Motivo de la reactivación..."
+        />
+      </label>
+
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+          :disabled="restaurarMutation.isPending.value"
+          @click="restaurarModalOpen = false"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          :disabled="restaurarMutation.isPending.value"
+          @click="confirmRestaurar"
+        >
+          {{ restaurarMutation.isPending.value ? 'Reactivando...' : 'Reactivar' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -190,7 +234,10 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import BalonBajaModal from '@/modules/balones/cilindros/components/BalonBajaModal.vue'
 import BalonDetailModal from '@/modules/balones/cilindros/components/BalonDetailModal.vue'
 import BalonFormModal from '@/modules/balones/cilindros/components/BalonFormModal.vue'
-import { useDeleteBalonMutation } from '@/modules/balones/cilindros/composables/useBalonMutations'
+import {
+  useDeleteBalonMutation,
+  useRestaurarBalonMutation,
+} from '@/modules/balones/cilindros/composables/useBalonMutations'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import type {
   Balon,
@@ -247,6 +294,7 @@ const filters = ref<BalonListFilters>({
 
 const balonesQuery = useBalonesQuery(filters)
 const deleteMutation = useDeleteBalonMutation()
+const restaurarMutation = useRestaurarBalonMutation()
 
 const phAlertFilters = ref<BalonListFilters>({
   pagina: 1,
@@ -289,6 +337,10 @@ const balonToDelete = ref<Balon | null>(null)
 const bajaModalOpen = ref(false)
 const balonToBajaId = ref<number | null>(null)
 
+const restaurarModalOpen = ref(false)
+const balonToRestaurar = ref<Balon | null>(null)
+const restaurarObservacion = ref('')
+
 const breadcrumbItems = computed(() => balonesBreadcrumbItems('Libro de cilindros'))
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_CREAR))
@@ -311,11 +363,18 @@ const phBadgeColor = (estado: EstadoPh): BadgeColor => {
   return 'success'
 }
 
+const estadoBalonNombre = (balon: Balon) => balon.nombre_estado_balon?.toUpperCase() ?? ''
+
 const puedeDarDeBaja = (balon: Balon) =>
   balon.estado === 1 &&
   !balon.baja &&
   !balon.tiene_solicitud_baja_pendiente &&
-  balon.nombre_estado_balon?.toUpperCase() !== 'DADO_DE_BAJA'
+  !['DADO_DE_BAJA', 'ROBO'].includes(estadoBalonNombre(balon))
+
+const puedeRestaurar = (balon: Balon) =>
+  balon.estado === 1 &&
+  !balon.tiene_solicitud_baja_pendiente &&
+  ['DADO_DE_BAJA', 'ROBO'].includes(estadoBalonNombre(balon))
 
 const phPorVencerOptions = [
   { label: '30 días', value: 30 },
@@ -483,13 +542,19 @@ const openBajaModal = (balon: Balon) => {
   bajaModalOpen.value = true
 }
 
+const openRestaurarModal = (balon: Balon) => {
+  balonToRestaurar.value = balon
+  restaurarObservacion.value = ''
+  restaurarModalOpen.value = true
+}
+
 function actionItemsForRow(row: Balon): ActionMenuItem[] {
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
-      hidden: !canEdit.value,
+      hidden: !canEdit.value || puedeRestaurar(row),
     },
     {
       key: 'baja',
@@ -498,11 +563,17 @@ function actionItemsForRow(row: Balon): ActionMenuItem[] {
       hidden: !(canEdit.value && puedeDarDeBaja(row)),
     },
     {
+      key: 'restaurar',
+      label: 'Reactivar',
+      icon: ICONS.refreshCw,
+      hidden: !(canEdit.value && puedeRestaurar(row)),
+    },
+    {
       key: 'delete',
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
-      hidden: !canDelete.value,
+      hidden: !canDelete.value || puedeRestaurar(row),
     },
   ]
 }
@@ -510,6 +581,7 @@ function actionItemsForRow(row: Balon): ActionMenuItem[] {
 function onActionSelect(key: string, row: Balon) {
   if (key === 'edit') openEditModal(row)
   if (key === 'baja') openBajaModal(row)
+  if (key === 'restaurar') openRestaurarModal(row)
   if (key === 'delete') openDeleteModal(row)
 }
 
@@ -528,6 +600,26 @@ const confirmDelete = async () => {
     })
     deleteModalOpen.value = false
     balonToDelete.value = null
+  } catch {
+    // toast en mutation
+  }
+}
+
+const confirmRestaurar = async () => {
+  const currentUserId = authStore.user?.id
+  if (!balonToRestaurar.value || !currentUserId) return
+
+  try {
+    await restaurarMutation.mutateAsync({
+      id: balonToRestaurar.value.id,
+      payload: {
+        idUsuarioAuditoria: currentUserId,
+        observacion: restaurarObservacion.value.trim() || undefined,
+      },
+    })
+    restaurarModalOpen.value = false
+    balonToRestaurar.value = null
+    restaurarObservacion.value = ''
   } catch {
     // toast en mutation
   }
