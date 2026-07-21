@@ -13,6 +13,7 @@ export { default as AppPagination } from '@/shared/components/ui/AppPagination.v
 export { default as AppTabs } from '@/shared/components/ui/AppTabs.vue'
 export { default as AppTable } from '@/shared/components/ui/AppTable.vue'
 export { default as AppActionMenu } from '@/shared/components/ui/AppActionMenu.vue'
+export { default as AppCollapsibleSection } from '@/shared/components/ui/AppCollapsibleSection.vue'
 export { default as AppDynamicFilters } from '@/shared/components/filters/AppDynamicFilters.vue'
 export { default as AppListToolbar } from '@/shared/components/filters/AppListToolbar.vue'
 export { default as MapaLeaflet } from '@/shared/components/map/MapaLeaflet.vue'
