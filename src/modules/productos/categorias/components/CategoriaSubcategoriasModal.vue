@@ -99,25 +99,11 @@
                 v-if="canEdit || canDelete"
                 class="px-4 py-3 text-right"
               >
-                <div class="inline-flex items-center gap-1">
-                  <button
-                    v-if="canEdit"
-                    type="button"
-                    class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-                    @click="openEditModal(subCategoria)"
-                  >
-                    <AppIcon :name="ICONS.pencil" :size="16" />
-                    Editar
-                  </button>
-                  <button
-                    v-if="canDelete"
-                    type="button"
-                    class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-                    @click="openDeleteModal(subCategoria)"
-                  >
-                    <AppIcon :name="ICONS.trash" :size="16" />
-                    Eliminar
-                  </button>
+                <div class="inline-flex items-center justify-end">
+                  <AppActionMenu
+                    :items="actionItemsForRow(subCategoria)"
+                    :execute="(key) => onActionSelect(key, subCategoria)"
+                  />
                 </div>
               </td>
             </tr>
@@ -149,10 +135,24 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar subcategoría"
-      subtitle="No se puede eliminar si tiene productos activos."
+      :subtitle="
+        deleteBlockedByProductos
+          ? 'Esta subcategoría tiene productos activos.'
+          : 'No se puede eliminar si tiene productos activos.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="deleteBlockedByProductos"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        No puedes eliminar
+        <span class="font-medium">{{ subCategoriaToDelete?.nombre }}</span>
+        porque tiene productos asociados. Reasigna o elimina esos productos e
+        inténtalo de nuevo.
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ subCategoriaToDelete?.nombre }}
@@ -167,9 +167,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ deleteBlockedByProductos ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!deleteBlockedByProductos"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -194,10 +195,11 @@ import type {
   SubCategoriaProductoListFilters,
 } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppInput, AppModal } from '@/shared/components'
+import { AppActionMenu, AppBadge, AppInput, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 
 interface CategoriaSubcategoriasModalProps {
   categoria?: CategoriaProducto | null
@@ -229,6 +231,9 @@ const selectedSubCategoria = ref<SubCategoriaProducto | null>(null)
 
 const deleteModalOpen = ref(false)
 const subCategoriaToDelete = ref<SubCategoriaProducto | null>(null)
+const deleteBlockedByProductos = computed(
+  () => Number(subCategoriaToDelete.value?.total_productos ?? 0) > 0,
+)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_CREAR))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_EDITAR))
@@ -290,6 +295,40 @@ const confirmDelete = async () => {
     emit('changed')
   } catch {
     // toast en mutation
+  }
+}
+
+function actionItemsForRow(row: SubCategoriaProducto): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedByProductos = Number(row.total_productos ?? 0) > 0
+
+  return [
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: blockedByProductos ? 'Eliminar (tiene productos)' : 'Eliminar',
+      icon: ICONS.trash,
+      danger: !blockedByProductos,
+      disabled: busy || blockedByProductos,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: SubCategoriaProducto) {
+  switch (key) {
+    case 'edit':
+      openEditModal(row)
+      return
+    case 'delete':
+      openDeleteModal(row)
+      return
   }
 }
 

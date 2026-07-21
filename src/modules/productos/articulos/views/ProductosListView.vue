@@ -74,47 +74,22 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
 
-        <button
-          v-if="canEdit && row.estado === 1"
-          type="button"
-          title="Editar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-        </button>
-
-        <button
-          v-if="canDelete && row.estado === 1"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-        </button>
-
-        <button
-          v-if="canRestore && row.estado !== 1"
-          type="button"
-          title="Restaurar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
-          :disabled="restaurarMutation.isPending.value"
-          @click="restaurarProducto(row)"
-        >
-          <AppIcon :name="ICONS.check" :size="16" />
-          Restaurar
-        </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -143,10 +118,23 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar producto"
-      subtitle="No se puede eliminar si tiene stock distinto de cero."
+      :subtitle="
+        deleteBlockedByStock
+          ? 'Este producto tiene stock distinto de cero.'
+          : 'No se puede eliminar si tiene stock distinto de cero.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="deleteBlockedByStock"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        No puedes eliminar
+        <span class="font-medium">{{ productoToDelete?.nombre }}</span>
+        porque tiene stock en almacén. Ajusta o traslada el stock a cero e inténtalo de nuevo.
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ productoToDelete?.nombre }}
@@ -161,9 +149,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ deleteBlockedByStock ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!deleteBlockedByStock"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -201,6 +190,7 @@ import { subCategoriasProductoService } from '@/modules/productos/sub-categorias
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
+  AppActionMenu,
   AppBadge,
   AppListToolbar,
   AppModal,
@@ -211,6 +201,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
@@ -263,6 +254,7 @@ const selectedProducto = ref<Producto | null>(null)
 
 const deleteModalOpen = ref(false)
 const productoToDelete = ref<Producto | null>(null)
+const deleteBlockedByStock = computed(() => Boolean(productoToDelete.value?.tiene_stock))
 
 const detailModalOpen = ref(false)
 const productoToView = ref<Producto | null>(null)
@@ -460,6 +452,50 @@ const restaurarProducto = async (producto: Producto) => {
     await restaurarMutation.mutateAsync({ id: producto.id })
   } catch {
     // toast en mutation
+  }
+}
+
+function actionItemsForRow(row: Producto): ActionMenuItem[] {
+  const busy = restaurarMutation.isPending.value || deleteMutation.isPending.value
+  const blockedByStock = Boolean(row.tiene_stock)
+
+  return [
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !(canEdit.value && row.estado === 1),
+    },
+    {
+      key: 'restore',
+      label: 'Restaurar',
+      icon: ICONS.check,
+      disabled: busy,
+      loading: restaurarMutation.isPending.value,
+      hidden: !(canRestore.value && row.estado !== 1),
+    },
+    {
+      key: 'delete',
+      label: blockedByStock ? 'Eliminar (tiene stock)' : 'Eliminar',
+      icon: ICONS.trash,
+      danger: !blockedByStock,
+      disabled: busy || blockedByStock,
+      hidden: !(canDelete.value && row.estado === 1),
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: Producto) {
+  switch (key) {
+    case 'edit':
+      openEditModal(row)
+      return
+    case 'restore':
+      return restaurarProducto(row)
+    case 'delete':
+      openDeleteModal(row)
+      return
   }
 }
 

@@ -17,6 +17,8 @@ export interface Producto {
   es_alquilable: boolean
   afecta_stock: boolean
   precio: number
+  /** True si tiene stock <> 0 en algún almacén (bloquea eliminación). */
+  tiene_stock?: boolean | null
   stock_actual?: number | null
   stock_minimo?: number | null
   stock_bajo?: boolean | null

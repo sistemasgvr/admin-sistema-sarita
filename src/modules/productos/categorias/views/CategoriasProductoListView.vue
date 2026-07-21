@@ -42,48 +42,22 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
 
-        <button
-          v-if="canManageSubCategorias"
-          type="button"
-          title="Subcategorías"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
-          @click="openSubcategoriasModal(row)"
-        >
-          <AppIcon :name="ICONS.listTree" :size="16" />
-          <!-- Subcategorías -->
-        </button>
-
-        <button
-          v-if="canEdit"
-          type="button"
-          title="Editar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Editar -->
-        </button>
-
-        <button
-          v-if="canDelete"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Eliminar -->
-        </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -114,10 +88,24 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar categoría"
-      subtitle="No se puede eliminar si tiene subcategorías activas."
+      :subtitle="
+        deleteBlockedBySubcategorias
+          ? 'Esta categoría tiene subcategorías activas.'
+          : 'No se puede eliminar si tiene subcategorías activas.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="deleteBlockedBySubcategorias"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        No puedes eliminar
+        <span class="font-medium">{{ categoriaToDelete?.nombre }}</span>
+        porque tiene subcategorías activas. Elimina o reasigna las subcategorías e
+        inténtalo de nuevo.
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ categoriaToDelete?.nombre }}
@@ -132,9 +120,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ deleteBlockedBySubcategorias ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!deleteBlockedBySubcategorias"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -162,10 +151,18 @@ import type {
   CategoriaProductoListFilters,
 } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -193,6 +190,9 @@ const categoriaForSubcategorias = ref<CategoriaProducto | null>(null)
 
 const deleteModalOpen = ref(false)
 const categoriaToDelete = ref<CategoriaProducto | null>(null)
+const deleteBlockedBySubcategorias = computed(
+  () => Number(categoriaToDelete.value?.total_sub_categorias ?? 0) > 0,
+)
 
 const detailModalOpen = ref(false)
 const categoriaToView = ref<CategoriaProducto | null>(null)
@@ -272,6 +272,50 @@ const confirmDelete = async () => {
     categoriaToDelete.value = null
   } catch {
     // toast en mutation
+  }
+}
+
+function actionItemsForRow(row: CategoriaProducto): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedBySubcategorias = Number(row.total_sub_categorias ?? 0) > 0
+
+  return [
+    {
+      key: 'subcategorias',
+      label: 'Subcategorías',
+      icon: ICONS.listTree,
+      disabled: busy,
+      hidden: !canManageSubCategorias.value,
+    },
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: blockedBySubcategorias ? 'Eliminar (tiene subcategorías)' : 'Eliminar',
+      icon: ICONS.trash,
+      danger: !blockedBySubcategorias,
+      disabled: busy || blockedBySubcategorias,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: CategoriaProducto) {
+  switch (key) {
+    case 'subcategorias':
+      openSubcategoriasModal(row)
+      return
+    case 'edit':
+      openEditModal(row)
+      return
+    case 'delete':
+      openDeleteModal(row)
+      return
   }
 }
 

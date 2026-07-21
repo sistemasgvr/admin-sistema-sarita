@@ -15,6 +15,9 @@ export interface MovimientoInventario {
   id_tipo_documento_ref?: number | null
   nombre_tipo_documento_ref?: string
   glosa?: string
+  afecta_stock?: boolean
+  puede_anular?: boolean | null
+  motivo_bloqueo_anulacion?: string | null
   estado: number
   fecha_creacion: string
   fecha_modificacion: string

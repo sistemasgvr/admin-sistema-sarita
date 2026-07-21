@@ -85,37 +85,22 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
 
-        <button
-          v-if="canEdit"
-          type="button"
-          title="Ajustar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Ajustar -->
-        </button>
-
-        <button
-          v-if="canDelete"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Eliminar -->
-        </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -142,10 +127,25 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar registro de stock"
-      subtitle="Solo se puede eliminar si la cantidad es cero."
+      :subtitle="
+        deleteBlockedByCantidad
+          ? 'Este registro tiene cantidad distinta de cero.'
+          : 'Solo se puede eliminar si la cantidad es cero.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="deleteBlockedByCantidad"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        No puedes eliminar el stock de
+        <span class="font-medium">{{ stockToDelete?.nombre_producto }}</span>
+        en
+        <span class="font-medium">{{ stockToDelete?.nombre_almacen }}</span>
+        porque la cantidad debe ser cero. Ajusta el stock a cero e inténtalo de nuevo.
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar el stock de
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ stockToDelete?.nombre_producto }}
@@ -164,9 +164,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ deleteBlockedByCantidad ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!deleteBlockedByCantidad"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -198,6 +199,7 @@ import type {
 } from '@/modules/productos/stock/interfaces/stock.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
+  AppActionMenu,
   AppBadge,
   AppListToolbar,
   AppModal,
@@ -207,6 +209,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -237,6 +240,9 @@ const selectedStock = ref<Stock | null>(null)
 
 const deleteModalOpen = ref(false)
 const stockToDelete = ref<Stock | null>(null)
+const deleteBlockedByCantidad = computed(
+  () => Number(stockToDelete.value?.stock) !== 0,
+)
 
 const detailModalOpen = ref(false)
 const stockToView = ref<Stock | null>(null)
@@ -371,6 +377,40 @@ const confirmDelete = async () => {
     stockToDelete.value = null
   } catch {
     // toast en mutation
+  }
+}
+
+function actionItemsForRow(row: Stock): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedByCantidad = Number(row.stock) !== 0
+
+  return [
+    {
+      key: 'edit',
+      label: 'Ajustar',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: blockedByCantidad ? 'Eliminar (cantidad ≠ 0)' : 'Eliminar',
+      icon: ICONS.trash,
+      danger: !blockedByCantidad,
+      disabled: busy || blockedByCantidad,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: Stock) {
+  switch (key) {
+    case 'edit':
+      openEditModal(row)
+      return
+    case 'delete':
+      openDeleteModal(row)
+      return
   }
 }
 
