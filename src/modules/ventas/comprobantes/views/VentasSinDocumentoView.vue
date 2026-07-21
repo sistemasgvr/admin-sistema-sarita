@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Notas de venta" :items="breadcrumbItems" />
+    <PageBreadcrumb page-title="Ventas Sin Documento" :items="breadcrumbItems" />
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
@@ -18,7 +18,7 @@
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva nota de venta
+              Nueva VSD
             </RouterLink>
           </template>
         </AppListToolbar>
@@ -33,6 +33,20 @@
             :value="row.nombre_tipo_comprobante ?? row.codigo_tipo_comprobante"
           />
         </div>
+      </template>
+
+      <template #cell-destino="{ row }">
+        <template v-if="row.serie_comprobante_destino">
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{ row.serie_comprobante_destino }}-{{ row.numero_comprobante_destino }}
+          </p>
+          <div class="mt-1">
+            <ListaOpcionBadge
+              :value="row.nombre_tipo_comprobante_destino ?? row.codigo_tipo_comprobante_destino"
+            />
+          </div>
+        </template>
+        <span v-else class="text-gray-400">—</span>
       </template>
 
       <template #cell-nombre_cliente="{ value }">
@@ -85,6 +99,11 @@
 
     <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
     <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
+    <EmitirFacturaBoletaModal
+      v-model="emitirModalOpen"
+      :comprobante="comprobanteToEmitir"
+      :codigo-tipo="emitirCodigoTipo"
+    />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -131,7 +150,9 @@ import {
 import { useDeleteComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
-import { CODIGO_NOTA_VENTA } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import EmitirFacturaBoletaModal from '@/modules/ventas/comprobantes/components/EmitirFacturaBoletaModal.vue'
+import type { CodigoTipoComprobanteSunat } from '@/modules/ventas/comprobantes/utils/serieComprobante'
+import { CODIGO_VENTA_SIN_DOC } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
 import type {
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -156,7 +177,7 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
-const breadcrumbItems = ventasBreadcrumbItems('Notas de venta')
+const breadcrumbItems = ventasBreadcrumbItems('Ventas sin documento')
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -184,6 +205,9 @@ const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
 const deleteModalOpen = ref(false)
 const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
 const pdfBusyId = ref<number | null>(null)
+const emitirModalOpen = ref(false)
+const comprobanteToEmitir = ref<ComprobanteListItem | null>(null)
+const emitirCodigoTipo = ref<CodigoTipoComprobanteSunat>('03')
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
@@ -195,9 +219,9 @@ const idTipoNotaVenta = computed(() => {
   return (
     tipos.find(
       (t) =>
-        t.descripcion === CODIGO_NOTA_VENTA ||
-        t.nombre.toUpperCase().includes('NOTA_VENTA') ||
-        t.nombre.toUpperCase().includes('NOTA DE VENTA'),
+        t.descripcion === CODIGO_VENTA_SIN_DOC ||
+        t.nombre.toUpperCase().includes('CODIGO_VENTA_SIN_DOC') ||
+        t.nombre.toUpperCase().includes('VENTA SIN DOCUMENTO'),
     )?.id ?? null
   )
 })
@@ -239,7 +263,8 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 ])
 
 const columns: TableColumn[] = [
-  { key: 'comprobante', label: 'Nota de venta', mobile: 'primary' },
+  { key: 'comprobante', label: 'Venta sin Doc', mobile: 'primary' },
+  { key: 'destino', label: 'Destino' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'fecha', label: 'Fecha' },
   { key: 'total_importe', label: 'Total', align: 'right' },
@@ -294,8 +319,9 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
 }
 
-function actionItemsForRow(_row: ComprobanteListItem): ActionMenuItem[] {
+function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
   const busy = pdfBusyId.value !== null
+  const tieneDestino = Boolean(row.serie_comprobante_destino)
 
   return [
     {
@@ -334,6 +360,20 @@ function actionItemsForRow(_row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !canView.value,
     },
     {
+      key: 'emitir-boleta',
+      label: 'Emitir Boleta',
+      icon: ICONS.ticket,
+      disabled: busy || tieneDestino,
+      hidden: !canView.value || tieneDestino,
+    },
+    {
+      key: 'emitir-factura',
+      label: 'Emitir Factura',
+      icon: ICONS.ticket,
+      disabled: busy || tieneDestino,
+      hidden: !canView.value || tieneDestino,
+    },
+    {
       key: 'delete',
       label: 'Eliminar',
       icon: ICONS.trash,
@@ -357,6 +397,16 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
       return descargarPdf(row, 'ticket')
     case 'print-ticket':
       return imprimirPdf(row, 'ticket')
+    case 'emitir-boleta':
+      comprobanteToEmitir.value = row
+      emitirCodigoTipo.value = '03'
+      emitirModalOpen.value = true
+      return
+    case 'emitir-factura':
+      comprobanteToEmitir.value = row
+      emitirCodigoTipo.value = '01'
+      emitirModalOpen.value = true
+      return
     case 'delete':
       openDeleteModal(row)
       return

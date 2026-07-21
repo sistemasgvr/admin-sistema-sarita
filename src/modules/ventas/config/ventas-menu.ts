@@ -13,8 +13,8 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
   {
-    name: 'Notas de venta',
-    path: '/admin/ventas/notas-venta',
+    name: 'Ventas sin documento',
+    path: '/admin/ventas/vsd',
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
   {

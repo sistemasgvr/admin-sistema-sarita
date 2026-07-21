@@ -35,6 +35,20 @@
         </div>
       </template>
 
+      <template #cell-origen="{ row }">
+        <template v-if="row.serie_comprobante_origen">
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{ row.serie_comprobante_origen }}-{{ row.numero_comprobante_origen }}
+          </p>
+          <div class="mt-1">
+            <ListaOpcionBadge
+              :value="row.nombre_tipo_comprobante_origen ?? row.codigo_tipo_comprobante_origen"
+            />
+          </div>
+        </template>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
       <template #cell-nombre_cliente="{ value }">
         <span v-if="value">{{ value }}</span>
         <span v-else class="text-gray-400">—</span>
@@ -286,6 +300,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
+  { key: 'origen', label: 'Origen' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'fecha', label: 'Fecha' },
   { key: 'total_importe', label: 'Total', align: 'right' },
