@@ -88,7 +88,16 @@ const sections = computed<DetailSection[]>(() => {
       title: 'Comercial',
       icon: ICONS.creditCard,
       items: [
-        { label: 'Precio', value: formatDetailPrecio(data.precio) },
+        { label: 'Precio de venta', value: formatDetailPrecio(data.precio) },
+        { label: 'Precio de compra', value: formatDetailPrecio(data.precio_compra) },
+        ...(data.es_alquilable
+          ? [
+              {
+                label: 'Precio de garantía',
+                value: formatDetailPrecio(data.precio_garantia),
+              },
+            ]
+          : []),
         { label: 'Es gas', value: formatDetailYesNo(data.es_gas) },
         { label: 'Es servicio', value: formatDetailYesNo(data.es_servicio) },
         { label: 'Es alquilable', value: formatDetailYesNo(data.es_alquilable) },

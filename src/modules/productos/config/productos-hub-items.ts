@@ -57,13 +57,4 @@ export const productosHubItems: ProductosHubItem[] = [
     permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
     implemented: true,
   },
-  {
-    key: 'catalogo-precios',
-    title: 'Catálogo de precios',
-    description: 'Listas de precios por cliente o canal de venta.',
-    path: '/admin/productos/catalogo-precios',
-    icon: ICONS.tags,
-    permission: PermisoBanderas.CATALOGO_PRECIOS_LISTAR,
-    implemented: true,
-  },
 ]

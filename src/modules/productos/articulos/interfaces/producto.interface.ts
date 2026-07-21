@@ -17,6 +17,8 @@ export interface Producto {
   es_alquilable: boolean
   afecta_stock: boolean
   precio: number
+  precio_compra?: number | null
+  precio_garantia?: number | null
   /** True si tiene stock <> 0 en algún almacén (bloquea eliminación). */
   tiene_stock?: boolean | null
   stock_actual?: number | null
@@ -55,6 +57,8 @@ export interface CreateProductoPayload {
   esAlquilable?: boolean
   afectaStock?: boolean
   precio?: number
+  precioCompra?: number
+  precioGarantia?: number
 }
 
 export interface UpdateProductoPayload {
@@ -71,6 +75,8 @@ export interface UpdateProductoPayload {
   esAlquilable?: boolean
   afectaStock?: boolean
   precio?: number
+  precioCompra?: number
+  precioGarantia?: number
 }
 
 export interface DeleteProductoResponse {

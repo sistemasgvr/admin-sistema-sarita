@@ -124,24 +124,54 @@
 
         <DetailSectionCard title="Comercial" :icon="ICONS.creditCard">
           <div class="space-y-4">
-            <AppInput
-              v-model="precio"
-              label="Precio base"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              v-bind="precioAttrs"
-              :disabled="isSubmitting"
-              :error="errors.precio"
-            />
-
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <AppCheckbox v-model="esGas" :disabled="isSubmitting" label="Es gas" />
               <AppCheckbox v-model="esServicio" :disabled="isSubmitting" label="Es servicio" />
               <AppCheckbox v-model="esAlquilable" :disabled="isSubmitting" label="Es alquilable" />
               <AppCheckbox v-model="afectaStock" :disabled="isSubmitting" label="Afecta stock" />
             </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="precio"
+                label="Precio de venta"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                v-bind="precioAttrs"
+                :disabled="isSubmitting"
+                :error="errors.precio"
+              />
+
+              <AppInput
+                v-model="precioCompra"
+                label="Precio de compra"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                v-bind="precioCompraAttrs"
+                :disabled="isSubmitting"
+                :error="errors.precioCompra"
+              />
+            </div>
+
+            <AppInput
+              v-if="esAlquilable"
+              v-model="precioGarantia"
+              label="Precio de garantía / depósito"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              v-bind="precioGarantiaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.precioGarantia"
+            />
+            <p v-if="esAlquilable" class="text-xs text-gray-500 dark:text-gray-400">
+              Se usa como depósito al alquilar o prestar este producto.
+            </p>
           </div>
         </DetailSectionCard>
 
@@ -279,7 +309,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
       esServicio: yup.boolean().default(false),
       esAlquilable: yup.boolean().default(false),
       afectaStock: yup.boolean().default(true),
-      precio: optionalNumber().min(0, 'El precio no puede ser negativo'),
+      precio: optionalNumber().min(0, 'El precio de venta no puede ser negativo'),
+      precioCompra: optionalNumber().min(0, 'El precio de compra no puede ser negativo'),
+      precioGarantia: optionalNumber().min(0, 'La garantía no puede ser negativa'),
     }),
   ),
   initialValues: {
@@ -297,6 +329,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
     esAlquilable: false,
     afectaStock: true,
     precio: undefined as number | undefined,
+    precioCompra: undefined as number | undefined,
+    precioGarantia: undefined as number | undefined,
   },
 })
 
@@ -314,6 +348,8 @@ const [esServicio] = defineField('esServicio')
 const [esAlquilable] = defineField('esAlquilable')
 const [afectaStock] = defineField('afectaStock')
 const [precio, precioAttrs] = defineField('precio')
+const [precioCompra, precioCompraAttrs] = defineField('precioCompra')
+const [precioGarantia, precioGarantiaAttrs] = defineField('precioGarantia')
 
 const subCategoriaOptions = computed(() =>
   props.subCategorias
@@ -343,6 +379,8 @@ const syncFormValues = () => {
       esAlquilable: props.producto?.es_alquilable ?? false,
       afectaStock: props.producto?.afecta_stock ?? true,
       precio: props.producto?.precio ?? undefined,
+      precioCompra: props.producto?.precio_compra ?? undefined,
+      precioGarantia: props.producto?.precio_garantia ?? undefined,
     },
   })
 }
@@ -427,6 +465,8 @@ const onSubmit = handleSubmit(async (formValues) => {
       esAlquilable: formValues.esAlquilable,
       afectaStock: formValues.afectaStock,
       precio: formValues.precio ?? 0,
+      precioCompra: formValues.precioCompra ?? 0,
+      precioGarantia: formValues.esAlquilable ? (formValues.precioGarantia ?? 0) : 0,
     }
 
     if (props.mode === 'create') {
