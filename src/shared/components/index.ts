@@ -1,4 +1,5 @@
 export { default as AppCheckbox } from '@/shared/components/form/AppCheckbox.vue'
+export { default as AppDropzone } from '@/shared/components/form/AppDropzone.vue'
 export { default as AppFileInput } from '@/shared/components/form/AppFileInput.vue'
 export { default as AppFormField } from '@/shared/components/form/AppFormField.vue'
 export { default as AppInput } from '@/shared/components/form/AppInput.vue'

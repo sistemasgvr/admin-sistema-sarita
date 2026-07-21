@@ -63,6 +63,10 @@ export const ICONS = {
   download: 'lucide:download',
   printer: 'lucide:printer',
   fileText: 'lucide:file-text',
+  image: 'lucide:image',
+  images: 'lucide:images',
+  upload: 'lucide:upload',
+  replace: 'lucide:replace',
   receipt: 'lucide:receipt',
   /** Ticket / voucher (sin símbolo $) */
   ticket: 'lucide:ticket',

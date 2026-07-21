@@ -31,6 +31,15 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
 
+  // Dejar que el browser/axios fijen el boundary en multipart
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    if (typeof config.headers.set === 'function') {
+      config.headers.set('Content-Type', undefined as unknown as string)
+    } else {
+      delete (config.headers as Record<string, unknown>)['Content-Type']
+    }
+  }
+
   return config
 })
 

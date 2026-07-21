@@ -123,6 +123,28 @@
             </div>
           </div>
         </DetailSectionCard>
+
+        <DetailSectionCard title="Imágenes" :icon="ICONS.images">
+          <ProductoImagenesManager
+            v-if="mode === 'edit' && producto?.id"
+            :id-producto="producto.id"
+            editable
+          />
+
+          <div v-else class="space-y-3">
+            <AppDropzone
+              v-model="pendingImages"
+              label="Imágenes iniciales"
+              title="Arrastra y suelta tus imágenes"
+              description="PNG, JPG, WEBP o GIF. Arrástralas aquí o selecciónalas desde tu equipo."
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif"
+              multiple
+              :max-files="20"
+              :max-filesize="10"
+              :disabled="isSubmitting"
+            />
+          </div>
+        </DetailSectionCard>
       </FormCardsLayout>
     </form>
 
@@ -157,17 +179,26 @@ import {
   useCreateProductoMutation,
   useUpdateProductoMutation,
 } from '@/modules/productos/articulos/composables/useProductoMutations'
+import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
 import type {
   Producto,
   ProductoFormMode,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
-import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
+import {
+  AppCheckbox,
+  AppDropzone,
+  AppInput,
+  AppModal,
+  AppSelect,
+} from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
 interface ProductoFormModalProps {
@@ -190,6 +221,7 @@ const unidadesMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
 
 const createMutation = useCreateProductoMutation()
 const updateMutation = useUpdateProductoMutation()
+const pendingImages = ref<File[]>([])
 
 const categoriaOptions = computed(() =>
   props.categorias.map((categoria) => ({
@@ -289,6 +321,31 @@ const handleClose = () => {
   open.value = false
 }
 
+const uploadPendingImages = async (idProducto: number) => {
+  const files = [...pendingImages.value]
+  if (!files.length) return
+
+  try {
+    for (let index = 0; index < files.length; index += 1) {
+      await productoImagenesService.crear(idProducto, files[index], {
+        esPrincipal: index === 0,
+      })
+    }
+    toastSuccess(
+      files.length === 1
+        ? 'Imagen del producto subida'
+        : `${files.length} imágenes del producto subidas`,
+    )
+  } catch (error) {
+    toastApiError(
+      error,
+      'El producto se creó, pero hubo un error al subir imágenes',
+    )
+  } finally {
+    pendingImages.value = []
+  }
+}
+
 const onSubmit = handleSubmit(async (formValues) => {
   try {
     const payload = {
@@ -311,7 +368,10 @@ const onSubmit = handleSubmit(async (formValues) => {
     }
 
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      const created = await createMutation.mutateAsync(payload)
+      if (created?.id) {
+        await uploadPendingImages(created.id)
+      }
     } else if (props.producto) {
       await updateMutation.mutateAsync({
         id: props.producto.id,
@@ -333,6 +393,7 @@ watch(
   (isOpen) => {
     if (isOpen) {
       syncFormValues()
+      pendingImages.value = []
     }
   },
 )

@@ -22,6 +22,7 @@
     "@tanstack/vue-query": "^5.101.2",
     "@vee-validate/yup": "^4.15.1",
     "axios": "^1.18.1",
+    "dropzone": "^6.0.0-beta.2",
     "leaflet": "^1.9.4",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
@@ -34,6 +35,7 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.3.1",
+    "@types/dropzone": "^5.7.9",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^24.13.2",
     "@vitejs/plugin-vue": "^6.0.7",

@@ -12,6 +12,17 @@
         <AppBadge v-if="producto?.es_alquilable" color="neutral">Alquilable</AppBadge>
         <AppBadge v-if="producto?.afecta_stock" color="success">Afecta stock</AppBadge>
       </template>
+
+      <template #extra>
+        <DetailSectionCard
+          v-if="producto?.id"
+          title="Imágenes"
+          :icon="ICONS.images"
+          full-width
+        >
+          <ProductoImagenesManager :id-producto="producto.id" />
+        </DetailSectionCard>
+      </template>
     </DetailCardsLayout>
 
     <template #footer>
@@ -28,14 +39,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDateTime,
   formatDetailPrecio,
   formatDetailYesNo,
 } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { AppBadge, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
