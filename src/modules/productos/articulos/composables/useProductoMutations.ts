@@ -52,3 +52,24 @@ export function useDeleteProductoMutation() {
     },
   })
 }
+
+export function useRestaurarProductoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idUsuarioAuditoria,
+    }: {
+      id: number
+      idUsuarioAuditoria?: number
+    }) => productosService.restaurar(id, idUsuarioAuditoria),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      toastSuccess('Producto restaurado correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo restaurar el producto')
+    },
+  })
+}

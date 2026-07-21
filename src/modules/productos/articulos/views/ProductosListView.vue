@@ -13,10 +13,22 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Código, nombre o marca..."
+          search-placeholder="Código, ubicación, nombre o marca..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <div class="w-full sm:w-44">
+              <AppSelect v-model="mostrarProductos" :options="estadoFiltroOptions" />
+            </div>
+            <button
+              v-if="canView"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              @click="printModalOpen = true"
+            >
+              <AppIcon :name="ICONS.printer" :size="18" />
+              Imprimir ubicación
+            </button>
             <button
               v-if="canCreate"
               type="button"
@@ -40,15 +52,25 @@
         </span>
       </template>
 
+      <template #cell-codigo_ubicacion="{ value }">
+        <span class="tabular-nums text-sm text-gray-700 dark:text-gray-300">
+          {{ value || '—' }}
+        </span>
+      </template>
+
       <template #cell-precio="{ value }">
         <span class="tabular-nums">
           {{ formatPrecio(value) }}
         </span>
       </template>
 
-      <template #cell-es_gas="{ value }">
-        <AppBadge v-if="value" variant="light" color="primary">Gas</AppBadge>
-        <span v-else class="text-gray-400">—</span>
+      <template #cell-estado="{ row }">
+        <div class="flex flex-wrap items-center gap-1.5">
+          <AppBadge v-if="row.es_gas" variant="light" color="primary">Gas</AppBadge>
+          <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
+            {{ row.estado === 1 ? 'Activo' : 'Inactivo' }}
+          </AppBadge>
+        </div>
       </template>
 
       <template #actions="{ row }">
@@ -63,25 +85,35 @@
         </button>
 
         <button
-          v-if="canEdit"
+          v-if="canEdit && row.estado === 1"
           type="button"
           title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Editar -->
         </button>
 
         <button
-          v-if="canDelete"
+          v-if="canDelete && row.estado === 1"
           type="button"
           title="Eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Eliminar -->
+        </button>
+
+        <button
+          v-if="canRestore && row.estado !== 1"
+          type="button"
+          title="Restaurar"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
+          :disabled="restaurarMutation.isPending.value"
+          @click="restaurarProducto(row)"
+        >
+          <AppIcon :name="ICONS.check" :size="16" />
+          Restaurar
         </button>
       </template>
 
@@ -105,6 +137,8 @@
     />
 
     <ProductoDetailModal v-model="detailModalOpen" :producto="productoToView" />
+
+    <ProductoUbicacionesPrintModal v-model="printModalOpen" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -148,10 +182,15 @@ import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ProductoFormModal from '@/modules/productos/articulos/components/ProductoFormModal.vue'
 import ProductoDetailModal from '@/modules/productos/articulos/components/ProductoDetailModal.vue'
-import { useDeleteProductoMutation } from '@/modules/productos/articulos/composables/useProductoMutations'
+import ProductoUbicacionesPrintModal from '@/modules/productos/articulos/components/ProductoUbicacionesPrintModal.vue'
+import {
+  useDeleteProductoMutation,
+  useRestaurarProductoMutation,
+} from '@/modules/productos/articulos/composables/useProductoMutations'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type {
   Producto,
+  ProductoEstadoFiltro,
   ProductoFormMode,
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
@@ -161,11 +200,19 @@ import { productosBreadcrumbItems } from '@/modules/productos/config/productos-b
 import { subCategoriasProductoService } from '@/modules/productos/sub-categorias/services/sub-categorias-producto.service'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import {
+  AppBadge,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppSelect,
+  AppTable,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -179,15 +226,36 @@ const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
+const mostrarProductos = ref<ProductoEstadoFiltro>('activos')
+
+const estadoFiltroOptions: SelectOption[] = [
+  { label: 'Activos', value: 'activos' },
+  { label: 'Inactivos', value: 'inactivos' },
+  { label: 'Todos', value: 'todos' },
+]
+
+const buildSoloActivos = (value: ProductoEstadoFiltro): number | null | undefined => {
+  switch (value) {
+    case 'activos':
+      return 1
+    case 'inactivos':
+      return 0
+    case 'todos':
+    default:
+      return null
+  }
+}
 
 const filters = ref<ProductoListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
+  soloActivos: 1,
 })
 
 const productosQuery = useProductosQuery(filters)
 const deleteMutation = useDeleteProductoMutation()
+const restaurarMutation = useRestaurarProductoMutation()
 
 const formModalOpen = ref(false)
 const formMode = ref<ProductoFormMode>('create')
@@ -198,11 +266,15 @@ const productoToDelete = ref<Producto | null>(null)
 
 const detailModalOpen = ref(false)
 const productoToView = ref<Producto | null>(null)
+const printModalOpen = ref(false)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_ELIMINAR))
+const canRestore = computed(() =>
+  authStore.hasPermission(PermisoBanderas.PRODUCTOS_RESTAURAR),
+)
 
 const isLoading = computed(() => productosQuery.isFetching.value)
 const rows = computed(() => productosQuery.data.value?.data ?? [])
@@ -244,11 +316,12 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => {
 
 const columns = computed<TableColumn<Producto>[]>(() => [
   { key: 'codigo', label: 'Código' },
+  { key: 'codigo_ubicacion', label: 'Ubicación' },
   { key: 'nombre', label: 'Nombre' },
   { key: 'categoria', label: 'Categoría' },
   { key: 'nombre_unidad_medida', label: 'U.M.' },
   { key: 'precio', label: 'Precio' },
-  { key: 'es_gas', label: 'Tipo' },
+  { key: 'estado', label: 'Estado' },
 ])
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
@@ -307,6 +380,7 @@ const syncFilters = () => {
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
       active.idSubCategoria != null ? Number(active.idSubCategoria) : undefined,
+    soloActivos: buildSoloActivos(mostrarProductos.value),
   }
 }
 
@@ -342,6 +416,11 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
+watch(mostrarProductos, () => {
+  pagina.value = 1
+  syncFilters()
+})
+
 const openCreateModal = () => {
   formMode.value = 'create'
   selectedProducto.value = null
@@ -371,6 +450,14 @@ const confirmDelete = async () => {
     await deleteMutation.mutateAsync(productoToDelete.value.id)
     deleteModalOpen.value = false
     productoToDelete.value = null
+  } catch {
+    // toast en mutation
+  }
+}
+
+const restaurarProducto = async (producto: Producto) => {
+  try {
+    await restaurarMutation.mutateAsync({ id: producto.id })
   } catch {
     // toast en mutation
   }

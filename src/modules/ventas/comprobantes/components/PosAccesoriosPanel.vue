@@ -336,6 +336,8 @@ const syncFilters = () => {
     limite: 500,
     esGas: false,
     esServicio: false,
+    soloActivos: 1,
+    idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
       active.idSubCategoria != null ? Number(active.idSubCategoria) : undefined,
@@ -368,8 +370,13 @@ watch(buscar, () => {
   }, 350)
 })
 
+watch(idAlmacen, () => {
+  syncFilters()
+})
+
 onMounted(() => {
   void loadCatalogos()
+  syncFilters()
 })
 
 const lineasActivas = computed(() =>

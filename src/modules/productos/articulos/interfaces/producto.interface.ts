@@ -2,6 +2,7 @@ export interface Producto {
   id: number
   codigo: string
   codigo_barra?: string
+  codigo_ubicacion?: string | null
   nombre: string
   id_sub_categoria?: number
   nombre_sub_categoria?: string
@@ -16,6 +17,9 @@ export interface Producto {
   es_alquilable: boolean
   afecta_stock: boolean
   precio: number
+  stock_actual?: number | null
+  stock_minimo?: number | null
+  stock_bajo?: boolean | null
   estado: number
   fecha_creacion: string
   fecha_modificacion: string
@@ -31,6 +35,8 @@ export interface ProductoListFilters {
   esServicio?: boolean
   esAlquilable?: boolean
   afectaStock?: boolean
+  soloActivos?: number | null
+  idAlmacen?: number
 }
 
 export interface CreateProductoPayload {
@@ -38,6 +44,7 @@ export interface CreateProductoPayload {
   nombre: string
   idSubCategoria?: number
   codigoBarra?: string
+  codigoUbicacion?: string
   idUnidadMedida?: number
   marca?: string
   presentacion?: string
@@ -53,6 +60,7 @@ export interface UpdateProductoPayload {
   nombre?: string
   idSubCategoria?: number
   codigoBarra?: string
+  codigoUbicacion?: string
   idUnidadMedida?: number
   marca?: string
   presentacion?: string
@@ -70,3 +78,4 @@ export interface DeleteProductoResponse {
 }
 
 export type ProductoFormMode = 'create' | 'edit'
+export type ProductoEstadoFiltro = 'activos' | 'inactivos' | 'todos'

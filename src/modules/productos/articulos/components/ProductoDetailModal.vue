@@ -70,6 +70,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Código', value: data.codigo },
         { label: 'Nombre', value: data.nombre },
         { label: 'Código de barras', value: data.codigo_barra },
+        { label: 'Código de ubicación', value: data.codigo_ubicacion },
         { label: 'Marca', value: data.marca },
         { label: 'Presentación', value: data.presentacion },
       ],

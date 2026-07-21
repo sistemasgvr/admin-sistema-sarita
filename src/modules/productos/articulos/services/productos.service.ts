@@ -3,6 +3,7 @@ import {
   apiGetPaginated,
   apiPatch,
   apiPost,
+  apiPostBlob,
 } from '@/shared/api/apiClient'
 import type {
   CreateProductoPayload,
@@ -27,5 +28,23 @@ export const productosService = {
 
   eliminar(id: number) {
     return apiDelete<DeleteProductoResponse>(`/productos/${id}`, { data: {} })
+  },
+
+  restaurar(id: number, idUsuarioAuditoria?: number) {
+    return apiPatch<DeleteProductoResponse>(`/productos/${id}/restaurar`, {
+      idUsuarioAuditoria,
+    })
+  },
+
+  generarCodigoUbicacion(payload: {
+    nombre: string
+    marca?: string
+    idProducto?: number
+  }) {
+    return apiPost<{ codigo_ubicacion: string }>('/productos/codigo-ubicacion/generar', payload)
+  },
+
+  imprimirUbicacionesPdf(ids: number[]) {
+    return apiPostBlob('/productos/ubicaciones/pdf', { ids })
   },
 }

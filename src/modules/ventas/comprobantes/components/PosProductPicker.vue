@@ -22,7 +22,7 @@
         v-model:filters="filters"
         class="min-w-0 flex-1"
         :filter-fields="filterFields"
-        search-placeholder="Código, nombre o marca..."
+        search-placeholder="Código, ubicación, nombre o marca..."
         @filter-change="emit('filter-change')"
       >
         <template #actions>
@@ -91,7 +91,10 @@
         <p class="line-clamp-2 min-h-[2.5rem] text-sm font-medium text-gray-800 dark:text-white/90">
           {{ producto.nombre }}
         </p>
-        <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">{{ producto.codigo }}</p>
+        <p class="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
+          {{ producto.codigo }}
+          <span v-if="producto.codigo_ubicacion"> · Ub: {{ producto.codigo_ubicacion }}</span>
+        </p>
         <p
           v-if="producto.nombre_categoria || producto.marca"
           class="mt-1 truncate text-xs text-gray-400 dark:text-gray-500"
@@ -101,7 +104,20 @@
           <span v-if="producto.marca">{{ producto.marca }}</span>
         </p>
         <div class="mt-2 flex items-center justify-between gap-2">
-          <span class="text-sm font-semibold text-brand-500">{{ formatMoney(producto.precio) }}</span>
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <span class="text-sm font-semibold text-brand-500">{{ formatMoney(producto.precio) }}</span>
+            <span
+              v-if="producto.stock_actual != null"
+              class="text-[11px] font-medium"
+              :class="
+                producto.stock_bajo || Number(producto.stock_actual) <= 0
+                  ? 'text-error-500'
+                  : 'text-gray-500 dark:text-gray-400'
+              "
+            >
+              Stock: {{ formatStock(producto.stock_actual) }}
+            </span>
+          </div>
           <span
             class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500 text-white opacity-0 transition group-hover:opacity-100"
           >
@@ -128,9 +144,21 @@
           <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ producto.nombre }}</p>
           <p class="truncate text-xs text-gray-500 dark:text-gray-400">
             {{ producto.codigo }}
+            <span v-if="producto.codigo_ubicacion"> · Ub: {{ producto.codigo_ubicacion }}</span>
             <span v-if="producto.nombre_categoria"> · {{ producto.nombre_categoria }}</span>
             <span v-if="producto.nombre_sub_categoria"> / {{ producto.nombre_sub_categoria }}</span>
             <span v-if="producto.marca"> · {{ producto.marca }}</span>
+          </p>
+          <p
+            v-if="producto.stock_actual != null"
+            class="mt-0.5 text-[11px] font-medium"
+            :class="
+              producto.stock_bajo || Number(producto.stock_actual) <= 0
+                ? 'text-error-500'
+                : 'text-gray-500 dark:text-gray-400'
+            "
+          >
+            Stock: {{ formatStock(producto.stock_actual) }}
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-3">
@@ -180,5 +208,11 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(
     Number(value || 0),
   )
+}
+
+function formatStock(value: number | null | undefined) {
+  return new Intl.NumberFormat('es-PE', {
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0))
 }
 </script>

@@ -65,6 +65,27 @@
                 :disabled="isSubmitting"
               />
             </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+              <AppInput
+                v-model="codigoUbicacion"
+                label="Código de ubicación"
+                placeholder="Ej. ARO-GEN-01"
+                v-bind="codigoUbicacionAttrs"
+                :disabled="isSubmitting || isGeneratingUbicacion"
+              />
+              <button
+                type="button"
+                class="inline-flex h-[42px] items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                :disabled="isSubmitting || isGeneratingUbicacion"
+                @click="generarCodigoUbicacion"
+              >
+                {{ isGeneratingUbicacion ? 'Generando...' : 'Generar' }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Genera iniciales del nombre y marca (ej. ARO-GEN-01). En edición se guarda de inmediato.
+            </p>
           </div>
         </DetailSectionCard>
 
@@ -171,6 +192,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useQueryClient } from '@tanstack/vue-query'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -180,11 +202,13 @@ import {
   useUpdateProductoMutation,
 } from '@/modules/productos/articulos/composables/useProductoMutations'
 import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
+import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import type {
   Producto,
   ProductoFormMode,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import {
@@ -219,9 +243,11 @@ const emit = defineEmits<{
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadesMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
 
+const queryClient = useQueryClient()
 const createMutation = useCreateProductoMutation()
 const updateMutation = useUpdateProductoMutation()
 const pendingImages = ref<File[]>([])
+const isGeneratingUbicacion = ref(false)
 
 const categoriaOptions = computed(() =>
   props.categorias.map((categoria) => ({
@@ -242,6 +268,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
     yup.object({
       codigo: requiredString('El código'),
       codigoBarra: optionalString(),
+      codigoUbicacion: optionalString(),
       nombre: requiredString('El nombre'),
       idCategoria: yup.number().optional(),
       idSubCategoria: yup.number().optional(),
@@ -258,6 +285,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
   initialValues: {
     codigo: '',
     codigoBarra: '',
+    codigoUbicacion: '',
     nombre: '',
     idCategoria: undefined as number | undefined,
     idSubCategoria: undefined as number | undefined,
@@ -274,6 +302,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
 
 const [codigo, codigoAttrs] = defineField('codigo')
 const [codigoBarra, codigoBarraAttrs] = defineField('codigoBarra')
+const [codigoUbicacion, codigoUbicacionAttrs] = defineField('codigoUbicacion')
 const [nombre, nombreAttrs] = defineField('nombre')
 const [idCategoria, idCategoriaAttrs] = defineField('idCategoria')
 const [idSubCategoria, idSubCategoriaAttrs] = defineField('idSubCategoria')
@@ -302,6 +331,7 @@ const syncFormValues = () => {
     values: {
       codigo: props.producto?.codigo ?? '',
       codigoBarra: props.producto?.codigo_barra ?? '',
+      codigoUbicacion: props.producto?.codigo_ubicacion ?? '',
       nombre: props.producto?.nombre ?? '',
       idCategoria: props.producto?.id_categoria ?? undefined,
       idSubCategoria: props.producto?.id_sub_categoria ?? undefined,
@@ -319,6 +349,37 @@ const syncFormValues = () => {
 
 const handleClose = () => {
   open.value = false
+}
+
+const generarCodigoUbicacion = async () => {
+  const nombreActual = (nombre.value ?? '').trim()
+  if (!nombreActual) {
+    toastApiError(new Error('Ingresa el nombre del producto antes de generar'), 'Nombre requerido')
+    return
+  }
+
+  isGeneratingUbicacion.value = true
+  try {
+    const persistir = props.mode === 'edit' && props.producto?.id != null
+    const result = await productosService.generarCodigoUbicacion({
+      nombre: nombreActual,
+      marca: (marca.value ?? '').trim() || undefined,
+      idProducto: persistir ? props.producto!.id : undefined,
+    })
+
+    codigoUbicacion.value = result.codigo_ubicacion
+
+    if (persistir) {
+      await queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      toastSuccess(`Ubicación asignada: ${result.codigo_ubicacion}`)
+    } else {
+      toastSuccess(`Código sugerido: ${result.codigo_ubicacion}`)
+    }
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el código de ubicación')
+  } finally {
+    isGeneratingUbicacion.value = false
+  }
 }
 
 const uploadPendingImages = async (idProducto: number) => {
@@ -355,6 +416,7 @@ const onSubmit = handleSubmit(async (formValues) => {
         ? Number(formValues.idSubCategoria)
         : undefined,
       codigoBarra: formValues.codigoBarra || undefined,
+      codigoUbicacion: formValues.codigoUbicacion || '',
       idUnidadMedida: formValues.idUnidadMedida
         ? Number(formValues.idUnidadMedida)
         : undefined,
