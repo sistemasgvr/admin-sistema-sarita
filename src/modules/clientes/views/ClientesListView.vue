@@ -114,7 +114,7 @@
           <AppIcon :name="ICONS.refreshCw" :size="16" />
           Solicitar reactivación
         </button>
-
+<!-- 
         <button
           v-if="canRestore && row.estado !== 1"
           type="button"
@@ -124,7 +124,7 @@
         >
           <AppIcon :name="ICONS.check" :size="16" />
           Restaurar
-        </button>
+        </button> -->
       </template>
 
       <template #footer>

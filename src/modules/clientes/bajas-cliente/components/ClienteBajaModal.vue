@@ -14,6 +14,11 @@
         <strong>Aprobar bajas</strong>. El cliente seguirá activo mientras tanto.
       </div>
 
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-gray-500 dark:text-gray-400">Tipo de solicitud:</span>
+        <span class="font-medium text-gray-800 dark:text-white/90">{{ tipoSolicitudLabel }}</span>
+      </div>
+
       <AppSelectSearch
         v-model="idMotivoBaja"
         label="Motivo de baja"
@@ -84,6 +89,15 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const solicitarMutation = useSolicitarBajaClienteMutation()
 
+const listaTipoSolicitudId = ref(ListaIds.TIPO_SOLICITUD)
+const tipoSolicitudQuery = useListaOpcionesQuery(listaTipoSolicitudId)
+
+const tipoSolicitudBaja = computed(() =>
+  (tipoSolicitudQuery.data.value ?? []).find((o) => o.nombre === 'BAJA'),
+)
+
+const tipoSolicitudLabel = computed(() => tipoSolicitudBaja.value?.descripcion ?? 'Baja')
+
 const listaMotivoBajaId = ref(ListaIds.MOTIVO_BAJA_CLIENTE)
 const motivoBajaQuery = useListaOpcionesQuery(listaMotivoBajaId)
 
@@ -148,6 +162,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     await solicitarMutation.mutateAsync({
       idCliente: cliente.id,
+      idTipoSolicitud: tipoSolicitudBaja.value?.id,
       idMotivoBaja: Number(values.idMotivoBaja),
       motivoDetalle: values.motivoDetalle || undefined,
       idUsuarioAuditoria: currentUserId,
@@ -163,6 +178,7 @@ const onSubmit = handleSubmit(async (values) => {
 watch(open, (isOpen) => {
   if (isOpen) {
     resetFormState()
+    tipoSolicitudQuery.refetch()
     motivoBajaQuery.refetch()
   }
 })

@@ -67,6 +67,9 @@ export const ListaIds = {
   /** gen_lista.nombre = EstadoActividad */
   ESTADO_ACTIVIDAD: 49,
 
+  /** gen_lista.nombre = TipoSolicitud */
+  TIPO_SOLICITUD: 51,
+
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds

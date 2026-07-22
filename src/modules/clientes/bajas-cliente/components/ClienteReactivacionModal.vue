@@ -14,6 +14,11 @@
         El cliente se mantendrá inactivo mientras tanto.
       </div>
 
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-gray-500 dark:text-gray-400">Tipo de solicitud:</span>
+        <span class="font-medium text-gray-800 dark:text-white/90">{{ tipoSolicitudLabel }}</span>
+      </div>
+
       <AppTextarea
         v-model="motivoDetalle"
         label="Motivo de la reactivación (opcional)"
@@ -46,14 +51,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useSolicitarReactivacionClienteMutation } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteMutations'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppModal } from '@/shared/components'
 import AppTextarea from '@/shared/components/form/AppTextarea.vue'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalString } from '@/shared/validation'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 
@@ -69,6 +76,15 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 const solicitarMutation = useSolicitarReactivacionClienteMutation()
+
+const listaTipoSolicitudId = ref(ListaIds.TIPO_SOLICITUD)
+const tipoSolicitudQuery = useListaOpcionesQuery(listaTipoSolicitudId)
+
+const tipoSolicitudReactivacion = computed(() =>
+  (tipoSolicitudQuery.data.value ?? []).find((o) => o.nombre === 'REACTIVACION'),
+)
+
+const tipoSolicitudLabel = computed(() => tipoSolicitudReactivacion.value?.descripcion ?? 'Reactivación')
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
@@ -118,6 +134,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     await solicitarMutation.mutateAsync({
       idCliente: cliente.id,
+      idTipoSolicitud: tipoSolicitudReactivacion.value?.id,
       motivoDetalle: values.motivoDetalle || undefined,
       idUsuarioAuditoria: currentUserId,
     })
@@ -126,6 +143,13 @@ const onSubmit = handleSubmit(async (values) => {
     open.value = false
   } catch {
     // toast en mutation
+  }
+})
+
+watch(open, (isOpen) => {
+  if (isOpen) {
+    resetFormState()
+    tipoSolicitudQuery.refetch()
   }
 })
 </script>
