@@ -6,6 +6,7 @@ import type {
   BajaClienteListFilters,
   RechazarBajaClientePayload,
   SolicitarBajaClientePayload,
+  SolicitarReactivacionClientePayload,
 } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
 
 export const bajasClienteService = {
@@ -19,6 +20,10 @@ export const bajasClienteService = {
 
   solicitar(payload: SolicitarBajaClientePayload) {
     return apiPost<BajaCliente>('/bajas-cliente', payload)
+  },
+
+  solicitarReactivacion(payload: SolicitarReactivacionClientePayload) {
+    return apiPost<BajaCliente>('/bajas-cliente/solicitar-reactivacion', payload)
   },
 
   aprobar(id: number, payload: AprobarBajaClientePayload) {

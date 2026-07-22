@@ -105,9 +105,20 @@
         </button> -->
 
         <button
+          v-if="canSolicitarBaja && row.estado !== 1"
+          type="button"
+          title="Solicitar reactivación"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
+          @click="openReactivacionModal(row)"
+        >
+          <AppIcon :name="ICONS.refreshCw" :size="16" />
+          Solicitar reactivación
+        </button>
+
+        <button
           v-if="canRestore && row.estado !== 1"
           type="button"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           :disabled="restaurarMutation.isPending.value"
           @click="restaurarCliente(row)"
         >
@@ -139,6 +150,12 @@
       v-model="bajaModalOpen"
       :cliente="clienteToBaja"
       @saved="onBajaSaved"
+    />
+
+    <ClienteReactivacionModal
+      v-model="reactivacionModalOpen"
+      :cliente="clienteToReactivacion"
+      @saved="onReactivacionSaved"
     />
 
     <AppModal
@@ -181,6 +198,7 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/ClienteBajaModal.vue'
+import ClienteReactivacionModal from '@/modules/clientes/bajas-cliente/components/ClienteReactivacionModal.vue'
 import ClienteDetailModal from '@/modules/clientes/components/ClienteDetailModal.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import {
@@ -267,11 +285,15 @@ const clienteToDelete = ref<Cliente | null>(null)
 const bajaModalOpen = ref(false)
 const clienteToBaja = ref<Cliente | null>(null)
 
+const reactivacionModalOpen = ref(false)
+const clienteToReactivacion = ref<Cliente | null>(null)
+
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR))
 const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_RESTAURAR))
+const canSolicitarBaja = computed(() => authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_SOLICITAR))
 
 const isLoading = computed(() => clientesQuery.isFetching.value)
 const rows = computed(() => clientesQuery.data.value?.data ?? [])
@@ -357,8 +379,17 @@ const openBajaModal = (cliente: Cliente) => {
   bajaModalOpen.value = true
 }
 
+const openReactivacionModal = (cliente: Cliente) => {
+  clienteToReactivacion.value = cliente
+  reactivacionModalOpen.value = true
+}
+
 const onBajaSaved = () => {
   clienteToBaja.value = null
+}
+
+const onReactivacionSaved = () => {
+  clienteToReactivacion.value = null
 }
 
 const confirmDelete = async () => {

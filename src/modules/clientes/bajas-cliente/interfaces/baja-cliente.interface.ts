@@ -2,11 +2,12 @@ export type EstadoAprobacionBaja = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
 
 export interface BajaCliente {
   id: number
+  tipo_solicitud: 'BAJA' | 'REACTIVACION'
   id_cliente: number
   cliente_razon_social?: string | null
   nombre_cliente?: string | null
   numero_documento?: string | null
-  id_motivo_baja: number
+  id_motivo_baja?: number | null
   nombre_motivo_baja?: string | null
   motivo_detalle?: string | null
   nombre_estado_aprobacion: EstadoAprobacionBaja
@@ -17,6 +18,7 @@ export interface BajaCliente {
 }
 
 export interface BajaClienteDetail extends BajaCliente {
+  tipo_solicitud: 'BAJA' | 'REACTIVACION'
   //Datos del cliente
   cliente_razon_social?: string | null
   cliente_nombres?: string | null
@@ -46,6 +48,13 @@ export interface BajaClienteListFilters {
   isActivos?: number
   idCliente?: number
   idEstadoAprobacion?: number
+  tipoSolicitud?: string
+}
+
+export interface SolicitarReactivacionClientePayload {
+  idCliente: number
+  motivoDetalle?: string
+  idUsuarioAuditoria: number
 }
 
 export interface SolicitarBajaClientePayload {

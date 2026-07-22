@@ -5,7 +5,7 @@
         <div class="flex flex-col gap-3">
           <div
             class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-            Solicitudes de baja de clientes pendientes de aprobación. Solo un administrador
+            Solicitudes de baja y reactivación de clientes pendientes de aprobación. Solo un administrador
             distinto al solicitante puede aprobar o rechazar.
           </div>
 
@@ -25,6 +25,12 @@
 
       <template #cell-fecha_creacion="{ value }">
         <span>{{ formatListDate(value as string) }}</span>
+      </template>
+
+      <template #cell-tipo_solicitud="{ value }">
+        <AppBadge :color="value === 'REACTIVACION' ? 'primary' : 'neutral'" variant="light" size="sm">
+          {{ value === 'REACTIVACION' ? 'Reactivación' : 'Baja' }}
+        </AppBadge>
       </template>
 
       <template #cell-nombre_estado_aprobacion="{ value }">
@@ -59,7 +65,7 @@
       </template>
     </AppTable>
 
-    <AppModal v-model="detailModalOpen" title="Detalle de solicitud de baja"
+    <AppModal v-model="detailModalOpen" :title="detailTitle"
       :subtitle="solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.nombre_cliente ?? ''" size="lg">
       <DetailCardsLayout :loading="detailQuery.isLoading.value" :sections="detailSections">
         <template #badges>
@@ -78,18 +84,27 @@
       </template>
     </AppModal>
 
-    <AppModal v-model="aprobarModalOpen" title="Aprobar baja de cliente"
-      :subtitle="solicitudSeleccionada?.nombre_cliente ?? ''" size="sm">
+    <AppModal v-model="aprobarModalOpen" :title="aprobarTitle"
+      :subtitle="solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.nombre_cliente ?? ''" size="sm">
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        ¿Confirmas la baja del cliente
-        <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ solicitudSeleccionada?.nombre_cliente }}
-        </span>
-        por motivo
-        <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ solicitudSeleccionada?.nombre_motivo_baja }}
-        </span>
-        ?
+        <template v-if="esReactivacion">
+          ¿Confirmas la reactivación del cliente
+          <span class="font-medium text-gray-800 dark:text-white/90">
+            {{ solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.nombre_cliente }}
+          </span>
+          ?
+        </template>
+        <template v-else>
+          ¿Confirmas la baja del cliente
+          <span class="font-medium text-gray-800 dark:text-white/90">
+            {{ solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.nombre_cliente }}
+          </span>
+          por motivo
+          <span class="font-medium text-gray-800 dark:text-white/90">
+            {{ solicitudSeleccionada?.nombre_motivo_baja }}
+          </span>
+          ?
+        </template>
       </p>
 
       <template #footer>
@@ -101,19 +116,22 @@
         <button type="button"
           class="flex w-full justify-center rounded-lg bg-success-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="aprobarMutation.isPending.value" @click="confirmarAprobacion">
-          {{ aprobarMutation.isPending.value ? 'Procesando...' : 'Aprobar baja' }}
+          {{ aprobarMutation.isPending.value ? 'Procesando...' : esReactivacion ? 'Aprobar reactivación' : 'Aprobar baja' }}
         </button>
       </template>
     </AppModal>
 
-    <AppModal v-model="rechazarModalOpen" title="Rechazar solicitud de baja"
-      :subtitle="solicitudSeleccionada?.nombre_cliente ?? ''" size="sm">
+    <AppModal v-model="rechazarModalOpen" :title="rechazarTitle"
+      :subtitle="solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.nombre_cliente ?? ''" size="sm">
       <div class="space-y-4">
         <p class="text-sm text-gray-600 dark:text-gray-400">
-          La solicitud quedará rechazada y el cliente seguirá activo en el sistema.
+          <template v-if="esReactivacion">
+            La solicitud de reactivación quedará rechazada y el cliente se mantendrá inactivo.
+          </template>
+          <template v-else>
+            La solicitud de baja quedará rechazada y el cliente seguirá activo en el sistema.
+          </template>
         </p>
-        <!-- <AppTextarea v-model="motivoRechazo" label="Motivo del rechazo (opcional)"
-          placeholder="Indica por qué se rechaza la solicitud..." :disabled="rechazarMutation.isPending.value" /> -->
       </div>
 
       <template #footer>
@@ -203,11 +221,26 @@ const rows = computed(() => bajasQuery.data.value?.data ?? [])
 
 const columns: TableColumn[] = [
   { key: 'cliente', label: 'Cliente' },
+  { key: 'tipo_solicitud', label: 'Tipo' },
   { key: 'nombre_motivo_baja', label: 'Motivo' },
   { key: 'nombre_usuario_solicita', label: 'Solicitante' },
   { key: 'fecha_creacion', label: 'Solicitado' },
   { key: 'nombre_estado_aprobacion', label: 'Estado' }
 ]
+
+const esReactivacion = computed(() => solicitudSeleccionada.value?.tipo_solicitud === 'REACTIVACION')
+
+const detailTitle = computed(() =>
+  esReactivacion.value ? 'Detalle de solicitud de reactivación' : 'Detalle de solicitud de baja',
+)
+
+const aprobarTitle = computed(() =>
+  esReactivacion.value ? 'Aprobar reactivación de cliente' : 'Aprobar baja de cliente',
+)
+
+const rechazarTitle = computed(() =>
+  esReactivacion.value ? 'Rechazar solicitud de reactivación' : 'Rechazar solicitud de baja',
+)
 
 const detailData = computed<BajaClienteDetail | null>(
   () => detailQuery.data.value ?? null,
@@ -236,9 +269,12 @@ const detailSections = computed<DetailSection[]>(() => {
       title: 'Solicitud',
       icon: ICONS.fileText,
       items: [
-        { label: 'Motivo de baja', value: d.nombre_motivo_baja || '—' },
+        { label: 'Tipo', value: d.tipo_solicitud === 'REACTIVACION' ? 'Reactivación' : 'Baja' },
+        ...(d.tipo_solicitud !== 'REACTIVACION'
+          ? [{ label: 'Motivo de baja' as const, value: d.nombre_motivo_baja || '—' }]
+          : []),
         { label: 'Detalle', value: d.motivo_detalle || '—', fullWidth: true },
-        { label: 'Solicitado el', value: d.fecha_baja ? formatListDate(d.fecha_baja) : '—' },
+        { label: 'Solicitado el', value: d.fecha_creacion ? formatListDate(d.fecha_creacion) : '—' },
         { label: 'Solicitante', value: d.nombre_usuario_solicita || '—' },
       ],
     },
