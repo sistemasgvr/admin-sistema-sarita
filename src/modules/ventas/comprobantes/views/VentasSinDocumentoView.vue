@@ -8,7 +8,7 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Serie, número o cliente..."
+          search-placeholder="NV01-0000123, serie, número o cliente..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -18,7 +18,7 @@
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva VSD
+              Nueva venta
             </RouterLink>
           </template>
         </AppListToolbar>
@@ -152,7 +152,8 @@ import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/Com
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
 import EmitirFacturaBoletaModal from '@/modules/ventas/comprobantes/components/EmitirFacturaBoletaModal.vue'
 import type { CodigoTipoComprobanteSunat } from '@/modules/ventas/comprobantes/utils/serieComprobante'
-import { CODIGO_VENTA_SIN_DOC } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import { normalizarBusquedaComprobante } from '@/modules/ventas/comprobantes/utils/busquedaComprobante'
 import type {
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -217,11 +218,11 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 const idTipoNotaVenta = computed(() => {
   const tipos = catalogosQuery.data.value?.tiposComprobante ?? []
   return (
-    tipos.find(
-      (t) =>
-        t.descripcion === CODIGO_VENTA_SIN_DOC ||
-        t.nombre.toUpperCase().includes('CODIGO_VENTA_SIN_DOC') ||
-        t.nombre.toUpperCase().includes('VENTA SIN DOCUMENTO'),
+    tipos.find((t) =>
+      esVentaSinDocumentoTipo({
+        codigo: t.descripcion,
+        nombre: t.nombre,
+      }),
     )?.id ?? null
   )
 })
@@ -278,8 +279,11 @@ function syncFilters() {
   const serie = active.serie != null ? String(active.serie).trim() : ''
   const idTipo = idTipoNotaVenta.value
 
+  const term = buscar.value.trim()
+  const termNorm = normalizarBusquedaComprobante(term)
+
   filters.value = {
-    buscar: buscar.value.trim(),
+    buscar: termNorm.includes('-') ? termNorm : term,
     pagina: pagina.value,
     limite: limite.value,
     idTipoComprobante: idTipo ?? -1,

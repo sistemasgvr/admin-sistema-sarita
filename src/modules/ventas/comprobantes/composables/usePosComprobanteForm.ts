@@ -7,6 +7,7 @@ import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import {
   CODIGO_VENTA_SIN_DOC,
+  LABEL_VENTA_SIN_DOCUMENTO,
   esNotaVentaCodigo,
 } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
@@ -18,14 +19,16 @@ import {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
-/** Tipos de venta directa en punto de venta (sin origen). NC/ND se emiten desde flujo de notas. */
-const CODIGOS_TIPO_POS = ['01', '03', CODIGO_VENTA_SIN_DOC] as const
-
 export {
   seriePorDefectoDesdeCodigo,
   validarSerieParaTipo,
   tipoRequiereRuc,
 } from '@/modules/ventas/comprobantes/utils/serieComprobante'
+
+function esTipoComprobantePos(codigo?: string | null): boolean {
+  const value = (codigo ?? '').trim().toUpperCase()
+  return value === '01' || value === '03' || esNotaVentaCodigo(value)
+}
 
 export function usePosComprobanteForm(options?: {
   /** Serie del comprobante origen (NC/ND). */
@@ -75,21 +78,16 @@ export function usePosComprobanteForm(options?: {
 
   const tipoComprobanteOptions = computed(() =>
     (catalogosQuery.data.value?.tiposComprobante ?? [])
-      .filter((item) =>
-        CODIGOS_TIPO_POS.includes(
-          (item.descripcion ?? '') as (typeof CODIGOS_TIPO_POS)[number],
-        ),
-      )
+      .filter((item) => esTipoComprobantePos(item.descripcion))
       .map((item) => {
         const codigo = item.descripcion ?? ''
-        const nombre =
-          codigo === CODIGO_VENTA_SIN_DOC
-            ? 'NOTA DE VENTA'
-            : (item.nombre ?? '').replace(/_/g, ' ')
+        const nombre = esNotaVentaCodigo(codigo)
+          ? LABEL_VENTA_SIN_DOCUMENTO.toUpperCase()
+          : (item.nombre ?? '').replace(/_/g, ' ')
         return {
           value: item.id,
-          label: `${nombre} (${codigo})`,
-          codigo,
+          label: `${nombre} (${esNotaVentaCodigo(codigo) ? CODIGO_VENTA_SIN_DOC : codigo})`,
+          codigo: esNotaVentaCodigo(codigo) ? CODIGO_VENTA_SIN_DOC : codigo,
         }
       }),
   )

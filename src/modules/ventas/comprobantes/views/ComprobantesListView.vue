@@ -8,7 +8,7 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Serie, número o cliente..."
+          search-placeholder="B001-0000123, serie, número o cliente..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -58,8 +58,17 @@
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
 
-      <template #cell-nombre_estado_sunat="{ value }">
-        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" raw />
+      <template #cell-nombre_estado_sunat="{ row }">
+        <div class="space-y-1">
+          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" raw />
+          <p
+            v-if="plazoLabel(row)"
+            class="text-[11px] font-medium"
+            :class="plazoVencido(row) ? 'text-error-500' : 'text-warning-600 dark:text-warning-400'"
+          >
+            {{ plazoLabel(row) }}
+          </p>
+        </div>
       </template>
 
       <template #actions="{ row }">
@@ -166,9 +175,15 @@ import {
   printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
+import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import { normalizarBusquedaComprobante } from '@/modules/ventas/comprobantes/utils/busquedaComprobante'
 import {
   emitirConImpresionTicket,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import {
+  evaluarPlazoEmision,
+  mensajePlazoEmisionVencido,
+} from '@/modules/ventas/comprobantes/utils/plazoEmision'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -260,11 +275,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
       (catalogosQuery.data.value?.tiposComprobante ?? []).filter((tipo) => {
         const codigo = String(tipo.descripcion ?? '').toUpperCase()
         const nombre = String(tipo.nombre ?? '').toUpperCase()
-        return (
-          codigo !== 'NV' &&
-          !nombre.includes('NOTA_VENTA') &&
-          !nombre.includes('NOTA DE VENTA')
-        )
+        return !esVentaSinDocumentoTipo({ codigo, nombre })
       }),
     ),
   },
@@ -313,8 +324,11 @@ function syncFilters() {
   const active = dynamicFilters.value
   const serie = active.serie != null ? String(active.serie).trim() : ''
 
+  const term = buscar.value.trim()
+  const termNorm = normalizarBusquedaComprobante(term)
+
   filters.value = {
-    buscar: buscar.value.trim(),
+    buscar: termNorm.includes('-') ? termNorm : term,
     pagina: pagina.value,
     limite: limite.value,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
@@ -350,9 +364,26 @@ function formatMoney(value: number) {
 }
 
 function esNotaVenta(row: ComprobanteListItem) {
-  const codigo = String(row.codigo_tipo_comprobante ?? '').toUpperCase()
-  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
-  return codigo === 'NV' || nombre.includes('NOTA_VENTA') || nombre.includes('NOTA DE VENTA')
+  return esVentaSinDocumentoTipo({
+    codigo: row.codigo_tipo_comprobante,
+    nombre: row.nombre_tipo_comprobante,
+  })
+}
+
+function plazoDe(row: ComprobanteListItem) {
+  return evaluarPlazoEmision({
+    fecha: row.fecha,
+    codigoTipo: row.codigo_tipo_comprobante,
+    estadoSunat: row.nombre_estado_sunat,
+  })
+}
+
+function plazoLabel(row: ComprobanteListItem) {
+  return plazoDe(row)?.label ?? null
+}
+
+function plazoVencido(row: ComprobanteListItem) {
+  return plazoDe(row)?.vencido === true
 }
 
 function puedeEmitir(row: ComprobanteListItem) {
@@ -586,6 +617,11 @@ function openCdrModal(row: ComprobanteListItem) {
 async function emitirComprobante(row: ComprobanteListItem) {
   const userId = authStore.user?.id
   if (!userId) return
+
+  if (plazoVencido(row)) {
+    toastWarning(mensajePlazoEmisionVencido(row.codigo_tipo_comprobante))
+    return
+  }
 
   try {
     const resultado = await emitirConImpresionTicket({

@@ -69,10 +69,10 @@ export const REGLAS_SERIE_COMPROBANTE: Record<string, ReglaSerieComprobante> = {
   },
   NV: {
     codigo: 'NV',
-    nombre: 'NOTA DE VENTA',
+    nombre: 'VENTA SIN DOCUMENTO',
     serieDefault: 'NV01',
     prefijosPermitidos: ['N'],
-    mensajePrefijo: 'Para NOTA DE VENTA la serie debe empezar con NV (ej. NV01)',
+    mensajePrefijo: 'Para VENTA SIN DOCUMENTO la serie debe empezar con NV (ej. NV01)',
     requiereRuc: false,
   },
 }

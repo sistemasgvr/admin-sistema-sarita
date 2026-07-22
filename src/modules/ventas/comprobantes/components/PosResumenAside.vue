@@ -77,12 +77,12 @@
 
       <RouterLink
         :to="{
-          name: esNotaVenta ? 'admin-ventas-notas-venta' : 'admin-ventas-comprobantes',
+          name: esNotaVenta ? 'admin-ventas-vsd' : 'admin-ventas-comprobantes',
         }"
         class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
       >
         <AppIcon :name="ICONS.list" :size="16" />
-        {{ esNotaVenta ? 'Ver notas de venta' : 'Ver comprobantes' }}
+        {{ esNotaVenta ? 'Ver ventas sin documento' : 'Ver comprobantes' }}
       </RouterLink>
     </div>
   </DetailSectionCard>

@@ -55,7 +55,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="(linea, index) in lineas"
+                v-for="linea in lineas"
                 :key="linea.key"
                 class="border-t border-gray-100 dark:border-gray-800"
               >

@@ -53,6 +53,19 @@
       </DetailSectionCard>
 
       <DetailSectionCard title="Detalle" :icon="ICONS.clipboardList" :full-width="true">
+        <div class="mb-3">
+          <AppSelectSearch
+            v-model="idProductoAgregar"
+            v-model:search="productoBuscar"
+            label="Agregar producto"
+            placeholder="Buscar y agregar"
+            search-placeholder="Código, ubicación o nombre..."
+            :options="productoOptions"
+            :loading="productosQuery.isFetching.value"
+            :disabled="updateMutation.isPending.value"
+          />
+        </div>
+
         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 dark:bg-white/5">
@@ -140,10 +153,12 @@ import { computed, ref, watch } from 'vue'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { useUpdateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import { AppInput, AppModal, AppTextarea } from '@/shared/components'
-import { toastWarning } from '@/shared/composables/useToast'
+import { AppInput, AppModal, AppSelectSearch, AppTextarea } from '@/shared/components'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 
 interface LineaEdit {
@@ -176,6 +191,34 @@ const fecha = ref('')
 const glosa = ref('')
 const observaciones = ref('')
 const lineas = ref<LineaEdit[]>([])
+
+const idProductoAgregar = ref<number | ''>('')
+const productoBuscar = ref('')
+const productosFilters = ref({
+  pagina: 1,
+  limite: 40,
+  soloActivos: 1 as number | null,
+  buscar: undefined as string | undefined,
+})
+const productosQuery = useProductosQuery(productosFilters)
+
+let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+watch(productoBuscar, (value) => {
+  if (productoBuscarTimeout) clearTimeout(productoBuscarTimeout)
+  productoBuscarTimeout = setTimeout(() => {
+    productosFilters.value = {
+      ...productosFilters.value,
+      buscar: value.trim() || undefined,
+    }
+  }, 300)
+})
+
+const productoOptions = computed(() =>
+  (productosQuery.data.value?.data ?? []).map((producto) => ({
+    value: producto.id,
+    label: [producto.codigo, producto.nombre].filter(Boolean).join(' — '),
+  })),
+)
 
 const open = computed({
   get: () => props.modelValue,
@@ -218,9 +261,20 @@ watch(
       porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
       idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
     }))
+    idProductoAgregar.value = ''
+    productoBuscar.value = ''
   },
   { immediate: true },
 )
+
+watch(idProductoAgregar, (id) => {
+  if (id === '' || id == null) return
+  const producto = (productosQuery.data.value?.data ?? []).find((item) => item.id === id)
+  if (producto) {
+    agregarProducto(producto)
+  }
+  idProductoAgregar.value = ''
+})
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
@@ -228,6 +282,28 @@ function formatMoney(value: number) {
 
 function removeLinea(index: number) {
   lineas.value.splice(index, 1)
+}
+
+function agregarProducto(producto: Producto) {
+  const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
+  if (existente) {
+    existente.cantidad = Math.max(0.001, Number(existente.cantidad || 0) + 1)
+    toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
+    return
+  }
+
+  const afectacionDefault = lineas.value.find((l) => l.idAfectacionIgv)?.idAfectacionIgv
+  lineas.value.push({
+    key: crypto.randomUUID(),
+    idProducto: producto.id,
+    descripcion: producto.nombre,
+    cantidad: 1,
+    precioUnitario: Number(producto.precio ?? 0),
+    descuento: 0,
+    porcentajeIgv: 18,
+    idAfectacionIgv: afectacionDefault,
+  })
+  toastSuccess(`${producto.nombre} agregado`)
 }
 
 async function confirm() {
