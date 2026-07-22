@@ -2,44 +2,46 @@
   <div>
     <PageBreadcrumb page-title="Actividades" :items="breadcrumbItems" />
 
-    <div class="mb-4 flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] lg:flex-row lg:items-end lg:justify-between">
-      <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
-        <div class="w-full sm:max-w-sm">
-          <AppInput
-            v-model="buscar"
-            type="search"
-            label="Buscar"
-            placeholder="Buscar por título, cliente..."
-          />
+    <div class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+          <div class="sm:col-span-2 lg:w-72">
+            <AppInput
+              v-model="buscar"
+              type="search"
+              label="Buscar"
+              placeholder="Buscar por título, cliente..."
+            />
+          </div>
+
+          <div class="lg:w-48">
+            <AppSelect
+              v-model="idEstadoFiltro"
+              label="Estado"
+              placeholder="Todos los estados"
+              :options="estadoFiltroOptions"
+            />
+          </div>
+
+          <div>
+            <AppInput v-model="fechaDesde" type="date" label="Desde" />
+          </div>
+
+          <div>
+            <AppInput v-model="fechaHasta" type="date" label="Hasta" />
+          </div>
         </div>
 
-        <div class="w-full sm:w-52">
-          <AppSelect
-            v-model="idEstadoFiltro"
-            label="Estado"
-            placeholder="Todos los estados"
-            :options="estadoFiltroOptions"
-          />
-        </div>
-
-        <div class="w-full sm:w-44">
-          <AppInput v-model="fechaDesde" type="date" label="Desde" />
-        </div>
-
-        <div class="w-full sm:w-44">
-          <AppInput v-model="fechaHasta" type="date" label="Hasta" />
-        </div>
+        <button
+          v-if="canCreate"
+          type="button"
+          class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:w-auto"
+          @click="openCreateModal()"
+        >
+          <AppIcon :name="ICONS.plus" :size="18" />
+          Nueva actividad
+        </button>
       </div>
-
-      <button
-        v-if="canCreate"
-        type="button"
-        class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-        @click="openCreateModal()"
-      >
-        <AppIcon :name="ICONS.plus" :size="18" />
-        Nueva actividad
-      </button>
     </div>
 
     <AppTabs v-model="activeTab" :tabs="tabs" inline class="mb-4" />

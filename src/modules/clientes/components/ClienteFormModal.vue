@@ -38,7 +38,7 @@
                   v-model="numeroDocumento"
                   label="Número de documento"
                   placeholder="12345678"
-                  required
+                  :required="!esDocumentoVSD"
                   v-bind="numeroDocumentoAttrs"
                   :disabled="isSubmitting"
                   :error="errors.numeroDocumento"
@@ -117,7 +117,7 @@
 
           <AppSelect
             v-model="idTipoPersona"
-            label="Tipo de persona"
+            label="Tipo de Contribuyente"
             required
             :placeholder="tipoPersonaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
             :options="tipoPersonaOptions"
@@ -135,11 +135,11 @@
             v-model="razonSocial"
             label="Razón social"
             placeholder="Comercial Los Andes S.A.C."
-            :required="requiereRazonSocial"
+            :required="esDocumentoRUC"
             v-bind="razonSocialAttrs"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || !esDocumentoRUC"
             :error="errors.razonSocial"
-            hint="Requerido para personas jurídicas."
+            hint="Obligatorio para RUC."
           />
         </div>
 
@@ -453,7 +453,12 @@ const tipoDocumentoQuery = useListaOpcionesQuery(listaTipoDocumentoId)
 
 const tipoPersonaOptions = computed(() => toSelectOptions(tipoPersonaQuery.data.value))
 const tipoClienteOptions = computed(() => toSelectOptions(tipoClienteQuery.data.value))
-const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
+const tipoDocumentoOptions = computed(() => {
+  return (tipoDocumentoQuery.data.value ?? []).map((item) => ({
+    label: item.nombre,
+    value: item.id,
+  }))
+})
 
 const validationSchema = computed(() =>
   toClienteFormSchema({
@@ -555,9 +560,12 @@ const tipoPersonaSeleccionado = computed(() => {
   return opciones.find((opcion) => opcion.id === Number(idTipoPersona.value))
 })
 
-const requiereRazonSocial = computed(() => {
-  const nombre = tipoPersonaSeleccionado.value?.nombre?.toUpperCase() ?? ''
-  return nombre.includes('JURID')
+const esDocumentoVSD = computed(() => {
+  return tipoDocumentoSeleccionado.value?.nombre?.toUpperCase() === 'VSD'
+})
+
+const esDocumentoRUC = computed(() => {
+  return tipoDocumentoSeleccionado.value?.nombre?.toUpperCase() === 'RUC'
 })
 
 const requiereNombres = computed(() => {

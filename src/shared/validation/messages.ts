@@ -9,5 +9,6 @@ export const validationMessages = {
   documentRuc: 'El RUC debe tener 11 dígitos numéricos',
   identificacionCliente: 'Indica razón social o nombres del cliente',
   razonSocialRequerida: 'La razón social es obligatoria para personas jurídicas',
+  razonSocialRequeridaRuc: 'La razón social es obligatoria para RUC',
   nombresRequeridos: 'Los nombres son obligatorios para personas naturales',
 } as const

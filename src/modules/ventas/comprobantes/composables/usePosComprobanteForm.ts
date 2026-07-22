@@ -6,7 +6,7 @@ import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import {
-  CODIGO_NOTA_VENTA,
+  CODIGO_VENTA_SIN_DOC,
   esNotaVentaCodigo,
 } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
@@ -19,7 +19,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
 /** Tipos de venta directa en punto de venta (sin origen). NC/ND se emiten desde flujo de notas. */
-const CODIGOS_TIPO_POS = ['01', '03', CODIGO_NOTA_VENTA] as const
+const CODIGOS_TIPO_POS = ['01', '03', CODIGO_VENTA_SIN_DOC] as const
 
 export {
   seriePorDefectoDesdeCodigo,
@@ -83,7 +83,7 @@ export function usePosComprobanteForm(options?: {
       .map((item) => {
         const codigo = item.descripcion ?? ''
         const nombre =
-          codigo === CODIGO_NOTA_VENTA
+          codigo === CODIGO_VENTA_SIN_DOC
             ? 'NOTA DE VENTA'
             : (item.nombre ?? '').replace(/_/g, ' ')
         return {
