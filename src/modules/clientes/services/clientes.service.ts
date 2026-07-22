@@ -8,6 +8,8 @@ import {
 import type {
   Cliente,
   ClienteListFilters,
+  ClienteMapa,
+  ClienteMapaFilters,
   CreateClientePayload,
   DeleteClienteResponse,
   RestaurarClienteResponse,
@@ -19,6 +21,17 @@ import type {
 export const clientesService = {
   listar(filters: ClienteListFilters = {}) {
     return apiGetPaginated<Cliente>('/clientes', { params: filters })
+  },
+
+  listarMapa(filters: ClienteMapaFilters = {}) {
+    const params: Record<string, string | number> = {
+      pagina: filters.pagina ?? 1,
+      limite: filters.limite ?? 500,
+    }
+    if (filters.buscar) params.buscar = filters.buscar
+    if (filters.soloActivos != null) params.soloActivos = filters.soloActivos
+    if (filters.filtroBalones) params.filtroBalones = filters.filtroBalones
+    return apiGetPaginated<ClienteMapa>('/clientes/mapa', { params })
   },
 
   obtenerPorId(id: number) {

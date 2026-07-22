@@ -49,12 +49,58 @@ export interface Cliente {
 
 export type ClienteEstadoFiltro = 'activos' | 'inactivos' | 'todos'
 
+export type ClienteMapaFiltroBalones =
+  | ''
+  | 'CON_BALONES'
+  | 'PRESTADO_CLIENTE'
+  | 'ALQUILADO'
+  | 'EN_PODER_CLIENTE'
+
+export type ClienteBalonAlertaAntiguedad =
+  | 'RECIENTE'
+  | 'ATENCION'
+  | 'SEGUIMIENTO'
+  | 'CRITICO'
+  | string
+
+export interface ClienteBalonMapa {
+  id_balon: number
+  codigo_balon: string
+  numero_serie?: string | null
+  nombre_estado_balon?: string | null
+  nombre_tipo_balon?: string | null
+  tipo_relacion?: 'PRESTAMO' | 'ALQUILER' | 'PROPIO' | string | null
+  fecha_inicio?: string | null
+  fecha_limite?: string | null
+  dias_en_cliente?: number | null
+  vencido?: boolean | null
+  alerta_antiguedad?: ClienteBalonAlertaAntiguedad | null
+}
+
+export interface ClienteMapa extends Cliente {
+  balones?: ClienteBalonMapa[]
+  total_balones?: number
+  tiene_prestamo?: boolean
+  tiene_alquiler?: boolean
+  tiene_propio?: boolean
+  tiene_vencidos?: boolean
+  max_dias_en_cliente?: number | null
+}
+
 export interface ClienteListFilters {
   buscar?: string
   pagina?: number
   limite?: number
   soloActivos?: number | null
   idTipoCliente?: number
+}
+
+export interface ClienteMapaFilters {
+  buscar?: string
+  pagina?: number
+  limite?: number
+  soloActivos?: number | null
+  filtroBalones?: ClienteMapaFiltroBalones | null
 }
 
 export interface ClientePayload {
