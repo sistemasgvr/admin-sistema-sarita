@@ -7,6 +7,9 @@
  * - 03 → B### (B001)
  * - 07 → FC## / BC## según familia del documento origen
  * - 08 → FD## / BD## según familia del documento origen
+ *
+ * Interno (no CPE):
+ * - VSD → VSD## (VSD01, 5 caracteres). Legacy NV → NV## (NV01).
  */
 
 export type CodigoTipoComprobanteSunat = '01' | '03' | '07' | '08' | '09' | string
@@ -67,12 +70,12 @@ export const REGLAS_SERIE_COMPROBANTE: Record<string, ReglaSerieComprobante> = {
     mensajePrefijo: 'Para GUÍA DE REMISIÓN la serie debe empezar con T (ej. T001)',
     requiereRuc: false,
   },
-  NV: {
-    codigo: 'NV',
+  VSD: {
+    codigo: 'VSD',
     nombre: 'VENTA SIN DOCUMENTO',
-    serieDefault: 'NV01',
-    prefijosPermitidos: ['N'],
-    mensajePrefijo: 'Para VENTA SIN DOCUMENTO la serie debe empezar con NV (ej. NV01)',
+    serieDefault: 'VSD01',
+    prefijosPermitidos: ['V'],
+    mensajePrefijo: 'Para VENTA SIN DOCUMENTO la serie debe ser VSD## (ej. VSD01)',
     requiereRuc: false,
   },
 }
@@ -80,6 +83,10 @@ export const REGLAS_SERIE_COMPROBANTE: Record<string, ReglaSerieComprobante> = {
 function correlativoSerieDesde(serieActual: string, length = 2): string {
   const digits = serieActual.replace(/\D/g, '') || '1'.padStart(length, '0')
   return digits.slice(-length).padStart(length, '0')
+}
+
+function esCodigoVentaSinDocumento(codigo: string): boolean {
+  return codigo === 'VSD' || codigo === 'NV'
 }
 
 /**
@@ -119,8 +126,9 @@ export function seriePorDefectoDesdeCodigo(
     return `T${correlativoSerieDesde(actual || '001', 3)}`
   }
 
-  if (codigo === 'NV') {
-    return `NV${correlativoSerieDesde(actual.replace(/^NV/i, '') || '01', 2)}`
+  if (esCodigoVentaSinDocumento(codigo)) {
+    const digits = actual.replace(/^(VSD|NV)/i, '') || '01'
+    return `VSD${correlativoSerieDesde(digits, 2)}`
   }
 
   const regla = REGLAS_SERIE_COMPROBANTE[codigo]
@@ -128,7 +136,9 @@ export function seriePorDefectoDesdeCodigo(
 }
 
 export function reglaSeriePorCodigo(codigoTipo: string): ReglaSerieComprobante | null {
-  return REGLAS_SERIE_COMPROBANTE[codigoTipo.trim()] ?? null
+  const codigo = codigoTipo.trim()
+  if (codigo === 'NV') return REGLAS_SERIE_COMPROBANTE.VSD
+  return REGLAS_SERIE_COMPROBANTE[codigo] ?? null
 }
 
 export function validarSerieParaTipo(
@@ -137,10 +147,17 @@ export function validarSerieParaTipo(
   serieOrigen?: string | null,
 ): string | null {
   const serieUpper = serie.trim().toUpperCase()
-  const regla = reglaSeriePorCodigo(codigoTipo)
+  const codigo = codigoTipo.trim()
+  const regla = reglaSeriePorCodigo(codigo)
 
   if (!serieUpper) return 'La serie es obligatoria'
   if (!regla) return null
+
+  if (esCodigoVentaSinDocumento(codigo)) {
+    if (serieUpper.startsWith('VSD') && serieUpper.length === 5) return null
+    if (serieUpper.startsWith('NV') && serieUpper.length === 4) return null
+    return regla.mensajePrefijo
+  }
 
   if (serieUpper.length !== 4) {
     return `La serie de ${regla.nombre} debe tener 4 caracteres (ej. ${regla.serieDefault})`
@@ -148,16 +165,12 @@ export function validarSerieParaTipo(
 
   const primer = serieUpper.charAt(0)
 
-  if (codigoTipo === 'NV') {
-    if (!serieUpper.startsWith('NV')) {
-      return regla.mensajePrefijo
-    }
-  } else if (!regla.prefijosPermitidos.includes(primer)) {
+  if (!regla.prefijosPermitidos.includes(primer)) {
     return regla.mensajePrefijo
   }
 
   // NC/ND: la familia (F/B) debe alinearse al comprobante origen
-  if ((codigoTipo === '07' || codigoTipo === '08') && serieOrigen) {
+  if ((codigo === '07' || codigo === '08') && serieOrigen) {
     const familiaOrigen = serieOrigen.trim().toUpperCase().charAt(0)
     if (familiaOrigen && ['F', 'B'].includes(familiaOrigen) && primer !== familiaOrigen) {
       return `La serie de la nota debe iniciar con ${familiaOrigen} igual que el comprobante origen (${serieOrigen})`
