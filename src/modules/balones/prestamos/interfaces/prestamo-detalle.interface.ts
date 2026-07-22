@@ -74,6 +74,12 @@ export interface UpdatePrestamoDetallePayload {
   observacion?: string
 }
 
+export interface DevolverPrestamoDetallePayload {
+  idUsuarioAuditoria: number
+  fechaDevolucion?: string
+  idAlmacenDestino?: number
+}
+
 export interface DeletePrestamoDetalleResponse {
   eliminado: boolean
   id: number

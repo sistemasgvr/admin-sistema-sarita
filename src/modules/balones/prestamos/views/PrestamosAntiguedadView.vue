@@ -48,10 +48,10 @@
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               :disabled="!rows.length"
-              @click="exportCsv"
+              @click="exportExcelFile"
             >
               <AppIcon :name="ICONS.download" :size="18" />
-              Exportar CSV
+              Exportar Excel
             </button>
           </template>
         </AppListToolbar>
@@ -126,6 +126,12 @@
     </AppTable>
 
     <PrestamoDetailModal v-model="prestamoDetailOpen" :prestamo-id="prestamoToViewId" />
+
+    <PrestamoDevolverModal
+      v-model="devolverModalOpen"
+      :detalle="detalleToDevolver"
+      @saved="onDevolucionSaved"
+    />
   </div>
 </template>
 
@@ -135,6 +141,7 @@ import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
+import PrestamoDevolverModal from '@/modules/balones/prestamos/components/PrestamoDevolverModal.vue'
 import { usePrestamosAntiguedadQuery } from '@/modules/balones/prestamos/composables/usePrestamosAntiguedadQuery'
 import type {
   PrestamoAntiguedadFilters,
@@ -142,8 +149,10 @@ import type {
   PrestamoAntiguedadResumen,
   RangoAntiguedadPrestamo,
 } from '@/modules/balones/prestamos/interfaces/prestamo-antiguedad.interface'
+import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
@@ -153,6 +162,7 @@ import {
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS, type IconName } from '@/shared/constants/icons'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type {
@@ -160,6 +170,8 @@ import type {
   DynamicFilterValues,
 } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { downloadExcel } from '@/shared/utils/exportExcel'
+import { toastApiError } from '@/shared/composables/useToast'
 
 withDefaults(
   defineProps<{
@@ -171,6 +183,7 @@ withDefaults(
 )
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({
@@ -194,6 +207,15 @@ const clientesQuery = useClientesQuery(clientesFilters)
 
 const prestamoDetailOpen = ref(false)
 const prestamoToViewId = ref<number | null>(null)
+
+const devolverModalOpen = ref(false)
+const detalleToDevolver = ref<PrestamoDetalle | null>(null)
+
+const canDevolver = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
+)
 
 const breadcrumbItems = computed(() => [
   ...balonesBreadcrumbItems('Préstamos').slice(0, 1),
@@ -317,7 +339,14 @@ const rangoBadgeColor = (rango: RangoAntiguedadPrestamo): BadgeColor => {
 }
 
 function actionItemsForRow(row: PrestamoAntiguedadItem): ActionMenuItem[] {
+  const pendiente = !row.fecha_devolucion
   return [
+    {
+      key: 'devolver',
+      label: 'Devolver / reingresar',
+      icon: ICONS.clipboardCheck,
+      hidden: !canDevolver.value || !pendiente,
+    },
     {
       key: 'detalle-prestamo',
       label: 'Ver detalle del préstamo',
@@ -343,6 +372,20 @@ function openPrestamoDetail(row: PrestamoAntiguedadItem) {
   prestamoDetailOpen.value = true
 }
 
+function openDevolver(row: PrestamoAntiguedadItem) {
+  detalleToDevolver.value = {
+    id: row.id_detalle,
+    id_prestamo: row.id_prestamo,
+    id_balon: row.id_balon,
+    codigo_balon: row.codigo_balon,
+    numero_prestamo: row.numero_prestamo,
+    fecha_devolucion: row.fecha_devolucion,
+    estado: 1,
+    fecha_creacion: '',
+  }
+  devolverModalOpen.value = true
+}
+
 function openBalonDetail(row: PrestamoAntiguedadItem) {
   if (!row.id_balon) return
   router.push({
@@ -364,6 +407,9 @@ function openClienteMapa(row: PrestamoAntiguedadItem) {
 
 function onActionSelect(key: string, row: PrestamoAntiguedadItem) {
   switch (key) {
+    case 'devolver':
+      openDevolver(row)
+      return
     case 'detalle-prestamo':
       openPrestamoDetail(row)
       return
@@ -374,6 +420,10 @@ function onActionSelect(key: string, row: PrestamoAntiguedadItem) {
       openClienteMapa(row)
       return
   }
+}
+
+function onDevolucionSaved() {
+  query.refetch()
 }
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
@@ -417,55 +467,59 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const exportCsv = () => {
-  const header = [
-    'Cliente',
-    'Nro préstamo',
-    'Código',
-    'Serie',
-    'Gas',
-    'Capacidad',
-    'Marca',
-    'Planta',
-    'Órgano',
-    'Desde',
-    'Días',
-    'Rango',
-    'P.H. próxima',
-  ]
-
-  const lines = rows.value.map((row) =>
-    [
-      row.nombre_cliente,
-      row.numero_prestamo,
-      row.codigo_balon,
-      row.numero_serie,
-      row.nombre_producto_gas,
-      row.capacidad != null
-        ? `${row.capacidad}${row.nombre_unidad_medida ? ` ${row.nombre_unidad_medida}` : ''}`
-        : '',
-      row.nombre_marca_cilindro,
-      row.nombre_planta,
-      row.organo_inspector_no_aplica ? 'N/A' : row.nombre_organo_inspector,
-      row.fecha_inicio_prestamo?.slice(0, 10),
-      row.dias_en_prestamo,
-      rangoLabel(row.rango_antiguedad),
-      formatMonthYear(row.fecha_proxima_prueba_hidrostatica),
-    ]
-      .map((value) => {
-        const text = value == null ? '' : String(value)
-        return `"${text.replace(/"/g, '""')}"`
-      })
-      .join(','),
-  )
-
-  const csv = [header.join(','), ...lines].join('\n')
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `prestamos-antiguedad-${filters.value.rangoDias || 'todos'}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+const exportExcelFile = async () => {
+  try {
+    await downloadExcel({
+      filename: `prestamos-antiguedad-${filters.value.rangoDias || 'todos'}`,
+      sheetName: 'Antigüedad',
+      rows: rows.value,
+      columns: [
+        { key: 'cliente', header: 'Cliente', width: 28, value: (r) => r.nombre_cliente },
+        { key: 'nro', header: 'Nro préstamo', width: 16, value: (r) => r.numero_prestamo },
+        { key: 'codigo', header: 'Código', width: 14, value: (r) => r.codigo_balon },
+        { key: 'serie', header: 'Serie', width: 14, value: (r) => r.numero_serie },
+        { key: 'gas', header: 'Gas', width: 18, value: (r) => r.nombre_producto_gas },
+        {
+          key: 'capacidad',
+          header: 'Capacidad',
+          width: 14,
+          value: (r) =>
+            r.capacidad != null
+              ? `${r.capacidad}${r.nombre_unidad_medida ? ` ${r.nombre_unidad_medida}` : ''}`
+              : '',
+        },
+        { key: 'marca', header: 'Marca', width: 14, value: (r) => r.nombre_marca_cilindro },
+        { key: 'planta', header: 'Planta', width: 18, value: (r) => r.nombre_planta },
+        {
+          key: 'organo',
+          header: 'Órgano',
+          width: 16,
+          value: (r) => (r.organo_inspector_no_aplica ? 'N/A' : r.nombre_organo_inspector),
+        },
+        {
+          key: 'desde',
+          header: 'Desde',
+          width: 12,
+          value: (r) => r.fecha_inicio_prestamo?.slice(0, 10),
+        },
+        { key: 'dias', header: 'Días', width: 8, value: (r) => r.dias_en_prestamo },
+        {
+          key: 'rango',
+          header: 'Rango',
+          width: 12,
+          value: (r) => rangoLabel(r.rango_antiguedad),
+        },
+        {
+          key: 'ph',
+          header: 'P.H. próxima',
+          width: 12,
+          value: (r) => formatMonthYear(r.fecha_proxima_prueba_hidrostatica),
+        },
+      ],
+    })
+  } catch (error) {
+    toastApiError(error, 'No se pudo exportar el Excel')
+  }
 }
+
 </script>

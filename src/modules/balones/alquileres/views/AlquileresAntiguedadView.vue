@@ -48,10 +48,10 @@
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               :disabled="!rows.length"
-              @click="exportCsv"
+              @click="exportExcelFile"
             >
               <AppIcon :name="ICONS.download" :size="18" />
-              Exportar CSV
+              Exportar Excel
             </button>
           </template>
         </AppListToolbar>
@@ -170,6 +170,8 @@ import type {
   DynamicFilterValues,
 } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { toastApiError } from '@/shared/composables/useToast'
+import { downloadExcel } from '@/shared/utils/exportExcel'
 
 withDefaults(
   defineProps<{
@@ -465,55 +467,59 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const exportCsv = () => {
-  const header = [
-    'Cliente',
-    'Nro alquiler',
-    'Código',
-    'Serie',
-    'Gas',
-    'Capacidad',
-    'Marca',
-    'Planta',
-    'Órgano',
-    'Desde',
-    'Días',
-    'Rango',
-    'P.H. próxima',
-  ]
-
-  const lines = rows.value.map((row) =>
-    [
-      row.nombre_cliente,
-      row.numero_alquiler,
-      row.codigo_balon,
-      row.numero_serie,
-      row.nombre_producto_gas,
-      row.capacidad != null
-        ? `${row.capacidad}${row.nombre_unidad_medida ? ` ${row.nombre_unidad_medida}` : ''}`
-        : '',
-      row.nombre_marca_cilindro,
-      row.nombre_planta,
-      row.organo_inspector_no_aplica ? 'N/A' : row.nombre_organo_inspector,
-      row.fecha_inicio_alquiler?.slice(0, 10),
-      row.dias_en_alquiler,
-      rangoLabel(row.rango_antiguedad),
-      formatMonthYear(row.fecha_proxima_prueba_hidrostatica),
-    ]
-      .map((value) => {
-        const text = value == null ? '' : String(value)
-        return `"${text.replace(/"/g, '""')}"`
-      })
-      .join(','),
-  )
-
-  const csv = [header.join(','), ...lines].join('\n')
-  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `alquileres-antiguedad-${filters.value.rangoDias || 'todos'}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+const exportExcelFile = async () => {
+  try {
+    await downloadExcel({
+      filename: `alquileres-antiguedad-${filters.value.rangoDias || 'todos'}`,
+      sheetName: 'Antigüedad',
+      rows: rows.value,
+      columns: [
+        { key: 'cliente', header: 'Cliente', width: 28, value: (r) => r.nombre_cliente },
+        { key: 'nro', header: 'Nro alquiler', width: 16, value: (r) => r.numero_alquiler },
+        { key: 'codigo', header: 'Código', width: 14, value: (r) => r.codigo_balon },
+        { key: 'serie', header: 'Serie', width: 14, value: (r) => r.numero_serie },
+        { key: 'gas', header: 'Gas', width: 18, value: (r) => r.nombre_producto_gas },
+        {
+          key: 'capacidad',
+          header: 'Capacidad',
+          width: 14,
+          value: (r) =>
+            r.capacidad != null
+              ? `${r.capacidad}${r.nombre_unidad_medida ? ` ${r.nombre_unidad_medida}` : ''}`
+              : '',
+        },
+        { key: 'marca', header: 'Marca', width: 14, value: (r) => r.nombre_marca_cilindro },
+        { key: 'planta', header: 'Planta', width: 18, value: (r) => r.nombre_planta },
+        {
+          key: 'organo',
+          header: 'Órgano',
+          width: 16,
+          value: (r) => (r.organo_inspector_no_aplica ? 'N/A' : r.nombre_organo_inspector),
+        },
+        {
+          key: 'desde',
+          header: 'Desde',
+          width: 12,
+          value: (r) => r.fecha_inicio_alquiler?.slice(0, 10),
+        },
+        { key: 'dias', header: 'Días', width: 8, value: (r) => r.dias_en_alquiler },
+        {
+          key: 'rango',
+          header: 'Rango',
+          width: 12,
+          value: (r) => rangoLabel(r.rango_antiguedad),
+        },
+        {
+          key: 'ph',
+          header: 'P.H. próxima',
+          width: 12,
+          value: (r) => formatMonthYear(r.fecha_proxima_prueba_hidrostatica),
+        },
+      ],
+    })
+  } catch (error) {
+    toastApiError(error, 'No se pudo exportar el Excel')
+  }
 }
+
 </script>

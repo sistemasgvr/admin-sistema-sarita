@@ -209,7 +209,10 @@
           </template>
 
           <template #cell-fecha_devolucion="{ value }">
-            <span class="whitespace-nowrap">{{ formatCellDate(value as string) }}</span>
+            <span v-if="value" class="whitespace-nowrap text-success-600 dark:text-success-400">
+              {{ formatCellDate(value as string) }}
+            </span>
+            <AppBadge v-else size="sm" color="warning">Pendiente</AppBadge>
           </template>
 
           <template #cell-nombre_estado="{ value }">
@@ -217,25 +220,11 @@
           </template>
 
           <template #actions="{ row }">
-            <button
-              v-if="canEditDetalle"
-              type="button"
-              title="Editar"
-              class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-              @click="openEditDetalleModal(row)"
-            >
-              <AppIcon :name="ICONS.pencil" :size="16" />
-            </button>
-
-            <button
-              v-if="canDeleteDetalle"
-              type="button"
-              title="Eliminar"
-              class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-              @click="openDeleteDetalleModal(row)"
-            >
-              <AppIcon :name="ICONS.trash" :size="16" />
-            </button>
+            <AppActionMenu
+              :items="detalleActionItemsForRow(row)"
+              title="Acciones del cilindro"
+              :execute="(key) => onDetalleActionSelect(key, row)"
+            />
           </template>
         </AppTable>
       </DetailSectionCard>
@@ -283,6 +272,12 @@
       :mode="detalleFormMode"
       :prestamo-id="activePrestamoId"
       :detalle-id="selectedDetalleId"
+      @saved="onDetalleSaved"
+    />
+
+    <PrestamoDevolverModal
+      v-model="devolverDetalleModalOpen"
+      :detalle="detalleToDevolver"
       @saved="onDetalleSaved"
     />
 
@@ -339,6 +334,7 @@ import { useDeletePrestamoDetalleMutation } from '@/modules/balones/prestamos/co
 import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import PrestamoDetalleFormModal from '@/modules/balones/prestamos/components/PrestamoDetalleFormModal.vue'
+import PrestamoDevolverModal from '@/modules/balones/prestamos/components/PrestamoDevolverModal.vue'
 import type { PrestamoFormMode } from '@/modules/balones/prestamos/interfaces/prestamo.interface'
 import type {
   PrestamoDetalle,
@@ -346,13 +342,23 @@ import type {
   PrestamoDetalleListFilters,
 } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTable, AppTextarea, ListaOpcionBadge } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppInput,
+  AppModal,
+  AppSelect,
+  AppTable,
+  AppTextarea,
+  ListaOpcionBadge,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { optionalNumber, optionalString, requiredSelect } from '@/shared/validation'
 
@@ -436,8 +442,10 @@ const clienteOptions = computed(() => [
 const canCreateDetalle = computed(() =>
   authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_CREAR),
 )
-const canEditDetalle = computed(() =>
-  authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR),
+const canEditDetalle = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
 )
 const canDeleteDetalle = computed(() =>
   authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_ELIMINAR),
@@ -452,9 +460,43 @@ const detalleColumns: TableColumn[] = [
   { key: 'nombre_estado', label: 'Estado' },
 ]
 
+function detalleActionItemsForRow(row: PrestamoDetalle): ActionMenuItem[] {
+  const pendiente = !row.fecha_devolucion
+  return [
+    {
+      key: 'devolver',
+      label: 'Devolver / reingresar',
+      icon: ICONS.clipboardCheck,
+      hidden: !canEditDetalle.value || !pendiente,
+    },
+    {
+      key: 'edit',
+      label: 'Editar detalle',
+      icon: ICONS.pencil,
+      hidden: !canEditDetalle.value,
+    },
+    {
+      key: 'delete',
+      label: 'Quitar del préstamo',
+      icon: ICONS.trash,
+      danger: true,
+      hidden: !canDeleteDetalle.value,
+    },
+  ]
+}
+
+function onDetalleActionSelect(key: string, row: PrestamoDetalle) {
+  if (key === 'devolver') openDevolverDetalleModal(row)
+  if (key === 'edit') openEditDetalleModal(row)
+  if (key === 'delete') openDeleteDetalleModal(row)
+}
+
 const detalleFormOpen = ref(false)
 const detalleFormMode = ref<PrestamoDetalleFormMode>('create')
 const selectedDetalleId = ref<number | null>(null)
+
+const devolverDetalleModalOpen = ref(false)
+const detalleToDevolver = ref<PrestamoDetalle | null>(null)
 
 const deleteDetalleModalOpen = ref(false)
 const detalleToDelete = ref<PrestamoDetalle | null>(null)
@@ -664,6 +706,11 @@ const openEditDetalleModal = (row: PrestamoDetalle) => {
   detalleFormMode.value = 'edit'
   selectedDetalleId.value = row.id
   detalleFormOpen.value = true
+}
+
+const openDevolverDetalleModal = (row: PrestamoDetalle) => {
+  detalleToDevolver.value = row
+  devolverDetalleModalOpen.value = true
 }
 
 const openDeleteDetalleModal = (row: PrestamoDetalle) => {
