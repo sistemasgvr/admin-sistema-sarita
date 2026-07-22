@@ -42,6 +42,7 @@ export const ICONS = {
   cylinder: 'lucide:cylinder',
   archive: 'lucide:archive',
   clipboardCheck: 'lucide:clipboard-check',
+  copy: 'lucide:copy',
   mapPin: 'lucide:map-pin',
   calendar: 'lucide:calendar',
   messageSquare: 'lucide:message-square',

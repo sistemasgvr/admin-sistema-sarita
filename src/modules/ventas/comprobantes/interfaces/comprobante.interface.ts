@@ -274,4 +274,6 @@ export interface PosLineItem {
   precioUnitario: number
   idAfectacionIgv?: number
   afectaStock?: boolean
+  /** Stock del almacén al momento de agregar (para validar cantidades). */
+  stockDisponible?: number | null
 }

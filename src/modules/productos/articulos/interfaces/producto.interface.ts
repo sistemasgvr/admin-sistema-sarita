@@ -24,6 +24,8 @@ export interface Producto {
   stock_actual?: number | null
   stock_minimo?: number | null
   stock_bajo?: boolean | null
+  /** URL firmada de la imagen principal (si existe). */
+  url_imagen_principal?: string | null
   estado: number
   fecha_creacion: string
   fecha_modificacion: string

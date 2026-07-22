@@ -178,6 +178,7 @@ import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -412,14 +413,27 @@ function crearLineaDesdeProducto(producto: Producto): PosLineItem {
     precioUnitario: Number(producto.precio ?? 0),
     idAfectacionIgv: idAfectacionGravado.value,
     afectaStock: producto.afecta_stock !== false,
+    stockDisponible: producto.stock_actual ?? null,
   }
 }
 
 function agregarProducto(producto: Producto) {
   const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
+  const cantidadDeseada = existente
+    ? Math.max(1, Math.round(Number(existente.cantidad || 0) + 1))
+    : 1
+
+  const errorStock = validarStockParaAgregar(producto, cantidadDeseada, {
+    requiereAlmacenSeleccionado: true,
+  })
+  if (errorStock) {
+    toastWarning(errorStock)
+    return
+  }
 
   if (existente) {
-    existente.cantidad = Math.max(1, Math.round(Number(existente.cantidad || 0) + 1))
+    existente.cantidad = cantidadDeseada
+    existente.stockDisponible = producto.stock_actual ?? existente.stockDisponible
     toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
     return
   }
@@ -452,6 +466,21 @@ async function guardarComprobante() {
   if (requiereAlmacen.value && !idAlmacen.value) {
     toastWarning('Selecciona el almacén para descontar stock')
     return
+  }
+
+  for (const linea of lineasActivas.value) {
+    if (linea.afectaStock === false) continue
+    const stock = linea.stockDisponible
+    if (stock != null && Number(linea.cantidad) > Number(stock)) {
+      toastWarning(
+        `${linea.nombre}: stock insuficiente (disponible: ${stock})`,
+      )
+      return
+    }
+    if (stock != null && Number(stock) <= 0) {
+      toastWarning(`${linea.nombre} no tiene stock disponible`)
+      return
+    }
   }
 
   const comprobante = await createMutation.mutateAsync({

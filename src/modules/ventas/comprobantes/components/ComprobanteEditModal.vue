@@ -158,6 +158,7 @@ import type { Producto } from '@/modules/productos/articulos/interfaces/producto
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { AppInput, AppModal, AppSelectSearch, AppTextarea } from '@/shared/components'
+import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 
@@ -286,8 +287,18 @@ function removeLinea(index: number) {
 
 function agregarProducto(producto: Producto) {
   const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
+  const cantidadDeseada = existente
+    ? Math.max(0.001, Number(existente.cantidad || 0) + 1)
+    : 1
+
+  const errorStock = validarStockParaAgregar(producto, cantidadDeseada)
+  if (errorStock) {
+    toastWarning(errorStock)
+    return
+  }
+
   if (existente) {
-    existente.cantidad = Math.max(0.001, Number(existente.cantidad || 0) + 1)
+    existente.cantidad = cantidadDeseada
     toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
     return
   }
