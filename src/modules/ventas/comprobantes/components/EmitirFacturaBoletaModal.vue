@@ -5,8 +5,9 @@
         <div
           class="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200"
         >
-          Se creará {{ esFactura ? 'una Factura (01)' : 'una Boleta (03)' }} a partir de esta nota de
-          venta. La NV quedará registrada como comprobante origen del nuevo documento electrónico.
+          Se creará {{ esFactura ? 'una Factura (01)' : 'una Boleta (03)' }} a partir de esta venta
+          sin documento. La VSD quedará registrada como comprobante origen del nuevo documento
+          electrónico.
         </div>
       </DetailSectionCard>
 
@@ -187,7 +188,7 @@ const sections = computed<DetailSection[]>(() => {
   if (!row) return []
   return [
     {
-      title: 'Nota de venta origen',
+      title: 'Venta sin documento origen',
       icon: ICONS.receipt,
       fullWidth: true,
       items: [
@@ -290,7 +291,7 @@ async function confirm() {
       idMedioPago: origen.id_medio_pago ?? undefined,
       idAlmacen: origen.id_almacen ?? undefined,
       idTipoOperacionSunat: origen.id_tipo_operacion_sunat ?? undefined,
-      glosa: `${esFactura.value ? 'Factura' : 'Boleta'} de NV ${row.serie}-${row.numero}`,
+      glosa: `${esFactura.value ? 'Factura' : 'Boleta'} de VSD ${row.serie}-${row.numero}`,
       detalles: lineas.value.map((linea) => ({
         idProducto: linea.idProducto,
         cantidad: Number(linea.cantidad),

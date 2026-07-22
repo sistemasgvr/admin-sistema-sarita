@@ -1,11 +1,11 @@
 /**
- * Código interno de venta sin documento (nota de venta histórica).
- * En BD `gen_lista_opciones.descripcion` = `NV` (nombre puede ser NOTA_VENTA).
- * UI: "Venta sin documento". Se acepta `VSD` por compatibilidad con rename parcial.
+ * Código interno de venta sin documento.
+ * En BD `gen_lista_opciones.descripcion` = `VSD` (nombre suele ser NOTA_VENTA).
+ * UI: "Venta sin documento". Se acepta `NV` por compatibilidad legacy.
  */
-export const CODIGO_VENTA_SIN_DOC = 'NV'
+export const CODIGO_VENTA_SIN_DOC = 'VSD'
 
-/** Alias legacy del rename incompleto NV → VSD. */
+/** Alias legacy NV → VSD. */
 const CODIGOS_VENTA_SIN_DOC = new Set(['NV', 'VSD'])
 
 export function esNotaVentaCodigo(codigo?: string | null): boolean {

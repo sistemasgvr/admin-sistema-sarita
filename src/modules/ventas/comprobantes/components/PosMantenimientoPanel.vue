@@ -337,10 +337,10 @@ async function emitirComprobante() {
       const resultado = await imprimirTicketSinEmision(id)
       if (resultado === 'sin_ventana') {
         toastWarning(
-          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+          'Venta sin documento guardada. Permite ventanas emergentes para imprimir el ticket.',
         )
       } else {
-        toastSuccess('Ticket de nota de venta listo para imprimir')
+        toastSuccess('Ticket de venta sin documento listo para imprimir')
       }
       await limpiarFormulario()
       return

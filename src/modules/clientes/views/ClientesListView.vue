@@ -201,10 +201,7 @@ import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/Client
 import ClienteReactivacionModal from '@/modules/clientes/bajas-cliente/components/ClienteReactivacionModal.vue'
 import ClienteDetailModal from '@/modules/clientes/components/ClienteDetailModal.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
-import {
-  useDeleteClienteMutation,
-  useRestaurarClienteMutation,
-} from '@/modules/clientes/composables/useClienteMutations'
+import { useDeleteClienteMutation } from '@/modules/clientes/composables/useClienteMutations'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type {
   Cliente,
@@ -270,7 +267,6 @@ const filters = ref<ClienteListFilters>({
 
 const clientesQuery = useClientesQuery(filters)
 const deleteMutation = useDeleteClienteMutation()
-const restaurarMutation = useRestaurarClienteMutation()
 
 const formModalOpen = ref(false)
 const formMode = ref<ClienteFormMode>('create')
@@ -292,7 +288,6 @@ const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR))
-const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_RESTAURAR))
 const canSolicitarBaja = computed(() => authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_SOLICITAR))
 
 const isLoading = computed(() => clientesQuery.isFetching.value)
@@ -402,17 +397,6 @@ const confirmDelete = async () => {
     })
     deleteModalOpen.value = false
     clienteToDelete.value = null
-  } catch {}
-}
-
-const restaurarCliente = async (cliente: Cliente) => {
-  if (!currentUserId.value) return
-
-  try {
-    await restaurarMutation.mutateAsync({
-      id: cliente.id,
-      idUsuarioAuditoria: currentUserId.value,
-    })
   } catch {}
 }
 

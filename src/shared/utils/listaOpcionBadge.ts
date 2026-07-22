@@ -100,7 +100,7 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   ENVIADO: 'primary',
   RECIBIDO: 'success',
 
-  // Códigos SUNAT frecuentes + nota de venta interna
+  // Códigos SUNAT frecuentes + venta sin documento interna
   '01': 'primary',
   '03': 'success',
   '07': 'warning',
@@ -108,6 +108,7 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   '09': 'neutral',
   '31': 'primary',
   NV: 'neutral',
+  VSD: 'neutral',
   NOTA_VENTA: 'neutral',
   NO_APLICA: 'neutral',
   BAJA: 'error',

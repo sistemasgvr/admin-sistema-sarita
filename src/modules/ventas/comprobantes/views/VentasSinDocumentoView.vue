@@ -8,7 +8,7 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="NV01-0000123, serie, número o cliente..."
+          search-placeholder="VSD01-0000123, serie, número o cliente..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -93,7 +93,7 @@
 
     <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
       Las notas de venta son documentos internos (no se emiten a SUNAT). Usa
-      <strong class="font-medium text-gray-700 dark:text-gray-200">Nueva nota de venta</strong>
+      <strong class="font-medium text-gray-700 dark:text-gray-200">Nueva venta sin documento</strong>
       en el punto de venta.
     </p>
 
@@ -107,7 +107,7 @@
 
     <AppModal
       v-model="deleteModalOpen"
-      title="Eliminar nota de venta"
+      title="Eliminar venta sin documento"
       subtitle="Documento interno; no afecta a SUNAT."
       size="sm"
     >
@@ -259,7 +259,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     key: 'serie',
     label: 'Serie',
     type: 'text',
-    placeholder: 'NV01',
+    placeholder: 'VSD01',
   },
 ])
 

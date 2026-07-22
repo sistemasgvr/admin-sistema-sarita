@@ -142,8 +142,8 @@
           </span>
           ?
         </template>
-        <template v-else
-          >solicitudSeleccionada ¿Confirmas la baja del cliente
+        <template v-else>
+          ¿Confirmas la baja del cliente
           <span class="font-medium text-gray-800 dark:text-white/90">
             {{
               solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.cliente_nombres
@@ -238,9 +238,12 @@ import type {
   BajaClienteDetail,
 } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { clientesQueryKeys } from '@/modules/clientes/constants/clientesQueryKeys'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { AppBadge, AppHelpTip, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { toastSuccess } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate, formatDateTime } from '@/shared/utils/date'

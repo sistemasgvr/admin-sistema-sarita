@@ -3,7 +3,6 @@ import { clientesQueryKeys } from '@/modules/clientes/constants/clientesQueryKey
 import { bajasClienteQueryKeys } from '@/modules/clientes/bajas-cliente/constants/bajasClienteQueryKeys'
 import { bajasClienteService } from '@/modules/clientes/bajas-cliente/services/bajas-cliente.service'
 import type {
-  BajaCliente,
   SolicitarBajaClientePayload,
   SolicitarReactivacionClientePayload,
   AprobarBajaClientePayload,
