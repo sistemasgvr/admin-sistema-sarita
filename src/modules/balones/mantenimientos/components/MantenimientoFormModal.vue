@@ -4,8 +4,8 @@
     :title="mode === 'create' ? 'Nuevo mantenimiento' : 'Editar mantenimiento'"
     :subtitle="
       mode === 'create'
-        ? 'Registra ingreso del cilindro a mantenimiento, P.H. o recertificación.'
-        : 'Actualiza los datos del mantenimiento seleccionado.'
+        ? 'Ingreso a taller: cilindro de inventario o servicio al cilindro que trae el cliente.'
+        : 'Actualiza datos operativos. Para cerrar el ciclo use Finalizar en el listado.'
     "
     size="xl"
     @close="handleClose"
@@ -33,22 +33,53 @@
           <p class="text-sm font-medium text-gray-800 dark:text-white/90">
             {{ mantenimientoDetalle.codigo_balon }}
           </p>
+          <p
+            v-if="(mantenimientoDetalle.nombre_propietario ?? '').toUpperCase() === 'CLIENTE'"
+            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+          >
+            Propio de
+            {{
+              mantenimientoDetalle.nombre_cliente_propietario ||
+              'cliente (sin nombre)'
+            }}
+          </p>
         </DetailSectionCard>
 
         <DetailSectionCard title="Datos del servicio" :icon="ICONS.construction">
           <div class="space-y-4">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AppSelect
+              <div
                 v-if="mode === 'create'"
-                v-model="idBalon"
-                label="Cilindro"
-                placeholder="Selecciona cilindro"
-                required
-                v-bind="idBalonAttrs"
-                :disabled="isSubmitting || balonesQuery.isLoading.value"
-                :error="errors.idBalon"
-                :options="balonOptions"
-              />
+                class="flex w-full min-w-0 items-end gap-2"
+              >
+                <div class="min-w-0 flex-1 overflow-hidden">
+                  <AppSelectSearch
+                    v-model="idBalon"
+                    v-model:search="balonBuscar"
+                    remote
+                    label="Cilindro"
+                    placeholder="Selecciona cilindro"
+                    search-placeholder="Código, serie o cliente..."
+                    required
+                    v-bind="idBalonAttrs"
+                    :disabled="isSubmitting || balonesQuery.isLoading.value"
+                    :loading="balonesQuery.isFetching.value"
+                    :error="errors.idBalon"
+                    :options="balonOptions"
+                    empty-text="Sin cilindros. Registra uno nuevo."
+                  />
+                </div>
+                <button
+                  v-if="canCreateBalon"
+                  type="button"
+                  title="Registrar cilindro"
+                  class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
+                  :disabled="isSubmitting"
+                  @click="balonModalOpen = true"
+                >
+                  <AppIcon :name="ICONS.plus" :size="18" />
+                </button>
+              </div>
 
               <AppSelect
                 v-model="idTipoMantenimiento"
@@ -62,10 +93,15 @@
               <AppSelect
                 v-model="idEstado"
                 label="Estado"
-                placeholder="Opcional"
+                :placeholder="mode === 'create' ? 'Pendiente (por defecto)' : 'Selecciona'"
                 v-bind="idEstadoAttrs"
                 :disabled="isSubmitting || estadosMantenimientoQuery.isFetching.value"
                 :options="estadoMantenimientoOptions"
+                :hint="
+                  mode === 'edit'
+                    ? 'Para cerrar el ciclo use Finalizar en el listado.'
+                    : 'Alta como Pendiente. El cierre se hace con Finalizar.'
+                "
               />
 
               <AppInput
@@ -79,8 +115,9 @@
               />
 
               <AppInput
+                v-if="esTipoPh"
                 v-model="fechaSalida"
-                :label="esTipoPh ? 'Fecha P.H. (mes/año)' : 'Fecha salida'"
+                label="Fecha P.H. (mes/año)"
                 type="date"
                 v-bind="fechaSalidaAttrs"
                 :disabled="isSubmitting"
@@ -247,6 +284,13 @@
       </button>
     </template>
   </AppModal>
+
+  <BalonFormModal
+    v-if="canCreateBalon"
+    v-model="balonModalOpen"
+    mode="create"
+    @created="onBalonCreated"
+  />
 </template>
 
 <script setup lang="ts">
@@ -256,7 +300,12 @@ import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import BalonFormModal from '@/modules/balones/cilindros/components/BalonFormModal.vue'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
+import type {
+  Balon,
+  BalonListFilters,
+} from '@/modules/balones/cilindros/interfaces/balon.interface'
 import {
   useCreateMantenimientoMutation,
   useUpdateMantenimientoMutation,
@@ -265,11 +314,13 @@ import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composab
 import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppCheckbox, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { AppCheckbox, AppInput, AppModal, AppSelect, AppSelectSearch, AppTextarea } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
 interface MantenimientoFormModalProps {
@@ -289,6 +340,10 @@ const authStore = useAuthStore()
 const createMutation = useCreateMantenimientoMutation()
 const updateMutation = useUpdateMantenimientoMutation()
 
+const canCreateBalon = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_CREAR))
+const balonModalOpen = ref(false)
+const balonBuscar = ref('')
+
 const mantenimientoIdRef = computed(() => (props.mode === 'edit' ? props.mantenimientoId : null))
 const mantenimientoQuery = useMantenimientoQuery(mantenimientoIdRef)
 const isLoadingMantenimiento = computed(
@@ -296,8 +351,21 @@ const isLoadingMantenimiento = computed(
 )
 const mantenimientoDetalle = computed(() => mantenimientoQuery.data.value ?? null)
 
-const balonesFilters = ref({ pagina: 1, limite: 200 })
+const balonesFilters = ref<BalonListFilters>({ pagina: 1, limite: 50 })
 const balonesQuery = useBalonesQuery(balonesFilters)
+
+let balonBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+
+watch(balonBuscar, (term) => {
+  clearTimeout(balonBuscarTimeout)
+  balonBuscarTimeout = setTimeout(() => {
+    balonesFilters.value = {
+      pagina: 1,
+      limite: 50,
+      buscar: term.trim() || undefined,
+    }
+  }, 350)
+})
 
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
@@ -309,12 +377,45 @@ const tiposMantenimientoQuery = useListaOpcionesQuery(listaTipoMantenimientoId)
 const estadosMantenimientoQuery = useListaOpcionesQuery(listaEstadoMantenimientoId)
 const organoInspectorQuery = useListaOpcionesQuery(listaOrganoInspectorId)
 
+function formatBalonOptionLabel(balon: Balon): string {
+  const parts = [balon.codigo_balon]
+  if (balon.nombre_tipo_balon) {
+    parts.push(balon.nombre_tipo_balon)
+  }
+
+  const propietario = (balon.nombre_propietario ?? '').toUpperCase()
+  if (propietario === 'CLIENTE') {
+    const cliente =
+      balon.nombre_cliente_propietario?.trim() ||
+      balon.nombre_cliente_ubicacion?.trim() ||
+      'cliente'
+    parts.push(`Propio de ${cliente}`)
+  } else if ((balon.nombre_estado_balon ?? '').toUpperCase() === 'PRESTADO_CLIENTE') {
+    const cliente = balon.nombre_cliente_ubicacion?.trim()
+    parts.push(cliente ? `Prestado a ${cliente}` : 'Prestado a cliente')
+  }
+
+  return parts.join(' · ')
+}
+
 const balonOptions = computed(() =>
   (balonesQuery.data.value?.data ?? []).map((balon) => ({
     value: balon.id,
-    label: balon.codigo_balon,
+    label: formatBalonOptionLabel(balon),
   })),
 )
+
+async function onBalonCreated(balon: Balon) {
+  balonBuscar.value = balon.codigo_balon
+  balonesFilters.value = {
+    pagina: 1,
+    limite: 50,
+    buscar: balon.codigo_balon,
+  }
+  await balonesQuery.refetch()
+  idBalon.value = balon.id
+  balonModalOpen.value = false
+}
 
 const tipoMantenimientoOptions = computed(() => [
   { value: '', label: 'Sin tipo' },
@@ -342,10 +443,18 @@ const organoInspectorOptions = computed(() =>
   ),
 )
 
-const estadoMantenimientoOptions = computed(() => [
-  { value: '', label: 'Sin estado' },
-  ...toSelectOptions(estadosMantenimientoQuery.data.value),
-])
+const estadoMantenimientoOptions = computed(() => {
+  const opciones = (estadosMantenimientoQuery.data.value ?? []).filter(
+    (opcion) => (opcion.nombre ?? '').toUpperCase() !== 'FINALIZADO',
+  )
+  return [
+    {
+      value: '',
+      label: props.mode === 'create' ? 'Pendiente (automático)' : 'Sin cambiar',
+    },
+    ...toSelectOptions(opciones),
+  ]
+})
 
 const proveedorOptions = computed(() => [
   { value: '', label: 'Sin proveedor' },
@@ -493,6 +602,8 @@ const syncFormValues = () => {
 }
 
 const resetCreateForm = () => {
+  balonBuscar.value = ''
+  balonesFilters.value = { pagina: 1, limite: 50 }
   resetForm({
     values: {
       idBalon: '',

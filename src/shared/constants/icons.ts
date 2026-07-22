@@ -61,6 +61,7 @@ export const ICONS = {
   inbox: 'lucide:inbox',
   alertCircle: 'lucide:alert-circle',
   alertTriangle: 'lucide:triangle-alert',
+  circleHelp: 'lucide:circle-help',
   clock: 'lucide:clock',
   contact: 'lucide:contact',
   download: 'lucide:download',

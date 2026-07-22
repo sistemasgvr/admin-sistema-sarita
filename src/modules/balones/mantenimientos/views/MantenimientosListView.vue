@@ -25,8 +25,17 @@
         </AppListToolbar>
       </template>
 
-      <template #cell-codigo_balon="{ value }">
-        <p class="font-medium text-gray-800 dark:text-white/90">{{ value }}</p>
+      <template #cell-codigo_balon="{ row }">
+        <div>
+          <p class="font-medium text-gray-800 dark:text-white/90">{{ row.codigo_balon }}</p>
+          <p
+            v-if="(row.nombre_propietario ?? '').toUpperCase() === 'CLIENTE'"
+            class="text-xs text-gray-500 dark:text-gray-400"
+          >
+            Propio de
+            {{ row.nombre_cliente_propietario || 'cliente' }}
+          </p>
+        </div>
       </template>
 
       <template #cell-nombre_tipo_mantenimiento="{ value }">
@@ -99,6 +108,12 @@
       :mantenimiento-id="mantenimientoToViewId"
     />
 
+    <MantenimientoFinalizarModal
+      v-model="finalizarModalOpen"
+      :mantenimiento="mantenimientoToFinalizar"
+      @saved="onMantenimientoSaved"
+    />
+
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar mantenimiento"
@@ -144,6 +159,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MantenimientoFormModal from '@/modules/balones/mantenimientos/components/MantenimientoFormModal.vue'
 import MantenimientoDetailModal from '@/modules/balones/mantenimientos/components/MantenimientoDetailModal.vue'
+import MantenimientoFinalizarModal from '@/modules/balones/mantenimientos/components/MantenimientoFinalizarModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteMantenimientoMutation } from '@/modules/balones/mantenimientos/composables/useMantenimientoMutations'
 import { useMantenimientosQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
@@ -203,6 +219,9 @@ const selectedMantenimientoId = ref<number | null>(null)
 
 const detailModalOpen = ref(false)
 const mantenimientoToViewId = ref<number | null>(null)
+
+const finalizarModalOpen = ref(false)
+const mantenimientoToFinalizar = ref<Mantenimiento | null>(null)
 
 const deleteModalOpen = ref(false)
 const mantenimientoToDelete = ref<Mantenimiento | null>(null)
@@ -338,6 +357,15 @@ const openDeleteModal = (row: Mantenimiento) => {
   deleteModalOpen.value = true
 }
 
+const openFinalizarModal = (row: Mantenimiento) => {
+  mantenimientoToFinalizar.value = row
+  finalizarModalOpen.value = true
+}
+
+function isFinalizado(row: Mantenimiento): boolean {
+  return (row.nombre_estado ?? '').toUpperCase() === 'FINALIZADO'
+}
+
 function deleteLabelForRow(row: Mantenimiento): string {
   if (row.puede_eliminar !== false) return 'Eliminar'
   if (row.id_comprobante_venta != null || row.id_comprobante_compra != null) {
@@ -349,13 +377,21 @@ function deleteLabelForRow(row: Mantenimiento): string {
 function actionItemsForRow(row: Mantenimiento): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
   const blockedDelete = row.puede_eliminar === false
+  const finalizado = isFinalizado(row)
 
   return [
     {
-      key: 'edit',
-      label: 'Editar',
-      icon: ICONS.pencil,
+      key: 'finalizar',
+      label: 'Finalizar',
+      icon: ICONS.clipboardCheck,
       disabled: busy,
+      hidden: !canEdit.value || finalizado,
+    },
+    {
+      key: 'edit',
+      label: finalizado ? 'Editar (finalizado)' : 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy || finalizado,
       hidden: !canEdit.value,
     },
     {
@@ -370,6 +406,7 @@ function actionItemsForRow(row: Mantenimiento): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Mantenimiento) {
+  if (key === 'finalizar') openFinalizarModal(row)
   if (key === 'edit') openEditModal(row)
   if (key === 'delete') openDeleteModal(row)
 }

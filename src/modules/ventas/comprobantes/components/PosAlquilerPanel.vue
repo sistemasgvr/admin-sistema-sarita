@@ -2,7 +2,11 @@
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section>
       <FormCardsLayout>
-        <DetailSectionCard title="Comprobante y cilindro" :icon="ICONS.receipt">
+        <DetailSectionCard
+          title="Comprobante y cilindro"
+          :icon="ICONS.receipt"
+          help="Registra el alquiler del cilindro, genera el comprobante y vincula el balón entregado desde el almacén."
+        >
           <template #actions>
             <button
               type="button"
@@ -15,9 +19,6 @@
               Limpiar
             </button>
           </template>
-          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
-            Registra el alquiler del cilindro, genera el comprobante y vincula el balón entregado.
-          </p>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelect
@@ -88,7 +89,11 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Condiciones del alquiler" :icon="ICONS.calendar">
+        <DetailSectionCard
+          title="Condiciones del alquiler"
+          :icon="ICONS.calendar"
+          help="Define fechas y tarifa. El importe a cobrar se puede calcular automáticamente o editar a mano."
+        >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" />
             <AppInput v-model="fechaFinPactada" label="Fin pactado" type="date" />

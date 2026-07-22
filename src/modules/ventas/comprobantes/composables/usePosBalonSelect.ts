@@ -13,6 +13,8 @@ function formatBalonLabel(balon: {
   nombre_estado_balon?: string | null
   nombre_producto_gas?: string | null
   nombre_propietario?: string | null
+  nombre_cliente_propietario?: string | null
+  nombre_cliente_ubicacion?: string | null
 }) {
   const parts = [balon.codigo_balon]
 
@@ -28,9 +30,14 @@ function formatBalonLabel(balon: {
   const estado = (balon.nombre_estado_balon ?? '').trim().toUpperCase()
 
   if (propietario === 'CLIENTE') {
-    parts.push('(Propio del cliente)')
+    const cliente =
+      balon.nombre_cliente_propietario?.trim() ||
+      balon.nombre_cliente_ubicacion?.trim() ||
+      'cliente'
+    parts.push(`Propio de ${cliente}`)
   } else if (estado === 'PRESTADO_CLIENTE') {
-    parts.push('(Prestado al cliente)')
+    const cliente = balon.nombre_cliente_ubicacion?.trim()
+    parts.push(cliente ? `Prestado a ${cliente}` : '(Prestado al cliente)')
   } else if (balon.nombre_estado_balon) {
     parts.push(`(${formatListaOpcionLabel(balon.nombre_estado_balon)})`)
   }

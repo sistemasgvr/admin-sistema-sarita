@@ -52,6 +52,7 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   PRESTADO_CLIENTE: 'primary',
   EN_RUTA_LIMA: 'neutral',
   EN_MANTENIMIENTO: 'warning',
+  EN_PODER_CLIENTE: 'primary',
   ALQUILADO: 'primary',
   DEVUELTO: 'neutral',
   ROBO: 'error',

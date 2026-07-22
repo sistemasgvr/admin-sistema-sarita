@@ -2,6 +2,11 @@ export interface Mantenimiento {
   id: number
   id_balon: number
   codigo_balon?: string | null
+  id_propietario?: number | null
+  nombre_propietario?: string | null
+  id_cliente_propietario?: number | null
+  nombre_cliente_propietario?: string | null
+  id_cliente_ubicacion?: number | null
   id_tipo_mantenimiento?: number | null
   nombre_tipo_mantenimiento?: string | null
   fecha_ingreso: string
@@ -76,6 +81,17 @@ export interface UpdateMantenimientoPayload {
   idEstado?: number
   idComprobanteVenta?: number
   idComprobanteCompra?: number
+  observacion?: string
+  vigenciaPhAnios?: number
+  idOrganoInspector?: number
+  organoInspectorNoAplica?: boolean
+  numeroCertificadoPh?: string
+}
+
+export interface FinalizarMantenimientoPayload {
+  idUsuarioAuditoria: number
+  fechaSalida?: string
+  idAlmacenDestino?: number
   observacion?: string
   vigenciaPhAnios?: number
   idOrganoInspector?: number

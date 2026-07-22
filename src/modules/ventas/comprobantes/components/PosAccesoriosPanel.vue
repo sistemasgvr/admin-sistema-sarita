@@ -2,7 +2,11 @@
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section class="space-y-4">
       <FormCardsLayout>
-        <DetailSectionCard title="Comprobante" :icon="ICONS.receipt">
+        <DetailSectionCard
+          title="Comprobante"
+          :icon="ICONS.receipt"
+          help="Venta de accesorios y productos. Selecciona cliente y almacén, agrega ítems desde el catálogo y confirma en el resumen."
+        >
           <template #actions>
             <button
               type="button"
@@ -70,7 +74,11 @@
     </section>
 
     <aside class="space-y-4 xl:sticky xl:top-20 xl:self-start">
-      <DetailSectionCard title="Carrito" :icon="ICONS.boxes">
+      <DetailSectionCard
+        title="Carrito"
+        :icon="ICONS.boxes"
+        help="Revisa cantidades y precios antes de guardar. El total del resumen incluye IGV según el tipo de comprobante."
+      >
         <template #actions>
           <span class="text-xs text-gray-500 dark:text-gray-400">
             {{ lineasActivas.length }} ítem{{ lineasActivas.length === 1 ? '' : 's' }}

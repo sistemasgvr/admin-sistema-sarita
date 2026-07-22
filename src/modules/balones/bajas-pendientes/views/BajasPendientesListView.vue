@@ -8,19 +8,16 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-3">
-          <div
-            class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-          >
-            Solicitudes de baja de cilindros pendientes de aprobación. Solo un administrador
-            distinto al solicitante puede aprobar o rechazar.
-          </div>
-
-          <AppListToolbar
-            v-model:search="buscar"
-            search-placeholder="Cilindro, motivo o solicitante..."
-          />
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          search-placeholder="Cilindro, motivo o solicitante..."
+        >
+          <template #actions>
+            <AppHelpTip
+              text="Solicitudes de baja de cilindros pendientes de aprobación. Solo un administrador distinto al solicitante puede aprobar o rechazar."
+            />
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-codigo_balon="{ row }">
@@ -243,6 +240,7 @@ import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcr
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
+  AppHelpTip,
   AppListToolbar,
   AppModal,
   AppPagination,

@@ -2,7 +2,11 @@
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section>
       <FormCardsLayout>
-        <DetailSectionCard title="Comprobante y cliente" :icon="ICONS.receipt">
+        <DetailSectionCard
+          title="Comprobante y cliente"
+          :icon="ICONS.receipt"
+          help="Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se genera boleta o factura."
+        >
           <template #actions>
             <button
               type="button"
@@ -19,10 +23,6 @@
               Limpiar
             </button>
           </template>
-          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
-            Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se
-            genera boleta o factura.
-          </p>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelect
@@ -75,7 +75,11 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Datos de recarga" :icon="ICONS.cylinder">
+        <DetailSectionCard
+          title="Datos de recarga"
+          :icon="ICONS.cylinder"
+          help="Indica el gas, la cantidad (m³) y el precio. La capacidad del cilindro es opcional y queda como referencia."
+        >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelectSearch
               v-model="idProducto"

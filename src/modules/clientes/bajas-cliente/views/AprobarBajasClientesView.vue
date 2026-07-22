@@ -2,15 +2,16 @@
   <div>
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-3">
-          <div
-            class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
-            Solicitudes de baja de clientes pendientes de aprobación. Solo un administrador
-            distinto al solicitante puede aprobar o rechazar.
-          </div>
-
-          <AppListToolbar v-model:search="buscar" search-placeholder="Cliente, motivo o solicitante..." />
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          search-placeholder="Cliente, motivo o solicitante..."
+        >
+          <template #actions>
+            <AppHelpTip
+              text="Solicitudes de baja de clientes pendientes de aprobación. Solo un administrador distinto al solicitante puede aprobar o rechazar."
+            />
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-cliente="{ row }">
@@ -142,7 +143,7 @@ import { useBajaClienteDetailQuery } from '@/modules/clientes/bajas-cliente/comp
 import { useBajasClienteQuery } from '@/modules/clientes/bajas-cliente/composables/useBajasClienteQuery'
 import type { BajaCliente, BajaClienteDetail } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import { AppBadge, AppHelpTip, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'

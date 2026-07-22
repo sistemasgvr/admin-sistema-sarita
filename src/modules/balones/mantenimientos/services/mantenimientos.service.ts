@@ -2,6 +2,7 @@ import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/
 import type {
   CreateMantenimientoPayload,
   DeleteMantenimientoResponse,
+  FinalizarMantenimientoPayload,
   Mantenimiento,
   MantenimientoListFilters,
   UpdateMantenimientoPayload,
@@ -22,6 +23,10 @@ export const mantenimientosService = {
 
   actualizar(id: number, payload: UpdateMantenimientoPayload) {
     return apiPatch<Mantenimiento>(`/balones/mantenimientos/${id}`, payload)
+  },
+
+  finalizar(id: number, payload: FinalizarMantenimientoPayload) {
+    return apiPost<Mantenimiento>(`/balones/mantenimientos/${id}/finalizar`, payload)
   },
 
   eliminar(id: number, idUsuarioAuditoria: number) {

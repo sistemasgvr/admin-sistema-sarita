@@ -4,6 +4,7 @@ import { mantenimientosQueryKeys } from '@/modules/balones/mantenimientos/consta
 import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
 import type {
   CreateMantenimientoPayload,
+  FinalizarMantenimientoPayload,
   UpdateMantenimientoPayload,
 } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -49,6 +50,35 @@ export function useUpdateMantenimientoMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo actualizar el mantenimiento')
+    },
+  })
+}
+
+export function useFinalizarMantenimientoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: FinalizarMantenimientoPayload }) =>
+      mantenimientosService.finalizar(id, payload),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: mantenimientosQueryKeys.all })
+      queryClient.invalidateQueries({
+        queryKey: mantenimientosQueryKeys.detail(variables.id),
+      })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      const idBalon = data?.id_balon
+      if (idBalon) {
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(idBalon) })
+        queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(idBalon) })
+      }
+      toastSuccess(
+        data?.nombre_propietario?.toUpperCase() === 'CLIENTE' || data?.id_cliente_ubicacion != null
+          ? 'Mantenimiento finalizado: cilindro entregado al cliente'
+          : 'Mantenimiento finalizado: cilindro reingresado a almacén',
+      )
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo finalizar el mantenimiento')
     },
   })
 }

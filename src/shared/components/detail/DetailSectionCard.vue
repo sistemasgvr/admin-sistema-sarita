@@ -17,9 +17,12 @@
         >
           <AppIcon :name="icon" :size="16" />
         </span>
-        <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
-          {{ title }}
-        </h5>
+        <div class="flex min-w-0 items-center gap-1.5">
+          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
+            {{ title }}
+          </h5>
+          <AppHelpTip v-if="help" :text="help" />
+        </div>
       </div>
 
       <div v-if="$slots.actions" class="shrink-0">
@@ -52,12 +55,14 @@
 <script setup lang="ts">
 import { computed, inject } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import AppHelpTip from '@/shared/components/ui/AppHelpTip.vue'
 import type { IconName } from '@/shared/constants/icons'
 import type { DetailSectionItem } from '@/shared/components/detail/detail.types'
 
 defineProps<{
   title: string
   icon?: IconName
+  help?: string
   items?: DetailSectionItem[]
   fullWidth?: boolean
 }>()
