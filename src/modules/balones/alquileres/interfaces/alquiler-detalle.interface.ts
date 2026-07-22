@@ -4,6 +4,8 @@ export interface AlquilerDetalle {
   numero_alquiler?: string | null
   id_balon: number
   codigo_balon?: string | null
+  fecha_devolucion?: string | null
+  estado_devolucion?: 'PENDIENTE' | 'DEVUELTO' | string | null
   id_cliente?: number | null
   nombre_cliente?: string | null
   fecha_inicio?: string | null
@@ -34,6 +36,12 @@ export interface CreateAlquilerDetallePayload {
 export interface UpdateAlquilerDetallePayload {
   idUsuarioAuditoria: number
   idBalon?: number
+}
+
+export interface DevolverAlquilerDetallePayload {
+  idUsuarioAuditoria: number
+  fechaDevolucion?: string
+  idAlmacenDestino?: number
 }
 
 export interface DeleteAlquilerDetalleResponse {

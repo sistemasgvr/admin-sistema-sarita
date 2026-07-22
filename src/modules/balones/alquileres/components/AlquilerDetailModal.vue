@@ -18,7 +18,17 @@
           :icon="ICONS.boxes"
           :full-width="true"
         >
-          <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id" />
+          <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id">
+            <template #cell-fecha_devolucion="{ row }">
+              <span
+                v-if="row.fecha_devolucion"
+                class="whitespace-nowrap text-success-600 dark:text-success-400"
+              >
+                {{ String(row.fecha_devolucion).slice(0, 10) }}
+              </span>
+              <AppBadge v-else size="sm" color="warning">Pendiente</AppBadge>
+            </template>
+          </AppTable>
         </DetailSectionCard>
 
         <DetailSectionCard
@@ -76,7 +86,10 @@ const isLoading = computed(() => alquilerQuery.isFetching.value)
 const alquiler = computed(() => alquilerQuery.data.value ?? null)
 const detalleRows = computed(() => detallesQuery.data.value?.data ?? [])
 
-const detalleColumns: TableColumn[] = [{ key: 'codigo_balon', label: 'Cilindro' }]
+const detalleColumns: TableColumn[] = [
+  { key: 'codigo_balon', label: 'Cilindro' },
+  { key: 'fecha_devolucion', label: 'Devolución' },
+]
 
 watch(
   () => [open.value, props.alquilerId] as const,

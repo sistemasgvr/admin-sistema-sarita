@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Alquileres" :items="breadcrumbItems" />
+    <PageBreadcrumb v-if="!embedded" page-title="Alquileres" :items="breadcrumbItems" />
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
@@ -168,6 +168,15 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
+withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
+
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -332,7 +341,7 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
   return [
     {
       key: 'edit',
-      label: 'Editar',
+      label: 'Editar / devolver cilindros',
       icon: ICONS.pencil,
       disabled: busy,
       hidden: !canEdit.value,

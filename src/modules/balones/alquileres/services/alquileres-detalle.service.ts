@@ -4,6 +4,7 @@ import type {
   AlquilerDetalleListFilters,
   CreateAlquilerDetallePayload,
   DeleteAlquilerDetalleResponse,
+  DevolverAlquilerDetallePayload,
   UpdateAlquilerDetallePayload,
 } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 
@@ -22,6 +23,10 @@ export const alquileresDetalleService = {
 
   actualizar(id: number, payload: UpdateAlquilerDetallePayload) {
     return apiPatch<AlquilerDetalle>(`/balones/alquileres-detalle/${id}`, payload)
+  },
+
+  devolver(id: number, payload: DevolverAlquilerDetallePayload) {
+    return apiPost<AlquilerDetalle>(`/balones/alquileres-detalle/${id}/devolver`, payload)
   },
 
   eliminar(id: number, idUsuarioAuditoria: number) {

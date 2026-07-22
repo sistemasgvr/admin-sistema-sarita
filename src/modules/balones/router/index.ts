@@ -81,9 +81,13 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'alquileres/antiguedad',
+        redirect: { name: 'admin-balones-alquileres', query: { tab: 'antiguedad' } },
+      },
+      {
         path: 'alquileres',
         name: 'admin-balones-alquileres',
-        component: () => import('@/modules/balones/alquileres/views/AlquileresListView.vue'),
+        component: () => import('@/modules/balones/alquileres/views/AlquileresTabsView.vue'),
         meta: {
           title: 'Alquileres',
           module: 'balones',

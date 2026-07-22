@@ -60,7 +60,7 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'alquileres',
     title: 'Alquileres',
-    description: 'Alquiler de balones y seguimiento de devoluciones.',
+    description: 'Alquiler de balones, devoluciones y control de antigüedad.',
     path: '/admin/balones/alquileres',
     icon: ICONS.boxes,
     permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,

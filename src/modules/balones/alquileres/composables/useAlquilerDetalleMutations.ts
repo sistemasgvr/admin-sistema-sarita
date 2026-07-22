@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { alquileresAntiguedadQueryKeys } from '@/modules/balones/alquileres/constants/alquileresAntiguedadQueryKeys'
 import { alquileresDetalleQueryKeys } from '@/modules/balones/alquileres/constants/alquileresDetalleQueryKeys'
 import { alquileresQueryKeys } from '@/modules/balones/alquileres/constants/alquileresQueryKeys'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
 import { alquileresDetalleService } from '@/modules/balones/alquileres/services/alquileres-detalle.service'
 import type {
   CreateAlquilerDetallePayload,
+  DevolverAlquilerDetallePayload,
   UpdateAlquilerDetallePayload,
 } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -22,6 +24,7 @@ export function useCreateAlquilerDetalleMutation() {
       })
       queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresAntiguedadQueryKeys.all })
       toastSuccess('Cilindro agregado al alquiler')
     },
     onError: (error) => {
@@ -50,6 +53,25 @@ export function useUpdateAlquilerDetalleMutation() {
   })
 }
 
+export function useDevolverAlquilerDetalleMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: DevolverAlquilerDetallePayload }) =>
+      alquileresDetalleService.devolver(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: alquileresAntiguedadQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      toastSuccess('Devolución registrada correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo registrar la devolución')
+    },
+  })
+}
+
 export function useDeleteAlquilerDetalleMutation() {
   const queryClient = useQueryClient()
 
@@ -59,6 +81,7 @@ export function useDeleteAlquilerDetalleMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresAntiguedadQueryKeys.all })
       toastSuccess('Cilindro eliminado del alquiler')
     },
     onError: (error) => {
