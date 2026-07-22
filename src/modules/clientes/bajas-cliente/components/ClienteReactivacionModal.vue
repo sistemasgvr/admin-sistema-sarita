@@ -1,17 +1,17 @@
 <template>
   <AppModal
     v-model="open"
-    title="Solicitar baja de cliente"
-    :subtitle="cliente ? getNombrePrincipal(cliente) : 'Solicitud de baja'"
+    title="Solicitar reactivación de cliente"
+    :subtitle="cliente ? getNombrePrincipal(cliente) : 'Solicitud de reactivación'"
     size="lg"
     @close="handleClose"
   >
-    <form id="cliente-baja-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
+    <form id="cliente-reactivacion-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
       <div
         class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
       >
-        La solicitud quedará pendiente hasta que un administrador (distinto a ti) la apruebe en
-        <strong>Aprobar bajas</strong>. El cliente seguirá activo mientras tanto.
+        La solicitud quedará pendiente hasta que un administrador (distinto a ti) la apruebe.
+        El cliente se mantendrá inactivo mientras tanto.
       </div>
 
       <div class="flex items-center gap-2 text-sm">
@@ -19,22 +19,10 @@
         <span class="font-medium text-gray-800 dark:text-white/90">{{ tipoSolicitudLabel }}</span>
       </div>
 
-      <AppSelectSearch
-        v-model="idMotivoBaja"
-        label="Motivo de baja"
-        placeholder="Selecciona motivo..."
-        :options="motivoBajaOptions"
-        :loading="motivoBajaQuery.isLoading.value"
-        :disabled="isSubmitting"
-        v-bind="idMotivoBajaAttrs"
-        :error="errors.idMotivoBaja"
-        required
-      />
-
       <AppTextarea
         v-model="motivoDetalle"
-        label="Detalle del motivo (opcional)"
-        placeholder="Describe el motivo de la baja..."
+        label="Motivo de la reactivación (opcional)"
+        placeholder="Describe el motivo de la reactivación..."
         v-bind="motivoDetalleAttrs"
         :disabled="isSubmitting"
         :error="errors.motivoDetalle"
@@ -52,8 +40,8 @@
       </button>
       <button
         type="submit"
-        form="cliente-baja-form"
-        class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        form="cliente-reactivacion-form"
+        class="flex w-full justify-center rounded-lg bg-success-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >
         {{ isSubmitting ? 'Procesando...' : 'Enviar solicitud' }}
@@ -68,10 +56,10 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
-import { useSolicitarBajaClienteMutation } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteMutations'
+import { useSolicitarReactivacionClienteMutation } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteMutations'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppModal, AppTextarea } from '@/shared/components'
-import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
+import { AppModal } from '@/shared/components'
+import AppTextarea from '@/shared/components/form/AppTextarea.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalString } from '@/shared/validation'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
@@ -87,49 +75,33 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
-const solicitarMutation = useSolicitarBajaClienteMutation()
+const solicitarMutation = useSolicitarReactivacionClienteMutation()
 
 const listaTipoSolicitudId = ref(ListaIds.TIPO_SOLICITUD)
 const tipoSolicitudQuery = useListaOpcionesQuery(listaTipoSolicitudId)
 
-const tipoSolicitudBaja = computed(() =>
-  (tipoSolicitudQuery.data.value ?? []).find((o) => o.nombre === 'BAJA'),
+const tipoSolicitudReactivacion = computed(() =>
+  (tipoSolicitudQuery.data.value ?? []).find((o) => o.nombre === 'REACTIVACION'),
 )
 
-const tipoSolicitudLabel = computed(() => tipoSolicitudBaja.value?.descripcion ?? 'Baja')
-
-const listaMotivoBajaId = ref(ListaIds.MOTIVO_BAJA_CLIENTE)
-const motivoBajaQuery = useListaOpcionesQuery(listaMotivoBajaId)
-
-const motivoBajaOptions = computed(() =>
-  (motivoBajaQuery.data.value ?? []).map((item) => ({
-    label: item.nombre,
-    value: item.id,
-  })),
-)
+const tipoSolicitudLabel = computed(() => tipoSolicitudReactivacion.value?.descripcion ?? 'Reactivación')
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      idMotivoBaja: yup
-        .mixed<string | number>()
-        .test('required', 'Debes seleccionar un motivo de baja', (value) => value !== '' && value != null),
       motivoDetalle: optionalString().max(500, 'Máximo 500 caracteres'),
     }),
   ),
   initialValues: {
-    idMotivoBaja: '' as string | number,
     motivoDetalle: '',
   },
 })
 
-const [idMotivoBaja, idMotivoBajaAttrs] = defineField('idMotivoBaja')
 const [motivoDetalle, motivoDetalleAttrs] = defineField('motivoDetalle')
 
 const resetFormState = () => {
   resetForm({
     values: {
-      idMotivoBaja: '',
       motivoDetalle: '',
     },
   })
@@ -162,8 +134,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     await solicitarMutation.mutateAsync({
       idCliente: cliente.id,
-      idTipoSolicitud: tipoSolicitudBaja.value?.id,
-      idMotivoBaja: Number(values.idMotivoBaja),
+      idTipoSolicitud: tipoSolicitudReactivacion.value?.id,
       motivoDetalle: values.motivoDetalle || undefined,
       idUsuarioAuditoria: currentUserId,
     })
@@ -179,7 +150,6 @@ watch(open, (isOpen) => {
   if (isOpen) {
     resetFormState()
     tipoSolicitudQuery.refetch()
-    motivoBajaQuery.refetch()
   }
 })
 </script>
