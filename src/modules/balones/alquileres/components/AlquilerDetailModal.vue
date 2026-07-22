@@ -51,6 +51,7 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
+  formatDetailDocument,
   formatDetailListaOpcion,
   formatDetailMoney,
 } from '@/shared/components/detail/detailFormatters'
@@ -108,8 +109,19 @@ const sections = computed<DetailSection[]>(() => {
     { title: 'Cobro', icon: ICONS.creditCard, items: [
         { label: 'Tarifa diaria', value: formatDetailMoney(data.tarifa_diaria) },
         { label: 'Total cobrado', value: formatDetailMoney(data.total_cobrado) },
-        { label: 'Comprobante venta', value: data.id_comprobante_venta?.toString() },
       ],
+    },
+    { title: 'Comprobante venta', icon: ICONS.fileKey, items: data.id_comprobante_venta
+        ? [
+            {
+              label: 'Número',
+              value: formatDetailDocument(data.serie_comprobante_venta, data.numero_comprobante_venta),
+            },
+            { label: 'Fecha', value: formatDetailDate(data.fecha_comprobante_venta) },
+            { label: 'Cliente', value: data.nombre_cliente_comprobante_venta },
+            { label: 'Total', value: formatDetailMoney(data.total_comprobante_venta) },
+          ]
+        : [{ label: 'Comprobante', value: 'Sin comprobante vinculado' }],
     },
     { title: 'Auditoría', icon: ICONS.userCircle, items: [
         { label: 'Fecha creación', value: formatDetailDateTime(data.fecha_creacion) },

@@ -22,7 +22,7 @@
         ref="menuRef"
         role="menu"
         :style="menuStyle"
-        class="fixed z-[100001] min-w-[11.5rem] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
+        class="fixed z-[100001] min-w-[13.5rem] overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
       >
         <button
           v-for="item in visibleItems"

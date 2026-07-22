@@ -346,19 +346,30 @@ const openDeleteModal = (row: MovimientoBalon) => {
   deleteModalOpen.value = true
 }
 
-function actionItemsForRow(_row: MovimientoBalon): ActionMenuItem[] {
+function deleteLabelForRow(row: MovimientoBalon): string {
+  if (row.puede_eliminar !== false) return 'Eliminar'
+  if (row.id_documento_ref != null) return 'Eliminar (tiene documento)'
+  return 'Eliminar (vinculado a baja)'
+}
+
+function actionItemsForRow(row: MovimientoBalon): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedDelete = row.puede_eliminar === false
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !canEdit.value,
     },
     {
       key: 'delete',
-      label: 'Eliminar',
+      label: deleteLabelForRow(row),
       icon: ICONS.trash,
-      danger: true,
+      danger: !blockedDelete,
+      disabled: busy || blockedDelete,
       hidden: !canDelete.value,
     },
   ]

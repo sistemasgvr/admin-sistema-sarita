@@ -349,18 +349,23 @@ const openDeleteModal = (row: MovimientoRecarga) => {
 }
 
 function actionItemsForRow(row: MovimientoRecarga): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedDelete = row.puede_eliminar === false
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !(canEdit.value && row.tipo_recarga_nombre !== 'CLIENTE'),
     },
     {
       key: 'delete',
-      label: 'Eliminar',
+      label: blockedDelete ? 'Eliminar (tiene P.H./comprobante)' : 'Eliminar',
       icon: ICONS.trash,
-      danger: true,
+      danger: !blockedDelete,
+      disabled: busy || blockedDelete,
       hidden: !canDelete.value,
     },
   ]

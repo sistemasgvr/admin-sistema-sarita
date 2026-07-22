@@ -14,8 +14,21 @@ export interface Mantenimiento {
   id_estado?: number | null
   nombre_estado?: string | null
   id_comprobante_venta?: number | null
+  serie_comprobante_venta?: string | null
+  numero_comprobante_venta?: string | null
+  fecha_comprobante_venta?: string | null
+  nombre_cliente_comprobante_venta?: string | null
+  total_comprobante_venta?: number | null
+  comprobante_venta?: string | null
   id_comprobante_compra?: number | null
+  serie_comprobante_compra?: string | null
+  numero_comprobante_compra?: string | null
+  fecha_comprobante_compra?: string | null
+  nombre_proveedor_comprobante_compra?: string | null
+  total_comprobante_compra?: number | null
+  comprobante_compra?: string | null
   observacion?: string | null
+  puede_eliminar?: boolean
   estado: number
   fecha_creacion: string
   fecha_modificacion?: string | null

@@ -112,6 +112,8 @@ export interface Balon {
   observacion?: string | null
   tiene_solicitud_baja_pendiente?: boolean
   tiene_baja_aprobada?: boolean
+  /** false = no se puede borrar (historial/dependencias); usar Solicitar baja */
+  puede_eliminar?: boolean
   baja?: BalonBaja | null
   estado: number
   nombre_usuario_creacion?: string | null

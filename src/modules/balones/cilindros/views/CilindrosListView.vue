@@ -148,16 +148,29 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar cilindro"
-      subtitle="Solo para registros sin historial. Si el cilindro se perdió o deterioró, use Solicitar baja."
+      :subtitle="
+        deleteBlocked
+          ? 'Este cilindro tiene historial o dependencias.'
+          : 'Solo para registros sin historial. Si se perdió o deterioró, use Solicitar baja.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="deleteBlocked"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        No puedes eliminar
+        <span class="font-medium">{{ balonToDelete?.codigo_balon }}</span>
+        porque tiene historial (movimientos, préstamos, alquileres, P.H., etc.). Usa
+        <strong>Solicitar baja</strong> para conservar la trazabilidad.
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar el cilindro
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ balonToDelete?.codigo_balon }}
         </span>
-        ? Los cilindros con movimientos, P.H. o baja deben solicitarse por el flujo de baja para
-        conservar el historial.
+        ?
       </p>
 
       <template #footer>
@@ -167,9 +180,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ deleteBlocked ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!deleteBlocked"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -329,6 +343,7 @@ const selectedBalonId = ref<number | null>(null)
 
 const deleteModalOpen = ref(false)
 const balonToDelete = ref<Balon | null>(null)
+const deleteBlocked = computed(() => balonToDelete.value?.puede_eliminar === false)
 
 const bajaModalOpen = ref(false)
 const balonToBajaId = ref<number | null>(null)
@@ -544,30 +559,37 @@ const openRestaurarModal = (balon: Balon) => {
 }
 
 function actionItemsForRow(row: Balon): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedDelete = row.puede_eliminar === false
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !canEdit.value || puedeRestaurar(row),
     },
     {
       key: 'baja',
       label: 'Solicitar baja',
       icon: ICONS.archive,
+      disabled: busy,
       hidden: !(canEdit.value && puedeDarDeBaja(row)),
     },
     {
       key: 'restaurar',
       label: 'Reactivar',
       icon: ICONS.refreshCw,
+      disabled: busy,
       hidden: !(canEdit.value && puedeRestaurar(row)),
     },
     {
       key: 'delete',
-      label: 'Eliminar',
+      label: blockedDelete ? 'Eliminar (tiene historial)' : 'Eliminar',
       icon: ICONS.trash,
-      danger: true,
+      danger: !blockedDelete,
+      disabled: busy || blockedDelete,
       hidden: !canDelete.value || puedeRestaurar(row),
     },
   ]

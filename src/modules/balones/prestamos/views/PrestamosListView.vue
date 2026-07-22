@@ -323,19 +323,35 @@ const openDeleteModal = (row: Prestamo) => {
   deleteModalOpen.value = true
 }
 
-function actionItemsForRow(_row: Prestamo): ActionMenuItem[] {
+function deleteLabelForRow(row: Prestamo): string {
+  if (row.puede_eliminar !== false) return 'Eliminar'
+  if (row.id_comprobante_venta != null || row.id_comprobante_compra != null) {
+    return 'Eliminar (tiene comprobante)'
+  }
+  if (Number(row.total_detalles ?? 0) > 0) return 'Eliminar (tiene detalles)'
+  if (Number(row.total_garantias ?? 0) > 0) return 'Eliminar (tiene garantías)'
+  return 'Eliminar (bloqueado)'
+}
+
+function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedDelete = row.puede_eliminar === false
+  const deleteLabel = deleteLabelForRow(row)
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !canEdit.value,
     },
     {
       key: 'delete',
-      label: 'Eliminar',
+      label: deleteLabel,
       icon: ICONS.trash,
-      danger: true,
+      danger: !blockedDelete,
+      disabled: busy || blockedDelete,
       hidden: !canDelete.value,
     },
   ]

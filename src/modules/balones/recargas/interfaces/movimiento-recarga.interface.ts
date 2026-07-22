@@ -30,6 +30,7 @@ export interface MovimientoRecarga {
   observacion?: string | null
   id_almacen?: number | null
   nombre_almacen?: string | null
+  puede_eliminar?: boolean
   estado: number
   fecha_creacion: string
   fecha_modificacion?: string

@@ -88,10 +88,25 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar tipo de balón"
-      subtitle="No se puede eliminar si tiene cilindros activos asociados."
+      :subtitle="
+        deleteBlockedByCilindros
+          ? 'Este tipo tiene cilindros activos asociados.'
+          : 'No se puede eliminar si tiene cilindros o está en el catálogo de precios.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="deleteBlockedByCilindros"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        No puedes eliminar
+        <span class="font-medium">{{ tipoBalonToDelete?.nombre }}</span>
+        porque tiene
+        <span class="font-medium">{{ tipoBalonToDelete?.total_balones ?? 0 }}</span>
+        cilindro(s) activo(s). Reasigna o da de baja esos cilindros e inténtalo de nuevo.
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ tipoBalonToDelete?.nombre }}
@@ -106,9 +121,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ deleteBlockedByCilindros ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!deleteBlockedByCilindros"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -173,6 +189,9 @@ const tipoToViewId = ref<number | null>(null)
 
 const deleteModalOpen = ref(false)
 const tipoBalonToDelete = ref<TipoBalon | null>(null)
+const deleteBlockedByCilindros = computed(
+  () => Number(tipoBalonToDelete.value?.total_balones ?? 0) > 0,
+)
 
 const breadcrumbItems = computed(() => balonesBreadcrumbItems('Tipos de balón'))
 
@@ -236,19 +255,24 @@ const openDeleteModal = (tipoBalon: TipoBalon) => {
   deleteModalOpen.value = true
 }
 
-function actionItemsForRow(_row: TipoBalon): ActionMenuItem[] {
+function actionItemsForRow(row: TipoBalon): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedByCilindros = Number(row.total_balones ?? 0) > 0
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !canEdit.value,
     },
     {
       key: 'delete',
-      label: 'Eliminar',
+      label: blockedByCilindros ? 'Eliminar (tiene cilindros)' : 'Eliminar',
       icon: ICONS.trash,
-      danger: true,
+      danger: !blockedByCilindros,
+      disabled: busy || blockedByCilindros,
       hidden: !canDelete.value,
     },
   ]

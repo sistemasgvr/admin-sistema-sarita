@@ -319,19 +319,30 @@ const openDeleteModal = (row: Alquiler) => {
   deleteModalOpen.value = true
 }
 
-function actionItemsForRow(_row: Alquiler): ActionMenuItem[] {
+function deleteLabelForRow(row: Alquiler): string {
+  if (row.puede_eliminar !== false) return 'Eliminar'
+  if (row.id_comprobante_venta != null) return 'Eliminar (tiene comprobante)'
+  return 'Eliminar (tiene detalles)'
+}
+
+function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedDelete = row.puede_eliminar === false
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !canEdit.value,
     },
     {
       key: 'delete',
-      label: 'Eliminar',
+      label: deleteLabelForRow(row),
       icon: ICONS.trash,
-      danger: true,
+      danger: !blockedDelete,
+      disabled: busy || blockedDelete,
       hidden: !canDelete.value,
     },
   ]
