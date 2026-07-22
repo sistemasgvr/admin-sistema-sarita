@@ -62,7 +62,7 @@ const visibleTabs = computed<AppTabItem[]>(() => {
   if (canVerAprobaciones.value) {
     tabs.push({
       key: 'aprobaciones',
-      label: 'Aprobar bajas',
+      label: 'Solicitudes',
       icon: ICONS.clipboardCheck,
       badge: pendientesCount.value,
     })

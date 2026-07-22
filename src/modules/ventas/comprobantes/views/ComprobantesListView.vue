@@ -252,7 +252,16 @@ const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 
 const isLoading = computed(() => comprobantesQuery.isFetching.value)
-const rows = computed(() => comprobantesQuery.data.value?.data ?? [])
+const rows = computed(() => {
+  const data = comprobantesQuery.data.value?.data ?? []
+  return data.filter(
+    (row) =>
+      !esVentaSinDocumentoTipo({
+        codigo: row.codigo_tipo_comprobante,
+        nombre: row.nombre_tipo_comprobante,
+      }),
+  )
+})
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {

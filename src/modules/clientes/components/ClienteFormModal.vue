@@ -103,7 +103,7 @@
           <AppSelect
             v-model="idTipoCliente"
             label="Tipo de cliente"
-            required
+            :required="!esDocumentoVSD"
             :placeholder="tipoClienteQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
             :options="tipoClienteOptions"
             :disabled="isSubmitting || tipoClienteQuery.isLoading.value"
@@ -118,7 +118,7 @@
           <AppSelect
             v-model="idTipoPersona"
             label="Tipo de Contribuyente"
-            required
+            :required="!esDocumentoVSD"
             :placeholder="tipoPersonaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
             :options="tipoPersonaOptions"
             :disabled="isSubmitting || tipoPersonaQuery.isLoading.value"
@@ -135,9 +135,9 @@
             v-model="razonSocial"
             label="Razón social"
             placeholder="Comercial Los Andes S.A.C."
-            :required="esDocumentoRUC"
+            :required="esDocumentoRUC || esDocumentoVSD"
             v-bind="razonSocialAttrs"
-            :disabled="isSubmitting || !esDocumentoRUC"
+            :disabled="isSubmitting || (!esDocumentoRUC && !esDocumentoVSD)"
             :error="errors.razonSocial"
             hint="Obligatorio para RUC."
           />
@@ -345,6 +345,7 @@
           :error="errors.observacion"
         />
       </section>
+
     </form>
     <template #footer>
       <button
@@ -744,7 +745,7 @@ const onSubmit = handleSubmit(async (values) => {
   const payload: ClientePayload = {
     idUsuarioAuditoria: currentUserId,
     idTipoDocumento: Number(values.idTipoDocumento),
-    numeroDocumento: values.numeroDocumento,
+    numeroDocumento: values.numeroDocumento?.trim() ? values.numeroDocumento.trim() : null,
     codigoInterno: values.codigoInterno || undefined,
     idTipoCliente: Number(values.idTipoCliente),
     idTipoPersona: Number(values.idTipoPersona),
