@@ -184,6 +184,7 @@ interface VehiculoFormModalProps {
   mode: VehiculoFormMode
   vehiculo?: Vehiculo | null
   defaultClienteId?: number | null
+  defaultClienteLabel?: string | null
 }
 
 const props = defineProps<VehiculoFormModalProps>()
@@ -191,7 +192,7 @@ const props = defineProps<VehiculoFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [vehiculo?: Vehiculo]
 }>()
 
 const authStore = useAuthStore()
@@ -230,15 +231,18 @@ const searchClientes = async (query: string): Promise<SelectOption[]> => {
 
 const clienteLabelActual = computed(() => {
   const v = vehiculoActual.value
-  if (!v) return null
-  if (v.cliente_razon_social) return v.cliente_razon_social
+  if (v) {
+    if (v.cliente_razon_social) return v.cliente_razon_social
 
-  const nombreCompleto = [v.cliente_nombres, v.cliente_apellido_paterno, v.cliente_apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
+    const nombreCompleto = [v.cliente_nombres, v.cliente_apellido_paterno, v.cliente_apellido_materno]
+      .filter(Boolean)
+      .join(' ')
+      .trim()
 
-  return nombreCompleto || v.cliente_numero_documento || null
+    return nombreCompleto || v.cliente_numero_documento || null
+  }
+
+  return props.defaultClienteLabel ?? null
 })
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
@@ -328,10 +332,11 @@ const onSubmit = handleSubmit(async (values) => {
       certificado2: values.certificado2 || undefined,
     }
 
+    let guardado: Vehiculo | undefined
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      guardado = await createMutation.mutateAsync(payload)
     } else if (props.vehiculo) {
-      await updateMutation.mutateAsync({
+      guardado = await updateMutation.mutateAsync({
         id: props.vehiculo.id,
         payload,
       })
@@ -339,7 +344,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved')
+    emit('saved', guardado)
     open.value = false
   } catch {
     // toast en mutation

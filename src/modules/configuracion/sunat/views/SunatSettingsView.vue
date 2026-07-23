@@ -225,8 +225,8 @@
 
       <AppCollapsibleSection
         v-model:open="openOauth"
-        title="OAuth GRE (opcional)"
-        description="Client ID / Secret para guías de remisión electrónica vía API SUNAT."
+        title="OAuth GRE (gu?as de remisi?n)"
+        description="Client ID / Secret del portal SUNAT. Obligatorio para emitir gu?as electr?nicas (GRE)."
         :icon="ICONS.keyRound"
         :badge="oauthBadge"
       >

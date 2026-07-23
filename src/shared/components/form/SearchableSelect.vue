@@ -20,6 +20,7 @@
         autocomplete="off"
         @input="onInput"
         @focus="onFocus"
+        @click="onClick"
         @keydown.down.prevent="highlightNext"
         @keydown.up.prevent="highlightPrev"
         @keydown.enter.prevent="selectHighlighted"
@@ -158,6 +159,7 @@ if (props.modelLabel && props.modelValue !== null && props.modelValue !== undefi
 setQueryFromSelection()
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
+let searchSeq = 0
 
 const runSearch = async (term: string) => {
   if (term.length < props.minChars) {
@@ -165,17 +167,26 @@ const runSearch = async (term: string) => {
     return
   }
 
+  const seq = ++searchSeq
   loading.value = true
   try {
     const result = await props.searchFn(term)
+    if (seq !== searchSeq) return
     options.value = result
     result.forEach((option) => labelCache.set(String(option.value), option.label))
     highlightedIndex.value = result.length ? 0 : -1
   } catch {
+    if (seq !== searchSeq) return
     options.value = []
   } finally {
-    loading.value = false
+    if (seq === searchSeq) loading.value = false
   }
+}
+
+/** Al abrir: listar con término vacío (catálogo inicial), no con el label seleccionado. */
+const openMenuAndLoad = () => {
+  menuOpen.value = true
+  void runSearch('')
 }
 
 const onInput = (event: Event) => {
@@ -184,14 +195,21 @@ const onInput = (event: Event) => {
 
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
-    runSearch(query.value.trim())
+    void runSearch(query.value.trim())
   }, props.debounceMs)
 }
 
-const onFocus = () => {
-  menuOpen.value = true
-  if (!options.value.length && !loading.value) {
-    runSearch('')
+const onFocus = (event: FocusEvent) => {
+  openMenuAndLoad()
+  const el = event.target as HTMLInputElement | null
+  // Selecciona el texto para que al escribir se reemplace el label actual
+  nextTick(() => el?.select?.())
+}
+
+/** Si ya tenía foco, focus no se re-dispara: el click debe abrir/cargar igual. */
+const onClick = () => {
+  if (!menuOpen.value || (!options.value.length && !loading.value)) {
+    openMenuAndLoad()
   }
 }
 
@@ -254,9 +272,10 @@ watch(
   },
 )
 
-document.addEventListener('mousedown', handleClickOutside)
+// Usar `click` (no mousedown): así focus/open del input ocurre antes del cierre externo.
+document.addEventListener('click', handleClickOutside)
 onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', handleClickOutside)
+  document.removeEventListener('click', handleClickOutside)
   clearTimeout(debounceTimer)
 })
 </script>
