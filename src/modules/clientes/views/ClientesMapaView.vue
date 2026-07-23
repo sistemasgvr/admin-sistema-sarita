@@ -64,12 +64,52 @@
 
     <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
       <div ref="mapContainer" class="z-0 h-[520px] w-full sm:h-[600px]"></div>
+
+      <div class="absolute right-3 top-3 z-[1000] flex flex-col gap-2">
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-theme-md transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          title="Mi ubicación actual"
+          :disabled="isLocating"
+          @click="goToCurrentLocation"
+        >
+          <AppIcon
+            :name="ICONS.locateFixed"
+            :size="18"
+            :class="isLocating ? 'animate-pulse text-brand-500' : ''"
+          />
+        </button>
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-theme-md transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          title="Ver todos los clientes en el mapa"
+          :disabled="clientesConCoordenadas === 0"
+          @click="fitAllMarkers"
+        >
+          <AppIcon :name="ICONS.expand" :size="18" />
+        </button>
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 shadow-theme-md transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          title="Recargar / ajustar tamaño del mapa"
+          @click="refreshMapView"
+        >
+          <AppIcon :name="ICONS.refreshCw" :size="18" />
+        </button>
+      </div>
+
       <div
         v-if="clientesQuery.isFetching.value"
         class="pointer-events-none absolute inset-x-0 top-0 z-[500] bg-white/70 px-3 py-1.5 text-center text-xs text-gray-600 dark:bg-gray-900/70 dark:text-gray-300"
       >
         Actualizando mapa...
       </div>
+      <p
+        v-if="locationError"
+        class="absolute inset-x-3 bottom-3 z-[1000] rounded-lg border border-error-200 bg-white/95 px-3 py-2 text-xs text-error-600 shadow-theme-md dark:border-error-500/30 dark:bg-gray-900/95 dark:text-error-400"
+      >
+        {{ locationError }}
+      </p>
     </div>
   </div>
 </template>
@@ -89,7 +129,10 @@ import type {
   ClienteMapaFiltroBalones,
   ClienteMapaFilters,
 } from '@/modules/clientes/interfaces/cliente.interface'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppInput, AppSelect } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const route = useRoute()
@@ -160,8 +203,15 @@ const clientesConBalones = computed(
 )
 
 const mapContainer = ref<HTMLDivElement>()
+const isLocating = ref(false)
+const locationError = ref<string | null>(null)
 let map: L.Map | null = null
 let markersLayer: L.LayerGroup | null = null
+let userLocationMarker: L.CircleMarker | null = null
+let userLocationAccuracy: L.Circle | null = null
+/** Solo recentrar al cargar o al cambiar filtros; no al hacer clic en un marcador. */
+let pendingFitBounds = true
+let lastMarkersBounds: L.LatLngBounds | null = null
 
 type MarkerTone = 'empty' | 'ok' | 'warn' | 'crit'
 
@@ -412,15 +462,17 @@ function initMap() {
   })
 }
 
-function updateMarkers() {
+function updateMarkers(options?: { fit?: boolean }) {
   if (!markersLayer || !map) return
 
   markersLayer.clearLayers()
   const clientes = clientesConUbicacion.value
+  lastMarkersBounds = null
 
   if (clientes.length === 0) return
 
   const bounds = L.latLngBounds([])
+  const isNarrow = window.innerWidth < 640
 
   for (const cliente of clientes) {
     if (cliente.latitud == null || cliente.longitud == null) continue
@@ -433,33 +485,24 @@ function updateMarkers() {
           ? `${getClienteNombrePrincipal(cliente)} · ${total} balón${total === 1 ? '' : 'es'}`
           : getClienteNombrePrincipal(cliente),
     })
-    const isNarrow = window.innerWidth < 640
     marker.bindPopup(buildPopup(cliente), {
       closeButton: true,
+      // Leaflet pan mínimo para ver el popup; no cambiamos zoom al abrir.
       autoPan: true,
       keepInView: true,
-      // Sin maxHeight de Leaflet: evita scrollbar externo (solo scrollea la lista de balones).
       maxWidth: isNarrow ? Math.min(window.innerWidth - 32, 300) : 320,
-      autoPanPaddingTopLeft: L.point(isNarrow ? 12 : 40, isNarrow ? 72 : 48),
-      autoPanPaddingBottomRight: L.point(isNarrow ? 12 : 40, isNarrow ? 24 : 40),
+      autoPanPaddingTopLeft: L.point(isNarrow ? 16 : 40, isNarrow ? 80 : 56),
+      autoPanPaddingBottomRight: L.point(isNarrow ? 16 : 40, isNarrow ? 24 : 40),
       className: 'cliente-mapa-popup-wrap',
     })
     marker.on('popupopen', () => {
       requestAnimationFrame(() => {
         if (!map) return
-        map.invalidateSize()
-        // En móvil baja el marcador para dejar espacio al popup (sin romper overflow de tiles).
-        if (isNarrow) {
-          const size = map.getSize()
-          const projected = map.project(marker.getLatLng(), map.getZoom())
-          const shifted = L.point(projected.x, projected.y - size.y * 0.22)
-          map.panTo(map.unproject(shifted, map.getZoom()), { animate: true })
-          return
-        }
+        // Solo asegura que el punto quede visible; no aleja ni cambia zoom.
         if (typeof map.panInside === 'function') {
           map.panInside(marker.getLatLng(), {
-            paddingTopLeft: [40, 56],
-            paddingBottomRight: [40, 48],
+            paddingTopLeft: [isNarrow ? 16 : 40, isNarrow ? 88 : 64],
+            paddingBottomRight: [isNarrow ? 16 : 40, isNarrow ? 28 : 48],
             animate: true,
           })
         }
@@ -469,11 +512,102 @@ function updateMarkers() {
     bounds.extend([cliente.latitud, cliente.longitud])
   }
 
-  if (clientes.length === 1) {
-    const c = clientes[0]
-    map.setView([c.latitud!, c.longitud!], 15)
-  } else if (bounds.isValid()) {
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })
+  if (bounds.isValid()) {
+    lastMarkersBounds = bounds
+  }
+
+  const shouldFit = options?.fit ?? pendingFitBounds
+  if (shouldFit && bounds.isValid()) {
+    fitBoundsInternal(bounds, clientes.length === 1 ? 15 : 14)
+    pendingFitBounds = false
+  }
+}
+
+function fitBoundsInternal(bounds: L.LatLngBounds, maxZoom = 14) {
+  if (!map || !bounds.isValid()) return
+  if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+    map.setView(bounds.getCenter(), Math.min(15, maxZoom))
+    return
+  }
+  map.fitBounds(bounds, { padding: [48, 48], maxZoom })
+}
+
+function fitAllMarkers() {
+  locationError.value = null
+  if (!lastMarkersBounds?.isValid()) {
+    toastWarning('No hay clientes con ubicación para mostrar')
+    return
+  }
+  fitBoundsInternal(lastMarkersBounds, clientesConUbicacion.value.length === 1 ? 15 : 14)
+}
+
+async function goToCurrentLocation() {
+  if (!map || !navigator.geolocation) {
+    locationError.value = 'Geolocalización no disponible en este navegador'
+    toastWarning(locationError.value)
+    return
+  }
+
+  isLocating.value = true
+  locationError.value = null
+  try {
+    const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 10000,
+      })
+    })
+
+    const lat = position.coords.latitude
+    const lng = position.coords.longitude
+    const accuracy = position.coords.accuracy || 40
+
+    userLocationMarker?.remove()
+    userLocationAccuracy?.remove()
+
+    userLocationAccuracy = L.circle([lat, lng], {
+      radius: Math.min(accuracy, 200),
+      color: '#1565c0',
+      weight: 1,
+      fillColor: '#42a5f5',
+      fillOpacity: 0.12,
+      interactive: false,
+    }).addTo(map)
+
+    userLocationMarker = L.circleMarker([lat, lng], {
+      radius: 8,
+      color: '#1565c0',
+      weight: 2,
+      fillColor: '#42a5f5',
+      fillOpacity: 0.85,
+    })
+      .bindTooltip('Tu ubicación', { direction: 'top', offset: [0, -8] })
+      .addTo(map)
+
+    map.setView([lat, lng], Math.max(map.getZoom(), 15))
+    toastSuccess('Ubicación actual centrada en el mapa')
+  } catch (error) {
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? Number((error as GeolocationPositionError).code)
+        : 0
+    if (code === 1) locationError.value = 'Permiso de ubicación denegado'
+    else if (code === 2) locationError.value = 'No se pudo obtener la ubicación'
+    else if (code === 3) locationError.value = 'Tiempo de espera al obtener ubicación'
+    else locationError.value = 'No se pudo obtener tu ubicación actual'
+    toastWarning(locationError.value)
+  } finally {
+    isLocating.value = false
+  }
+}
+
+function refreshMapView() {
+  if (!map) return
+  map.invalidateSize()
+  locationError.value = null
+  if (lastMarkersBounds?.isValid()) {
+    fitBoundsInternal(lastMarkersBounds, clientesConUbicacion.value.length === 1 ? 15 : 14)
   }
 }
 
@@ -483,6 +617,7 @@ watch(buscar, (value) => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
+    pendingFitBounds = true
     filters.value = {
       ...filters.value,
       buscar: value.trim(),
@@ -493,6 +628,7 @@ watch(buscar, (value) => {
 
 watch(mostrarClientes, (value) => {
   pagina.value = 1
+  pendingFitBounds = true
   filters.value = {
     ...filters.value,
     soloActivos: buildSoloActivos(value),
@@ -502,6 +638,7 @@ watch(mostrarClientes, (value) => {
 
 watch(filtroBalones, (value) => {
   pagina.value = 1
+  pendingFitBounds = true
   filters.value = {
     ...filters.value,
     filtroBalones: value === 'TODOS' ? null : value,
@@ -515,6 +652,11 @@ watch(
     updateMarkers()
   },
 )
+
+watch(focusClienteId, () => {
+  pendingFitBounds = true
+  updateMarkers({ fit: true })
+})
 
 watch(
   () => [route.query.idCliente, route.query.buscar] as const,
@@ -548,6 +690,9 @@ onBeforeUnmount(() => {
     map.remove()
     map = null
     markersLayer = null
+    userLocationMarker = null
+    userLocationAccuracy = null
+    lastMarkersBounds = null
   }
 })
 </script>
