@@ -79,6 +79,28 @@ export const productosRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'movimientos/nuevo',
+        name: 'admin-productos-movimientos-nuevo',
+        component: () =>
+          import('@/modules/productos/movimientos/views/MovimientoInventarioFormView.vue'),
+        meta: {
+          title: 'Nuevo movimiento',
+          module: 'productos',
+          permission: PermisoBanderas.MOVIMIENTOS_CREAR,
+        },
+      },
+      {
+        path: 'movimientos/:id/editar',
+        name: 'admin-productos-movimientos-editar',
+        component: () =>
+          import('@/modules/productos/movimientos/views/MovimientoInventarioFormView.vue'),
+        meta: {
+          title: 'Editar movimiento',
+          module: 'productos',
+          permission: PermisoBanderas.MOVIMIENTOS_EDITAR,
+        },
+      },
+      {
         path: 'catalogo-precios',
         name: 'admin-productos-catalogo-precios',
         component: () =>

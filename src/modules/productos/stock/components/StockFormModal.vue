@@ -23,26 +23,26 @@
           :full-width="true"
         >
           <div class="space-y-4">
-            <AppSelect
+            <AlmacenSelectField
               v-model="idAlmacen"
-              label="Almacén"
-              placeholder="Selecciona un almacén"
               required
-              v-bind="idAlmacenAttrs"
               :disabled="isSubmitting"
               :error="errors.idAlmacen"
               :options="almacenOptions"
             />
 
-            <AppSelect
+            <ProductoSelectField
               v-model="idProducto"
+              v-model:search="productoBuscar"
               label="Producto"
               placeholder="Selecciona un producto"
+              :afecta-stock="true"
+              :es-servicio="false"
               required
-              v-bind="idProductoAttrs"
               :disabled="isSubmitting"
               :error="errors.idProducto"
               :options="productoOptions"
+              hint="Usa + para registrar un producto nuevo que afecte stock."
             />
           </div>
         </DetailSectionCard>
@@ -117,10 +117,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import {
   useCreateStockMutation,
   useUpdateStockMutation,
@@ -128,11 +130,12 @@ import {
 import type { Stock, StockFormMode } from '@/modules/productos/stock/interfaces/stock.interface'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppInput, AppModal } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { requiredSelect } from '@/shared/validation'
 
 interface StockFormModalProps {
   mode: StockFormMode
@@ -151,6 +154,7 @@ const emit = defineEmits<{
 
 const createMutation = useCreateStockMutation()
 const updateMutation = useUpdateStockMutation()
+const productoBuscar = ref('')
 
 const almacenOptions = computed(() =>
   props.almacenes.map((almacen) => ({
@@ -171,8 +175,8 @@ const productoOptions = computed(() =>
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      idAlmacen: yup.number().optional(),
-      idProducto: yup.number().optional(),
+      idAlmacen: requiredSelect('El almacén'),
+      idProducto: requiredSelect('El producto'),
       stock: yup
         .number()
         .typeError('Ingresa una cantidad válida')
@@ -188,27 +192,28 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     }),
   ),
   initialValues: {
-    idAlmacen: undefined as number | undefined,
-    idProducto: undefined as number | undefined,
+    idAlmacen: '' as string | number,
+    idProducto: '' as string | number,
     stock: 0,
     stockMinimo: 0,
   },
 })
 
-const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
-const [idProducto, idProductoAttrs] = defineField('idProducto')
+const [idAlmacen] = defineField('idAlmacen')
+const [idProducto] = defineField('idProducto')
 const [stockCantidad, stockCantidadAttrs] = defineField('stock')
 const [stockMinimo, stockMinimoAttrs] = defineField('stockMinimo')
 
 const syncFormValues = () => {
   resetForm({
     values: {
-      idAlmacen: undefined,
-      idProducto: undefined,
+      idAlmacen: props.stock?.id_almacen ?? '',
+      idProducto: props.stock?.id_producto ?? '',
       stock: props.stock?.stock ?? 0,
       stockMinimo: props.stock?.stock_minimo ?? 0,
     },
   })
+  productoBuscar.value = ''
 }
 
 const handleClose = () => {
@@ -218,10 +223,6 @@ const handleClose = () => {
 const onSubmit = handleSubmit(async (values) => {
   try {
     if (props.mode === 'create') {
-      if (!values.idAlmacen || !values.idProducto) {
-        return
-      }
-
       await createMutation.mutateAsync({
         idAlmacen: Number(values.idAlmacen),
         idProducto: Number(values.idProducto),

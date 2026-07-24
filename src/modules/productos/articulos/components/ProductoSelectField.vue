@@ -61,6 +61,7 @@ const props = withDefaults(
     esGas?: boolean
     esServicio?: boolean
     esAlquilable?: boolean
+    afectaStock?: boolean
     soloActivos?: number | null
   }>(),
   {
@@ -99,19 +100,27 @@ const productosFilters = ref({
   esGas: props.esGas,
   esServicio: props.esServicio,
   esAlquilable: props.esAlquilable,
+  afectaStock: props.afectaStock,
   buscar: undefined as string | undefined,
 })
 const productosQuery = useProductosQuery(productosFilters)
 
 watch(
   () =>
-    [props.esGas, props.esServicio, props.esAlquilable, props.soloActivos] as const,
-  ([esGas, esServicio, esAlquilable, soloActivos]) => {
+    [
+      props.esGas,
+      props.esServicio,
+      props.esAlquilable,
+      props.afectaStock,
+      props.soloActivos,
+    ] as const,
+  ([esGas, esServicio, esAlquilable, afectaStock, soloActivos]) => {
     productosFilters.value = {
       ...productosFilters.value,
       esGas,
       esServicio,
       esAlquilable,
+      afectaStock,
       soloActivos,
     }
   },

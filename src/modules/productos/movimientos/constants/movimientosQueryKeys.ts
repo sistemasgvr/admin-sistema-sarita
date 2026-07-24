@@ -5,4 +5,6 @@ export const movimientosQueryKeys = {
   lists: () => [...movimientosQueryKeys.all, 'list'] as const,
   list: (filters: MovimientoInventarioListFilters) =>
     [...movimientosQueryKeys.lists(), filters] as const,
+  details: () => [...movimientosQueryKeys.all, 'detail'] as const,
+  detail: (id: number) => [...movimientosQueryKeys.details(), id] as const,
 }
