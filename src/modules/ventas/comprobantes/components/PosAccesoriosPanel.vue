@@ -36,7 +36,7 @@
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
@@ -45,6 +45,11 @@
               :disabled="clientesQuery.isLoading.value"
               :can-create="canCreateCliente"
               @created="seleccionarCliente"
+            />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
             />
             <AlmacenSelectField
               v-model="idAlmacen"
@@ -216,6 +221,7 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
+  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateComprobanteMutation()
@@ -504,6 +510,7 @@ async function guardarComprobante() {
     idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
     idMoneda: idMonedaPen.value,
     glosa: glosa.value || undefined,
+    observaciones: clienteDescripcion.value || undefined,
   })
 
   comprobanteGuardadoId.value = comprobante.id

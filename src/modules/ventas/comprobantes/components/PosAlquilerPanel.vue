@@ -33,7 +33,7 @@
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
@@ -43,6 +43,11 @@
               :can-create="canCreateCliente"
               required
               @created="seleccionarCliente"
+            />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
             />
             <AlmacenSelectField
               v-model="idAlmacen"
@@ -324,6 +329,7 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
+  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createComprobanteMutation = useCreateComprobanteMutation()
@@ -570,6 +576,7 @@ async function registrarKit() {
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Kit medicinal',
+      observaciones: clienteDescripcion.value || undefined,
     })
 
     const alquiler = await alquileresService.crear({

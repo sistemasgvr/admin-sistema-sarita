@@ -69,7 +69,7 @@ export function usePosComprobanteForm(options?: {
   const numero = ref('')
   const fecha = ref(new Date().toISOString().slice(0, 10))
   const idCliente = ref<number | ''>('')
-  /** Snapshot del cliente elegido; no depende del cache de búsqueda. */
+  const clienteDescripcion = ref('')
   const clienteSeleccionadoCache = ref<Cliente | null>(null)
   const clientesVarios = ref<Cliente | null>(null)
 
@@ -286,6 +286,7 @@ export function usePosComprobanteForm(options?: {
    * Conserva tipo/serie, reaplica Clientes varios y pide el siguiente correlativo.
    */
   async function reiniciarTrasOperacion() {
+    clienteDescripcion.value = ''
     aplicarClientesVariosPorDefecto()
     fecha.value = new Date().toISOString().slice(0, 10)
     await refrescarSiguienteNumero()
@@ -315,6 +316,7 @@ export function usePosComprobanteForm(options?: {
     numero,
     fecha,
     idCliente,
+    clienteDescripcion,
     canEmit,
     canPrint,
     canCreateCliente,

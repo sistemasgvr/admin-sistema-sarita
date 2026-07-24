@@ -21,12 +21,15 @@
               {{ comprobante.serie }}-{{ comprobante.numero }}
             </p>
           </div>
-          <div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Cliente</p>
-            <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ comprobante.nombre_cliente ?? '—' }}
-            </p>
-          </div>
+          <PosClienteField
+            v-model="idCliente"
+            v-model:search="clienteBuscar"
+            :options="clienteOptions"
+            :loading="clientesQuery.isFetching.value"
+            :disabled="clientesQuery.isLoading.value || updateMutation.isPending.value"
+            :can-create="canCreateCliente"
+            @created="seleccionarCliente"
+          />
           <AppInput
             v-model="fecha"
             label="Fecha"
@@ -161,6 +164,11 @@ import { AppInput, AppModal, AppSelectSearch, AppTextarea } from '@/shared/compo
 import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 
 interface LineaEdit {
   key: string
@@ -192,6 +200,42 @@ const fecha = ref('')
 const glosa = ref('')
 const observaciones = ref('')
 const lineas = ref<LineaEdit[]>([])
+
+const idCliente = ref<number | ''>('')
+const clienteBuscar = ref('')
+const clientesFilters = ref({
+  pagina: 1,
+  limite: 50,
+  soloActivos: 1 as number,
+  buscar: undefined as string | undefined,
+})
+const clientesQuery = useClientesQuery(clientesFilters)
+
+let clienteBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+watch(clienteBuscar, (value) => {
+  if (clienteBuscarTimeout) clearTimeout(clienteBuscarTimeout)
+  clienteBuscarTimeout = setTimeout(() => {
+    clientesFilters.value = {
+      ...clientesFilters.value,
+      buscar: value.trim() || undefined,
+    }
+  }, 350)
+})
+
+const clienteOptions = computed(() =>
+  (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+    value: cliente.id,
+    label: getClienteOptionLabel(cliente),
+  })),
+)
+
+const canCreateCliente = computed(() =>
+  authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
+)
+
+function seleccionarCliente(cliente: Cliente) {
+  idCliente.value = cliente.id
+}
 
 const idProductoAgregar = ref<number | ''>('')
 const productoBuscar = ref('')
@@ -251,6 +295,7 @@ watch(
     fecha.value = String(data.fecha ?? '').slice(0, 10)
     glosa.value = data.glosa ?? ''
     observaciones.value = data.observaciones ?? ''
+    idCliente.value = data.id_cliente ?? ''
     lineas.value = (data.detalles ?? []).map((detalle, index) => ({
       key: `${detalle.id ?? detalle.id_producto}-${index}`,
       idProducto: detalle.id_producto,
@@ -332,6 +377,7 @@ async function confirm() {
       id: row.id,
       payload: {
         idUsuarioAuditoria: userId,
+        idCliente: Number(idCliente.value) || undefined,
         fecha: fecha.value,
         glosa: glosa.value.trim() || undefined,
         observaciones: observaciones.value.trim() || undefined,
