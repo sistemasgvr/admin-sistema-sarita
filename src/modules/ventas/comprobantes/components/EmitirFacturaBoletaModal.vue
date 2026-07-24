@@ -121,8 +121,10 @@
 
     <ClienteSinDocumentoModal
       v-model="emitWarningModalOpen"
+      :nombre-cliente="nombreClienteSeleccionado"
       :accion="emitirTrasCrear ? 'creará y emitirá' : 'creará'"
       :continue-label="`Continuar y ${emitirTrasCrear ? 'emitir' : 'crear'}`"
+      :allow-clientes-varios="!esFactura"
       :disabled="saving"
       @edit-client="confirmEditClienteEnEmitir"
       @continue="confirmCrear"
@@ -238,6 +240,13 @@ const clienteOptions = computed(() =>
     label: getClienteOptionLabel(cliente),
   })),
 )
+
+const nombreClienteSeleccionado = computed(() => {
+  const id = Number(idCliente.value)
+  if (!id) return props.comprobante?.nombre_cliente ?? undefined
+  const found = (clientesQuery.data.value?.data ?? []).find((c) => c.id === id)
+  return found ? getClienteOptionLabel(found) : props.comprobante?.nombre_cliente ?? undefined
+})
 
 const canCreateCliente = computed(() =>
   authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
@@ -448,6 +457,11 @@ async function confirmCrear() {
   const userId = authStore.user?.id
   if (!row || !origen || !userId) return
 
+  if (esFactura.value) {
+    toastWarning('La factura requiere un cliente con RUC. Edita el cliente o elige otro.')
+    return
+  }
+
   const varios = await obtenerClientesVarios()
   if (!varios) {
     toastWarning(
@@ -459,7 +473,7 @@ async function confirmCrear() {
   idCliente.value = varios.id
   clienteDocumento.value = varios.numero_documento || CLIENTES_VARIOS_DOCUMENTO
   emitWarningModalOpen.value = false
-  toastSuccess('Se usará Clientes Varios (00000000) para emitir a SUNAT')
+  toastSuccess(`Se usará Clientes Varios (${CLIENTES_VARIOS_DOCUMENTO}) para emitir a SUNAT`)
   await ejecutarCrear(row, origen, userId)
 }
 

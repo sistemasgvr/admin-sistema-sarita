@@ -150,6 +150,7 @@
     <ClienteSinDocumentoModal
       v-model="emitWarningModalOpen"
       :nombre-cliente="comprobanteToEmitWarning?.nombre_cliente ?? undefined"
+      :allow-clientes-varios="!emitWarningEsFactura"
       :disabled="emitMutation.isPending.value"
       @edit-client="confirmEditCliente"
       @continue="confirmEmitir"
@@ -174,6 +175,7 @@ import {
   useDeleteComprobanteMutation,
   useEmitirComprobanteMutation,
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { CLIENTES_VARIOS_DOCUMENTO } from '@/modules/clientes/constants/clientesVarios'
 import { obtenerClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
@@ -261,6 +263,13 @@ const comprobanteToAnular = ref<ComprobanteListItem | null>(null)
 
 const emitWarningModalOpen = ref(false)
 const comprobanteToEmitWarning = ref<ComprobanteListItem | null>(null)
+const emitWarningEsFactura = computed(() => {
+  const row = comprobanteToEmitWarning.value
+  if (!row) return false
+  const codigo = (row.codigo_tipo_comprobante ?? '').trim()
+  if (codigo === '01') return true
+  return (row.serie ?? '').toUpperCase().startsWith('F')
+})
 
 const clienteEditModalOpen = ref(false)
 const idClienteParaEditar = ref<number | undefined>(undefined)
@@ -693,6 +702,11 @@ async function confirmEmitir() {
   const userId = authStore.user?.id
   if (!row || !userId) return
 
+  if (emitWarningEsFactura.value) {
+    toastWarning('La factura requiere un cliente con RUC. Edita el cliente o elige otro.')
+    return
+  }
+
   const varios = await obtenerClientesVarios()
   if (!varios) {
     toastWarning(
@@ -713,7 +727,7 @@ async function confirmEmitir() {
 
   emitWarningModalOpen.value = false
   comprobanteToEmitWarning.value = null
-  toastSuccess('Se usará Clientes Varios (00000000) para emitir a SUNAT')
+  toastSuccess(`Se usará Clientes Varios (${CLIENTES_VARIOS_DOCUMENTO}) para emitir a SUNAT`)
   await ejecutarEmitir(row, userId)
 }
 
