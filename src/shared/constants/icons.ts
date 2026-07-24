@@ -42,6 +42,7 @@ export const ICONS = {
   cylinder: 'lucide:cylinder',
   archive: 'lucide:archive',
   clipboardCheck: 'lucide:clipboard-check',
+  copy: 'lucide:copy',
   mapPin: 'lucide:map-pin',
   calendar: 'lucide:calendar',
   messageSquare: 'lucide:message-square',
@@ -59,15 +60,24 @@ export const ICONS = {
   star: 'lucide:star',
   inbox: 'lucide:inbox',
   alertCircle: 'lucide:alert-circle',
+  alertTriangle: 'lucide:triangle-alert',
+  circleHelp: 'lucide:circle-help',
+  clock: 'lucide:clock',
   contact: 'lucide:contact',
   download: 'lucide:download',
   printer: 'lucide:printer',
   fileText: 'lucide:file-text',
+  image: 'lucide:image',
+  images: 'lucide:images',
+  upload: 'lucide:upload',
+  replace: 'lucide:replace',
   receipt: 'lucide:receipt',
   /** Ticket / voucher (sin símbolo $) */
   ticket: 'lucide:ticket',
   refreshCw: 'lucide:refresh-cw',
   ban: 'lucide:ban',
+
+  
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

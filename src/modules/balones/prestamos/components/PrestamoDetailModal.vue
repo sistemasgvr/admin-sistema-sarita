@@ -55,7 +55,9 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDate,
   formatDetailDateTime,
+  formatDetailDocument,
   formatDetailListaOpcion,
+  formatDetailMoney,
 } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
@@ -120,9 +122,31 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Retorno real', value: formatDetailDate(data.fecha_retorno_real) },
       ],
     },
-    { title: 'Comprobantes y auditoría', icon: ICONS.creditCard, items: [
-        { label: 'Comprobante venta', value: data.id_comprobante_venta?.toString() },
-        { label: 'Comprobante compra', value: data.id_comprobante_compra?.toString() },
+    { title: 'Comprobante venta', icon: ICONS.creditCard, items: data.id_comprobante_venta
+        ? [
+            {
+              label: 'Número',
+              value: formatDetailDocument(data.serie_comprobante_venta, data.numero_comprobante_venta),
+            },
+            { label: 'Fecha', value: formatDetailDate(data.fecha_comprobante_venta) },
+            { label: 'Cliente', value: data.nombre_cliente_comprobante_venta },
+            { label: 'Total', value: formatDetailMoney(data.total_comprobante_venta) },
+          ]
+        : [{ label: 'Comprobante', value: 'Sin comprobante vinculado' }],
+    },
+    { title: 'Comprobante compra', icon: ICONS.fileKey, items: data.id_comprobante_compra
+        ? [
+            {
+              label: 'Número',
+              value: formatDetailDocument(data.serie_comprobante_compra, data.numero_comprobante_compra),
+            },
+            { label: 'Fecha', value: formatDetailDate(data.fecha_comprobante_compra) },
+            { label: 'Proveedor', value: data.nombre_proveedor_comprobante_compra },
+            { label: 'Total', value: formatDetailMoney(data.total_comprobante_compra) },
+          ]
+        : [{ label: 'Comprobante', value: 'Sin comprobante vinculado' }],
+    },
+    { title: 'Auditoría', icon: ICONS.userCircle, items: [
         { label: 'Fecha creación', value: formatDetailDateTime(data.fecha_creacion) },
         { label: 'Última modificación', value: formatDetailDateTime(data.fecha_modificacion) },
       ],

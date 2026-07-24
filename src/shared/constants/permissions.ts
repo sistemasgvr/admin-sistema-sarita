@@ -101,6 +101,7 @@ export const PermisoBanderas = {
   PRODUCTOS_CREAR: 'productos.crear',
   PRODUCTOS_EDITAR: 'productos.editar',
   PRODUCTOS_ELIMINAR: 'productos.eliminar',
+  PRODUCTOS_RESTAURAR: 'productos.restaurar',
 
   CATALOGO_PRECIOS_LISTAR: 'catalogo_precios.listar',
   CATALOGO_PRECIOS_VER: 'catalogo_precios.ver',
@@ -230,6 +231,13 @@ export const PermisoBanderas = {
   BAJAS_CLIENTE_APROBAR: 'bajas_cliente.aprobar',
   BAJAS_CLIENTE_RECHAZAR: 'bajas_cliente.rechazar',
   BAJAS_CLIENTE_ELIMINAR: 'bajas_cliente.eliminar',
+
+
+  ACTIVIDADES_LISTAR: 'actividades.listar',
+  ACTIVIDADES_VER: 'actividades.ver',
+  ACTIVIDADES_CREAR: 'actividades.crear',
+  ACTIVIDADES_EDITAR: 'actividades.editar',
+  ACTIVIDADES_ELIMINAR: 'actividades.eliminar',
 } as const
 
 export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBanderas]

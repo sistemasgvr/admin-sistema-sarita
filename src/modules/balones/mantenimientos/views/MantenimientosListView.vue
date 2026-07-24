@@ -25,8 +25,17 @@
         </AppListToolbar>
       </template>
 
-      <template #cell-codigo_balon="{ value }">
-        <p class="font-medium text-gray-800 dark:text-white/90">{{ value }}</p>
+      <template #cell-codigo_balon="{ row }">
+        <div>
+          <p class="font-medium text-gray-800 dark:text-white/90">{{ row.codigo_balon }}</p>
+          <p
+            v-if="(row.nombre_propietario ?? '').toUpperCase() === 'CLIENTE'"
+            class="text-xs text-gray-500 dark:text-gray-400"
+          >
+            Propio de
+            {{ row.nombre_cliente_propietario || 'cliente' }}
+          </p>
+        </div>
       </template>
 
       <template #cell-nombre_tipo_mantenimiento="{ value }">
@@ -60,35 +69,21 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
-
-        <button
-          v-if="canEdit"
-          type="button"
-          title="Editar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-        </button>
-
-        <button
-          v-if="canDelete"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -111,6 +106,12 @@
     <MantenimientoDetailModal
       v-model="detailModalOpen"
       :mantenimiento-id="mantenimientoToViewId"
+    />
+
+    <MantenimientoFinalizarModal
+      v-model="finalizarModalOpen"
+      :mantenimiento="mantenimientoToFinalizar"
+      @saved="onMantenimientoSaved"
     />
 
     <AppModal
@@ -158,6 +159,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MantenimientoFormModal from '@/modules/balones/mantenimientos/components/MantenimientoFormModal.vue'
 import MantenimientoDetailModal from '@/modules/balones/mantenimientos/components/MantenimientoDetailModal.vue'
+import MantenimientoFinalizarModal from '@/modules/balones/mantenimientos/components/MantenimientoFinalizarModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteMantenimientoMutation } from '@/modules/balones/mantenimientos/composables/useMantenimientoMutations'
 import { useMantenimientosQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
@@ -171,12 +173,20 @@ import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcr
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+  ListaOpcionBadge,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -209,6 +219,9 @@ const selectedMantenimientoId = ref<number | null>(null)
 
 const detailModalOpen = ref(false)
 const mantenimientoToViewId = ref<number | null>(null)
+
+const finalizarModalOpen = ref(false)
+const mantenimientoToFinalizar = ref<Mantenimiento | null>(null)
 
 const deleteModalOpen = ref(false)
 const mantenimientoToDelete = ref<Mantenimiento | null>(null)
@@ -342,6 +355,60 @@ const openDetailModal = (row: Mantenimiento) => {
 const openDeleteModal = (row: Mantenimiento) => {
   mantenimientoToDelete.value = row
   deleteModalOpen.value = true
+}
+
+const openFinalizarModal = (row: Mantenimiento) => {
+  mantenimientoToFinalizar.value = row
+  finalizarModalOpen.value = true
+}
+
+function isFinalizado(row: Mantenimiento): boolean {
+  return (row.nombre_estado ?? '').toUpperCase() === 'FINALIZADO'
+}
+
+function deleteLabelForRow(row: Mantenimiento): string {
+  if (row.puede_eliminar !== false) return 'Eliminar'
+  if (row.id_comprobante_venta != null || row.id_comprobante_compra != null) {
+    return 'Eliminar (tiene comprobante)'
+  }
+  return 'Eliminar (tiene P.H.)'
+}
+
+function actionItemsForRow(row: Mantenimiento): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedDelete = row.puede_eliminar === false
+  const finalizado = isFinalizado(row)
+
+  return [
+    {
+      key: 'finalizar',
+      label: 'Finalizar',
+      icon: ICONS.clipboardCheck,
+      disabled: busy,
+      hidden: !canEdit.value || finalizado,
+    },
+    {
+      key: 'edit',
+      label: finalizado ? 'Editar (finalizado)' : 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy || finalizado,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: deleteLabelForRow(row),
+      icon: ICONS.trash,
+      danger: !blockedDelete,
+      disabled: busy || blockedDelete,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: Mantenimiento) {
+  if (key === 'finalizar') openFinalizarModal(row)
+  if (key === 'edit') openEditModal(row)
+  if (key === 'delete') openDeleteModal(row)
 }
 
 const onMantenimientoSaved = () => {

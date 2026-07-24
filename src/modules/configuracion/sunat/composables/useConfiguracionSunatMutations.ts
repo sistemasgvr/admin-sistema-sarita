@@ -14,7 +14,7 @@ export function useCreateConfiguracionSunatMutation() {
     mutationFn: (payload: CreateConfiguracionSunatPayload) =>
       configuracionSunatService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: configuracionSunatQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: configuracionSunatQueryKeys.all })
       toastSuccess('Configuración SUNAT guardada')
     },
     onError: (error) => {
@@ -45,7 +45,7 @@ export function useDeleteConfiguracionSunatMutation() {
   return useMutation({
     mutationFn: (id: number) => configuracionSunatService.eliminar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: configuracionSunatQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: configuracionSunatQueryKeys.all })
       toastSuccess('Configuración SUNAT eliminada correctamente')
     },
     onError: (error) => {

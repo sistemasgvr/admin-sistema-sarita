@@ -21,12 +21,15 @@
               {{ comprobante.serie }}-{{ comprobante.numero }}
             </p>
           </div>
-          <div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Cliente</p>
-            <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ comprobante.nombre_cliente ?? '—' }}
-            </p>
-          </div>
+          <PosClienteField
+            v-model="idCliente"
+            v-model:search="clienteBuscar"
+            :options="clienteOptions"
+            :loading="clientesQuery.isFetching.value"
+            :disabled="clientesQuery.isLoading.value || updateMutation.isPending.value"
+            :can-create="canCreateCliente"
+            @created="seleccionarCliente"
+          />
           <AppInput
             v-model="fecha"
             label="Fecha"
@@ -53,6 +56,19 @@
       </DetailSectionCard>
 
       <DetailSectionCard title="Detalle" :icon="ICONS.clipboardList" :full-width="true">
+        <div class="mb-3">
+          <AppSelectSearch
+            v-model="idProductoAgregar"
+            v-model:search="productoBuscar"
+            label="Agregar producto"
+            placeholder="Buscar y agregar"
+            search-placeholder="Código, ubicación o nombre..."
+            :options="productoOptions"
+            :loading="productosQuery.isFetching.value"
+            :disabled="updateMutation.isPending.value"
+          />
+        </div>
+
         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 dark:bg-white/5">
@@ -140,11 +156,19 @@ import { computed, ref, watch } from 'vue'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { useUpdateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import { AppInput, AppModal, AppTextarea } from '@/shared/components'
-import { toastWarning } from '@/shared/composables/useToast'
+import { AppInput, AppModal, AppSelectSearch, AppTextarea } from '@/shared/components'
+import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 
 interface LineaEdit {
   key: string
@@ -177,6 +201,70 @@ const glosa = ref('')
 const observaciones = ref('')
 const lineas = ref<LineaEdit[]>([])
 
+const idCliente = ref<number | ''>('')
+const clienteBuscar = ref('')
+const clientesFilters = ref({
+  pagina: 1,
+  limite: 50,
+  soloActivos: 1 as number,
+  buscar: undefined as string | undefined,
+})
+const clientesQuery = useClientesQuery(clientesFilters)
+
+let clienteBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+watch(clienteBuscar, (value) => {
+  if (clienteBuscarTimeout) clearTimeout(clienteBuscarTimeout)
+  clienteBuscarTimeout = setTimeout(() => {
+    clientesFilters.value = {
+      ...clientesFilters.value,
+      buscar: value.trim() || undefined,
+    }
+  }, 350)
+})
+
+const clienteOptions = computed(() =>
+  (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+    value: cliente.id,
+    label: getClienteOptionLabel(cliente),
+  })),
+)
+
+const canCreateCliente = computed(() =>
+  authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
+)
+
+function seleccionarCliente(cliente: Cliente) {
+  idCliente.value = cliente.id
+}
+
+const idProductoAgregar = ref<number | ''>('')
+const productoBuscar = ref('')
+const productosFilters = ref({
+  pagina: 1,
+  limite: 40,
+  soloActivos: 1 as number | null,
+  buscar: undefined as string | undefined,
+})
+const productosQuery = useProductosQuery(productosFilters)
+
+let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+watch(productoBuscar, (value) => {
+  if (productoBuscarTimeout) clearTimeout(productoBuscarTimeout)
+  productoBuscarTimeout = setTimeout(() => {
+    productosFilters.value = {
+      ...productosFilters.value,
+      buscar: value.trim() || undefined,
+    }
+  }, 300)
+})
+
+const productoOptions = computed(() =>
+  (productosQuery.data.value?.data ?? []).map((producto) => ({
+    value: producto.id,
+    label: [producto.codigo, producto.nombre].filter(Boolean).join(' — '),
+  })),
+)
+
 const open = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
@@ -207,6 +295,7 @@ watch(
     fecha.value = String(data.fecha ?? '').slice(0, 10)
     glosa.value = data.glosa ?? ''
     observaciones.value = data.observaciones ?? ''
+    idCliente.value = data.id_cliente ?? ''
     lineas.value = (data.detalles ?? []).map((detalle, index) => ({
       key: `${detalle.id ?? detalle.id_producto}-${index}`,
       idProducto: detalle.id_producto,
@@ -218,9 +307,20 @@ watch(
       porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
       idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
     }))
+    idProductoAgregar.value = ''
+    productoBuscar.value = ''
   },
   { immediate: true },
 )
+
+watch(idProductoAgregar, (id) => {
+  if (id === '' || id == null) return
+  const producto = (productosQuery.data.value?.data ?? []).find((item) => item.id === id)
+  if (producto) {
+    agregarProducto(producto)
+  }
+  idProductoAgregar.value = ''
+})
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
@@ -228,6 +328,38 @@ function formatMoney(value: number) {
 
 function removeLinea(index: number) {
   lineas.value.splice(index, 1)
+}
+
+function agregarProducto(producto: Producto) {
+  const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
+  const cantidadDeseada = existente
+    ? Math.max(0.001, Number(existente.cantidad || 0) + 1)
+    : 1
+
+  const errorStock = validarStockParaAgregar(producto, cantidadDeseada)
+  if (errorStock) {
+    toastWarning(errorStock)
+    return
+  }
+
+  if (existente) {
+    existente.cantidad = cantidadDeseada
+    toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
+    return
+  }
+
+  const afectacionDefault = lineas.value.find((l) => l.idAfectacionIgv)?.idAfectacionIgv
+  lineas.value.push({
+    key: crypto.randomUUID(),
+    idProducto: producto.id,
+    descripcion: producto.nombre,
+    cantidad: 1,
+    precioUnitario: Number(producto.precio ?? 0),
+    descuento: 0,
+    porcentajeIgv: 18,
+    idAfectacionIgv: afectacionDefault,
+  })
+  toastSuccess(`${producto.nombre} agregado`)
 }
 
 async function confirm() {
@@ -245,6 +377,7 @@ async function confirm() {
       id: row.id,
       payload: {
         idUsuarioAuditoria: userId,
+        idCliente: Number(idCliente.value) || undefined,
         fecha: fecha.value,
         glosa: glosa.value.trim() || undefined,
         observaciones: observaciones.value.trim() || undefined,

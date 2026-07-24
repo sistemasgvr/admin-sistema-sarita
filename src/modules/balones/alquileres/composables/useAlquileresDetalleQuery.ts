@@ -9,7 +9,9 @@ export function useAlquileresDetalleQuery(filters: Ref<AlquilerDetalleListFilter
     queryKey: computed(() => alquileresDetalleQueryKeys.list(filters.value)),
     queryFn: () => alquileresDetalleService.listar(filters.value),
     placeholderData: keepPreviousData,
-    enabled: computed(() => (filters.value.idAlquiler ?? 0) > 0),
+    enabled: computed(
+      () => (filters.value.idAlquiler ?? 0) > 0 || (filters.value.idBalon ?? 0) > 0,
+    ),
   })
 }
 

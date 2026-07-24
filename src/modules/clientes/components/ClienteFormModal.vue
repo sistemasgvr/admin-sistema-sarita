@@ -38,7 +38,7 @@
                   v-model="numeroDocumento"
                   label="Número de documento"
                   placeholder="12345678"
-                  required
+                  :required="!esDocumentoVSD"
                   v-bind="numeroDocumentoAttrs"
                   :disabled="isSubmitting"
                   :error="errors.numeroDocumento"
@@ -103,7 +103,7 @@
           <AppSelect
             v-model="idTipoCliente"
             label="Tipo de cliente"
-            required
+            :required="!esDocumentoVSD"
             :placeholder="tipoClienteQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
             :options="tipoClienteOptions"
             :disabled="isSubmitting || tipoClienteQuery.isLoading.value"
@@ -117,8 +117,8 @@
 
           <AppSelect
             v-model="idTipoPersona"
-            label="Tipo de persona"
-            required
+            label="Tipo de Contribuyente"
+            :required="!esDocumentoVSD"
             :placeholder="tipoPersonaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
             :options="tipoPersonaOptions"
             :disabled="isSubmitting || tipoPersonaQuery.isLoading.value"
@@ -134,12 +134,12 @@
           <AppInput
             v-model="razonSocial"
             label="Razón social"
-            placeholder="Comercial Los Andes S.A.C."
-            :required="requiereRazonSocial"
+            placeholder="Razón social de la empresa"
+            :required="esDocumentoRUC"
             v-bind="razonSocialAttrs"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || !esDocumentoRUC"
             :error="errors.razonSocial"
-            hint="Requerido para personas jurídicas."
+            hint="Obligatorio para RUC."
           />
         </div>
 
@@ -149,7 +149,7 @@
               v-model="nombres"
               label="Nombres"
               placeholder="Juan"
-              :required="requiereNombres"
+              :required="requiereNombres || esDocumentoVSD"
               v-bind="nombresAttrs"
               :disabled="isSubmitting"
               :error="errors.nombres"
@@ -345,6 +345,7 @@
           :error="errors.observacion"
         />
       </section>
+
     </form>
     <template #footer>
       <button
@@ -416,7 +417,7 @@ const props = defineProps<ClienteFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [cliente: Cliente]
 }>()
 
 const authStore = useAuthStore()
@@ -453,7 +454,12 @@ const tipoDocumentoQuery = useListaOpcionesQuery(listaTipoDocumentoId)
 
 const tipoPersonaOptions = computed(() => toSelectOptions(tipoPersonaQuery.data.value))
 const tipoClienteOptions = computed(() => toSelectOptions(tipoClienteQuery.data.value))
-const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
+const tipoDocumentoOptions = computed(() => {
+  return (tipoDocumentoQuery.data.value ?? []).map((item) => ({
+    label: item.nombre,
+    value: item.id,
+  }))
+})
 
 const validationSchema = computed(() =>
   toClienteFormSchema({
@@ -555,9 +561,12 @@ const tipoPersonaSeleccionado = computed(() => {
   return opciones.find((opcion) => opcion.id === Number(idTipoPersona.value))
 })
 
-const requiereRazonSocial = computed(() => {
-  const nombre = tipoPersonaSeleccionado.value?.nombre?.toUpperCase() ?? ''
-  return nombre.includes('JURID')
+const esDocumentoVSD = computed(() => {
+  return tipoDocumentoSeleccionado.value?.nombre?.toUpperCase() === 'VSD'
+})
+
+const esDocumentoRUC = computed(() => {
+  return tipoDocumentoSeleccionado.value?.nombre?.toUpperCase() === 'RUC'
 })
 
 const requiereNombres = computed(() => {
@@ -736,7 +745,7 @@ const onSubmit = handleSubmit(async (values) => {
   const payload: ClientePayload = {
     idUsuarioAuditoria: currentUserId,
     idTipoDocumento: Number(values.idTipoDocumento),
-    numeroDocumento: values.numeroDocumento,
+    numeroDocumento: values.numeroDocumento?.trim() ? values.numeroDocumento.trim() : null,
     codigoInterno: values.codigoInterno || undefined,
     idTipoCliente: Number(values.idTipoCliente),
     idTipoPersona: Number(values.idTipoPersona),
@@ -764,10 +773,12 @@ const onSubmit = handleSubmit(async (values) => {
   }
 
   try {
+    let clienteGuardado: Cliente
+
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      clienteGuardado = await createMutation.mutateAsync(payload)
     } else if (props.cliente) {
-      await updateMutation.mutateAsync({
+      clienteGuardado = await updateMutation.mutateAsync({
         id: props.cliente.id,
         payload,
       })
@@ -775,7 +786,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved')
+    emit('saved', clienteGuardado)
     open.value = false
   } catch {
     // toast en mutation

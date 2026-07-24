@@ -85,6 +85,27 @@
       </div>
 
       <div
+        v-if="comprobante.glosa || comprobante.observaciones"
+        class="rounded-xl border border-gray-200 p-4 dark:border-gray-800"
+      >
+        <h5 class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Observaciones
+        </h5>
+        <p
+          v-if="comprobante.glosa"
+          class="text-sm text-gray-700 dark:text-gray-300"
+        >
+          {{ comprobante.glosa }}
+        </p>
+        <p
+          v-if="comprobante.observaciones"
+          class="mt-1 text-sm text-gray-700 dark:text-gray-300"
+        >
+          {{ comprobante.observaciones }}
+        </p>
+      </div>
+
+      <div
         v-if="puedePdf"
         class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
       >
@@ -243,5 +264,4 @@ async function imprimirPdf(formato: ComprobantePdfFormato) {
 function handleClose() {
   open.value = false
 }
-
 </script>

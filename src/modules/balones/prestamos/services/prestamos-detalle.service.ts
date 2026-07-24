@@ -2,6 +2,7 @@ import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/
 import type {
   CreatePrestamoDetallePayload,
   DeletePrestamoDetalleResponse,
+  DevolverPrestamoDetallePayload,
   PrestamoDetalle,
   PrestamoDetalleListFilters,
   UpdatePrestamoDetallePayload,
@@ -22,6 +23,10 @@ export const prestamosDetalleService = {
 
   actualizar(id: number, payload: UpdatePrestamoDetallePayload) {
     return apiPatch<PrestamoDetalle>(`/balones/prestamos-detalle/${id}`, payload)
+  },
+
+  devolver(id: number, payload: DevolverPrestamoDetallePayload) {
+    return apiPost<PrestamoDetalle>(`/balones/prestamos-detalle/${id}/devolver`, payload)
   },
 
   eliminar(id: number, idUsuarioAuditoria: number) {

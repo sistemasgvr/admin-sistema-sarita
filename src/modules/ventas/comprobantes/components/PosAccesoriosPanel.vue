@@ -2,7 +2,11 @@
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section class="space-y-4">
       <FormCardsLayout>
-        <DetailSectionCard title="Comprobante" :icon="ICONS.receipt">
+        <DetailSectionCard
+          title="Comprobante"
+          :icon="ICONS.receipt"
+          help="Venta de accesorios y productos. Selecciona cliente y almacén, agrega ítems desde el catálogo y confirma en el resumen."
+        >
           <template #actions>
             <button
               type="button"
@@ -32,7 +36,7 @@
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
@@ -41,6 +45,11 @@
               :disabled="clientesQuery.isLoading.value"
               :can-create="canCreateCliente"
               @created="seleccionarCliente"
+            />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
             />
             <AppSelectSearch
               v-model="idAlmacen"
@@ -70,7 +79,11 @@
     </section>
 
     <aside class="space-y-4 xl:sticky xl:top-20 xl:self-start">
-      <DetailSectionCard title="Carrito" :icon="ICONS.boxes">
+      <DetailSectionCard
+        title="Carrito"
+        :icon="ICONS.boxes"
+        help="Revisa cantidades y precios antes de guardar. El total del resumen incluye IGV según el tipo de comprobante."
+      >
         <template #actions>
           <span class="text-xs text-gray-500 dark:text-gray-400">
             {{ lineasActivas.length }} ítem{{ lineasActivas.length === 1 ? '' : 's' }}
@@ -178,6 +191,7 @@ import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -210,6 +224,7 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
+  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateComprobanteMutation()
@@ -336,6 +351,8 @@ const syncFilters = () => {
     limite: 500,
     esGas: false,
     esServicio: false,
+    soloActivos: 1,
+    idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
       active.idSubCategoria != null ? Number(active.idSubCategoria) : undefined,
@@ -368,8 +385,13 @@ watch(buscar, () => {
   }, 350)
 })
 
+watch(idAlmacen, () => {
+  syncFilters()
+})
+
 onMounted(() => {
   void loadCatalogos()
+  syncFilters()
 })
 
 const lineasActivas = computed(() =>
@@ -405,14 +427,27 @@ function crearLineaDesdeProducto(producto: Producto): PosLineItem {
     precioUnitario: Number(producto.precio ?? 0),
     idAfectacionIgv: idAfectacionGravado.value,
     afectaStock: producto.afecta_stock !== false,
+    stockDisponible: producto.stock_actual ?? null,
   }
 }
 
 function agregarProducto(producto: Producto) {
   const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
+  const cantidadDeseada = existente
+    ? Math.max(1, Math.round(Number(existente.cantidad || 0) + 1))
+    : 1
+
+  const errorStock = validarStockParaAgregar(producto, cantidadDeseada, {
+    requiereAlmacenSeleccionado: true,
+  })
+  if (errorStock) {
+    toastWarning(errorStock)
+    return
+  }
 
   if (existente) {
-    existente.cantidad = Math.max(1, Math.round(Number(existente.cantidad || 0) + 1))
+    existente.cantidad = cantidadDeseada
+    existente.stockDisponible = producto.stock_actual ?? existente.stockDisponible
     toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
     return
   }
@@ -447,6 +482,21 @@ async function guardarComprobante() {
     return
   }
 
+  for (const linea of lineasActivas.value) {
+    if (linea.afectaStock === false) continue
+    const stock = linea.stockDisponible
+    if (stock != null && Number(linea.cantidad) > Number(stock)) {
+      toastWarning(
+        `${linea.nombre}: stock insuficiente (disponible: ${stock})`,
+      )
+      return
+    }
+    if (stock != null && Number(stock) <= 0) {
+      toastWarning(`${linea.nombre} no tiene stock disponible`)
+      return
+    }
+  }
+
   const comprobante = await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     idTipoComprobante: Number(idTipoComprobante.value),
@@ -467,6 +517,7 @@ async function guardarComprobante() {
     idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
     idMoneda: idMonedaPen.value,
     glosa: glosa.value || undefined,
+    observaciones: clienteDescripcion.value || undefined,
   })
 
   comprobanteGuardadoId.value = comprobante.id
@@ -499,10 +550,10 @@ async function emitirComprobante() {
       const resultado = await imprimirTicketSinEmision(id)
       if (resultado === 'sin_ventana') {
         toastWarning(
-          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+          'Venta sin documento guardada. Permite ventanas emergentes para imprimir el ticket.',
         )
       } else {
-        toastSuccess('Ticket de nota de venta listo para imprimir')
+        toastSuccess('Ticket de venta sin documento listo para imprimir')
       }
       await limpiarFormulario()
       return

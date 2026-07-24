@@ -2,7 +2,11 @@
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section>
       <FormCardsLayout>
-        <DetailSectionCard title="Comprobante y cilindro" :icon="ICONS.receipt">
+        <DetailSectionCard
+          title="Comprobante y cilindro"
+          :icon="ICONS.receipt"
+          help="Registra el alquiler del cilindro, genera el comprobante y vincula el balón entregado desde el almacén."
+        >
           <template #actions>
             <button
               type="button"
@@ -15,9 +19,6 @@
               Limpiar
             </button>
           </template>
-          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
-            Registra el alquiler del cilindro, genera el comprobante y vincula el balón entregado.
-          </p>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelect
@@ -32,7 +33,7 @@
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
@@ -42,6 +43,11 @@
               :can-create="canCreateCliente"
               required
               @created="seleccionarCliente"
+            />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
             />
             <AppSelectSearch
               v-model="idAlmacen"
@@ -88,7 +94,11 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Condiciones del alquiler" :icon="ICONS.calendar">
+        <DetailSectionCard
+          title="Condiciones del alquiler"
+          :icon="ICONS.calendar"
+          help="Define fechas y tarifa. El importe a cobrar se puede calcular automáticamente o editar a mano."
+        >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" />
             <AppInput v-model="fechaFinPactada" label="Fin pactado" type="date" />
@@ -203,6 +213,7 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
+  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createComprobanteMutation = useCreateComprobanteMutation()
@@ -373,6 +384,7 @@ async function registrarAlquiler() {
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Alquiler de cilindro',
+      observaciones: clienteDescripcion.value || undefined,
     })
 
     const alquiler = await alquileresService.crear({
@@ -435,10 +447,10 @@ async function emitirComprobante() {
       const resultado = await imprimirTicketSinEmision(id)
       if (resultado === 'sin_ventana') {
         toastWarning(
-          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+          'Venta sin documento guardada. Permite ventanas emergentes para imprimir el ticket.',
         )
       } else {
-        toastSuccess('Ticket de nota de venta listo para imprimir')
+        toastSuccess('Ticket de venta sin documento listo para imprimir')
       }
       await limpiarFormulario()
       return

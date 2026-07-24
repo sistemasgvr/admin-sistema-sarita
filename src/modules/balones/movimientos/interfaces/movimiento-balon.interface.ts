@@ -7,14 +7,21 @@ export interface MovimientoBalon {
   id_documento_ref?: number | null
   id_tipo_documento_ref?: number | null
   nombre_tipo_documento_ref?: string | null
+  documento_numero?: string | null
+  documento_fecha?: string | null
+  documento_cliente?: string | null
+  documento_lote?: string | null
+  documento_detalle?: string | null
   id_cliente?: number | null
   nombre_cliente?: string | null
+
   id_almacen_origen?: number | null
   nombre_almacen_origen?: string | null
   id_almacen_destino?: number | null
   nombre_almacen_destino?: string | null
   fecha_movimiento: string
   observacion?: string | null
+  puede_eliminar?: boolean
   estado: number
   nombre_usuario_creacion?: string | null
   nombre_usuario_modificacion?: string | null

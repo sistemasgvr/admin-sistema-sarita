@@ -12,6 +12,17 @@
         <AppBadge v-if="producto?.es_alquilable" color="neutral">Alquilable</AppBadge>
         <AppBadge v-if="producto?.afecta_stock" color="success">Afecta stock</AppBadge>
       </template>
+
+      <template #extra>
+        <DetailSectionCard
+          v-if="producto?.id"
+          title="Imágenes"
+          :icon="ICONS.images"
+          full-width
+        >
+          <ProductoImagenesManager :id-producto="producto.id" />
+        </DetailSectionCard>
+      </template>
     </DetailCardsLayout>
 
     <template #footer>
@@ -28,14 +39,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   formatDetailDateTime,
   formatDetailPrecio,
   formatDetailYesNo,
 } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { AppBadge, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
@@ -57,6 +70,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Código', value: data.codigo },
         { label: 'Nombre', value: data.nombre },
         { label: 'Código de barras', value: data.codigo_barra },
+        { label: 'Código de ubicación', value: data.codigo_ubicacion },
         { label: 'Marca', value: data.marca },
         { label: 'Presentación', value: data.presentacion },
       ],
@@ -74,7 +88,16 @@ const sections = computed<DetailSection[]>(() => {
       title: 'Comercial',
       icon: ICONS.creditCard,
       items: [
-        { label: 'Precio', value: formatDetailPrecio(data.precio) },
+        { label: 'Precio de venta', value: formatDetailPrecio(data.precio) },
+        { label: 'Precio de compra', value: formatDetailPrecio(data.precio_compra) },
+        ...(data.es_alquilable
+          ? [
+              {
+                label: 'Precio de garantía',
+                value: formatDetailPrecio(data.precio_garantia),
+              },
+            ]
+          : []),
         { label: 'Es gas', value: formatDetailYesNo(data.es_gas) },
         { label: 'Es servicio', value: formatDetailYesNo(data.es_servicio) },
         { label: 'Es alquilable', value: formatDetailYesNo(data.es_alquilable) },

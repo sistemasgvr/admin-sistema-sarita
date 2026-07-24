@@ -50,12 +50,4 @@ export const productosMenuItems: ProductosMenuItem[] = [
     phase: 4,
     implemented: true,
   },
-  {
-    key: 'catalogo-precios',
-    title: 'Catálogo de precios',
-    path: '/admin/productos/catalogo-precios',
-    permission: PermisoBanderas.CATALOGO_PRECIOS_LISTAR,
-    phase: 5,
-    implemented: true,
-  },
 ]

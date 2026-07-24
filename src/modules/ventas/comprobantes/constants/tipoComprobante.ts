@@ -1,6 +1,29 @@
-/** Código interno de Nota de venta (no CPE / no SUNAT). */
-export const CODIGO_NOTA_VENTA = 'NV'
+/**
+ * Código interno de venta sin documento.
+ * En BD `gen_lista_opciones.descripcion` = `VSD` (nombre suele ser NOTA_VENTA).
+ * UI: "Venta sin documento". Se acepta `NV` por compatibilidad legacy.
+ */
+export const CODIGO_VENTA_SIN_DOC = 'VSD'
+
+/** Alias legacy NV → VSD. */
+const CODIGOS_VENTA_SIN_DOC = new Set(['NV', 'VSD'])
 
 export function esNotaVentaCodigo(codigo?: string | null): boolean {
-  return (codigo ?? '').trim().toUpperCase() === CODIGO_NOTA_VENTA
+  return CODIGOS_VENTA_SIN_DOC.has((codigo ?? '').trim().toUpperCase())
 }
+
+export function esVentaSinDocumentoTipo(opts: {
+  codigo?: string | null
+  nombre?: string | null
+}): boolean {
+  if (esNotaVentaCodigo(opts.codigo)) return true
+  const nombre = (opts.nombre ?? '').toUpperCase()
+  return (
+    nombre.includes('NOTA_VENTA') ||
+    nombre.includes('NOTA DE VENTA') ||
+    nombre.includes('VENTA SIN DOCUMENTO') ||
+    nombre.includes('VENTA_SIN_DOCUMENTO')
+  )
+}
+
+export const LABEL_VENTA_SIN_DOCUMENTO = 'Venta sin documento'

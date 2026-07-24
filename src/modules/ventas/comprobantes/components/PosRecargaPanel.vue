@@ -2,7 +2,11 @@
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section>
       <FormCardsLayout>
-        <DetailSectionCard title="Comprobante y cliente" :icon="ICONS.receipt">
+        <DetailSectionCard
+          title="Comprobante y cliente"
+          :icon="ICONS.receipt"
+          help="Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se genera boleta o factura."
+        >
           <template #actions>
             <button
               type="button"
@@ -19,10 +23,6 @@
               Limpiar
             </button>
           </template>
-          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
-            Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se
-            genera boleta o factura.
-          </p>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelect
@@ -37,7 +37,7 @@
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
@@ -47,6 +47,11 @@
               :can-create="canCreateCliente"
               required
               @created="seleccionarCliente"
+            />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
             />
             <AppSelectSearch
               v-model="idAlmacen"
@@ -75,7 +80,11 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Datos de recarga" :icon="ICONS.cylinder">
+        <DetailSectionCard
+          title="Datos de recarga"
+          :icon="ICONS.cylinder"
+          help="Indica el gas, la cantidad (m³) y el precio. La capacidad del cilindro es opcional y queda como referencia."
+        >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelectSearch
               v-model="idProducto"
@@ -187,6 +196,7 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
+  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateRecargaClienteMutation()
@@ -285,7 +295,7 @@ async function registrarRecarga() {
     serie: serie.value.trim(),
     capacidad: capacidad.value !== '' ? Number(capacidad.value) : undefined,
     idAlmacen: Number(idAlmacen.value),
-    observacion: observacion.value || undefined,
+    observacion: [observacion.value, clienteDescripcion.value].filter(Boolean).join(' - ') || undefined,
   })
 
   comprobanteGuardadoId.value = result.comprobante.id
@@ -323,10 +333,10 @@ async function emitirComprobante() {
       const resultado = await imprimirTicketSinEmision(id)
       if (resultado === 'sin_ventana') {
         toastWarning(
-          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+          'Venta sin documento guardada. Permite ventanas emergentes para imprimir el ticket.',
         )
       } else {
-        toastSuccess('Ticket de nota de venta listo para imprimir')
+        toastSuccess('Ticket de venta sin documento listo para imprimir')
       }
       await limpiarFormulario()
       return

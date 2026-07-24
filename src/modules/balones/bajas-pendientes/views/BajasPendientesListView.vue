@@ -8,19 +8,16 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-3">
-          <div
-            class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-          >
-            Solicitudes de baja de cilindros pendientes de aprobación. Solo un administrador
-            distinto al solicitante puede aprobar o rechazar.
-          </div>
-
-          <AppListToolbar
-            v-model:search="buscar"
-            search-placeholder="Cilindro, motivo o solicitante..."
-          />
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          search-placeholder="Cilindro, motivo o solicitante..."
+        >
+          <template #actions>
+            <AppHelpTip
+              text="Solicitudes de baja de cilindros pendientes de aprobación. Solo un administrador distinto al solicitante puede aprobar o rechazar."
+            />
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-codigo_balon="{ row }">
@@ -46,34 +43,20 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          type="button"
-          title="Ver detalle"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
-
-        <button
-          v-if="canAprobar"
-          type="button"
-          title="Aprobar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-50 dark:text-success-400 dark:hover:bg-success-500/10"
-          @click="openAprobarModal(row)"
-        >
-          <AppIcon :name="ICONS.check" :size="16" />
-        </button>
-
-        <button
-          v-if="canAprobar"
-          type="button"
-          title="Rechazar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openRechazarModal(row)"
-        >
-          <AppIcon :name="ICONS.x" :size="16" />
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -255,11 +238,20 @@ import { useBajasPendientesQuery } from '@/modules/balones/bajas-pendientes/comp
 import type { BajaSolicitud } from '@/modules/balones/bajas-pendientes/interfaces/baja-solicitud.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppListToolbar, AppModal, AppPagination, AppTable, AppTextarea } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppHelpTip,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+  AppTextarea,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 withDefaults(
@@ -336,6 +328,29 @@ const openRechazarModal = (row: BajaSolicitud) => {
   solicitudSeleccionada.value = row
   motivoRechazo.value = ''
   rechazarModalOpen.value = true
+}
+
+function actionItemsForRow(_row: BajaSolicitud): ActionMenuItem[] {
+  return [
+    {
+      key: 'aprobar',
+      label: 'Aprobar',
+      icon: ICONS.check,
+      hidden: !canAprobar.value,
+    },
+    {
+      key: 'rechazar',
+      label: 'Rechazar',
+      icon: ICONS.x,
+      danger: true,
+      hidden: !canAprobar.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: BajaSolicitud) {
+  if (key === 'aprobar') openAprobarModal(row)
+  if (key === 'rechazar') openRechazarModal(row)
 }
 
 const confirmarAprobacion = async () => {

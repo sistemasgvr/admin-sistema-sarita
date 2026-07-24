@@ -2,6 +2,7 @@ export interface PaginationMeta {
   pagina: number
   limite: number
   total: number
+  resumen?: Record<string, unknown> | null
 }
 
 export interface PaginationSummary {

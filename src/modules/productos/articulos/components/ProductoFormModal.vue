@@ -65,6 +65,27 @@
                 :disabled="isSubmitting"
               />
             </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+              <AppInput
+                v-model="codigoUbicacion"
+                label="Código de ubicación"
+                placeholder="Ej. ARO-GEN-01"
+                v-bind="codigoUbicacionAttrs"
+                :disabled="isSubmitting || isGeneratingUbicacion"
+              />
+              <button
+                type="button"
+                class="inline-flex h-[42px] items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                :disabled="isSubmitting || isGeneratingUbicacion"
+                @click="generarCodigoUbicacion"
+              >
+                {{ isGeneratingUbicacion ? 'Generando...' : 'Generar' }}
+              </button>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Genera iniciales del nombre y marca (ej. ARO-GEN-01). En edición se guarda de inmediato.
+            </p>
           </div>
         </DetailSectionCard>
 
@@ -103,24 +124,76 @@
 
         <DetailSectionCard title="Comercial" :icon="ICONS.creditCard">
           <div class="space-y-4">
-            <AppInput
-              v-model="precio"
-              label="Precio base"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              v-bind="precioAttrs"
-              :disabled="isSubmitting"
-              :error="errors.precio"
-            />
-
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <AppCheckbox v-model="esGas" :disabled="isSubmitting" label="Es gas" />
               <AppCheckbox v-model="esServicio" :disabled="isSubmitting" label="Es servicio" />
               <AppCheckbox v-model="esAlquilable" :disabled="isSubmitting" label="Es alquilable" />
               <AppCheckbox v-model="afectaStock" :disabled="isSubmitting" label="Afecta stock" />
             </div>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="precio"
+                label="Precio de venta"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                v-bind="precioAttrs"
+                :disabled="isSubmitting"
+                :error="errors.precio"
+              />
+
+              <AppInput
+                v-model="precioCompra"
+                label="Precio de compra"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                v-bind="precioCompraAttrs"
+                :disabled="isSubmitting"
+                :error="errors.precioCompra"
+              />
+            </div>
+
+            <AppInput
+              v-if="esAlquilable"
+              v-model="precioGarantia"
+              label="Precio de garantía / depósito"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              v-bind="precioGarantiaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.precioGarantia"
+            />
+            <p v-if="esAlquilable" class="text-xs text-gray-500 dark:text-gray-400">
+              Se usa como depósito al alquilar o prestar este producto.
+            </p>
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard title="Imágenes" :icon="ICONS.images">
+          <ProductoImagenesManager
+            v-if="mode === 'edit' && producto?.id"
+            :id-producto="producto.id"
+            editable
+          />
+
+          <div v-else class="space-y-3">
+            <AppDropzone
+              v-model="pendingImages"
+              label="Imágenes iniciales"
+              title="Arrastra y suelta tus imágenes"
+              description="PNG, JPG, WEBP o GIF. Arrástralas aquí o selecciónalas desde tu equipo."
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif"
+              multiple
+              :max-files="20"
+              :max-filesize="10"
+              :disabled="isSubmitting"
+            />
           </div>
         </DetailSectionCard>
       </FormCardsLayout>
@@ -149,6 +222,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useQueryClient } from '@tanstack/vue-query'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -157,17 +231,28 @@ import {
   useCreateProductoMutation,
   useUpdateProductoMutation,
 } from '@/modules/productos/articulos/composables/useProductoMutations'
+import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
+import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import type {
   Producto,
   ProductoFormMode,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
-import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
+import {
+  AppCheckbox,
+  AppDropzone,
+  AppInput,
+  AppModal,
+  AppSelect,
+} from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
 interface ProductoFormModalProps {
@@ -188,8 +273,11 @@ const emit = defineEmits<{
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadesMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
 
+const queryClient = useQueryClient()
 const createMutation = useCreateProductoMutation()
 const updateMutation = useUpdateProductoMutation()
+const pendingImages = ref<File[]>([])
+const isGeneratingUbicacion = ref(false)
 
 const categoriaOptions = computed(() =>
   props.categorias.map((categoria) => ({
@@ -210,6 +298,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
     yup.object({
       codigo: requiredString('El código'),
       codigoBarra: optionalString(),
+      codigoUbicacion: optionalString(),
       nombre: requiredString('El nombre'),
       idCategoria: yup.number().optional(),
       idSubCategoria: yup.number().optional(),
@@ -220,12 +309,15 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
       esServicio: yup.boolean().default(false),
       esAlquilable: yup.boolean().default(false),
       afectaStock: yup.boolean().default(true),
-      precio: optionalNumber().min(0, 'El precio no puede ser negativo'),
+      precio: optionalNumber().min(0, 'El precio de venta no puede ser negativo'),
+      precioCompra: optionalNumber().min(0, 'El precio de compra no puede ser negativo'),
+      precioGarantia: optionalNumber().min(0, 'La garantía no puede ser negativa'),
     }),
   ),
   initialValues: {
     codigo: '',
     codigoBarra: '',
+    codigoUbicacion: '',
     nombre: '',
     idCategoria: undefined as number | undefined,
     idSubCategoria: undefined as number | undefined,
@@ -237,11 +329,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values } = u
     esAlquilable: false,
     afectaStock: true,
     precio: undefined as number | undefined,
+    precioCompra: undefined as number | undefined,
+    precioGarantia: undefined as number | undefined,
   },
 })
 
 const [codigo, codigoAttrs] = defineField('codigo')
 const [codigoBarra, codigoBarraAttrs] = defineField('codigoBarra')
+const [codigoUbicacion, codigoUbicacionAttrs] = defineField('codigoUbicacion')
 const [nombre, nombreAttrs] = defineField('nombre')
 const [idCategoria, idCategoriaAttrs] = defineField('idCategoria')
 const [idSubCategoria, idSubCategoriaAttrs] = defineField('idSubCategoria')
@@ -253,6 +348,8 @@ const [esServicio] = defineField('esServicio')
 const [esAlquilable] = defineField('esAlquilable')
 const [afectaStock] = defineField('afectaStock')
 const [precio, precioAttrs] = defineField('precio')
+const [precioCompra, precioCompraAttrs] = defineField('precioCompra')
+const [precioGarantia, precioGarantiaAttrs] = defineField('precioGarantia')
 
 const subCategoriaOptions = computed(() =>
   props.subCategorias
@@ -270,6 +367,7 @@ const syncFormValues = () => {
     values: {
       codigo: props.producto?.codigo ?? '',
       codigoBarra: props.producto?.codigo_barra ?? '',
+      codigoUbicacion: props.producto?.codigo_ubicacion ?? '',
       nombre: props.producto?.nombre ?? '',
       idCategoria: props.producto?.id_categoria ?? undefined,
       idSubCategoria: props.producto?.id_sub_categoria ?? undefined,
@@ -281,12 +379,70 @@ const syncFormValues = () => {
       esAlquilable: props.producto?.es_alquilable ?? false,
       afectaStock: props.producto?.afecta_stock ?? true,
       precio: props.producto?.precio ?? undefined,
+      precioCompra: props.producto?.precio_compra ?? undefined,
+      precioGarantia: props.producto?.precio_garantia ?? undefined,
     },
   })
 }
 
 const handleClose = () => {
   open.value = false
+}
+
+const generarCodigoUbicacion = async () => {
+  const nombreActual = (nombre.value ?? '').trim()
+  if (!nombreActual) {
+    toastApiError(new Error('Ingresa el nombre del producto antes de generar'), 'Nombre requerido')
+    return
+  }
+
+  isGeneratingUbicacion.value = true
+  try {
+    const persistir = props.mode === 'edit' && props.producto?.id != null
+    const result = await productosService.generarCodigoUbicacion({
+      nombre: nombreActual,
+      marca: (marca.value ?? '').trim() || undefined,
+      idProducto: persistir ? props.producto!.id : undefined,
+    })
+
+    codigoUbicacion.value = result.codigo_ubicacion
+
+    if (persistir) {
+      await queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      toastSuccess(`Ubicación asignada: ${result.codigo_ubicacion}`)
+    } else {
+      toastSuccess(`Código sugerido: ${result.codigo_ubicacion}`)
+    }
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el código de ubicación')
+  } finally {
+    isGeneratingUbicacion.value = false
+  }
+}
+
+const uploadPendingImages = async (idProducto: number) => {
+  const files = [...pendingImages.value]
+  if (!files.length) return
+
+  try {
+    for (let index = 0; index < files.length; index += 1) {
+      await productoImagenesService.crear(idProducto, files[index], {
+        esPrincipal: index === 0,
+      })
+    }
+    toastSuccess(
+      files.length === 1
+        ? 'Imagen del producto subida'
+        : `${files.length} imágenes del producto subidas`,
+    )
+  } catch (error) {
+    toastApiError(
+      error,
+      'El producto se creó, pero hubo un error al subir imágenes',
+    )
+  } finally {
+    pendingImages.value = []
+  }
 }
 
 const onSubmit = handleSubmit(async (formValues) => {
@@ -298,6 +454,7 @@ const onSubmit = handleSubmit(async (formValues) => {
         ? Number(formValues.idSubCategoria)
         : undefined,
       codigoBarra: formValues.codigoBarra || undefined,
+      codigoUbicacion: formValues.codigoUbicacion || '',
       idUnidadMedida: formValues.idUnidadMedida
         ? Number(formValues.idUnidadMedida)
         : undefined,
@@ -308,10 +465,15 @@ const onSubmit = handleSubmit(async (formValues) => {
       esAlquilable: formValues.esAlquilable,
       afectaStock: formValues.afectaStock,
       precio: formValues.precio ?? 0,
+      precioCompra: formValues.precioCompra ?? 0,
+      precioGarantia: formValues.esAlquilable ? (formValues.precioGarantia ?? 0) : 0,
     }
 
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      const created = await createMutation.mutateAsync(payload)
+      if (created?.id) {
+        await uploadPendingImages(created.id)
+      }
     } else if (props.producto) {
       await updateMutation.mutateAsync({
         id: props.producto.id,
@@ -333,6 +495,7 @@ watch(
   (isOpen) => {
     if (isOpen) {
       syncFormValues()
+      pendingImages.value = []
     }
   },
 )

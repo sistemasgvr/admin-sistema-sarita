@@ -32,9 +32,17 @@
       </template>
 
       <template #cell-cliente="{ row }">
-        <p class="truncate font-medium text-gray-800 dark:text-white/90">
-          {{ getNombrePrincipal(row) }}
-        </p>
+        <div class="flex flex-col gap-0.5">
+          <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
+            {{ row.razon_social }}
+          </p>
+          <p
+            v-if="row.nombres || row.apellido_paterno || row.apellido_materno"
+            class="truncate text-sm text-gray-500 dark:text-gray-400"
+          >
+            {{ [row.nombres, row.apellido_paterno, row.apellido_materno].filter(Boolean).join(' ') }}
+          </p>
+        </div>
         <AppBadge v-if="row.nombre_tipo_persona" size="sm" color="neutral" class="mt-1">
           {{ row.nombre_tipo_persona }}
         </AppBadge>
@@ -51,7 +59,10 @@
         </div>
       </template>
       <template #cell-estado="{ row }">
-        <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
+        <AppBadge v-if="row.estado_baja_aprobacion" color="warning">
+          Pendiente
+        </AppBadge>
+        <AppBadge v-else :color="row.estado === 1 ? 'success' : 'error'">
           {{ row.estado === 1 ? 'Activo' : 'Inactivo' }}
         </AppBadge>
       </template>
@@ -94,15 +105,26 @@
         </button> -->
 
         <button
+          v-if="canSolicitarBaja && row.estado !== 1"
+          type="button"
+          title="Solicitar reactivación"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
+          @click="openReactivacionModal(row)"
+        >
+          <AppIcon :name="ICONS.refreshCw" :size="16" />
+          Solicitar reactivación
+        </button>
+<!-- 
+        <button
           v-if="canRestore && row.estado !== 1"
           type="button"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           :disabled="restaurarMutation.isPending.value"
           @click="restaurarCliente(row)"
         >
           <AppIcon :name="ICONS.check" :size="16" />
           Restaurar
-        </button>
+        </button> -->
       </template>
 
       <template #footer>
@@ -128,6 +150,12 @@
       v-model="bajaModalOpen"
       :cliente="clienteToBaja"
       @saved="onBajaSaved"
+    />
+
+    <ClienteReactivacionModal
+      v-model="reactivacionModalOpen"
+      :cliente="clienteToReactivacion"
+      @saved="onReactivacionSaved"
     />
 
     <AppModal
@@ -170,12 +198,10 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/ClienteBajaModal.vue'
+import ClienteReactivacionModal from '@/modules/clientes/bajas-cliente/components/ClienteReactivacionModal.vue'
 import ClienteDetailModal from '@/modules/clientes/components/ClienteDetailModal.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
-import {
-  useDeleteClienteMutation,
-  useRestaurarClienteMutation,
-} from '@/modules/clientes/composables/useClienteMutations'
+import { useDeleteClienteMutation } from '@/modules/clientes/composables/useClienteMutations'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type {
   Cliente,
@@ -241,7 +267,6 @@ const filters = ref<ClienteListFilters>({
 
 const clientesQuery = useClientesQuery(filters)
 const deleteMutation = useDeleteClienteMutation()
-const restaurarMutation = useRestaurarClienteMutation()
 
 const formModalOpen = ref(false)
 const formMode = ref<ClienteFormMode>('create')
@@ -256,12 +281,14 @@ const clienteToDelete = ref<Cliente | null>(null)
 const bajaModalOpen = ref(false)
 const clienteToBaja = ref<Cliente | null>(null)
 
+const reactivacionModalOpen = ref(false)
+const clienteToReactivacion = ref<Cliente | null>(null)
+
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR))
-const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_ELIMINAR))
-const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_RESTAURAR))
+const canSolicitarBaja = computed(() => authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_SOLICITAR))
 
 const isLoading = computed(() => clientesQuery.isFetching.value)
 const rows = computed(() => clientesQuery.data.value?.data ?? [])
@@ -337,18 +364,27 @@ const openDetailModal = (cliente: Cliente) => {
   detailModalOpen.value = true
 }
 
-const openDeleteModal = (cliente: Cliente) => {
+/* const openDeleteModal = (cliente: Cliente) => {
   clienteToDelete.value = cliente
   deleteModalOpen.value = true
-}
+} */
 
 const openBajaModal = (cliente: Cliente) => {
   clienteToBaja.value = cliente
   bajaModalOpen.value = true
 }
 
+const openReactivacionModal = (cliente: Cliente) => {
+  clienteToReactivacion.value = cliente
+  reactivacionModalOpen.value = true
+}
+
 const onBajaSaved = () => {
   clienteToBaja.value = null
+}
+
+const onReactivacionSaved = () => {
+  clienteToReactivacion.value = null
 }
 
 const confirmDelete = async () => {
@@ -361,17 +397,6 @@ const confirmDelete = async () => {
     })
     deleteModalOpen.value = false
     clienteToDelete.value = null
-  } catch {}
-}
-
-const restaurarCliente = async (cliente: Cliente) => {
-  if (!currentUserId.value) return
-
-  try {
-    await restaurarMutation.mutateAsync({
-      id: cliente.id,
-      idUsuarioAuditoria: currentUserId.value,
-    })
   } catch {}
 }
 

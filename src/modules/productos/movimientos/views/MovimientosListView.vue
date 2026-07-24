@@ -66,37 +66,22 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
 
-        <button
-          v-if="canEdit"
-          type="button"
-          title="Editar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Editar -->
-        </button>
-
-        <button
-          v-if="canDelete"
-          type="button"
-          title="Anular"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Anular -->
-        </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -126,10 +111,30 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Anular movimiento"
-      subtitle="Se revertirá el efecto en stock si el producto afecta inventario."
+      :subtitle="
+        anularBlocked
+          ? 'No se puede anular este movimiento.'
+          : 'Se revertirá el efecto en stock si el producto afecta inventario.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="anularBlocked"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        <template v-if="movimientoToDelete?.id_documento_ref">
+          Este movimiento está vinculado a una venta/comprobante. Debe anularse o
+          corregirse desde Comprobantes, no desde inventario.
+        </template>
+        <template v-else>
+          {{
+            movimientoToDelete?.motivo_bloqueo_anulacion ||
+            'No está permitido anular este movimiento.'
+          }}
+        </template>
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas anular el movimiento de
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ movimientoToDelete?.nombre_tipo_movimiento }}
@@ -148,9 +153,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ anularBlocked ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!anularBlocked"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -183,6 +189,7 @@ import type {
 } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
+  AppActionMenu,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -193,6 +200,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -226,6 +234,7 @@ const selectedMovimiento = ref<MovimientoInventario | null>(null)
 
 const deleteModalOpen = ref(false)
 const movimientoToDelete = ref<MovimientoInventario | null>(null)
+const anularBlocked = computed(() => movimientoToDelete.value?.puede_anular === false)
 
 const detailModalOpen = ref(false)
 const movimientoToView = ref<MovimientoInventario | null>(null)
@@ -382,6 +391,49 @@ const confirmDelete = async () => {
     movimientoToDelete.value = null
   } catch {
     // toast en mutation
+  }
+}
+
+function anularLabelForRow(row: MovimientoInventario): string {
+  if (row.puede_anular !== false) return 'Anular'
+  if (row.motivo_bloqueo_anulacion) {
+    return `Anular (${row.motivo_bloqueo_anulacion})`
+  }
+  return 'Anular (no permitido)'
+}
+
+function actionItemsForRow(row: MovimientoInventario): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blocked = row.puede_anular === false
+  const linkedToSale = row.id_documento_ref != null
+
+  return [
+    {
+      key: 'edit',
+      label: linkedToSale ? 'Editar (vinculado a venta)' : 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy || linkedToSale,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: anularLabelForRow(row),
+      icon: ICONS.trash,
+      danger: !blocked,
+      disabled: busy || blocked,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: MovimientoInventario) {
+  switch (key) {
+    case 'edit':
+      openEditModal(row)
+      return
+    case 'delete':
+      openDeleteModal(row)
+      return
   }
 }
 

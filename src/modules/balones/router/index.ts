@@ -6,6 +6,16 @@ export const balonesRoutes: RouteRecordRaw[] = [
     path: 'balones',
     children: [
       {
+        path: 'cilindros/:id(\\d+)',
+        name: 'admin-balones-cilindros-detalle',
+        component: () => import('@/modules/balones/cilindros/views/CilindroDetailView.vue'),
+        meta: {
+          title: 'Ficha del cilindro',
+          module: 'balones',
+          permission: PermisoBanderas.BALONES_VER,
+        },
+      },
+      {
         path: 'cilindros',
         name: 'admin-balones-cilindros',
         component: () => import('@/modules/balones/cilindros/views/CilindrosTabsView.vue'),
@@ -57,9 +67,13 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'prestamos/antiguedad',
+        redirect: { name: 'admin-balones-prestamos', query: { tab: 'antiguedad' } },
+      },
+      {
         path: 'prestamos',
         name: 'admin-balones-prestamos',
-        component: () => import('@/modules/balones/prestamos/views/PrestamosListView.vue'),
+        component: () => import('@/modules/balones/prestamos/views/PrestamosTabsView.vue'),
         meta: {
           title: 'Préstamos',
           module: 'balones',
@@ -67,9 +81,13 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'alquileres/antiguedad',
+        redirect: { name: 'admin-balones-alquileres', query: { tab: 'antiguedad' } },
+      },
+      {
         path: 'alquileres',
         name: 'admin-balones-alquileres',
-        component: () => import('@/modules/balones/alquileres/views/AlquileresListView.vue'),
+        component: () => import('@/modules/balones/alquileres/views/AlquileresTabsView.vue'),
         meta: {
           title: 'Alquileres',
           module: 'balones',

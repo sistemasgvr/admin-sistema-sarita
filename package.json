@@ -12,10 +12,18 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@fullcalendar/core": "^6.1.21",
+    "@fullcalendar/daygrid": "^6.1.21",
+    "@fullcalendar/interaction": "^6.1.21",
+    "@fullcalendar/list": "^6.1.21",
+    "@fullcalendar/timegrid": "^6.1.21",
+    "@fullcalendar/vue3": "^6.1.21",
     "@iconify/vue": "^5.0.1",
     "@tanstack/vue-query": "^5.101.2",
     "@vee-validate/yup": "^4.15.1",
     "axios": "^1.18.1",
+    "dropzone": "^6.0.0-beta.2",
+    "exceljs": "^4.4.0",
     "leaflet": "^1.9.4",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
@@ -28,6 +36,7 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.3.1",
+    "@types/dropzone": "^5.7.9",
     "@types/leaflet": "^1.9.21",
     "@types/node": "^24.13.2",
     "@vitejs/plugin-vue": "^6.0.7",

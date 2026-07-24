@@ -6,7 +6,8 @@ import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import {
-  CODIGO_NOTA_VENTA,
+  CODIGO_VENTA_SIN_DOC,
+  LABEL_VENTA_SIN_DOCUMENTO,
   esNotaVentaCodigo,
 } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
@@ -18,14 +19,16 @@ import {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
-/** Tipos de venta directa en punto de venta (sin origen). NC/ND se emiten desde flujo de notas. */
-const CODIGOS_TIPO_POS = ['01', '03', CODIGO_NOTA_VENTA] as const
-
 export {
   seriePorDefectoDesdeCodigo,
   validarSerieParaTipo,
   tipoRequiereRuc,
 } from '@/modules/ventas/comprobantes/utils/serieComprobante'
+
+function esTipoComprobantePos(codigo?: string | null): boolean {
+  const value = (codigo ?? '').trim().toUpperCase()
+  return value === '01' || value === '03' || esNotaVentaCodigo(value)
+}
 
 export function usePosComprobanteForm(options?: {
   /** Serie del comprobante origen (NC/ND). */
@@ -66,7 +69,7 @@ export function usePosComprobanteForm(options?: {
   const numero = ref('')
   const fecha = ref(new Date().toISOString().slice(0, 10))
   const idCliente = ref<number | ''>('')
-  /** Snapshot del cliente elegido; no depende del cache de búsqueda. */
+  const clienteDescripcion = ref('')
   const clienteSeleccionadoCache = ref<Cliente | null>(null)
   const clientesVarios = ref<Cliente | null>(null)
 
@@ -75,21 +78,16 @@ export function usePosComprobanteForm(options?: {
 
   const tipoComprobanteOptions = computed(() =>
     (catalogosQuery.data.value?.tiposComprobante ?? [])
-      .filter((item) =>
-        CODIGOS_TIPO_POS.includes(
-          (item.descripcion ?? '') as (typeof CODIGOS_TIPO_POS)[number],
-        ),
-      )
+      .filter((item) => esTipoComprobantePos(item.descripcion))
       .map((item) => {
         const codigo = item.descripcion ?? ''
-        const nombre =
-          codigo === CODIGO_NOTA_VENTA
-            ? 'NOTA DE VENTA'
-            : (item.nombre ?? '').replace(/_/g, ' ')
+        const nombre = esNotaVentaCodigo(codigo)
+          ? LABEL_VENTA_SIN_DOCUMENTO.toUpperCase()
+          : (item.nombre ?? '').replace(/_/g, ' ')
         return {
           value: item.id,
-          label: `${nombre} (${codigo})`,
-          codigo,
+          label: `${nombre} (${esNotaVentaCodigo(codigo) ? CODIGO_VENTA_SIN_DOC : codigo})`,
+          codigo: esNotaVentaCodigo(codigo) ? CODIGO_VENTA_SIN_DOC : codigo,
         }
       }),
   )
@@ -288,6 +286,7 @@ export function usePosComprobanteForm(options?: {
    * Conserva tipo/serie, reaplica Clientes varios y pide el siguiente correlativo.
    */
   async function reiniciarTrasOperacion() {
+    clienteDescripcion.value = ''
     aplicarClientesVariosPorDefecto()
     fecha.value = new Date().toISOString().slice(0, 10)
     await refrescarSiguienteNumero()
@@ -317,6 +316,7 @@ export function usePosComprobanteForm(options?: {
     numero,
     fecha,
     idCliente,
+    clienteDescripcion,
     canEmit,
     canPrint,
     canCreateCliente,

@@ -2,11 +2,15 @@ export type EstadoAprobacionBaja = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
 
 export interface BajaCliente {
   id: number
+  id_tipo_solicitud?: number | null
+  nombre_tipo_solicitud?: string | null
   id_cliente: number
   cliente_razon_social?: string | null
-  nombre_cliente?: string | null
+  cliente_nombres?: string | null
+  cliente_apellido_paterno?: string | null
+  cliente_apellido_materno?: string | null
   numero_documento?: string | null
-  id_motivo_baja: number
+  id_motivo_baja?: number | null
   nombre_motivo_baja?: string | null
   motivo_detalle?: string | null
   nombre_estado_aprobacion: EstadoAprobacionBaja
@@ -17,13 +21,28 @@ export interface BajaCliente {
 }
 
 export interface BajaClienteDetail extends BajaCliente {
+  id_tipo_solicitud?: number | null
+  nombre_tipo_solicitud?: string | null
+  //Datos del cliente
   cliente_razon_social?: string | null
   cliente_nombres?: string | null
   cliente_apellido_paterno?: string | null
   cliente_apellido_materno?: string | null
+  cliente_numero_documento?: string | null
   cliente_direccion?: string | null
   cliente_telefono?: string | null
   cliente_email?: string | null
+  //Datos de la solicitud de baja
+  fecha_baja?: string | null
+  id_usuario_autoriza?: number | null
+  nombre_usuario_autoriza?: string | null
+  fecha_autorizacion?: string | null
+  id_estado_aprobacion?: number | null
+  //Auditoria de las tablas
+  id_usuario_modificacion?: number | null
+  nombre_usuario_modificacion?: string | null
+  id_usuario_creacion?: number | null
+  nombre_usuario_creacion?: string | null
 }
 
 export interface BajaClienteListFilters {
@@ -33,10 +52,19 @@ export interface BajaClienteListFilters {
   isActivos?: number
   idCliente?: number
   idEstadoAprobacion?: number
+  idTipoSolicitud?: number
+}
+
+export interface SolicitarReactivacionClientePayload {
+  idCliente: number
+  idTipoSolicitud?: number
+  motivoDetalle?: string
+  idUsuarioAuditoria: number
 }
 
 export interface SolicitarBajaClientePayload {
   idCliente: number
+  idTipoSolicitud?: number
   idMotivoBaja: number
   motivoDetalle?: string
   idUsuarioAuditoria: number
@@ -48,5 +76,4 @@ export interface AprobarBajaClientePayload {
 
 export interface RechazarBajaClientePayload {
   idUsuarioAuditoria: number
-  motivoRechazo?: string
 }

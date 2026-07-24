@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Alquileres" :items="breadcrumbItems" />
+    <PageBreadcrumb v-if="!embedded" page-title="Alquileres" :items="breadcrumbItems" />
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
@@ -61,35 +61,21 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
-
-        <button
-          v-if="canEdit"
-          type="button"
-          title="Editar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-        </button>
-
-        <button
-          v-if="canDelete"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -166,13 +152,30 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+  ListaOpcionBadge,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+withDefaults(
+  defineProps<{
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const authStore = useAuthStore()
 
@@ -323,6 +326,40 @@ const openDetailModal = (row: Alquiler) => {
 const openDeleteModal = (row: Alquiler) => {
   alquilerToDelete.value = row
   deleteModalOpen.value = true
+}
+
+function deleteLabelForRow(row: Alquiler): string {
+  if (row.puede_eliminar !== false) return 'Eliminar'
+  if (row.id_comprobante_venta != null) return 'Eliminar (tiene comprobante)'
+  return 'Eliminar (tiene detalles)'
+}
+
+function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedDelete = row.puede_eliminar === false
+
+  return [
+    {
+      key: 'edit',
+      label: 'Editar / devolver cilindros',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: deleteLabelForRow(row),
+      icon: ICONS.trash,
+      danger: !blockedDelete,
+      disabled: busy || blockedDelete,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: Alquiler) {
+  if (key === 'edit') openEditModal(row)
+  if (key === 'delete') openDeleteModal(row)
 }
 
 const onAlquilerSaved = () => {

@@ -3,6 +3,8 @@ import type { ConfiguracionSunatListFilters } from '@/modules/configuracion/suna
 export const configuracionSunatQueryKeys = {
   all: ['configuracion-sunat'] as const,
   current: () => [...configuracionSunatQueryKeys.all, 'current'] as const,
+  byEmpresa: (idEmpresa: number) =>
+    [...configuracionSunatQueryKeys.all, 'by-empresa', idEmpresa] as const,
   lists: () => [...configuracionSunatQueryKeys.all, 'list'] as const,
   list: (filters: ConfiguracionSunatListFilters) =>
     [...configuracionSunatQueryKeys.lists(), filters] as const,

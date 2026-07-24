@@ -27,12 +27,12 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'notas-venta',
-        name: 'admin-ventas-notas-venta',
+        path: 'vsd',
+        name: 'admin-ventas-vsd',
         component: () =>
-          import('@/modules/ventas/comprobantes/views/NotasVentaListView.vue'),
+          import('@/modules/ventas/comprobantes/views/VentasSinDocumentoView.vue'),
         meta: {
-          title: 'Notas de venta',
+          title: 'Ventas Sin Documento',
           module: 'ventas',
           permission: PermisoBanderas.COMPROBANTES_LISTAR,
         },

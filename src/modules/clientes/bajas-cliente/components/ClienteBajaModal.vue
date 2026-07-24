@@ -14,6 +14,11 @@
         <strong>Aprobar bajas</strong>. El cliente seguirá activo mientras tanto.
       </div>
 
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-gray-500 dark:text-gray-400">Tipo de solicitud:</span>
+        <span class="font-medium text-gray-800 dark:text-white/90">{{ tipoSolicitudLabel }}</span>
+      </div>
+
       <AppSelectSearch
         v-model="idMotivoBaja"
         label="Motivo de baja"
@@ -27,9 +32,8 @@
       />
 
       <AppTextarea
-        v-if="requiereMotivoDetalle"
         v-model="motivoDetalle"
-        label="Detalle del motivo"
+        label="Detalle del motivo (opcional)"
         placeholder="Describe el motivo de la baja..."
         v-bind="motivoDetalleAttrs"
         :disabled="isSubmitting"
@@ -64,7 +68,6 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
-import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useSolicitarBajaClienteMutation } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteMutations'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppModal, AppTextarea } from '@/shared/components'
@@ -86,17 +89,23 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const solicitarMutation = useSolicitarBajaClienteMutation()
 
+const listaTipoSolicitudId = ref(ListaIds.TIPO_SOLICITUD)
+const tipoSolicitudQuery = useListaOpcionesQuery(listaTipoSolicitudId)
+
+const tipoSolicitudBaja = computed(() =>
+  (tipoSolicitudQuery.data.value ?? []).find((o) => o.nombre === 'BAJA'),
+)
+
+const tipoSolicitudLabel = computed(() => tipoSolicitudBaja.value?.descripcion ?? 'Baja')
+
 const listaMotivoBajaId = ref(ListaIds.MOTIVO_BAJA_CLIENTE)
 const motivoBajaQuery = useListaOpcionesQuery(listaMotivoBajaId)
 
-const motivoBajaOptions = computed(() => toSelectOptions(motivoBajaQuery.data.value))
-
-const motivoSeleccionado = computed(() =>
-  motivoBajaQuery.data.value?.find((opcion) => opcion.id === Number(idMotivoBaja.value)),
-)
-
-const requiereMotivoDetalle = computed(
-  () => motivoSeleccionado.value?.nombre?.toUpperCase() === 'OTROS',
+const motivoBajaOptions = computed(() =>
+  (motivoBajaQuery.data.value ?? []).map((item) => ({
+    label: item.nombre,
+    value: item.id,
+  })),
 )
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
@@ -116,12 +125,6 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 
 const [idMotivoBaja, idMotivoBajaAttrs] = defineField('idMotivoBaja')
 const [motivoDetalle, motivoDetalleAttrs] = defineField('motivoDetalle')
-
-watch(idMotivoBaja, () => {
-  if (!requiereMotivoDetalle.value) {
-    motivoDetalle.value = ''
-  }
-})
 
 const resetFormState = () => {
   resetForm({
@@ -159,6 +162,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     await solicitarMutation.mutateAsync({
       idCliente: cliente.id,
+      idTipoSolicitud: tipoSolicitudBaja.value?.id,
       idMotivoBaja: Number(values.idMotivoBaja),
       motivoDetalle: values.motivoDetalle || undefined,
       idUsuarioAuditoria: currentUserId,
@@ -174,6 +178,8 @@ const onSubmit = handleSubmit(async (values) => {
 watch(open, (isOpen) => {
   if (isOpen) {
     resetFormState()
+    tipoSolicitudQuery.refetch()
+    motivoBajaQuery.refetch()
   }
 })
 </script>

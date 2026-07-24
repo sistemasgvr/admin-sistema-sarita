@@ -49,37 +49,21 @@
       </template>
 
       <template #actions="{ row }">
-        <button
-          v-if="canView"
-          type="button"
-          title="Ver"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
-        >
-          <AppIcon :name="ICONS.eye" :size="16" />
-        </button>
-
-        <button
-          v-if="canEdit"
-          type="button"
-          title="Editar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
-        >
-          <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Editar -->
-        </button>
-
-        <button
-          v-if="canDelete"
-          type="button"
-          title="Eliminar"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openDeleteModal(row)"
-        >
-          <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Eliminar -->
-        </button>
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canView"
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetailModal(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
       </template>
 
       <template #footer>
@@ -104,10 +88,25 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar tipo de balón"
-      subtitle="No se puede eliminar si tiene cilindros activos asociados."
+      :subtitle="
+        deleteBlockedByCilindros
+          ? 'Este tipo tiene cilindros activos asociados.'
+          : 'No se puede eliminar si tiene cilindros o está en el catálogo de precios.'
+      "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
+      <div
+        v-if="deleteBlockedByCilindros"
+        class="rounded-lg border border-error-200 bg-error-50 px-3 py-2.5 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        No puedes eliminar
+        <span class="font-medium">{{ tipoBalonToDelete?.nombre }}</span>
+        porque tiene
+        <span class="font-medium">{{ tipoBalonToDelete?.total_balones ?? 0 }}</span>
+        cilindro(s) activo(s). Reasigna o da de baja esos cilindros e inténtalo de nuevo.
+      </div>
+
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ tipoBalonToDelete?.nombre }}
@@ -122,9 +121,10 @@
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
-          Cancelar
+          {{ deleteBlockedByCilindros ? 'Cerrar' : 'Cancelar' }}
         </button>
         <button
+          v-if="!deleteBlockedByCilindros"
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
@@ -151,10 +151,18 @@ import type {
   TipoBalonListFilters,
 } from '@/modules/balones/tipos-balon/interfaces/tipo-balon.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -181,6 +189,9 @@ const tipoToViewId = ref<number | null>(null)
 
 const deleteModalOpen = ref(false)
 const tipoBalonToDelete = ref<TipoBalon | null>(null)
+const deleteBlockedByCilindros = computed(
+  () => Number(tipoBalonToDelete.value?.total_balones ?? 0) > 0,
+)
 
 const breadcrumbItems = computed(() => balonesBreadcrumbItems('Tipos de balón'))
 
@@ -242,6 +253,34 @@ const openDetailModal = (tipoBalon: TipoBalon) => {
 const openDeleteModal = (tipoBalon: TipoBalon) => {
   tipoBalonToDelete.value = tipoBalon
   deleteModalOpen.value = true
+}
+
+function actionItemsForRow(row: TipoBalon): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  const blockedByCilindros = Number(row.total_balones ?? 0) > 0
+
+  return [
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: blockedByCilindros ? 'Eliminar (tiene cilindros)' : 'Eliminar',
+      icon: ICONS.trash,
+      danger: !blockedByCilindros,
+      disabled: busy || blockedByCilindros,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: TipoBalon) {
+  if (key === 'edit') openEditModal(row)
+  if (key === 'delete') openDeleteModal(row)
 }
 
 const confirmDelete = async () => {

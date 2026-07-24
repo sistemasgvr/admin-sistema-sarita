@@ -61,7 +61,7 @@
 
             <div
               v-else-if="fieldDef(row.fieldKey)?.type === 'checkbox'"
-              class="flex h-[46px] items-center rounded-lg border border-gray-200 px-3 dark:border-gray-700"
+              class="flex min-h-[46px] items-center rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700"
             >
               <AppCheckbox
                 :model-value="row.value === true || row.value === 'true'"

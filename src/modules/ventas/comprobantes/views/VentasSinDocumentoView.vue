@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Notas de venta" :items="breadcrumbItems" />
+    <PageBreadcrumb page-title="Ventas Sin Documento" :items="breadcrumbItems" />
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
@@ -8,7 +8,7 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Serie, número o cliente..."
+          search-placeholder="VSD01-0000123, serie, número o cliente..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -18,7 +18,7 @@
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva nota de venta
+              Nueva venta
             </RouterLink>
           </template>
         </AppListToolbar>
@@ -33,6 +33,20 @@
             :value="row.nombre_tipo_comprobante ?? row.codigo_tipo_comprobante"
           />
         </div>
+      </template>
+
+      <template #cell-destino="{ row }">
+        <template v-if="row.serie_comprobante_destino">
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{ row.serie_comprobante_destino }}-{{ row.numero_comprobante_destino }}
+          </p>
+          <div class="mt-1">
+            <ListaOpcionBadge
+              :value="row.nombre_tipo_comprobante_destino ?? row.codigo_tipo_comprobante_destino"
+            />
+          </div>
+        </template>
+        <span v-else class="text-gray-400">—</span>
       </template>
 
       <template #cell-nombre_cliente="{ value }">
@@ -62,7 +76,7 @@
 
           <AppActionMenu
             :items="actionItemsForRow(row)"
-            @select="(key) => onActionSelect(key, row)"
+            :execute="(key) => onActionSelect(key, row)"
           />
         </div>
       </template>
@@ -79,16 +93,21 @@
 
     <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
       Las notas de venta son documentos internos (no se emiten a SUNAT). Usa
-      <strong class="font-medium text-gray-700 dark:text-gray-200">Nueva nota de venta</strong>
+      <strong class="font-medium text-gray-700 dark:text-gray-200">Nueva venta sin documento</strong>
       en el punto de venta.
     </p>
 
     <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
     <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
+    <EmitirFacturaBoletaModal
+      v-model="emitirModalOpen"
+      :comprobante="comprobanteToEmitir"
+      :codigo-tipo="emitirCodigoTipo"
+    />
 
     <AppModal
       v-model="deleteModalOpen"
-      title="Eliminar nota de venta"
+      title="Eliminar venta sin documento"
       subtitle="Documento interno; no afecta a SUNAT."
       size="sm"
     >
@@ -131,7 +150,10 @@ import {
 import { useDeleteComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
-import { CODIGO_NOTA_VENTA } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import EmitirFacturaBoletaModal from '@/modules/ventas/comprobantes/components/EmitirFacturaBoletaModal.vue'
+import type { CodigoTipoComprobanteSunat } from '@/modules/ventas/comprobantes/utils/serieComprobante'
+import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import { normalizarBusquedaComprobante } from '@/modules/ventas/comprobantes/utils/busquedaComprobante'
 import type {
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -156,7 +178,7 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
-const breadcrumbItems = ventasBreadcrumbItems('Notas de venta')
+const breadcrumbItems = ventasBreadcrumbItems('Ventas sin documento')
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -184,6 +206,9 @@ const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
 const deleteModalOpen = ref(false)
 const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
 const pdfBusyId = ref<number | null>(null)
+const emitirModalOpen = ref(false)
+const comprobanteToEmitir = ref<ComprobanteListItem | null>(null)
+const emitirCodigoTipo = ref<CodigoTipoComprobanteSunat>('03')
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
@@ -193,11 +218,11 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 const idTipoNotaVenta = computed(() => {
   const tipos = catalogosQuery.data.value?.tiposComprobante ?? []
   return (
-    tipos.find(
-      (t) =>
-        t.descripcion === CODIGO_NOTA_VENTA ||
-        t.nombre.toUpperCase().includes('NOTA_VENTA') ||
-        t.nombre.toUpperCase().includes('NOTA DE VENTA'),
+    tipos.find((t) =>
+      esVentaSinDocumentoTipo({
+        codigo: t.descripcion,
+        nombre: t.nombre,
+      }),
     )?.id ?? null
   )
 })
@@ -234,12 +259,13 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     key: 'serie',
     label: 'Serie',
     type: 'text',
-    placeholder: 'NV01',
+    placeholder: 'VSD01',
   },
 ])
 
 const columns: TableColumn[] = [
-  { key: 'comprobante', label: 'Nota de venta', mobile: 'primary' },
+  { key: 'comprobante', label: 'Venta sin Doc', mobile: 'primary' },
+  { key: 'destino', label: 'Destino' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'fecha', label: 'Fecha' },
   { key: 'total_importe', label: 'Total', align: 'right' },
@@ -253,8 +279,11 @@ function syncFilters() {
   const serie = active.serie != null ? String(active.serie).trim() : ''
   const idTipo = idTipoNotaVenta.value
 
+  const term = buscar.value.trim()
+  const termNorm = normalizarBusquedaComprobante(term)
+
   filters.value = {
-    buscar: buscar.value.trim(),
+    buscar: termNorm.includes('-') ? termNorm : term,
     pagina: pagina.value,
     limite: limite.value,
     idTipoComprobante: idTipo ?? -1,
@@ -295,46 +324,65 @@ function formatMoney(value: number) {
 }
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
+  const busy = pdfBusyId.value !== null
+  const tieneDestino = Boolean(row.serie_comprobante_destino)
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !canEdit.value,
     },
     {
       key: 'pdf-a4',
       label: 'Descargar PDF A4',
       icon: ICONS.download,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
       key: 'print-a4',
       label: 'Imprimir A4',
       icon: ICONS.printer,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
       key: 'pdf-ticket',
       label: 'Descargar ticket 80mm',
       icon: ICONS.ticket,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
     },
     {
       key: 'print-ticket',
       label: 'Imprimir ticket 80mm',
       icon: ICONS.printer,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !canView.value,
+    },
+    {
+      key: 'emitir-boleta',
+      label: 'Emitir Boleta',
+      icon: ICONS.ticket,
+      disabled: busy || tieneDestino,
+      hidden: !canView.value || tieneDestino,
+    },
+    {
+      key: 'emitir-factura',
+      label: 'Emitir Factura',
+      icon: ICONS.ticket,
+      disabled: busy || tieneDestino,
+      hidden: !canView.value || tieneDestino,
     },
     {
       key: 'delete',
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
+      disabled: busy,
       hidden: !canDelete.value,
     },
   ]
@@ -344,22 +392,28 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
     case 'edit':
       openEditModal(row)
-      break
+      return
     case 'pdf-a4':
-      void descargarPdf(row, 'a4')
-      break
+      return descargarPdf(row, 'a4')
     case 'print-a4':
-      void imprimirPdf(row, 'a4')
-      break
+      return imprimirPdf(row, 'a4')
     case 'pdf-ticket':
-      void descargarPdf(row, 'ticket')
-      break
+      return descargarPdf(row, 'ticket')
     case 'print-ticket':
-      void imprimirPdf(row, 'ticket')
-      break
+      return imprimirPdf(row, 'ticket')
+    case 'emitir-boleta':
+      comprobanteToEmitir.value = row
+      emitirCodigoTipo.value = '03'
+      emitirModalOpen.value = true
+      return
+    case 'emitir-factura':
+      comprobanteToEmitir.value = row
+      emitirCodigoTipo.value = '01'
+      emitirModalOpen.value = true
+      return
     case 'delete':
       openDeleteModal(row)
-      break
+      return
   }
 }
 

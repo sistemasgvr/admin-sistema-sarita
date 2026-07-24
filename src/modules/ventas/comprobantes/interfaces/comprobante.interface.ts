@@ -22,6 +22,11 @@ export interface ComprobanteListItem {
   id_motivo_nota?: number | null
   nombre_motivo_nota?: string | null
   codigo_motivo_nota?: string | null
+  id_comprobante_destino?: number | null
+  serie_comprobante_destino?: string | null
+  numero_comprobante_destino?: string | null
+  codigo_tipo_comprobante_destino?: string | null
+  nombre_tipo_comprobante_destino?: string | null
 }
 
 export interface ComprobanteDetalle {
@@ -269,4 +274,6 @@ export interface PosLineItem {
   precioUnitario: number
   idAfectacionIgv?: number
   afectaStock?: boolean
+  /** Stock del almacén al momento de agregar (para validar cantidades). */
+  stockDisponible?: number | null
 }

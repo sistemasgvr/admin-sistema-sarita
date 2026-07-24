@@ -2,12 +2,14 @@ import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/
 import type {
   Balon,
   BalonBaja,
+  BalonEstadoHistorial,
   BalonListFilters,
   BalonPhHistorial,
   CreateBalonPayload,
   DarBajaBalonPayload,
   DeleteBalonResponse,
   RegistrarPhHistorialPayload,
+  RestaurarBalonPayload,
   UpdateBalonPayload,
 } from '@/modules/balones/cilindros/interfaces/balon.interface'
 
@@ -48,5 +50,15 @@ export const balonesService = {
 
   darBaja(idBalon: number, payload: DarBajaBalonPayload) {
     return apiPost<BalonBaja>(`/balones/${idBalon}/baja`, payload)
+  },
+
+  listarEstadoHistorial(idBalon: number, params: { pagina?: number; limite?: number } = {}) {
+    return apiGetPaginated<BalonEstadoHistorial>(`/balones/${idBalon}/estado-historial`, {
+      params,
+    })
+  },
+
+  restaurar(idBalon: number, payload: RestaurarBalonPayload) {
+    return apiPost<Balon>(`/balones/${idBalon}/restaurar`, payload)
   },
 }

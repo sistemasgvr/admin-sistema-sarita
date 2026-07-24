@@ -2,7 +2,11 @@
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section>
       <FormCardsLayout>
-        <DetailSectionCard title="Comprobante y servicio" :icon="ICONS.receipt">
+        <DetailSectionCard
+          title="Comprobante y servicio"
+          :icon="ICONS.receipt"
+          help="Servicio de mantenimiento (P.H., válvula, etc.) que ustedes realizan. El cliente suele traer su cilindro; se cobra el servicio y el trabajo queda PENDIENTE hasta finalizarlo en Balones (Mantenimientos)."
+        >
           <template #actions>
             <button
               type="button"
@@ -15,10 +19,6 @@
               Limpiar
             </button>
           </template>
-          <p class="mb-5 text-sm text-gray-500 dark:text-gray-400">
-            Registra el mantenimiento del cilindro (P.H., válvula, etc.) y genera el comprobante al
-            cliente.
-          </p>
 
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelect
@@ -33,7 +33,7 @@
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
@@ -44,15 +44,20 @@
               required
               @created="seleccionarCliente"
             />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
+            />
             <div class="min-w-0">
               <PosBalonSelectField
                 v-model="idBalon"
-                mode="general"
+                mode="cliente"
                 :id-cliente="idCliente"
-                label="Cilindro"
-                placeholder="Selecciona cilindro"
-                register-label="Registrar cilindro"
-                empty-text="Sin cilindros."
+                label="Cilindro del cliente"
+                placeholder="Propio o prestado al cliente"
+                register-label="Registrar cilindro del cliente"
+                empty-text="Sin cilindros del cliente. Registra el que trae."
                 required
               />
             </div>
@@ -84,10 +89,13 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Detalle del mantenimiento" :icon="ICONS.construction">
+        <DetailSectionCard
+          title="Detalle del mantenimiento"
+          :icon="ICONS.construction"
+          help="Queda como PENDIENTE en taller. Al Finalizar en Mantenimientos se entrega el cilindro al cliente (no se mete a stock de almacén)."
+        >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppInput v-model="fechaIngreso" label="Fecha ingreso" type="date" />
-            <AppInput v-model="fechaSalida" label="Fecha salida" type="date" />
             <AppInput v-model="costo" label="Costo / importe" type="number" min="0" step="0.01" />
           </div>
 
@@ -173,6 +181,7 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
+  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createComprobanteMutation = useCreateComprobanteMutation()
@@ -191,7 +200,6 @@ const idProducto = ref<number | ''>('')
 const tipoMantenimientoBuscar = ref('')
 const servicioBuscar = ref('')
 const fechaIngreso = ref(new Date().toISOString().slice(0, 10))
-const fechaSalida = ref('')
 const costo = ref(0)
 const descripcion = ref('')
 const observacion = ref('')
@@ -285,6 +293,7 @@ async function registrarMantenimiento() {
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Mantenimiento de cilindro',
+      observaciones: clienteDescripcion.value || undefined,
     })
 
     await mantenimientosService.crear({
@@ -292,7 +301,6 @@ async function registrarMantenimiento() {
       idBalon: Number(idBalon.value),
       fechaIngreso: fechaIngreso.value,
       idTipoMantenimiento: idTipoMantenimiento.value ? Number(idTipoMantenimiento.value) : undefined,
-      fechaSalida: fechaSalida.value || undefined,
       descripcion: descripcion.value || producto.nombre,
       costo: Number(costo.value),
       idComprobanteVenta: comprobante.id,
@@ -315,7 +323,6 @@ async function limpiarFormulario() {
   tipoMantenimientoBuscar.value = ''
   servicioBuscar.value = ''
   fechaIngreso.value = new Date().toISOString().slice(0, 10)
-  fechaSalida.value = ''
   costo.value = 0
   descripcion.value = ''
   observacion.value = ''
@@ -337,10 +344,10 @@ async function emitirComprobante() {
       const resultado = await imprimirTicketSinEmision(id)
       if (resultado === 'sin_ventana') {
         toastWarning(
-          'Nota de venta guardada. Permite ventanas emergentes para imprimir el ticket.',
+          'Venta sin documento guardada. Permite ventanas emergentes para imprimir el ticket.',
         )
       } else {
-        toastSuccess('Ticket de nota de venta listo para imprimir')
+        toastSuccess('Ticket de venta sin documento listo para imprimir')
       }
       await limpiarFormulario()
       return

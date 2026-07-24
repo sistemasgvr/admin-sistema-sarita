@@ -3,6 +3,7 @@ export interface ActionMenuItem {
   label: string
   icon?: string
   disabled?: boolean
+  loading?: boolean
   danger?: boolean
   hidden?: boolean
 }

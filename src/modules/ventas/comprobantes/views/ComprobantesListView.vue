@@ -8,7 +8,7 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Serie, número o cliente..."
+          search-placeholder="B001-0000123, serie, número o cliente..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -35,6 +35,20 @@
         </div>
       </template>
 
+      <template #cell-origen="{ row }">
+        <template v-if="row.serie_comprobante_origen">
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{ row.serie_comprobante_origen }}-{{ row.numero_comprobante_origen }}
+          </p>
+          <div class="mt-1">
+            <ListaOpcionBadge
+              :value="row.nombre_tipo_comprobante_origen ?? row.codigo_tipo_comprobante_origen"
+            />
+          </div>
+        </template>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
       <template #cell-nombre_cliente="{ value }">
         <span v-if="value">{{ value }}</span>
         <span v-else class="text-gray-400">—</span>
@@ -44,8 +58,17 @@
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
 
-      <template #cell-nombre_estado_sunat="{ value }">
-        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" raw />
+      <template #cell-nombre_estado_sunat="{ row }">
+        <div class="space-y-1">
+          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" raw />
+          <p
+            v-if="plazoLabel(row)"
+            class="text-[11px] font-medium"
+            :class="plazoVencido(row) ? 'text-error-500' : 'text-warning-600 dark:text-warning-400'"
+          >
+            {{ plazoLabel(row) }}
+          </p>
+        </div>
       </template>
 
       <template #actions="{ row }">
@@ -62,7 +85,7 @@
 
           <AppActionMenu
             :items="actionItemsForRow(row)"
-            @select="(key) => onActionSelect(key, row)"
+            :execute="(key) => onActionSelect(key, row)"
           />
         </div>
       </template>
@@ -123,6 +146,21 @@
         </button>
       </template>
     </AppModal>
+
+    <ClienteSinDocumentoModal
+      v-model="emitWarningModalOpen"
+      :nombre-cliente="comprobanteToEmitWarning?.nombre_cliente ?? undefined"
+      :disabled="emitMutation.isPending.value"
+      @edit-client="confirmEditCliente"
+      @continue="confirmEmitir"
+    />
+
+    <ClienteFormModal
+      v-model="clienteEditModalOpen"
+      mode="edit"
+      :cliente="clienteParaEditar"
+      @saved="onClienteSaved"
+    />
   </div>
 </template>
 
@@ -141,6 +179,10 @@ import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/Compro
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
 import ComprobanteNotaCreditoModal from '@/modules/ventas/comprobantes/components/ComprobanteNotaCreditoModal.vue'
+import ClienteSinDocumentoModal from '@/modules/ventas/comprobantes/components/ClienteSinDocumentoModal.vue'
+import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
+import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import type {
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -152,9 +194,15 @@ import {
   printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
+import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import { normalizarBusquedaComprobante } from '@/modules/ventas/comprobantes/utils/busquedaComprobante'
 import {
   emitirConImpresionTicket,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import {
+  evaluarPlazoEmision,
+  mensajePlazoEmisionVencido,
+} from '@/modules/ventas/comprobantes/utils/plazoEmision'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -210,6 +258,14 @@ const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
 const anularModalOpen = ref(false)
 const comprobanteToAnular = ref<ComprobanteListItem | null>(null)
 
+const emitWarningModalOpen = ref(false)
+const comprobanteToEmitWarning = ref<ComprobanteListItem | null>(null)
+
+const clienteEditModalOpen = ref(false)
+const idClienteParaEditar = ref<number | undefined>(undefined)
+const clienteEditQuery = useClienteDetailQuery(idClienteParaEditar, clienteEditModalOpen)
+const clienteParaEditar = computed(() => clienteEditQuery.data.value ?? null)
+
 const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
@@ -223,7 +279,16 @@ const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 
 const isLoading = computed(() => comprobantesQuery.isFetching.value)
-const rows = computed(() => comprobantesQuery.data.value?.data ?? [])
+const rows = computed(() => {
+  const data = comprobantesQuery.data.value?.data ?? []
+  return data.filter(
+    (row) =>
+      !esVentaSinDocumentoTipo({
+        codigo: row.codigo_tipo_comprobante,
+        nombre: row.nombre_tipo_comprobante,
+      }),
+  )
+})
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
@@ -246,11 +311,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
       (catalogosQuery.data.value?.tiposComprobante ?? []).filter((tipo) => {
         const codigo = String(tipo.descripcion ?? '').toUpperCase()
         const nombre = String(tipo.nombre ?? '').toUpperCase()
-        return (
-          codigo !== 'NV' &&
-          !nombre.includes('NOTA_VENTA') &&
-          !nombre.includes('NOTA DE VENTA')
-        )
+        return !esVentaSinDocumentoTipo({ codigo, nombre })
       }),
     ),
   },
@@ -286,6 +347,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
+  { key: 'origen', label: 'Origen' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'fecha', label: 'Fecha' },
   { key: 'total_importe', label: 'Total', align: 'right' },
@@ -298,8 +360,11 @@ function syncFilters() {
   const active = dynamicFilters.value
   const serie = active.serie != null ? String(active.serie).trim() : ''
 
+  const term = buscar.value.trim()
+  const termNorm = normalizarBusquedaComprobante(term)
+
   filters.value = {
-    buscar: buscar.value.trim(),
+    buscar: termNorm.includes('-') ? termNorm : term,
     pagina: pagina.value,
     limite: limite.value,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
@@ -335,9 +400,26 @@ function formatMoney(value: number) {
 }
 
 function esNotaVenta(row: ComprobanteListItem) {
-  const codigo = String(row.codigo_tipo_comprobante ?? '').toUpperCase()
-  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
-  return codigo === 'NV' || nombre.includes('NOTA_VENTA') || nombre.includes('NOTA DE VENTA')
+  return esVentaSinDocumentoTipo({
+    codigo: row.codigo_tipo_comprobante,
+    nombre: row.nombre_tipo_comprobante,
+  })
+}
+
+function plazoDe(row: ComprobanteListItem) {
+  return evaluarPlazoEmision({
+    fecha: row.fecha,
+    codigoTipo: row.codigo_tipo_comprobante,
+    estadoSunat: row.nombre_estado_sunat,
+  })
+}
+
+function plazoLabel(row: ComprobanteListItem) {
+  return plazoDe(row)?.label ?? null
+}
+
+function plazoVencido(row: ComprobanteListItem) {
+  return plazoDe(row)?.vencido === true
 }
 
 function puedeEmitir(row: ComprobanteListItem) {
@@ -396,64 +478,70 @@ function puedeAnular(row: ComprobanteListItem) {
 }
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
+  const busy = pdfBusyId.value !== null || emitMutation.isPending.value
+
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
+      disabled: busy,
       hidden: !(canEdit.value && puedeEditar(row)),
     },
     {
       key: 'emit',
       label: 'Emitir SUNAT',
       icon: ICONS.plug,
-      disabled: emitMutation.isPending.value,
+      disabled: busy,
       hidden: !(canEmit.value && puedeEmitir(row)),
     },
     {
       key: 'nota-credito',
       label: 'Nota de crédito',
       icon: ICONS.fileText,
+      disabled: busy,
       hidden: !(canCreate.value && puedeNotaCredito(row)),
     },
     {
       key: 'cdr',
       label: 'Consultar CDR',
       icon: ICONS.refreshCw,
+      disabled: busy,
       hidden: !(canConsultarCdr.value && puedeConsultarCdr(row)),
     },
     {
       key: 'anular',
       label: 'Anular en SUNAT',
       icon: ICONS.ban,
+      disabled: busy,
       hidden: !(canAnular.value && puedeAnular(row)),
     },
     {
       key: 'pdf-a4',
       label: 'Descargar PDF A4',
       icon: ICONS.download,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !(canView.value && puedePdf(row)),
     },
     {
       key: 'print-a4',
       label: 'Imprimir A4',
       icon: ICONS.printer,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !(canView.value && puedePdf(row)),
     },
     {
       key: 'pdf-ticket',
       label: 'Descargar ticket 80mm',
       icon: ICONS.ticket,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !(canView.value && puedePdf(row)),
     },
     {
       key: 'print-ticket',
       label: 'Imprimir ticket 80mm',
       icon: ICONS.printer,
-      disabled: pdfBusyId.value === row.id,
+      disabled: busy,
       hidden: !(canView.value && puedePdf(row)),
     },
     {
@@ -461,6 +549,7 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
+      disabled: busy,
       hidden: !(canDelete.value && puedeEliminar(row)),
     },
   ]
@@ -470,34 +559,29 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
     case 'edit':
       openEditModal(row)
-      break
+      return
     case 'emit':
-      void emitirComprobante(row)
-      break
+      return emitirComprobante(row)
     case 'nota-credito':
       openNotaCreditoModal(row)
-      break
+      return
     case 'cdr':
       openCdrModal(row)
-      break
+      return
     case 'anular':
       openAnularModal(row)
-      break
+      return
     case 'pdf-a4':
-      void descargarPdf(row, 'a4')
-      break
+      return descargarPdf(row, 'a4')
     case 'print-a4':
-      void imprimirPdf(row, 'a4')
-      break
+      return imprimirPdf(row, 'a4')
     case 'pdf-ticket':
-      void descargarPdf(row, 'ticket')
-      break
+      return descargarPdf(row, 'ticket')
     case 'print-ticket':
-      void imprimirPdf(row, 'ticket')
-      break
+      return imprimirPdf(row, 'ticket')
     case 'delete':
       openDeleteModal(row)
-      break
+      return
   }
 }
 
@@ -570,6 +654,22 @@ async function emitirComprobante(row: ComprobanteListItem) {
   const userId = authStore.user?.id
   if (!userId) return
 
+  if (plazoVencido(row)) {
+    toastWarning(mensajePlazoEmisionVencido(row.codigo_tipo_comprobante))
+    return
+  }
+
+  const doc = row.documento_cliente
+  if (!doc || String(doc).trim() === '') {
+    comprobanteToEmitWarning.value = row
+    emitWarningModalOpen.value = true
+    return
+  }
+
+  await ejecutarEmitir(row, userId)
+}
+
+async function ejecutarEmitir(row: ComprobanteListItem, userId: number) {
   try {
     const resultado = await emitirConImpresionTicket({
       comprobanteId: row.id,
@@ -585,6 +685,30 @@ async function emitirComprobante(row: ComprobanteListItem) {
   } catch {
     // mutateAsync ya muestra el toast de error
   }
+}
+
+function confirmEmitir() {
+  const row = comprobanteToEmitWarning.value
+  const userId = authStore.user?.id
+  if (!row || !userId) return
+  emitWarningModalOpen.value = false
+  comprobanteToEmitWarning.value = null
+  ejecutarEmitir(row, userId)
+}
+
+function confirmEditCliente() {
+  const row = comprobanteToEmitWarning.value
+  if (!row?.id_cliente) return
+  emitWarningModalOpen.value = false
+  idClienteParaEditar.value = row.id_cliente
+  clienteEditModalOpen.value = true
+}
+
+function onClienteSaved(_cliente: Cliente) {
+  clienteEditModalOpen.value = false
+  idClienteParaEditar.value = undefined
+  comprobanteToEmitWarning.value = null
+  syncFilters()
 }
 
 async function confirmDelete() {

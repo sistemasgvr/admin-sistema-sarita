@@ -31,6 +31,15 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
 
+  // Dejar que el browser/axios fijen el boundary en multipart
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    if (typeof config.headers.set === 'function') {
+      config.headers.set('Content-Type', undefined as unknown as string)
+    } else {
+      delete (config.headers as Record<string, unknown>)['Content-Type']
+    }
+  }
+
   return config
 })
 
@@ -117,12 +126,11 @@ export async function apiDelete<T>(url: string, config?: AxiosRequestConfig): Pr
   return unwrapResponse(response)
 }
 
-export async function apiGetBlob(url: string, config?: AxiosRequestConfig): Promise<Blob> {
-  const response = await apiClient.get<Blob>(url, {
-    ...config,
-    responseType: 'blob',
-  })
-
+async function unwrapBlobResponse(response: {
+  data: Blob
+  status: number
+  headers: Record<string, unknown>
+}): Promise<Blob> {
   const contentType = String(response.headers['content-type'] ?? '')
 
   if (contentType.includes('application/json')) {
@@ -140,4 +148,26 @@ export async function apiGetBlob(url: string, config?: AxiosRequestConfig): Prom
   }
 
   return response.data
+}
+
+export async function apiGetBlob(url: string, config?: AxiosRequestConfig): Promise<Blob> {
+  const response = await apiClient.get<Blob>(url, {
+    ...config,
+    responseType: 'blob',
+  })
+
+  return unwrapBlobResponse(response)
+}
+
+export async function apiPostBlob(
+  url: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<Blob> {
+  const response = await apiClient.post<Blob>(url, body, {
+    ...config,
+    responseType: 'blob',
+  })
+
+  return unwrapBlobResponse(response)
 }
