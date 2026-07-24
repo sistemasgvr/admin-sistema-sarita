@@ -30,7 +30,6 @@
             <ListaOpcionBadge
               v-if="comprobante.nombre_estado_sunat"
               :value="comprobante.nombre_estado_sunat"
-              raw
             />
           </div>
         </div>

@@ -60,7 +60,7 @@
 
       <template #cell-nombre_estado_sunat="{ row }">
         <div class="space-y-1">
-          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" raw />
+          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
           <p
             v-if="plazoLabel(row)"
             class="text-[11px] font-medium"

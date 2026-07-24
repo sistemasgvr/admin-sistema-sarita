@@ -27,7 +27,7 @@
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Estado SUNAT</p>
-          <ListaOpcionBadge :value="guia.nombre_estado_sunat ?? 'PENDIENTE'" raw />
+          <ListaOpcionBadge :value="guia.nombre_estado_sunat ?? 'PENDIENTE'" />
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Fecha emisión</p>

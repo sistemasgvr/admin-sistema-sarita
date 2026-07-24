@@ -59,7 +59,7 @@
       </template>
 
       <template #cell-nombre_estado_sunat="{ value }">
-        <ListaOpcionBadge :value="String(value ?? 'NO_APLICA')" raw />
+        <ListaOpcionBadge :value="String(value ?? 'NO_APLICA')" />
       </template>
 
       <template #actions="{ row }">

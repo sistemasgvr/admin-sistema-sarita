@@ -44,7 +44,7 @@
       </template>
 
       <template #cell-nombre_estado_sunat="{ value }">
-        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" raw />
+        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" />
       </template>
 
       <template #actions="{ row }">
