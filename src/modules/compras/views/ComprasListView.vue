@@ -123,7 +123,6 @@ import { computed, ref, watch } from 'vue'
 import { useComprasQuery } from '@/modules/compras/composables/useComprasQuery'
 import { useDeleteCompraMutation } from '@/modules/compras/composables/useCompraMutations'
 import type { CompraListFilters, CompraListItem } from '@/modules/compras/interfaces/compra.interface'
-import { comprasService } from '@/modules/compras/services/compras.service'
 import CompraDetailModal from '@/modules/compras/components/CompraDetailModal.vue'
 import CompraFormModal from '@/modules/compras/components/CompraFormModal.vue'
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
@@ -131,15 +130,11 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
-import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
-import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
-import { ListaIds } from '@/shared/constants/lista-ids'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 
@@ -178,9 +173,6 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS
 const isLoading = computed(() => comprasQuery.isFetching.value)
 const rows = computed(() => comprasQuery.data.value?.data ?? [])
 
-// Catálogos para filtros
-const tiposComprobanteQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_COMPROBANTE))
-const tiposRegistroQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_REGISTRO))
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
 
@@ -194,20 +186,6 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     key: 'fechaHasta',
     label: 'Hasta',
     type: 'date',
-  },
-  {
-    key: 'idTipoComprobante',
-    label: 'Tipo comprobante',
-    type: 'select',
-    placeholder: 'Seleccionar',
-    options: toSelectOptions(tiposComprobanteQuery.data.value ?? []),
-  },
-  {
-    key: 'idTipoRegistro',
-    label: 'Tipo registro',
-    type: 'select',
-    placeholder: 'Seleccionar',
-    options: toSelectOptions(tiposRegistroQuery.data.value ?? []),
   },
   {
     key: 'idProveedor',
@@ -288,7 +266,7 @@ function openDelete(row: CompraListItem) {
   deleteModalOpen.value = true
 }
 
-function actionItemsForRow(row: CompraListItem): ActionMenuItem[] {
+function actionItemsForRow(_row: CompraListItem): ActionMenuItem[] {
   return [
     {
       key: 'edit',

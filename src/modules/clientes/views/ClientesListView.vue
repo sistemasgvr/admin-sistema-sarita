@@ -32,9 +32,19 @@
 
       <template #cell-cliente="{ row }">
         <div class="flex flex-col gap-0.5">
-          <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
-            {{ row.razon_social }}
-          </p>
+          <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+            <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
+              {{ row.razon_social }}
+            </p>
+            <AppBadge
+              v-if="esClientesVarios(row)"
+              size="sm"
+              color="primary"
+              title="Cliente de sistema para ventas sin documento"
+            >
+              Sistema
+            </AppBadge>
+          </div>
           <p
             v-if="row.nombres || row.apellido_paterno || row.apellido_materno"
             class="truncate text-sm text-gray-500 dark:text-gray-400"
@@ -76,7 +86,7 @@
         </button>
 
         <button
-          v-if="canEdit"
+          v-if="canEdit && !esClientesVarios(row)"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditView(row)"
@@ -85,7 +95,7 @@
         </button>
 
         <button
-          v-if="canEdit && row.estado === 1"
+          v-if="canEdit && row.estado === 1 && !esClientesVarios(row)"
           type="button"
           title="Solicitar baja"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
@@ -104,7 +114,7 @@
         </button> -->
 
         <button
-          v-if="canSolicitarBaja && row.estado !== 1"
+          v-if="canSolicitarBaja && row.estado !== 1 && !esClientesVarios(row)"
           type="button"
           title="Solicitar reactivación"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
@@ -200,6 +210,7 @@ import type {
   ClienteEstadoFiltro,
   ClienteListFilters,
 } from '@/modules/clientes/interfaces/cliente.interface'
+import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
@@ -336,6 +347,7 @@ watch([pagina, limite], () => {
 })
 
 const openEditView = (cliente: Cliente) => {
+  if (esClientesVarios(cliente)) return
   void router.push({
     name: 'admin-clientes-editar',
     params: { id: String(cliente.id) },

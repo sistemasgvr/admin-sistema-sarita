@@ -174,6 +174,7 @@ import {
   useDeleteComprobanteMutation,
   useEmitirComprobanteMutation,
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { obtenerClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
@@ -687,13 +688,33 @@ async function ejecutarEmitir(row: ComprobanteListItem, userId: number) {
   }
 }
 
-function confirmEmitir() {
+async function confirmEmitir() {
   const row = comprobanteToEmitWarning.value
   const userId = authStore.user?.id
   if (!row || !userId) return
+
+  const varios = await obtenerClientesVarios()
+  if (!varios) {
+    toastWarning(
+      'No se encontró el cliente Clientes Varios (CVARIOS). Edita el cliente o créalo en el catálogo.',
+    )
+    return
+  }
+
+  try {
+    await comprobantesService.actualizar(row.id, {
+      idUsuarioAuditoria: userId,
+      idCliente: varios.id,
+    })
+  } catch (error) {
+    toastApiError(error, 'No se pudo asignar Clientes Varios al comprobante')
+    return
+  }
+
   emitWarningModalOpen.value = false
   comprobanteToEmitWarning.value = null
-  ejecutarEmitir(row, userId)
+  toastSuccess('Se usará Clientes Varios (00000000) para emitir a SUNAT')
+  await ejecutarEmitir(row, userId)
 }
 
 function confirmEditCliente() {

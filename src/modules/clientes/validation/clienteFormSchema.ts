@@ -121,9 +121,17 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
       observacion: optionalString(),
     })
     .test('identificacion-cliente', function (values) {
+      const idTipoDocumento = values.idTipoDocumento
+      const tipoDocumento =
+        idTipoDocumento != null && idTipoDocumento !== ''
+          ? normalizeCatalogName(getTipoDocumentoNombre?.(idTipoDocumento))
+          : undefined
+      // Venta/cliente sin documento: basta con el nombre (regla required-vsd).
+      if (tipoDocumento === 'VSD') return true
+
       const idTipoPersona = values.idTipoPersona
       const tipoPersona =
-        idTipoPersona != null && idTipoPersona !== ''
+        idTipoPersona != null
           ? normalizeCatalogName(getTipoPersonaNombre?.(idTipoPersona))
           : undefined
       const razonSocial = values.razonSocial?.trim()

@@ -152,7 +152,7 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { AppInput, AppModal, AppTextarea, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { toastApiError, toastWarning } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
@@ -162,6 +162,9 @@ import { useClienteDetailQuery } from '@/modules/clientes/composables/useCliente
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import type { Comprobante } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import { CLIENTES_VARIOS_DOCUMENTO } from '@/modules/clientes/constants/clientesVarios'
+import { obtenerClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 
 interface LineaItem {
   key: string
@@ -322,6 +325,7 @@ const canSave = computed(
     Boolean(idTipoComprobante.value) &&
     Boolean(serie.value.trim()) &&
     Boolean(fecha.value) &&
+    Boolean(idCliente.value) &&
     lineas.value.length > 0 &&
     lineas.value.every((l) => l.cantidad > 0),
 )
@@ -391,14 +395,20 @@ async function confirm() {
   await ejecutarCrear(row, origen, userId)
 }
 
-async function ejecutarCrear(row: ComprobanteListItem, origen: NonNullable<ReturnType<typeof origenQuery.data.value>>, userId: number) {
+async function ejecutarCrear(row: ComprobanteListItem, origen: Comprobante, userId: number) {
+  const clienteId = Number(idCliente.value) || origen.id_cliente
+  if (!clienteId) {
+    toastWarning('Selecciona un cliente')
+    return
+  }
+
   try {
     const creado = await createMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idTipoComprobante: idTipoComprobante.value!,
       serie: serie.value.trim().toUpperCase(),
       fecha: fecha.value,
-      idCliente: Number(idCliente.value) || origen.id_cliente,
+      idCliente: clienteId,
       idComprobanteOrigen: row.id,
       idMoneda: origen.id_moneda ?? undefined,
       idMedioPago: origen.id_medio_pago ?? undefined,
@@ -432,13 +442,25 @@ async function ejecutarCrear(row: ComprobanteListItem, origen: NonNullable<Retur
   }
 }
 
-function confirmCrear() {
+async function confirmCrear() {
   const row = props.comprobante
   const origen = origenQuery.data.value
   const userId = authStore.user?.id
   if (!row || !origen || !userId) return
+
+  const varios = await obtenerClientesVarios()
+  if (!varios) {
+    toastWarning(
+      'No se encontró el cliente Clientes Varios (CVARIOS). Créalos o edita el cliente con un documento.',
+    )
+    return
+  }
+
+  idCliente.value = varios.id
+  clienteDocumento.value = varios.numero_documento || CLIENTES_VARIOS_DOCUMENTO
   emitWarningModalOpen.value = false
-  ejecutarCrear(row, origen, userId)
+  toastSuccess('Se usará Clientes Varios (00000000) para emitir a SUNAT')
+  await ejecutarCrear(row, origen, userId)
 }
 
 function confirmEditClienteEnEmitir() {

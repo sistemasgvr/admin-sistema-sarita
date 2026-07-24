@@ -229,6 +229,15 @@ export function usePosComprobanteForm(options?: {
     const errorSerie = validarSerieParaTipo(codigo, serie.value, serieOrigen)
     if (errorSerie) return errorSerie
 
+    // CPE (boleta/factura): el cliente debe tener documento para SUNAT.
+    // VSD (nota interna) puede usar Clientes Varios sin problema.
+    if (!esNotaVenta.value) {
+      const doc = (clienteSeleccionado.value?.numero_documento ?? '').trim()
+      if (!doc) {
+        return 'El cliente no tiene documento. Usa Venta sin documento o asigna DNI/RUC al cliente'
+      }
+    }
+
     if (tipoRequiereRuc(codigo, serie.value) && !clienteDocumentoEsRuc(clienteSeleccionado.value)) {
       return codigo === '01'
         ? 'La factura requiere un cliente con RUC (11 dígitos)'

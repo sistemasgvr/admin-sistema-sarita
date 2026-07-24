@@ -10,6 +10,13 @@
           <AppBadge :color="cliente.estado === 1 ? 'success' : 'error'">
             {{ cliente.estado === 1 ? 'Activo' : 'Inactivo' }}
           </AppBadge>
+          <AppBadge
+            v-if="esClientesVarios(cliente)"
+            color="primary"
+            title="Cliente de sistema para ventas sin documento"
+          >
+            Sistema
+          </AppBadge>
           <AppBadge v-if="cliente.nombre_tipo_persona" color="primary">
             {{ cliente.nombre_tipo_persona }}
           </AppBadge>
@@ -17,6 +24,12 @@
             {{ cliente.nombre_tipo_cliente }}
           </AppBadge>
         </div>
+        <p
+          v-if="esClientesVarios(cliente)"
+          class="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-gray-700 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-gray-300"
+        >
+          Cliente de sistema (CVARIOS). Se usa en ventas sin documento; no se edita ni da de baja.
+        </p>
 
         <section
           v-for="section in sections"
@@ -453,6 +466,7 @@
   <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
   import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+  import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
   import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
   import { AppBadge, AppModal, MapaLeaflet } from '@/shared/components'
   import AppIcon from '@/shared/components/AppIcon.vue'

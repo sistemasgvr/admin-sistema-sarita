@@ -110,10 +110,10 @@ export interface ClientePayload {
   nombres?: string
   apellidoPaterno?: string
   apellidoMaterno?: string
-  idTipoCliente: number
-  idTipoPersona: number
+  idTipoCliente?: number
+  idTipoPersona?: number
   idTipoDocumento: number
-  numeroDocumento: string
+  numeroDocumento?: string | null
   direccion?: string
   referencia?: string
   latitud?: number | null
