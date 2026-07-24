@@ -18,6 +18,9 @@
         >
           <template #actions>
             <div class="w-full sm:w-44">
+              <AppSelect v-model="tipoFiltro" :options="tipoFiltroOptions" />
+            </div>
+            <div class="w-full sm:w-40">
               <AppSelect v-model="mostrarProductos" :options="estadoFiltroOptions" />
             </div>
             <button
@@ -29,15 +32,14 @@
               <AppIcon :name="ICONS.printer" :size="18" />
               Imprimir ubicación
             </button>
-            <button
+            <RouterLink
               v-if="canCreate"
-              type="button"
+              :to="{ name: 'admin-productos-articulos-nuevo' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
-            </button>
+            </RouterLink>
           </template>
         </AppListToolbar>
       </template>
@@ -64,13 +66,20 @@
         </span>
       </template>
 
-      <template #cell-estado="{ row }">
+      <template #cell-tipo="{ row }">
         <div class="flex flex-wrap items-center gap-1.5">
-          <AppBadge v-if="row.es_gas" variant="light" color="primary">Gas</AppBadge>
-          <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
-            {{ row.estado === 1 ? 'Activo' : 'Inactivo' }}
+          <AppBadge :color="row.es_servicio ? 'warning' : 'primary'" variant="light">
+            {{ row.es_servicio ? 'Servicio' : 'Producto' }}
           </AppBadge>
+          <AppBadge v-if="row.es_gas" variant="light" color="success">Gas</AppBadge>
+          <AppBadge v-if="row.es_alquilable" variant="light" color="neutral">Alquilable</AppBadge>
         </div>
+      </template>
+
+      <template #cell-estado="{ row }">
+        <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
+          {{ row.estado === 1 ? 'Activo' : 'Inactivo' }}
+        </AppBadge>
       </template>
 
       <template #actions="{ row }">
@@ -101,15 +110,6 @@
         />
       </template>
     </AppTable>
-
-    <ProductoFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :producto="selectedProducto"
-      :categorias="categorias"
-      :sub-categorias="subCategorias"
-      @saved="onProductoSaved"
-    />
 
     <ProductoDetailModal v-model="detailModalOpen" :producto="productoToView" />
 
@@ -167,9 +167,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import ProductoFormModal from '@/modules/productos/articulos/components/ProductoFormModal.vue'
 import ProductoDetailModal from '@/modules/productos/articulos/components/ProductoDetailModal.vue'
 import ProductoUbicacionesPrintModal from '@/modules/productos/articulos/components/ProductoUbicacionesPrintModal.vue'
 import {
@@ -180,7 +179,6 @@ import { useProductosQuery } from '@/modules/productos/articulos/composables/use
 import type {
   Producto,
   ProductoEstadoFiltro,
-  ProductoFormMode,
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
@@ -208,6 +206,7 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 const breadcrumbItems = productosBreadcrumbItems('Productos')
 
 const categorias = ref<CategoriaProducto[]>([])
@@ -218,11 +217,18 @@ const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
 const mostrarProductos = ref<ProductoEstadoFiltro>('activos')
+const tipoFiltro = ref<'todos' | 'producto' | 'servicio'>('todos')
 
 const estadoFiltroOptions: SelectOption[] = [
   { label: 'Activos', value: 'activos' },
   { label: 'Inactivos', value: 'inactivos' },
   { label: 'Todos', value: 'todos' },
+]
+
+const tipoFiltroOptions: SelectOption[] = [
+  { label: 'Tipo: todos', value: 'todos' },
+  { label: 'Solo productos', value: 'producto' },
+  { label: 'Solo servicios', value: 'servicio' },
 ]
 
 const buildSoloActivos = (value: ProductoEstadoFiltro): number | null | undefined => {
@@ -247,10 +253,6 @@ const filters = ref<ProductoListFilters>({
 const productosQuery = useProductosQuery(filters)
 const deleteMutation = useDeleteProductoMutation()
 const restaurarMutation = useRestaurarProductoMutation()
-
-const formModalOpen = ref(false)
-const formMode = ref<ProductoFormMode>('create')
-const selectedProducto = ref<Producto | null>(null)
 
 const deleteModalOpen = ref(false)
 const productoToDelete = ref<Producto | null>(null)
@@ -311,6 +313,7 @@ const columns = computed<TableColumn<Producto>[]>(() => [
   { key: 'codigo_ubicacion', label: 'Ubicación' },
   { key: 'nombre', label: 'Nombre' },
   { key: 'categoria', label: 'Categoría' },
+  { key: 'tipo', label: 'Tipo' },
   { key: 'nombre_unidad_medida', label: 'U.M.' },
   { key: 'precio', label: 'Precio' },
   { key: 'estado', label: 'Estado' },
@@ -372,6 +375,8 @@ const syncFilters = () => {
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
       active.idSubCategoria != null ? Number(active.idSubCategoria) : undefined,
+    esServicio:
+      tipoFiltro.value === 'todos' ? undefined : tipoFiltro.value === 'servicio',
     soloActivos: buildSoloActivos(mostrarProductos.value),
   }
 }
@@ -413,16 +418,16 @@ watch(mostrarProductos, () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedProducto.value = null
-  formModalOpen.value = true
-}
+watch(tipoFiltro, () => {
+  pagina.value = 1
+  syncFilters()
+})
 
-const openEditModal = (producto: Producto) => {
-  formMode.value = 'edit'
-  selectedProducto.value = producto
-  formModalOpen.value = true
+const openEditView = (producto: Producto) => {
+  void router.push({
+    name: 'admin-productos-articulos-editar',
+    params: { id: producto.id },
+  })
 }
 
 const openDetailModal = (producto: Producto) => {
@@ -489,7 +494,7 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
 function onActionSelect(key: string, row: Producto) {
   switch (key) {
     case 'edit':
-      openEditModal(row)
+      openEditView(row)
       return
     case 'restore':
       return restaurarProducto(row)
@@ -497,9 +502,5 @@ function onActionSelect(key: string, row: Producto) {
       openDeleteModal(row)
       return
   }
-}
-
-const onProductoSaved = () => {
-  selectedProducto.value = null
 }
 </script>

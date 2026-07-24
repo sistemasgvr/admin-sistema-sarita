@@ -4,6 +4,7 @@
     :hint="hint"
     :error="error"
     :required="required"
+    :optional="optional"
     :disabled="disabled"
     :id="id"
   >
@@ -138,6 +139,7 @@ interface AppSelectSearchProps {
   id?: string
   disabled?: boolean
   required?: boolean
+  optional?: boolean
   clearable?: boolean
   loading?: boolean
   remote?: boolean

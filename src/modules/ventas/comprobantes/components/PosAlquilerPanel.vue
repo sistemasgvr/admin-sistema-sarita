@@ -3,9 +3,9 @@
     <section>
       <FormCardsLayout>
         <DetailSectionCard
-          title="Comprobante y cilindro"
+          title="Kit medicinal"
           :icon="ICONS.receipt"
-          help="Registra el alquiler del cilindro, genera el comprobante y vincula el balón entregado desde el almacén."
+          help="Una sola operación: cilindro físico + líneas del kit (contenido, regulador en alquiler, descartables y flete) en un comprobante. Para industrial usa la pestaña Industrial."
         >
           <template #actions>
             <button
@@ -44,87 +44,159 @@
               required
               @created="seleccionarCliente"
             />
-            <AppInput
-              v-model="clienteDescripcion"
-              label="Observaciones"
-              placeholder="Opcional"
-            />
-            <AppSelectSearch
+            <AlmacenSelectField
               v-model="idAlmacen"
-              v-model:search="almacenBuscar"
-              label="Almacén"
-              placeholder="Selecciona almacén"
-              search-placeholder="Nombre del almacén..."
-              :options="almacenOptions"
-              :loading="almacenesQuery.isLoading.value"
-              :disabled="almacenesQuery.isLoading.value"
+              searchable
               required
+              :disabled="almacenesQuery.isLoading.value"
+              @created="onAlmacenCreated"
             />
           </div>
 
-          <div class="mt-5 space-y-4">
-            <div class="min-w-0 overflow-hidden">
-              <PosBalonSelectField
-                v-model="idBalon"
-                mode="alquiler"
-                :id-cliente="idCliente"
-                :id-almacen="idAlmacen"
-                label="Cilindro"
-                placeholder="Selecciona cilindro disponible"
-                register-label="Registrar cilindro en almacén"
-                empty-text="Sin cilindros disponibles."
-                required
-              />
-            </div>
-
-            <div class="min-w-0">
-              <AppSelectSearch
-                v-model="idProducto"
-                v-model:search="servicioBuscar"
-                label="Servicio de alquiler"
-                placeholder="Selecciona servicio"
-                search-placeholder="Código o nombre..."
-                :options="servicioOptions"
-                :loading="productosQuery.isLoading.value"
-                :disabled="productosQuery.isLoading.value"
-                required
-                @update:model-value="onServicioChange"
-              />
-            </div>
+          <div class="mt-5 min-w-0 overflow-hidden">
+            <PosBalonSelectField
+              v-model="idBalon"
+              mode="alquiler"
+              :id-cliente="idCliente"
+              :id-almacen="idAlmacen"
+              label="Cilindro a entregar"
+              placeholder="Selecciona cilindro disponible"
+              register-label="Registrar cilindro en almacén"
+              empty-text="Sin cilindros disponibles."
+              required
+            />
           </div>
         </DetailSectionCard>
 
         <DetailSectionCard
-          title="Condiciones del alquiler"
-          :icon="ICONS.calendar"
-          help="Define fechas y tarifa. El importe a cobrar se puede calcular automáticamente o editar a mano."
+          title="Líneas del kit"
+          :icon="ICONS.boxes"
+          help="Ejemplo oficina: contenido ~165 + regulador ~70 (2 semanas) + descartables ~50 + flete ~15 ≈ 285. Los descartables se venden (quedan con el cliente)."
         >
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" />
+          <div class="space-y-4">
+            <div
+              v-for="linea in lineasFijas"
+              :key="linea.key"
+              class="rounded-xl border border-gray-100 p-3 dark:border-gray-800"
+            >
+              <div class="mb-2 flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                  {{ KIT_MEDICINAL_ROL_LABEL[linea.rol] }}
+                  <span v-if="linea.rol === 'regulador'" class="text-error-500">*</span>
+                </p>
+                <span class="text-xs tabular-nums text-gray-500 dark:text-gray-400">
+                  {{ formatPosMoney(importeLineaKit(linea)) }}
+                </span>
+              </div>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_88px_110px]">
+                <AppSelectSearch
+                  v-model="linea.idProducto"
+                  v-model:search="linea.buscar"
+                  :label="labelProductoParaRol(linea.rol)"
+                  placeholder="Selecciona..."
+                  search-placeholder="Código o nombre..."
+                  remote
+                  :options="optionsParaRol(linea.rol)"
+                  :loading="loadingProductosParaRol(linea.rol)"
+                  :required="linea.rol === 'regulador'"
+                  @update:model-value="(id) => onProductoLinea(linea, id)"
+                  @update:search="(term) => onBuscarProductoRol(linea.rol, term)"
+                />
+                <AppInput
+                  v-model="linea.cantidad"
+                  label="Cant."
+                  type="number"
+                  :min="NUMBER_MIN.unit"
+                  :step="NUMBER_STEP.unit"
+                />
+                <AppInput
+                  v-model="linea.precioUnitario"
+                  label="P. unit."
+                  type="number"
+                  :min="NUMBER_MIN.money"
+                  :step="NUMBER_STEP.money"
+                />
+              </div>
+            </div>
+
+            <div
+              v-for="linea in lineasDescartables"
+              :key="linea.key"
+              class="rounded-xl border border-gray-100 p-3 dark:border-gray-800"
+            >
+              <div class="mb-2 flex items-center justify-between gap-2">
+                <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                  {{ KIT_MEDICINAL_ROL_LABEL.descartable }}
+                </p>
+                <button
+                  type="button"
+                  class="rounded-lg p-1.5 text-error-500 hover:bg-error-500/10"
+                  title="Quitar descartable"
+                  @click="quitarDescartable(linea.key)"
+                >
+                  <AppIcon :name="ICONS.trash" :size="16" />
+                </button>
+              </div>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_88px_110px]">
+                <AppSelectSearch
+                  v-model="linea.idProducto"
+                  v-model:search="linea.buscar"
+                  label="Producto (venta)"
+                  placeholder="Selecciona..."
+                  search-placeholder="Código o nombre..."
+                  remote
+                  :options="productoVentaOptions"
+                  :loading="productosVentaQuery.isLoading.value"
+                  @update:search="(term) => onBuscarProductoRol('descartable', term)"
+                  @update:model-value="(id) => onProductoLinea(linea, id)"
+                />
+                <AppInput
+                  v-model="linea.cantidad"
+                  label="Cant."
+                  type="number"
+                  :min="NUMBER_MIN.unit"
+                  :step="NUMBER_STEP.unit"
+                />
+                <AppInput
+                  v-model="linea.precioUnitario"
+                  label="P. unit."
+                  type="number"
+                  :min="NUMBER_MIN.money"
+                  :step="NUMBER_STEP.money"
+                />
+              </div>
+              <p class="mt-2 text-right text-sm font-medium tabular-nums text-gray-700 dark:text-gray-300">
+                {{ formatPosMoney(importeLineaKit(linea)) }}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-600 transition hover:border-brand-300 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20"
+              @click="agregarDescartable"
+            >
+              <AppIcon :name="ICONS.plus" :size="14" />
+              Agregar descartable
+            </button>
+          </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard
+          title="Contrato de alquiler"
+          :icon="ICONS.calendar"
+          help="El contrato guarda el regulador (producto) y su tarifa para renovaciones. El cilindro solo se registra como entrega física en el detalle."
+        >
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <AppInput v-model="fechaInicio" label="Inicio" type="date" />
             <AppInput v-model="fechaFinPactada" label="Fin pactado" type="date" />
             <AppInput
-              v-model="tarifaDiaria"
-              :label="etiquetaTarifa"
+              v-model="tarifaPeriodo"
+              label="Tarifa regulador (periodo)"
               type="number"
               min="0"
               step="0.01"
-              @update:model-value="onTarifaChange"
             />
-            <div>
-              <AppInput
-                v-model="importeCobrar"
-                label="Importe a cobrar"
-                type="number"
-                min="0"
-                step="0.01"
-                @update:model-value="importeEditadoManual = true"
-              />
-              <p class="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
-                {{ textoAyudaImporte }}
-              </p>
-            </div>
           </div>
-
           <div class="mt-5">
             <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
           </div>
@@ -132,7 +204,38 @@
       </FormCardsLayout>
     </section>
 
-    <aside class="xl:sticky xl:top-20 xl:self-start">
+    <aside class="space-y-4 xl:sticky xl:top-20 xl:self-start">
+      <DetailSectionCard title="Resumen del kit" :icon="ICONS.list">
+        <div v-if="lineasActivas.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          Selecciona productos del kit para ver el desglose.
+        </div>
+        <ul v-else class="space-y-2 text-sm">
+          <li
+            v-for="linea in lineasActivas"
+            :key="linea.key"
+            class="flex items-start justify-between gap-2"
+          >
+            <span class="min-w-0 text-gray-600 dark:text-gray-400">
+              <span class="block truncate font-medium text-gray-800 dark:text-white/90">
+                {{ linea.nombre || KIT_MEDICINAL_ROL_LABEL[linea.rol] }}
+              </span>
+              <span class="text-theme-xs">{{ KIT_MEDICINAL_ROL_LABEL[linea.rol] }}</span>
+            </span>
+            <span class="shrink-0 tabular-nums text-gray-800 dark:text-white/90">
+              {{ formatPosMoney(importeLineaKit(linea)) }}
+            </span>
+          </li>
+        </ul>
+        <div
+          class="mt-3 flex justify-between border-t border-gray-200 pt-2 text-sm font-semibold dark:border-gray-800"
+        >
+          <span class="text-gray-800 dark:text-white/90">Total kit</span>
+          <span class="tabular-nums text-gray-800 dark:text-white/90">{{
+            formatPosMoney(totalKit)
+          }}</span>
+        </div>
+      </DetailSectionCard>
+
       <PosResumenAside
         v-model:glosa="observacion"
         :totales="totales"
@@ -145,9 +248,9 @@
         :comprobante-guardado-id="comprobanteGuardadoId"
         :comprobante-guardado-serie="comprobanteGuardadoSerie"
         :comprobante-guardado-numero="comprobanteGuardadoNumero"
-        guardar-label="Registrar alquiler"
+        guardar-label="Registrar kit medicinal"
         guardando-label="Registrando..."
-        @guardar="registrarAlquiler"
+        @guardar="registrarKit"
         @emitir="emitirComprobante"
       />
     </aside>
@@ -155,11 +258,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { alquileresDetalleService } from '@/modules/balones/alquileres/services/alquileres-detalle.service'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
@@ -168,15 +273,20 @@ import {
   useEmitirComprobanteMutation,
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import {
-  calcularDiasAlquiler,
-  calcularImporteAlquiler,
-  etiquetaTarifaAlquiler,
-  inferirModoCobroAlquiler,
-  textoAyudaImporteAlquiler,
-} from '@/modules/ventas/comprobantes/composables/usePosAlquilerCalculo'
+  addDaysIso,
+  crearKitMedicinalInicial,
+  crearLineaKit,
+  importeLineaKit,
+  KIT_MEDICINAL_ROL_LABEL,
+  lineasKitConProducto,
+  totalKitMedicinal,
+  type KitMedicinalLinea,
+  type KitMedicinalRol,
+} from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import {
   calcularTotalesDesdeImporte,
+  formatPosMoney,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import {
@@ -188,6 +298,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
 const {
@@ -223,36 +334,64 @@ const imprimiendoTicket = ref(false)
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
-const productosFilters = ref({ pagina: 1, limite: 100, esServicio: true, esAlquilable: true })
-const productosQuery = useProductosQuery(productosFilters)
+/** Regulador: solo servicios alquilables. */
+const serviciosAlquilerFilters = ref({
+  pagina: 1,
+  limite: 100,
+  esServicio: true,
+  esAlquilable: true,
+  soloActivos: 1,
+  buscar: undefined as string | undefined,
+})
+const serviciosQuery = useProductosQuery(serviciosAlquilerFilters)
+
+/** Contenido / descartables: productos (no servicios). */
+const productosVentaFilters = ref({
+  pagina: 1,
+  limite: 100,
+  esServicio: false,
+  soloActivos: 1,
+  buscar: undefined as string | undefined,
+})
+const productosVentaQuery = useProductosQuery(productosVentaFilters)
+
+/** Flete: servicios no alquilables. */
+const serviciosFleteFilters = ref({
+  pagina: 1,
+  limite: 100,
+  esServicio: true,
+  esAlquilable: false,
+  soloActivos: 1,
+  buscar: undefined as string | undefined,
+})
+const serviciosFleteQuery = useProductosQuery(serviciosFleteFilters)
 
 const idBalon = ref<number | ''>('')
 const idAlmacen = ref<number | ''>('')
-const idProducto = ref<number | ''>('')
-const almacenBuscar = ref('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
-const servicioBuscar = ref('')
-const fechaInicio = ref(new Date().toISOString().slice(0, 10))
-const fechaFinPactada = ref('')
-const tarifaDiaria = ref(0)
-const importeCobrar = ref(0)
+
+async function onAlmacenCreated() {
+  await almacenesQuery.refetch()
+}
+
+const hoy = new Date().toISOString().slice(0, 10)
+const fechaInicio = ref(hoy)
+const fechaFinPactada = ref(addDaysIso(hoy, 14))
+const tarifaPeriodo = ref(0)
 const observacion = ref('')
 const guardando = ref(false)
-const importeEditadoManual = ref(false)
+
+const kitLineas = reactive<KitMedicinalLinea[]>(crearKitMedicinalInicial())
+const descartables = reactive<KitMedicinalLinea[]>([])
 
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
 
-const almacenOptions = computed(() =>
-  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre,
-  })),
-)
-
-const serviciosAlquiler = computed(() => productosQuery.data.value?.data ?? [])
+const serviciosAlquiler = computed(() => serviciosQuery.data.value?.data ?? [])
+const productosVenta = computed(() => productosVentaQuery.data.value?.data ?? [])
+const serviciosFlete = computed(() => serviciosFleteQuery.data.value?.data ?? [])
 
 const servicioOptions = computed(() =>
   serviciosAlquiler.value.map((producto) => ({
@@ -261,82 +400,132 @@ const servicioOptions = computed(() =>
   })),
 )
 
-const productoSeleccionado = computed(() =>
-  serviciosAlquiler.value.find((item) => item.id === Number(idProducto.value)),
+const productoVentaOptions = computed(() =>
+  productosVenta.value.map((producto) => ({
+    value: producto.id,
+    label: `${producto.codigo} — ${producto.nombre}`,
+  })),
 )
 
-const modoCobro = computed(() => inferirModoCobroAlquiler(productoSeleccionado.value))
-
-const diasAlquiler = computed(() =>
-  calcularDiasAlquiler(fechaInicio.value, fechaFinPactada.value),
+const servicioFleteOptions = computed(() =>
+  serviciosFlete.value.map((producto) => ({
+    value: producto.id,
+    label: `${producto.codigo} — ${producto.nombre}`,
+  })),
 )
 
-const etiquetaTarifa = computed(() => etiquetaTarifaAlquiler(modoCobro.value))
-
-const textoAyudaImporte = computed(() =>
-  textoAyudaImporteAlquiler({
-    modo: modoCobro.value,
-    tarifa: Number(tarifaDiaria.value || 0),
-    dias: diasAlquiler.value,
-    importe: Number(importeCobrar.value || 0),
-  }),
+const lineasFijas = computed(() =>
+  kitLineas.filter((linea) => linea.rol !== 'descartable'),
 )
 
-const totales = computed(() => calcularTotalesDesdeImporte(Number(importeCobrar.value || 0)))
+const lineasDescartables = computed(() => descartables)
+
+const todasLasLineas = computed(() => [...kitLineas, ...descartables])
+
+const lineasActivas = computed(() => lineasKitConProducto(todasLasLineas.value))
+
+const totalKit = computed(() => totalKitMedicinal(todasLasLineas.value))
+
+const totales = computed(() => calcularTotalesDesdeImporte(totalKit.value))
+
+const lineaRegulador = computed(() => kitLineas.find((linea) => linea.rol === 'regulador'))
 
 const puedeGuardar = computed(() => {
   return (
     comprobanteBaseValido() &&
     Boolean(idBalon.value) &&
     Boolean(idAlmacen.value) &&
-    Boolean(idProducto.value) &&
+    Boolean(lineaRegulador.value?.idProducto) &&
     Boolean(fechaInicio.value) &&
-    Number(importeCobrar.value) >= 0 &&
-    (modoCobro.value === 'mensual' || diasAlquiler.value > 0)
+    lineasActivas.value.length > 0 &&
+    totalKit.value >= 0
   )
 })
 
-function recalcularImporte() {
-  if (importeEditadoManual.value) return
-
-  const producto = productoSeleccionado.value
-  if (!producto) return
-
-  importeCobrar.value = calcularImporteAlquiler({
-    modo: modoCobro.value,
-    tarifa: Number(tarifaDiaria.value || 0),
-    dias: diasAlquiler.value,
-    precioServicio: Number(producto.precio ?? 0),
-  })
-}
-
-function onServicioChange() {
-  const producto = productoSeleccionado.value
-  if (!producto) return
-
-  importeEditadoManual.value = false
-  tarifaDiaria.value = Number(producto.precio ?? 0)
-  recalcularImporte()
-}
-
-function onTarifaChange() {
-  importeEditadoManual.value = false
-  recalcularImporte()
-}
-
-watch([fechaInicio, fechaFinPactada], () => {
-  if (modoCobro.value === 'diario') {
-    importeEditadoManual.value = false
-    recalcularImporte()
+function labelProductoParaRol(rol: KitMedicinalRol) {
+  switch (rol) {
+    case 'regulador':
+      return 'Servicio alquilable'
+    case 'flete':
+      return 'Servicio (flete)'
+    case 'contenido':
+      return 'Producto (contenido)'
+    default:
+      return 'Producto'
   }
-})
+}
+
+function optionsParaRol(rol: KitMedicinalRol) {
+  if (rol === 'regulador') return servicioOptions.value
+  if (rol === 'flete') return servicioFleteOptions.value
+  return productoVentaOptions.value
+}
+
+function loadingProductosParaRol(rol: KitMedicinalRol) {
+  if (rol === 'regulador') return serviciosQuery.isLoading.value
+  if (rol === 'flete') return serviciosFleteQuery.isLoading.value
+  return productosVentaQuery.isLoading.value
+}
+
+function onBuscarProductoRol(rol: KitMedicinalRol, term: string) {
+  const buscar = term.trim() || undefined
+  if (rol === 'regulador') {
+    serviciosAlquilerFilters.value = { ...serviciosAlquilerFilters.value, buscar }
+    return
+  }
+  if (rol === 'flete') {
+    serviciosFleteFilters.value = { ...serviciosFleteFilters.value, buscar }
+    return
+  }
+  productosVentaFilters.value = { ...productosVentaFilters.value, buscar }
+}
+
+function findProducto(rol: KitMedicinalRol, id: number): Producto | undefined {
+  if (rol === 'regulador') {
+    return serviciosAlquiler.value.find((item) => item.id === id)
+  }
+  if (rol === 'flete') {
+    return serviciosFlete.value.find((item) => item.id === id)
+  }
+  return productosVenta.value.find((item) => item.id === id)
+}
+
+function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
+  const productId = Number(id)
+  if (!productId) {
+    linea.codigo = ''
+    linea.nombre = ''
+    linea.precioUnitario = 0
+    if (linea.rol === 'regulador') tarifaPeriodo.value = 0
+    return
+  }
+
+  const producto = findProducto(linea.rol, productId)
+  if (!producto) return
+
+  linea.codigo = producto.codigo
+  linea.nombre = producto.nombre
+  linea.precioUnitario = Number(producto.precio ?? 0)
+  if (linea.rol === 'regulador') {
+    tarifaPeriodo.value = Number(producto.precio ?? 0)
+  }
+}
+
+function agregarDescartable() {
+  descartables.push(crearLineaKit('descartable'))
+}
+
+function quitarDescartable(key: string) {
+  const index = descartables.findIndex((linea) => linea.key === key)
+  if (index >= 0) descartables.splice(index, 1)
+}
 
 function generarNumeroAlquiler() {
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   return `ALQ-${stamp}-${String(Date.now()).slice(-4)}`
 }
 
-async function registrarAlquiler() {
+async function registrarKit() {
   const userId = authStore.user?.id
   if (!userId) {
     toastWarning('Sesión inválida')
@@ -348,14 +537,14 @@ async function registrarAlquiler() {
     return
   }
 
-  const producto = productoSeleccionado.value
-  if (!producto) {
-    toastWarning('Selecciona un servicio de alquiler')
+  if (!lineaRegulador.value?.idProducto) {
+    toastWarning('Selecciona el regulador (alquiler) del kit')
     return
   }
 
-  if (modoCobro.value === 'diario' && diasAlquiler.value <= 0) {
-    toastWarning('La fecha de fin debe ser igual o posterior al inicio')
+  const activas = lineasActivas.value
+  if (activas.length === 0) {
+    toastWarning('Agrega al menos una línea del kit con producto')
     return
   }
 
@@ -369,22 +558,19 @@ async function registrarAlquiler() {
       numero: numero.value || undefined,
       fecha: fecha.value,
       idCliente: Number(idCliente.value),
-      detalles: [
-        {
-          idProducto: producto.id,
-          cantidad: 1,
-          precioUnitario: Number(importeCobrar.value),
-          descuento: 0,
-          porcentajeIgv: 18,
-          idAfectacionIgv: idAfectacionGravado.value,
-          descripcion: producto.nombre,
-          idBalon: Number(idBalon.value),
-        },
-      ],
+      detalles: activas.map((linea) => ({
+        idProducto: Number(linea.idProducto),
+        cantidad: Number(linea.cantidad),
+        precioUnitario: Number(linea.precioUnitario),
+        descuento: 0,
+        porcentajeIgv: 18,
+        idAfectacionIgv: idAfectacionGravado.value,
+        descripcion: `${KIT_MEDICINAL_ROL_LABEL[linea.rol]}: ${linea.nombre || linea.codigo}`,
+        idBalon: linea.rol === 'regulador' ? Number(idBalon.value) : undefined,
+      })),
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
-      glosa: observacion.value || 'Alquiler de cilindro',
-      observaciones: clienteDescripcion.value || undefined,
+      glosa: observacion.value || 'Kit medicinal',
     })
 
     const alquiler = await alquileresService.crear({
@@ -394,10 +580,11 @@ async function registrarAlquiler() {
       idAlmacen: Number(idAlmacen.value),
       fechaInicio: fechaInicio.value,
       fechaFinPactada: fechaFinPactada.value || undefined,
-      tarifaDiaria: Number(tarifaDiaria.value || 0),
-      totalCobrado: Number(importeCobrar.value),
+      tarifaDiaria: Number(tarifaPeriodo.value || 0),
+      totalCobrado: totalKit.value,
       idComprobanteVenta: comprobante.id,
-      observacion: observacion.value || undefined,
+      idProductoRegulador: Number(lineaRegulador.value.idProducto),
+      observacion: observacion.value || 'Kit medicinal',
     })
 
     await alquileresDetalleService.crear({
@@ -406,10 +593,21 @@ async function registrarAlquiler() {
       idBalon: Number(idBalon.value),
     })
 
+    const montoRegulador = importeLineaKit(lineaRegulador.value)
+    await alquileresService.registrarPeriodo(alquiler.id, {
+      idUsuarioAuditoria: userId,
+      fechaInicio: fechaInicio.value,
+      fechaFin: fechaFinPactada.value || addDaysIso(fechaInicio.value, 14),
+      monto: montoRegulador,
+      idProducto: Number(lineaRegulador.value.idProducto),
+      idComprobante: comprobante.id,
+      observacion: 'Periodo 1 — kit medicinal (regulador)',
+    })
+
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
-    toastSuccess('Alquiler registrado y comprobante generado')
+    toastSuccess('Kit medicinal registrado con periodo 1 del regulador')
   } finally {
     guardando.value = false
   }
@@ -418,21 +616,18 @@ async function registrarAlquiler() {
 async function limpiarFormulario() {
   idBalon.value = ''
   idAlmacen.value = ''
-  idProducto.value = ''
-  almacenBuscar.value = ''
-  servicioBuscar.value = ''
-  fechaInicio.value = new Date().toISOString().slice(0, 10)
-  fechaFinPactada.value = ''
-  tarifaDiaria.value = 0
-  importeCobrar.value = 0
+  const inicio = new Date().toISOString().slice(0, 10)
+  fechaInicio.value = inicio
+  fechaFinPactada.value = addDaysIso(inicio, 14)
+  tarifaPeriodo.value = 0
   observacion.value = ''
-  importeEditadoManual.value = false
+  kitLineas.splice(0, kitLineas.length, ...crearKitMedicinalInicial())
+  descartables.splice(0, descartables.length)
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null
   comprobanteGuardadoNumero.value = null
   await reiniciarTrasOperacion()
-  await productosQuery.refetch()
-  await almacenesQuery.refetch()
+  await Promise.all([serviciosQuery.refetch(), productosVentaQuery.refetch(), almacenesQuery.refetch()])
   aplicarAlmacenPorDefecto()
 }
 
@@ -478,4 +673,11 @@ async function emitirComprobante() {
     imprimiendoTicket.value = false
   }
 }
+
+watch(fechaInicio, (inicio) => {
+  if (!inicio) return
+  if (!fechaFinPactada.value || fechaFinPactada.value < inicio) {
+    fechaFinPactada.value = addDaysIso(inicio, 14)
+  }
+})
 </script>

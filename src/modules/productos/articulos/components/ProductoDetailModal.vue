@@ -7,10 +7,16 @@
   >
     <DetailCardsLayout :loading="false" :sections="sections">
       <template #badges>
-        <AppBadge v-if="producto?.es_gas" color="primary">Gas</AppBadge>
-        <AppBadge v-if="producto?.es_servicio" color="neutral">Servicio</AppBadge>
-        <AppBadge v-if="producto?.es_alquilable" color="neutral">Alquilable</AppBadge>
-        <AppBadge v-if="producto?.afecta_stock" color="success">Afecta stock</AppBadge>
+        <AppBadge :color="producto?.es_servicio ? 'warning' : 'primary'">
+          {{ producto?.es_servicio ? 'Servicio' : 'Producto' }}
+        </AppBadge>
+        <AppBadge v-if="producto?.es_gas" color="primary" variant="light">Gas</AppBadge>
+        <AppBadge v-if="producto?.es_alquilable" color="neutral" variant="light">
+          Alquilable
+        </AppBadge>
+        <AppBadge v-if="producto?.afecta_stock" color="success" variant="light">
+          Afecta stock
+        </AppBadge>
       </template>
 
       <template #extra>

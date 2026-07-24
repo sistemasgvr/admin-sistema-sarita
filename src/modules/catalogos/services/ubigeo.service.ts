@@ -5,6 +5,7 @@ import type {
   Pais,
   Provincia,
 } from '@/modules/catalogos/interfaces/ubigeo.interface'
+import { normalizarUbigeoTexto } from '@/modules/catalogos/utils/ubigeoFromNominatim'
 
 export const ubigeoService = {
   paises() {
@@ -30,41 +31,83 @@ export interface UbigeoMatchResult {
   idDistrito?: number
 }
 
-const normalizar = (texto: string) => texto.trim().toLowerCase()
+function scoreMatch(nombreCatalogo: string, buscado: string): number {
+  const a = normalizarUbigeoTexto(nombreCatalogo)
+  const b = normalizarUbigeoTexto(buscado)
+  if (!a || !b) return 0
+  if (a === b) return 100
+  if (a.includes(b) || b.includes(a)) return 80
+  // tokens compartidos (carmen la legua reynoso vs carmen de la legua-reynoso)
+  const tokensA = new Set(a.split(' ').filter((t) => t.length > 2))
+  const tokensB = b.split(' ').filter((t) => t.length > 2)
+  if (!tokensB.length) return 0
+  const hits = tokensB.filter((t) => tokensA.has(t)).length
+  const ratio = hits / tokensB.length
+  if (ratio >= 0.8 && hits >= 2) return 70
+  if (ratio >= 0.6 && hits >= 2) return 55
+  return 0
+}
 
+function matchMejorPorNombres<T extends { id: number; nombre: string }>(
+  items: T[],
+  candidatos: Array<string | null | undefined>,
+): T | undefined {
+  let best: { item: T; score: number } | undefined
+  for (const candidato of candidatos) {
+    if (!candidato?.trim()) continue
+    for (const item of items) {
+      const score = scoreMatch(item.nombre, candidato)
+      if (score <= 0) continue
+      if (!best || score > best.score) best = { item, score }
+    }
+  }
+  // Evitar matches flojos (ej. "Centro" → algo al azar)
+  if (!best || best.score < 55) return undefined
+  return best.item
+}
 
 export async function buscarIdsUbigeoPorNombre(params: {
   idPais: number
   departamento?: string | null
   provincia?: string | null
+  provincias?: Array<string | null | undefined>
   distrito?: string | null
+  distritos?: Array<string | null | undefined>
 }): Promise<UbigeoMatchResult> {
   const resultado: UbigeoMatchResult = {}
+  const provinciasCandidatas = [
+    ...(params.provincias ?? []),
+    params.provincia,
+    // En Perú (Callao) la provincia puede llamarse igual que el departamento
+    params.departamento,
+  ]
+  const distritosCandidatos = [...(params.distritos ?? []), params.distrito]
 
   if (!params.departamento) return resultado
 
   const departamentos = await ubigeoService.departamentos(params.idPais)
-  const departamento = departamentos.find(
-    (item) => normalizar(item.nombre) === normalizar(params.departamento as string),
-  )
+  const departamento = matchMejorPorNombres(departamentos, [params.departamento])
   if (!departamento) return resultado
   resultado.idDepartamento = departamento.id
 
-  if (!params.provincia) return resultado
-
   const provincias = await ubigeoService.provincias(departamento.id)
-  const provincia = provincias.find(
-    (item) => normalizar(item.nombre) === normalizar(params.provincia as string),
-  )
-  if (!provincia) return resultado
-  resultado.idProvincia = provincia.id
+  const provincia = matchMejorPorNombres(provincias, provinciasCandidatas)
+  if (!provincia) {
+    // Si solo hay una provincia en el departamento, usarla
+    if (provincias.length === 1) {
+      resultado.idProvincia = provincias[0].id
+    } else {
+      return resultado
+    }
+  } else {
+    resultado.idProvincia = provincia.id
+  }
 
-  if (!params.distrito) return resultado
+  const idProvincia = resultado.idProvincia
+  if (!idProvincia) return resultado
 
-  const distritos = await ubigeoService.distritos(provincia.id)
-  const distrito = distritos.find(
-    (item) => normalizar(item.nombre) === normalizar(params.distrito as string),
-  )
+  const distritos = await ubigeoService.distritos(idProvincia)
+  const distrito = matchMejorPorNombres(distritos, distritosCandidatos)
   if (distrito) resultado.idDistrito = distrito.id
 
   return resultado

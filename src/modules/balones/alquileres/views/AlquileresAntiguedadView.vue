@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb
       v-if="!embedded"
-      page-title="Antigüedad de alquileres"
+      page-title="Días de atraso"
       :items="breadcrumbItems"
     />
 
@@ -220,7 +220,7 @@ const canDevolver = computed(
 const breadcrumbItems = computed(() => [
   ...balonesBreadcrumbItems('Alquileres').slice(0, 1),
   { label: 'Alquileres', to: '/admin/balones/alquileres' },
-  { label: 'Antigüedad' },
+  { label: 'Días de atraso' },
 ])
 
 const isLoading = computed(() => query.isFetching.value)
@@ -318,7 +318,7 @@ const columns = computed<TableColumn<AlquilerAntiguedadItem>[]>(() => [
   { key: 'nombre_planta', label: 'Planta' },
   { key: 'ph', label: 'Próx. P.H.' },
   { key: 'fecha_inicio_alquiler', label: 'Desde', cellClass: 'whitespace-nowrap' },
-  { key: 'dias_en_alquiler', label: 'Días', cellClass: 'whitespace-nowrap' },
+  { key: 'dias_en_alquiler', label: 'Días de atraso', cellClass: 'whitespace-nowrap' },
   { key: 'rango_antiguedad', label: 'Alerta', cellClass: 'whitespace-nowrap' },
 ])
 
@@ -470,8 +470,8 @@ watch([pagina, limite], () => {
 const exportExcelFile = async () => {
   try {
     await downloadExcel({
-      filename: `alquileres-antiguedad-${filters.value.rangoDias || 'todos'}`,
-      sheetName: 'Antigüedad',
+      filename: `alquileres-dias-de-atraso-${filters.value.rangoDias || 'todos'}`,
+      sheetName: 'Días de atraso',
       rows: rows.value,
       columns: [
         { key: 'cliente', header: 'Cliente', width: 28, value: (r) => r.nombre_cliente },
@@ -502,7 +502,7 @@ const exportExcelFile = async () => {
           width: 12,
           value: (r) => r.fecha_inicio_alquiler?.slice(0, 10),
         },
-        { key: 'dias', header: 'Días', width: 8, value: (r) => r.dias_en_alquiler },
+        { key: 'dias', header: 'Días de atraso', width: 14, value: (r) => r.dias_en_alquiler },
         {
           key: 'rango',
           header: 'Rango',

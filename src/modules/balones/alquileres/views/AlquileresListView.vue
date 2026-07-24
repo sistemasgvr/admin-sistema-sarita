@@ -12,15 +12,14 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <button
+            <RouterLink
               v-if="canCreate"
-              type="button"
+              :to="{ name: 'admin-balones-alquileres-nuevo' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
-            </button>
+            </RouterLink>
           </template>
         </AppListToolbar>
       </template>
@@ -31,6 +30,18 @@
 
       <template #cell-nombre_cliente="{ value }">
         <span v-if="value">{{ value }}</span>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
+      <template #cell-nombre_producto_regulador="{ row }">
+        <template v-if="row.nombre_producto_regulador">
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{ row.nombre_producto_regulador }}
+          </p>
+          <p v-if="row.codigo_producto_regulador" class="text-theme-xs text-gray-500">
+            {{ row.codigo_producto_regulador }}
+          </p>
+        </template>
         <span v-else class="text-gray-400">—</span>
       </template>
 
@@ -88,13 +99,6 @@
       </template>
     </AppTable>
 
-    <AlquilerFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :alquiler-id="selectedAlquilerId"
-      @saved="onAlquilerSaved"
-    />
-
     <AlquilerDetailModal v-model="detailModalOpen" :alquiler-id="alquilerToViewId" />
 
     <AppModal
@@ -135,15 +139,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import AlquilerFormModal from '@/modules/balones/alquileres/components/AlquilerFormModal.vue'
 import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
 import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import type {
   Alquiler,
-  AlquilerFormMode,
   AlquilerListFilters,
 } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
@@ -178,6 +181,7 @@ withDefaults(
 )
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -200,10 +204,6 @@ const clientesQuery = useClientesQuery(clientesFilters)
 
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
-
-const formModalOpen = ref(false)
-const formMode = ref<AlquilerFormMode>('create')
-const selectedAlquilerId = ref<number | null>(null)
 
 const detailModalOpen = ref(false)
 const alquilerToViewId = ref<number | null>(null)
@@ -228,9 +228,10 @@ const rows = computed(() => alquileresQuery.data.value?.data ?? [])
 const columns: TableColumn[] = [
   { key: 'numero_alquiler', label: 'Número' },
   { key: 'nombre_cliente', label: 'Cliente' },
+  { key: 'nombre_producto_regulador', label: 'Regulador' },
   { key: 'nombre_almacen', label: 'Almacén' },
   { key: 'vigencia', label: 'Inicio / Fin' },
-  { key: 'tarifa_diaria', label: 'Tarifa/día' },
+  { key: 'tarifa_diaria', label: 'Tarifa' },
   { key: 'nombre_estado', label: 'Estado' },
   { key: 'total_detalles', label: 'Cilindros' },
 ]
@@ -306,16 +307,11 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedAlquilerId.value = null
-  formModalOpen.value = true
-}
-
-const openEditModal = (row: Alquiler) => {
-  formMode.value = 'edit'
-  selectedAlquilerId.value = row.id
-  formModalOpen.value = true
+const goToEdit = (row: Alquiler) => {
+  router.push({
+    name: 'admin-balones-alquileres-editar',
+    params: { id: String(row.id) },
+  })
 }
 
 const openDetailModal = (row: Alquiler) => {
@@ -358,12 +354,8 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Alquiler) {
-  if (key === 'edit') openEditModal(row)
+  if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
-}
-
-const onAlquilerSaved = () => {
-  alquileresQuery.refetch()
 }
 
 const confirmDelete = async () => {

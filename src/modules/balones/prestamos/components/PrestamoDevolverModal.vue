@@ -11,7 +11,7 @@
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ detalle?.codigo_balon || (detalle?.id_balon ? `#${detalle.id_balon}` : 'sin código') }}
         </span>
-        al almacén (movimiento de entrada por devolución) y saldrá del pendiente de antigüedad.
+        al almacén (movimiento de entrada por devolución) y saldrá del pendiente de días en préstamo.
       </p>
 
       <AppInput
@@ -41,15 +41,25 @@
       </button>
     </template>
   </AppModal>
+
+  <GarantiaDevolverModal
+    v-model="garantiaModalOpen"
+    :id-cliente="detalle?.id_cliente"
+    :id-prestamo="detalle?.id_prestamo"
+    :id-garantia="garantiaPendienteId"
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import GarantiaDevolverModal from '@/modules/balones/garantias/components/GarantiaDevolverModal.vue'
+import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import { useDevolverPrestamoDetalleMutation } from '@/modules/balones/prestamos/composables/usePrestamoDetalleMutations'
 import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal } from '@/shared/components'
-import { toastWarning } from '@/shared/composables/useToast'
+import { toastInfo, toastWarning } from '@/shared/composables/useToast'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 
 const props = defineProps<{
   detalle?: PrestamoDetalle | null
@@ -64,6 +74,8 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const devolverMutation = useDevolverPrestamoDetalleMutation()
 const fechaDevolucion = ref(new Date().toISOString().slice(0, 10))
+const garantiaModalOpen = ref(false)
+const garantiaPendienteId = ref<number | null>(null)
 
 watch(
   () => [open.value, props.detalle?.id] as const,
@@ -73,6 +85,31 @@ watch(
     }
   },
 )
+
+async function offerGarantiaDevolucion(detalle: PrestamoDetalle) {
+  if (!authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR)) return
+  if (!detalle.id_prestamo && !detalle.id_cliente) return
+
+  try {
+    const result = await garantiasService.listar({
+      idPrestamo: detalle.id_prestamo || undefined,
+      idCliente: detalle.id_prestamo ? undefined : detalle.id_cliente || undefined,
+      pagina: 1,
+      limite: 20,
+    })
+    const conSaldo = (result.data ?? []).filter((g) => Number(g.monto_saldo) > 0)
+    if (conSaldo.length === 0) return
+
+    const primera = conSaldo[0]
+    garantiaPendienteId.value = conSaldo.length === 1 ? primera.id : null
+    toastInfo(
+      `Hay garantía con saldo S/ ${Number(primera.monto_saldo).toFixed(2)}. Puedes devolverla ahora.`,
+    )
+    garantiaModalOpen.value = true
+  } catch {
+    // no bloquear devolución física si falla la consulta de garantía
+  }
+}
 
 async function confirmDevolver() {
   const detalle = props.detalle
@@ -93,6 +130,7 @@ async function confirmDevolver() {
     })
     open.value = false
     emit('saved')
+    await offerGarantiaDevolucion(detalle)
   } catch {
     // toast en mutation
   }

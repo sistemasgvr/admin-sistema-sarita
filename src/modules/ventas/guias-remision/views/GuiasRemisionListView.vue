@@ -76,11 +76,6 @@
       </template>
     </AppTable>
 
-    <GuiaRemisionFormModal
-      v-model="formModalOpen"
-      :guia-id="guiaToEditId"
-      @saved="onGuiaSaved"
-    />
     <GuiaRemisionDetailModal v-model="detailModalOpen" :guia-id="guiaToViewId" />
 
     <AppModal
@@ -120,13 +115,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import GuiaRemisionDetailModal from '@/modules/ventas/guias-remision/components/GuiaRemisionDetailModal.vue'
-import GuiaRemisionFormModal from '@/modules/ventas/guias-remision/components/GuiaRemisionFormModal.vue'
 import {
   useConsultarEstadoGuiaRemisionMutation,
   useDeleteGuiaRemisionMutation,
@@ -164,6 +159,7 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const breadcrumbItems = ventasBreadcrumbItems('Guías de remisión')
+const router = useRouter()
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -186,10 +182,8 @@ const deleteMutation = useDeleteGuiaRemisionMutation()
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
 
-const formModalOpen = ref(false)
 const detailModalOpen = ref(false)
 const guiaToViewId = ref<number | null>(null)
-const guiaToEditId = ref<number | null>(null)
 const deleteModalOpen = ref(false)
 const guiaToDelete = ref<GuiaRemisionListItem | null>(null)
 const pdfBusyId = ref<number | null>(null)
@@ -290,7 +284,10 @@ watch([pagina, limite], () => {
 syncFilters()
 
 function puedeEmitir(row: GuiaRemisionListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO'
+  // ACEPTADO: ya emitida. Con ticket + PENDIENTE: forzar consultar (evitar reenvío).
+  if (row.nombre_estado_sunat === 'ACEPTADO') return false
+  if (row.nombre_estado_sunat === 'PENDIENTE' && row.ticket_sunat) return false
+  return true
 }
 
 function puedeEditar(row: GuiaRemisionListItem) {
@@ -302,7 +299,7 @@ function puedeEliminar(row: GuiaRemisionListItem) {
 }
 
 function puedeConsultar(row: GuiaRemisionListItem) {
-  return row.nombre_estado_sunat === 'PENDIENTE' || row.nombre_estado_sunat === 'ACEPTADO'
+  return Boolean(row.ticket_sunat)
 }
 
 function actionItemsForRow(row: GuiaRemisionListItem): ActionMenuItem[] {
@@ -367,22 +364,18 @@ function onActionSelect(key: string, row: GuiaRemisionListItem) {
 }
 
 function openCreate() {
-  guiaToEditId.value = null
-  formModalOpen.value = true
+  void router.push({ name: 'admin-ventas-guias-remision-nueva' })
 }
 
 function openEdit(row: GuiaRemisionListItem) {
-  guiaToEditId.value = row.id
-  formModalOpen.value = true
+  void router.push({
+    name: 'admin-ventas-guias-remision-editar',
+    params: { id: String(row.id) },
+  })
 }
 
 function openDetail(row: GuiaRemisionListItem) {
   guiaToViewId.value = row.id
-  detailModalOpen.value = true
-}
-
-function onGuiaSaved(id: number) {
-  guiaToViewId.value = id
   detailModalOpen.value = true
 }
 

@@ -195,6 +195,7 @@ interface ChoferFormModalProps {
   mode: ChoferFormMode
   chofer?: Chofer | null
   defaultClienteId?: number | null
+  defaultClienteLabel?: string | null
 }
 
 const props = defineProps<ChoferFormModalProps>()
@@ -202,7 +203,7 @@ const props = defineProps<ChoferFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [chofer?: Chofer]
 }>()
 
 const authStore = useAuthStore()
@@ -247,15 +248,18 @@ const categoriaLicenciaOptions = computed(() => toSelectOptions(categoriaLicenci
 // "cliente_*" que ya vienen en el registro (evita una petición extra).
 const clienteLabelActual = computed(() => {
   const c = choferActual.value
-  if (!c) return null
-  if (c.cliente_razon_social) return c.cliente_razon_social
+  if (c) {
+    if (c.cliente_razon_social) return c.cliente_razon_social
 
-  const nombreCompleto = [c.cliente_nombres, c.cliente_apellido_paterno, c.cliente_apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
+    const nombreCompleto = [c.cliente_nombres, c.cliente_apellido_paterno, c.cliente_apellido_materno]
+      .filter(Boolean)
+      .join(' ')
+      .trim()
 
-  return nombreCompleto || c.cliente_numero_documento || null
+    return nombreCompleto || c.cliente_numero_documento || null
+  }
+
+  return props.defaultClienteLabel ?? null
 })
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
@@ -350,10 +354,11 @@ const onSubmit = handleSubmit(async (values) => {
       fechaVencimiento: values.fechaVencimiento || undefined,
     }
 
+    let guardado: Chofer | undefined
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      guardado = await createMutation.mutateAsync(payload)
     } else if (props.chofer) {
-      await updateMutation.mutateAsync({
+      guardado = await updateMutation.mutateAsync({
         id: props.chofer.id,
         payload,
       })
@@ -361,7 +366,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved')
+    emit('saved', guardado)
     open.value = false
   } catch {
     // toast en mutation

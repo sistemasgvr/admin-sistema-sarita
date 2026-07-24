@@ -4,6 +4,7 @@
     :hint="hint"
     :error="error"
     :required="required"
+    :optional="optional"
     :disabled="disabled"
     :id="id"
   >
@@ -58,6 +59,7 @@ interface AppInputProps {
   disabled?: boolean
   readonly?: boolean
   required?: boolean
+  optional?: boolean
   autocomplete?: string
   min?: string | number
   max?: string | number

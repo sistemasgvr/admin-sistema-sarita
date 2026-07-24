@@ -103,7 +103,7 @@ const props = defineProps<AlmacenFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [almacen: Almacen]
 }>()
 
 const createMutation = useCreateAlmacenMutation()
@@ -177,17 +177,18 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      const created = await createMutation.mutateAsync(payload)
+      emit('saved', created)
     } else if (props.almacen) {
-      await updateMutation.mutateAsync({
+      const updated = await updateMutation.mutateAsync({
         id: props.almacen.id,
         payload,
       })
+      emit('saved', updated)
     } else {
       return
     }
 
-    emit('saved')
     open.value = false
   } catch {
     // toast en mutation

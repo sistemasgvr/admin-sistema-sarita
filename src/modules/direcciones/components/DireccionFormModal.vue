@@ -24,14 +24,15 @@
         :clearable="false"
         :model-label="clienteLabelActual"
         v-bind="idClienteAttrs"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || isClienteLocked"
         :error="errors.idCliente"
         :search-fn="searchClientes"
       />
       <p
-        v-if="isClienteLocked"
+        v-if="isClienteLocked && mode === 'create'"
         class="-mt-2 text-theme-xs text-gray-500 dark:text-gray-400"
       >
+        Cliente preseleccionado; no es necesario buscarlo de nuevo.
       </p>
 
       <div class="grid gap-3 sm:grid-cols-2">
@@ -126,7 +127,11 @@
           :draggable-marker="true"
           :readonly="false"
           :resolve-google-maps-link="resolverCoordenadasDesdeLink"
+          @location-confirmed="onMapLocationConfirmed"
         />
+        <p v-if="ubicacionHint" class="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+          {{ ubicacionHint }}
+        </p>
       </div>
 
       <AppCheckbox
@@ -168,7 +173,13 @@ import {
   useProvinciasQuery,
   useDistritosQuery,
 } from '@/modules/catalogos/composables/useUbigeoQueries'
+import { buscarIdsUbigeoPorNombre } from '@/modules/catalogos/services/ubigeo.service'
+import { extractUbigeoDesdeNominatim } from '@/modules/catalogos/utils/ubigeoFromNominatim'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import type {
+  MapaLocationAddress,
+  MapaLocationConfirmed,
+} from '@/shared/components/map/MapaLeaflet.vue'
 import {
   useCreateDireccionMutation,
   useUpdateDireccionMutation,
@@ -192,6 +203,7 @@ interface DireccionFormModalProps {
   mode: DireccionFormMode
   direccion?: Direccion | null
   defaultClienteId?: number | null
+  defaultClienteLabel?: string | null
   lockCliente?: boolean
 }
 
@@ -230,17 +242,24 @@ const searchClientes = async (query: string): Promise<SelectOption[]> => {
   }))
 }
 
+const clienteLabelFallback = ref<string | null>(null)
+const clienteLabelFallbackId = ref<number | null>(null)
+const ubicacionHint = ref('')
+
 const clienteLabelActual = computed(() => {
   const d = direccionActual.value
-  if (!d) return null
-  if (d.cliente_razon_social) return d.cliente_razon_social
+  if (d) {
+    if (d.cliente_razon_social) return d.cliente_razon_social
 
-  const nombreCompleto = [d.cliente_nombres, d.cliente_apellido_paterno, d.cliente_apellido_materno]
-    .filter(Boolean)
-    .join(' ')
-    .trim()
+    const nombreCompleto = [d.cliente_nombres, d.cliente_apellido_paterno, d.cliente_apellido_materno]
+      .filter(Boolean)
+      .join(' ')
+      .trim()
 
-  return nombreCompleto || d.cliente_numero_documento || null
+    return nombreCompleto || d.cliente_numero_documento || null
+  }
+
+  return props.defaultClienteLabel ?? clienteLabelFallback.value
 })
 
 const isClienteLocked = computed(
@@ -248,6 +267,116 @@ const isClienteLocked = computed(
     props.mode === 'edit' ||
     (props.mode === 'create' && props.lockCliente && !!props.defaultClienteId),
 )
+
+async function ensureClienteLabel() {
+  const id = props.defaultClienteId
+  if (!id) {
+    clienteLabelFallback.value = null
+    clienteLabelFallbackId.value = null
+    return
+  }
+  if (props.defaultClienteLabel?.trim()) {
+    clienteLabelFallback.value = props.defaultClienteLabel.trim()
+    clienteLabelFallbackId.value = id
+    return
+  }
+  if (clienteLabelFallbackId.value === id && clienteLabelFallback.value) return
+
+  try {
+    const cliente = await clientesService.obtenerPorId(id)
+    clienteLabelFallback.value = getClienteNombre(cliente)
+    clienteLabelFallbackId.value = id
+  } catch {
+    clienteLabelFallback.value = null
+    clienteLabelFallbackId.value = null
+  }
+}
+
+function buildDireccionTexto(address: MapaLocationAddress | null | undefined, fallback?: string | null) {
+  if (!address) return (fallback ?? '').trim()
+  const partes = [
+    [address.road, address.house_number].filter(Boolean).join(' ').trim(),
+    address.suburb || address.neighbourhood,
+  ].filter(Boolean)
+  return partes.join(', ') || (fallback ?? '').trim()
+}
+
+async function waitForOptions(
+  getOptions: () => Array<{ value: string | number }>,
+  id: number,
+  attempts = 20,
+) {
+  for (let i = 0; i < attempts; i += 1) {
+    if (getOptions().some((option) => Number(option.value) === id)) return true
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  return false
+}
+
+async function onMapLocationConfirmed(location: MapaLocationConfirmed) {
+  ubicacionHint.value = ''
+  const address = location.address
+  const textoDireccion = buildDireccionTexto(address, location.displayName)
+  if (textoDireccion && !String(direccion.value ?? '').trim()) {
+    direccion.value = textoDireccion
+  }
+
+  const extraido = extractUbigeoDesdeNominatim(address, location.displayName)
+  const idPaisPeru = Number(idPaisUI.value || paisesQuery.data.value?.[0]?.id || 1)
+
+  isSyncingUbigeo = true
+  try {
+    // Limpiar siempre: si no hay match, el usuario completa a mano (sin valores viejos).
+    idPaisUI.value = idPaisPeru
+    idDepartamentoUI.value = ''
+    idProvinciaUI.value = ''
+    idDistrito.value = undefined
+
+    if (!extraido.departamento && !extraido.provincias.length && !extraido.distritos.length) {
+      ubicacionHint.value =
+        'Ubicación marcada. Completa departamento, provincia y distrito manualmente.'
+      return
+    }
+
+    const coincidencias = await buscarIdsUbigeoPorNombre({
+      idPais: idPaisPeru,
+      departamento: extraido.departamento,
+      provincias: extraido.provincias,
+      distritos: extraido.distritos,
+    })
+
+    if (coincidencias.idDepartamento) {
+      idDepartamentoUI.value = coincidencias.idDepartamento
+      await waitForOptions(() => departamentosOptions.value, coincidencias.idDepartamento)
+    }
+    if (coincidencias.idProvincia) {
+      idProvinciaUI.value = coincidencias.idProvincia
+      await waitForOptions(() => provinciasOptions.value, coincidencias.idProvincia)
+    }
+    if (coincidencias.idDistrito) {
+      idDistrito.value = coincidencias.idDistrito
+      await waitForOptions(() => distritosOptions.value, coincidencias.idDistrito)
+    }
+
+    const aplicados = [
+      coincidencias.idDepartamento ? 'departamento' : null,
+      coincidencias.idProvincia ? 'provincia' : null,
+      coincidencias.idDistrito ? 'distrito' : null,
+    ].filter(Boolean)
+
+    if (aplicados.length === 3) {
+      ubicacionHint.value = 'Ubigeo cargado desde el mapa. Puedes ajustarlo si hace falta.'
+    } else if (aplicados.length > 0) {
+      ubicacionHint.value = `Se cargó ${aplicados.join(', ')}. Completa el resto manualmente.`
+    } else {
+      ubicacionHint.value =
+        'No hubo coincidencia de ubigeo. Selecciona departamento, provincia y distrito manualmente.'
+    }
+  } finally {
+    await nextTick()
+    isSyncingUbigeo = false
+  }
+}
 
 const resolverCoordenadasDesdeLink = async (link: string) => {
   try {
@@ -327,6 +456,8 @@ watch(idProvinciaUI, () => {
 
 const syncFormValues = async () => {
   const d = direccionActual.value
+  ubicacionHint.value = ''
+  await ensureClienteLabel()
 
   resetForm({
     values: {

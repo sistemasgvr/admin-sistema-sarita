@@ -20,6 +20,12 @@ export interface Alquiler {
   nombre_cliente_comprobante_venta?: string | null
   total_comprobante_venta?: number | null
   comprobante_venta?: string | null
+  /** Producto/servicio del regulador (cobro recurrente medicinal). */
+  id_producto_regulador?: number | null
+  codigo_producto_regulador?: string | null
+  nombre_producto_regulador?: string | null
+  /** Días del periodo de renovación (default 14). */
+  dias_periodo?: number | null
   total_detalles?: number | null
   puede_eliminar?: boolean
   estado: number
@@ -49,6 +55,7 @@ export interface CreateAlquilerPayload {
   idEstado?: number
   observacion?: string
   idComprobanteVenta?: number
+  idProductoRegulador?: number
 }
 
 export interface UpdateAlquilerPayload {
@@ -64,6 +71,7 @@ export interface UpdateAlquilerPayload {
   idEstado?: number
   observacion?: string
   idComprobanteVenta?: number
+  idProductoRegulador?: number
 }
 
 export interface DeleteAlquilerResponse {
