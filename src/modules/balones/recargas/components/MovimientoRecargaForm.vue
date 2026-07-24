@@ -26,7 +26,11 @@
           </p>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Salida de almacén" :icon="ICONS.warehouse">
+        <DetailSectionCard
+          title="Salida de almacén"
+          :icon="ICONS.warehouse"
+          help="Envío del cilindro propio a planta externa. Completa GRE, factura de compra, lote y P.H. al retorno."
+        >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppInput
               v-model="fechaSalidaAlmacen"

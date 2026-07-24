@@ -36,7 +36,11 @@
           </p>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Datos del servicio" :icon="ICONS.construction">
+        <DetailSectionCard
+          title="Datos del servicio"
+          :icon="ICONS.construction"
+          help="Ingreso a taller: cilindro de inventario o servicio al que trae el cliente. Para cerrar use Finalizar en el listado."
+        >
           <div class="space-y-4">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div

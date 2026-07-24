@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
-    <div class="mb-5">
+    <div class="mb-5 flex flex-wrap items-center gap-2">
       <RouterLink
         :to="{ name: 'admin-productos-articulos' }"
         class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-800 dark:text-gray-400 dark:hover:text-white/90"
@@ -10,6 +10,7 @@
         <AppIcon :name="ICONS.chevronLeft" :size="16" />
         Volver al listado
       </RouterLink>
+      <AppHelpTip :text="pageHelpText" />
     </div>
 
     <ProductoForm
@@ -29,6 +30,7 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ProductoForm from '@/modules/productos/articulos/components/ProductoForm.vue'
 import { productosArticulosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const route = useRoute()
@@ -41,6 +43,11 @@ const productoId = computed(() => {
 })
 
 const pageTitle = computed(() => (isEdit.value ? 'Editar producto' : 'Nuevo producto'))
+const pageHelpText = computed(() =>
+  isEdit.value
+    ? 'Producto = físico/gas; servicio = flete, mantenimiento o regulador alquilable. El tipo define filtros en POS y alquileres.'
+    : 'Elige primero producto o servicio. Así el catálogo se filtra bien en POS, alquileres y garantías.',
+)
 const breadcrumbItems = computed(() => productosArticulosBreadcrumbItems(pageTitle.value))
 
 const goToList = () => {

@@ -32,9 +32,9 @@
             placeholder="Selecciona cilindro"
             required
             :disabled="isSubmitting"
+            :error="errors.idBalon"
             empty-text="Sin cilindros. Registra uno nuevo."
           />
-          <p v-if="errors.idBalon" class="mt-1 text-sm text-error-500">{{ errors.idBalon }}</p>
         </DetailSectionCard>
       </FormCardsLayout>
     </form>

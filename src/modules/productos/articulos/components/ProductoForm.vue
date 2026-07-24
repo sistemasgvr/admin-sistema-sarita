@@ -21,13 +21,11 @@
     @submit="onSubmit"
   >
     <FormCardsLayout>
-      <DetailSectionCard title="Tipo de ítem" :icon="ICONS.layers">
-        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Elige primero si registras un <strong>producto</strong> (físico / gas) o un
-          <strong>servicio</strong> (flete, mantenimiento, alquiler de regulador). Así el
-          catálogo se filtra bien en POS y alquileres.
-        </p>
-
+      <DetailSectionCard
+        title="Tipo de ítem"
+        :icon="ICONS.layers"
+        help="Producto = físico/gas (stock, ventas, garantías). Servicio = flete, mantenimiento o regulador; marca Alquilable solo si se alquila."
+      >
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             type="button"

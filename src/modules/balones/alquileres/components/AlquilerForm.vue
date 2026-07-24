@@ -30,7 +30,8 @@
               <AppSelect
                 v-model="idEstado"
                 label="Estado"
-                placeholder="Opcional"
+                placeholder="Selecciona estado"
+                optional
                 v-bind="idEstadoAttrs"
                 :disabled="isSubmitting || estadosAlquilerQuery.isFetching.value"
                 :options="estadoAlquilerOptions"
@@ -68,6 +69,7 @@
                 v-model="fechaFinPactada"
                 label="Fin pactado"
                 type="date"
+                optional
                 v-bind="fechaFinPactadaAttrs"
                 :disabled="isSubmitting"
               />
@@ -76,6 +78,7 @@
                 v-model="fechaFinReal"
                 label="Fin real"
                 type="date"
+                optional
                 v-bind="fechaFinRealAttrs"
                 :disabled="isSubmitting"
               />
@@ -131,7 +134,8 @@
                 type="number"
                 min="1"
                 step="1"
-                placeholder="Opcional"
+                optional
+                placeholder="Ej. 1250"
                 v-bind="idComprobanteVentaAttrs"
                 :disabled="isSubmitting"
                 class="sm:col-span-2"
@@ -144,6 +148,7 @@
               v-model="observacion"
               label="Observación"
               placeholder="Notas adicionales del alquiler"
+              optional
               :rows="3"
               v-bind="observacionAttrs"
               :disabled="isSubmitting"
@@ -182,6 +187,7 @@
         title="Cilindros en alquiler"
         :icon="ICONS.boxes"
         :full-width="true"
+        help="Agrega los cilindros del contrato. Cada línea puede devolverse por separado."
       >
         <template #actions>
           <button
@@ -235,11 +241,9 @@
         title="Cilindros en alquiler"
         :icon="ICONS.boxes"
         :full-width="true"
+        help="Paso 1: completa la cabecera y pulsa Crear alquiler. Luego podrás agregar los cilindros en esta misma pantalla."
       >
-        <p class="text-center text-sm text-gray-500 dark:text-gray-400">
-          Paso 1: completa la cabecera y pulsa <strong>Crear alquiler</strong>.
-          Luego podrás agregar los cilindros en esta misma pantalla.
-        </p>
+        <p class="text-center text-sm text-gray-400 dark:text-gray-500">Sin cilindros aún</p>
       </DetailSectionCard>
     </div>
 

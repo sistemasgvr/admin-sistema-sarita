@@ -1,7 +1,7 @@
 <template>
   <AppSelectWithCreate
     :can-create="canCreate"
-    create-title="Nuevo producto"
+    :create-title="createTitle"
     :disabled="disabled"
     @create="modalOpen = true"
   >
@@ -88,6 +88,9 @@ const modalOpen = ref(false)
 const createdOption = ref<SelectOption | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_CREAR))
+const createTitle = computed(() =>
+  props.esServicio ? 'Nuevo servicio' : 'Nuevo producto',
+)
 
 const productosFilters = ref({
   pagina: 1,

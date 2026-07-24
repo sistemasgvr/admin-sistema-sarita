@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
-    <div class="mb-5 space-y-2">
+    <div class="mb-5 flex flex-wrap items-center gap-2">
       <RouterLink
         :to="{ name: 'admin-balones-prestamos' }"
         class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-800 dark:text-gray-400 dark:hover:text-white/90"
@@ -10,10 +10,7 @@
         <AppIcon :name="ICONS.chevronLeft" :size="16" />
         Volver al listado
       </RouterLink>
-      <p v-if="!isEdit" class="text-sm text-gray-500 dark:text-gray-400">
-        Primero se registra la cabecera; al crear, en esta misma pantalla podrás agregar los
-        cilindros.
-      </p>
+      <AppHelpTip :text="pageHelpText" />
     </div>
 
     <PrestamoForm
@@ -37,6 +34,7 @@ import PrestamoForm, {
 import type { PrestamoFormMode } from '@/modules/balones/prestamos/interfaces/prestamo.interface'
 import { balonesPrestamosBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const route = useRoute()
@@ -51,6 +49,11 @@ const prestamoId = computed(() => {
 })
 
 const pageTitle = computed(() => (isEdit.value ? 'Editar préstamo' : 'Nuevo préstamo'))
+const pageHelpText = computed(() =>
+  isEdit.value
+    ? 'Puedes actualizar la cabecera y agregar o devolver cilindros en esta misma pantalla.'
+    : 'Primero se registra la cabecera; al crear, en esta misma pantalla podrás agregar los cilindros.',
+)
 const breadcrumbItems = computed(() => balonesPrestamosBreadcrumbItems(pageTitle.value))
 
 const goToList = () => {

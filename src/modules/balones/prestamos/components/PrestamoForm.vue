@@ -15,7 +15,11 @@
         @submit="onSubmit"
       >
         <FormCardsLayout>
-          <DetailSectionCard title="Datos generales" :icon="ICONS.clipboardList">
+          <DetailSectionCard
+            title="Datos generales"
+            :icon="ICONS.clipboardList"
+            help="Industrial: préstamo de envase. Los cilindros se agregan después de crear la cabecera."
+          >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <AppSelect
                 v-model="idTipoPrestamo"
@@ -179,6 +183,7 @@
         title="Cilindros del préstamo"
         :icon="ICONS.boxes"
         :full-width="true"
+        help="Agrega los cilindros del préstamo. Cada línea puede devolverse por separado."
       >
         <template #actions>
           <button
@@ -242,11 +247,9 @@
         title="Cilindros del préstamo"
         :icon="ICONS.boxes"
         :full-width="true"
+        help="Paso 1: completa la cabecera y pulsa Crear préstamo. Luego podrás agregar los cilindros en esta misma pantalla."
       >
-        <p class="text-center text-sm text-gray-500 dark:text-gray-400">
-          Paso 1: completa la cabecera y pulsa <strong>Crear préstamo</strong>.
-          Luego podrás agregar los cilindros en esta misma pantalla.
-        </p>
+        <p class="text-center text-sm text-gray-400 dark:text-gray-500">Sin cilindros aún</p>
       </DetailSectionCard>
     </div>
 

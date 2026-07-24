@@ -11,7 +11,14 @@
       "
     >
       {{ label }}
-      <span v-if="required" class="text-error-500">*</span>
+      <span v-if="required" class="text-error-500" aria-hidden="true">*</span>
+      <span v-if="required" class="sr-only"> (obligatorio)</span>
+      <span
+        v-else-if="optional"
+        class="ml-1 font-normal text-gray-400 dark:text-gray-500"
+      >
+        (opcional)
+      </span>
     </label>
 
     <slot :id="fieldId" />
@@ -33,6 +40,8 @@ interface AppFormFieldProps {
   hint?: string
   error?: string
   required?: boolean
+  /** Marks non-required fields explicitly (NN/g: reduce cognitive load). */
+  optional?: boolean
   disabled?: boolean
   id?: string
 }
