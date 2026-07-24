@@ -5,15 +5,14 @@
     subtitle="El cliente no tiene RUC o DNI asignado"
     size="sm"
   >
-    <div class="flex gap-3">
-      <div
-        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-50 text-warning-500 dark:bg-warning-500/15"
-      >
-        <AppIcon :name="ICONS.alertTriangle" :size="20" />
-      </div>
-
-      <div class="space-y-3 pt-0.5">
-        <p class="text-sm text-gray-600 dark:text-gray-400">
+    <div class="space-y-3">
+      <div class="flex items-start gap-3">
+        <div
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-50 text-warning-500 dark:bg-warning-500/15"
+        >
+          <AppIcon :name="ICONS.alertTriangle" :size="20" />
+        </div>
+        <p class="pt-0.5 text-sm text-gray-600 dark:text-gray-400">
           <template v-if="nombreCliente">
             El cliente
             <span class="font-medium text-gray-800 dark:text-white/90">{{ nombreCliente }}</span>
@@ -23,36 +22,36 @@
             El cliente seleccionado no tiene número de documento (RUC o DNI) asignado.
           </template>
         </p>
-
-        <div
-          v-if="allowClientesVarios"
-          class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm dark:border-gray-800 dark:bg-white/5"
-        >
-          <p class="text-gray-500 dark:text-gray-400">
-            Este comprobante se {{ accion }} a SUNAT usando:
-          </p>
-          <div class="mt-1.5 flex items-center justify-between gap-2">
-            <span class="font-medium text-gray-800 dark:text-white/90">Clientes Varios</span>
-            <span
-              class="rounded-md bg-gray-200 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-white/10 dark:text-gray-300"
-            >
-              {{ CLIENTES_VARIOS_DOCUMENTO }}
-            </span>
-          </div>
-        </div>
-
-        <div
-          v-else
-          class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-sm text-warning-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-200"
-        >
-          La factura exige un cliente con RUC (11 dígitos). No se puede usar Clientes Varios.
-          Edita el cliente o elige otro con RUC.
-        </div>
-
-        <p v-if="allowClientesVarios" class="text-sm text-gray-600 dark:text-gray-400">
-          Puedes editar el cliente para asignarle un documento y luego continuar.
-        </p>
       </div>
+
+      <div
+        v-if="allowClientesVarios"
+        class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm dark:border-gray-800 dark:bg-white/5"
+      >
+        <p class="text-gray-500 dark:text-gray-400">
+          Este comprobante se {{ accion }} a SUNAT usando:
+        </p>
+        <div class="mt-1.5 flex items-center justify-between gap-2">
+          <span class="font-medium text-gray-800 dark:text-white/90">Clientes Varios</span>
+          <span
+            class="rounded-md bg-gray-200 px-2 py-0.5 font-mono text-xs text-gray-700 dark:bg-white/10 dark:text-gray-300"
+          >
+            {{ CLIENTES_VARIOS_DOCUMENTO }}
+          </span>
+        </div>
+      </div>
+
+      <div
+        v-else
+        class="rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-sm text-warning-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-200"
+      >
+        La factura exige un cliente con RUC (11 dígitos). No se puede usar Clientes Varios.
+        Edita el cliente o elige otro con RUC.
+      </div>
+
+      <p v-if="allowClientesVarios" class="text-sm text-gray-600 dark:text-gray-400">
+        Puedes editar el cliente para asignarle un documento y luego continuar.
+      </p>
     </div>
 
     <template #footer>
