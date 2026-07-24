@@ -71,7 +71,7 @@ const activeTab = ref(resolveTab(route.query.tab))
 
 const tabs = computed<AppTabItem[]>(() => [
   { key: 'alquileres', label: 'Alquileres', icon: ICONS.boxes },
-  { key: 'antiguedad', label: 'Antigüedad', icon: ICONS.alertCircle },
+  { key: 'antiguedad', label: 'Días de atraso', icon: ICONS.alertCircle },
 ])
 
 watch(activeTab, (tab) => {

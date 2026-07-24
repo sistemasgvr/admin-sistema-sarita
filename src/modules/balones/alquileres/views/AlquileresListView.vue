@@ -34,6 +34,18 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
+      <template #cell-nombre_producto_regulador="{ row }">
+        <template v-if="row.nombre_producto_regulador">
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{ row.nombre_producto_regulador }}
+          </p>
+          <p v-if="row.codigo_producto_regulador" class="text-theme-xs text-gray-500">
+            {{ row.codigo_producto_regulador }}
+          </p>
+        </template>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
       <template #cell-nombre_almacen="{ value }">
         <span v-if="value">{{ value }}</span>
         <span v-else class="text-gray-400">—</span>
@@ -228,9 +240,10 @@ const rows = computed(() => alquileresQuery.data.value?.data ?? [])
 const columns: TableColumn[] = [
   { key: 'numero_alquiler', label: 'Número' },
   { key: 'nombre_cliente', label: 'Cliente' },
+  { key: 'nombre_producto_regulador', label: 'Regulador' },
   { key: 'nombre_almacen', label: 'Almacén' },
   { key: 'vigencia', label: 'Inicio / Fin' },
-  { key: 'tarifa_diaria', label: 'Tarifa/día' },
+  { key: 'tarifa_diaria', label: 'Tarifa' },
   { key: 'nombre_estado', label: 'Estado' },
   { key: 'total_detalles', label: 'Cilindros' },
 ]

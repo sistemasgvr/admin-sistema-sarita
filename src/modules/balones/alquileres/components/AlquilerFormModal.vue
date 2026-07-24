@@ -99,11 +99,27 @@
             </div>
           </DetailSectionCard>
 
-          <DetailSectionCard title="Cobro" :icon="ICONS.creditCard">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <DetailSectionCard
+            title="Regulador y cobro"
+            :icon="ICONS.creditCard"
+            help="En medicinal el contrato rastrea el regulador (producto alquilable). Los cilindros se agregan aparte en el detalle."
+          >
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <AppSelectSearch
+                v-model="idProductoRegulador"
+                v-model:search="reguladorBuscar"
+                label="Regulador (producto)"
+                placeholder="Selecciona servicio alquilable"
+                search-placeholder="Código o nombre..."
+                :options="reguladorOptions"
+                :loading="productosReguladorQuery.isLoading.value"
+                :disabled="isSubmitting"
+                class="sm:col-span-2"
+              />
+
               <AppInput
                 v-model="tarifaDiaria"
-                label="Tarifa diaria"
+                label="Tarifa periodo"
                 type="number"
                 min="0"
                 step="0.01"
@@ -134,6 +150,7 @@
                 placeholder="Opcional"
                 v-bind="idComprobanteVentaAttrs"
                 :disabled="isSubmitting"
+                class="sm:col-span-2"
               />
             </div>
           </DetailSectionCard>
@@ -299,6 +316,7 @@ import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaO
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import {
   useCreateAlquilerMutation,
   useUpdateAlquilerMutation,
@@ -315,7 +333,16 @@ import type {
   AlquilerDetalleListFilters,
 } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppActionMenu, AppBadge, AppInput, AppModal, AppSelect, AppTable, AppTextarea } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppInput,
+  AppModal,
+  AppSelect,
+  AppSelectSearch,
+  AppTable,
+  AppTextarea,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
@@ -481,6 +508,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idEstado: optionalSelectNumber(),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
       idComprobanteVenta: optionalNumber().min(1, 'ID inválido'),
+      idProductoRegulador: optionalSelectNumber(),
     }),
   ),
   initialValues: {
@@ -495,6 +523,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idEstado: '' as string | number,
     observacion: '',
     idComprobanteVenta: undefined as number | undefined,
+    idProductoRegulador: '' as string | number,
   },
 })
 
@@ -509,6 +538,34 @@ const [totalCobrado, totalCobradoAttrs] = defineField('totalCobrado')
 const [idEstado, idEstadoAttrs] = defineField('idEstado')
 const [observacion, observacionAttrs] = defineField('observacion')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
+const [idProductoRegulador] = defineField('idProductoRegulador')
+
+const reguladorBuscar = ref('')
+const productosReguladorFilters = ref({
+  pagina: 1,
+  limite: 100,
+  esServicio: true,
+  esAlquilable: true,
+})
+const productosReguladorQuery = useProductosQuery(productosReguladorFilters)
+const reguladorOptions = computed(() => {
+  const options = (productosReguladorQuery.data.value?.data ?? []).map((producto) => ({
+    value: producto.id,
+    label: `${producto.codigo} — ${producto.nombre}`,
+  }))
+  const data = alquilerQuery.data.value
+  if (
+    data?.id_producto_regulador &&
+    data.nombre_producto_regulador &&
+    !options.some((opt) => opt.value === data.id_producto_regulador)
+  ) {
+    options.unshift({
+      value: data.id_producto_regulador,
+      label: `${data.codigo_producto_regulador ? `${data.codigo_producto_regulador} — ` : ''}${data.nombre_producto_regulador}`,
+    })
+  }
+  return options
+})
 
 const toOptionalNumber = (value: string | number | undefined) =>
   value !== '' && value != null ? Number(value) : undefined
@@ -525,6 +582,7 @@ const buildPayloadFields = (values: {
   idEstado?: string | number
   observacion?: string
   idComprobanteVenta?: number
+  idProductoRegulador?: string | number
 }) => ({
   numeroAlquiler: values.numeroAlquiler || undefined,
   idCliente: toOptionalNumber(values.idCliente),
@@ -537,6 +595,7 @@ const buildPayloadFields = (values: {
   idEstado: toOptionalNumber(values.idEstado),
   observacion: values.observacion || undefined,
   idComprobanteVenta: values.idComprobanteVenta ? Number(values.idComprobanteVenta) : undefined,
+  idProductoRegulador: toOptionalNumber(values.idProductoRegulador),
 })
 
 const syncFormValues = () => {
@@ -554,6 +613,7 @@ const syncFormValues = () => {
       idEstado: data?.id_estado ?? '',
       observacion: data?.observacion ?? '',
       idComprobanteVenta: data?.id_comprobante_venta ?? undefined,
+      idProductoRegulador: data?.id_producto_regulador ?? '',
     },
   })
 }
@@ -572,6 +632,7 @@ const resetCreateForm = () => {
       idEstado: '',
       observacion: '',
       idComprobanteVenta: undefined,
+      idProductoRegulador: '',
     },
   })
 }

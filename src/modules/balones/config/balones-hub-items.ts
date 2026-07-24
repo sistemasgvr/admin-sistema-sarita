@@ -51,7 +51,7 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'prestamos',
     title: 'Préstamos',
-    description: 'Préstamos y control de antigüedad (30 / 90–180 / 180+ días).',
+    description: 'Flujo industrial: comodato de cilindros y control de días en préstamo (30 / 90–180 / 180+).',
     path: '/admin/balones/prestamos',
     icon: ICONS.users,
     permission: PermisoBanderas.PRESTAMOS_BALON_LISTAR,
@@ -60,7 +60,7 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'alquileres',
     title: 'Alquileres',
-    description: 'Alquiler de balones, devoluciones y control de antigüedad.',
+    description: 'Flujo medicinal: alquiler con tarifa, devoluciones y días de atraso.',
     path: '/admin/balones/alquileres',
     icon: ICONS.boxes,
     permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,

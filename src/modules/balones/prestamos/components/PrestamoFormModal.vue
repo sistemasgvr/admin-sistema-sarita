@@ -372,7 +372,7 @@ const props = defineProps<PrestamoFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [payload?: { id: number; idCliente?: number | null }]
 }>()
 
 const authStore = useAuthStore()
@@ -678,16 +678,19 @@ const onSubmit = handleSubmit(async (values) => {
         pagina: 1,
         limite: 100,
       }
-      emit('saved')
+      emit('saved', { id: created.id, idCliente: created.id_cliente ?? fields.idCliente })
     } else if (activePrestamoId.value) {
-      await updateMutation.mutateAsync({
+      const updated = await updateMutation.mutateAsync({
         id: activePrestamoId.value,
         payload: {
           idUsuarioAuditoria: currentUserId,
           ...fields,
         },
       })
-      emit('saved')
+      emit('saved', {
+        id: activePrestamoId.value,
+        idCliente: updated.id_cliente ?? fields.idCliente,
+      })
     } else {
       return
     }
@@ -721,7 +724,14 @@ const openDeleteDetalleModal = (row: PrestamoDetalle) => {
 const onDetalleSaved = () => {
   detallesQuery.refetch()
   prestamoQuery.refetch()
-  emit('saved')
+  if (activePrestamoId.value) {
+    emit('saved', {
+      id: activePrestamoId.value,
+      idCliente: prestamoQuery.data.value?.id_cliente ?? null,
+    })
+  } else {
+    emit('saved')
+  }
 }
 
 const confirmDeleteDetalle = async () => {

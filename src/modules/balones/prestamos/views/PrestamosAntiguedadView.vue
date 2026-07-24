@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb
       v-if="!embedded"
-      page-title="Antigüedad de préstamos"
+      page-title="Días en préstamo"
       :items="breadcrumbItems"
     />
 
@@ -220,7 +220,7 @@ const canDevolver = computed(
 const breadcrumbItems = computed(() => [
   ...balonesBreadcrumbItems('Préstamos').slice(0, 1),
   { label: 'Préstamos', to: '/admin/balones/prestamos' },
-  { label: 'Antigüedad' },
+  { label: 'Días en préstamo' },
 ])
 
 const isLoading = computed(() => query.isFetching.value)
@@ -318,7 +318,7 @@ const columns = computed<TableColumn<PrestamoAntiguedadItem>[]>(() => [
   { key: 'nombre_planta', label: 'Planta' },
   { key: 'ph', label: 'Próx. P.H.' },
   { key: 'fecha_inicio_prestamo', label: 'Desde', cellClass: 'whitespace-nowrap' },
-  { key: 'dias_en_prestamo', label: 'Días', cellClass: 'whitespace-nowrap' },
+  { key: 'dias_en_prestamo', label: 'Días en préstamo', cellClass: 'whitespace-nowrap' },
   { key: 'rango_antiguedad', label: 'Alerta', cellClass: 'whitespace-nowrap' },
 ])
 
@@ -470,8 +470,8 @@ watch([pagina, limite], () => {
 const exportExcelFile = async () => {
   try {
     await downloadExcel({
-      filename: `prestamos-antiguedad-${filters.value.rangoDias || 'todos'}`,
-      sheetName: 'Antigüedad',
+      filename: `prestamos-dias-en-prestamo-${filters.value.rangoDias || 'todos'}`,
+      sheetName: 'Días en préstamo',
       rows: rows.value,
       columns: [
         { key: 'cliente', header: 'Cliente', width: 28, value: (r) => r.nombre_cliente },
@@ -502,7 +502,7 @@ const exportExcelFile = async () => {
           width: 12,
           value: (r) => r.fecha_inicio_prestamo?.slice(0, 10),
         },
-        { key: 'dias', header: 'Días', width: 8, value: (r) => r.dias_en_prestamo },
+        { key: 'dias', header: 'Días en préstamo', width: 14, value: (r) => r.dias_en_prestamo },
         {
           key: 'rango',
           header: 'Rango',
