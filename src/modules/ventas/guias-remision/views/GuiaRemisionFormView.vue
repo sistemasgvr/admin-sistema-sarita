@@ -170,14 +170,45 @@
         <div class="space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-800">
           <div class="flex items-center gap-1.5">
             <p class="text-sm font-medium text-gray-800 dark:text-white/90">Punto de partida</p>
-            <AppHelpTip text="Se completa con la dirección de la sucursal seleccionada." />
+            <AppHelpTip
+              text="Con varias sucursales, elige la que despacha: el origen se carga con su dirección y ubigeo. Si el bien sale de otro punto físico, edítalo aquí. Cada sucursal debe tener ubigeo en Configuración."
+            />
           </div>
+          <p
+            v-if="sucursalSeleccionadaNombre"
+            class="text-xs text-gray-500 dark:text-gray-400"
+          >
+            Origen según sucursal: {{ sucursalSeleccionadaNombre }}
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              v-if="idSucursal"
+              type="button"
+              class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 text-xs font-medium text-brand-600 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20"
+              :disabled="saving || aplicandoOrigenSucursal"
+              @click="usarDireccionSucursal"
+            >
+              <AppIcon
+                :name="aplicandoOrigenSucursal ? ICONS.loader : ICONS.building2"
+                :size="14"
+                :class="aplicandoOrigenSucursal ? 'animate-spin' : ''"
+              />
+              {{
+                aplicandoOrigenSucursal
+                  ? 'Cargando...'
+                  : labelUsarDireccionSucursal
+              }}
+            </button>
+          </div>
+          <p v-if="origenHint" class="text-xs text-amber-600 dark:text-amber-400">
+            {{ origenHint }}
+          </p>
           <AppInput
             v-model="direccionOrigen"
             label="Dirección origen"
             placeholder="Av. ..."
             required
-            :disabled="saving"
+            :disabled="saving || aplicandoOrigenSucursal"
             :error="errors.direccionOrigen"
           />
           <div class="grid gap-3 sm:grid-cols-3">
@@ -185,20 +216,20 @@
               v-model="idDepartamentoOrigen"
               label="Departamento"
               :options="departamentosOptions"
-              :disabled="saving"
+              :disabled="saving || aplicandoOrigenSucursal"
             />
             <AppSelect
               v-model="idProvinciaOrigen"
               label="Provincia"
               :options="provinciasOrigenOptions"
-              :disabled="saving || !idDepartamentoOrigen"
+              :disabled="saving || !idDepartamentoOrigen || aplicandoOrigenSucursal"
             />
             <AppSelect
               v-model="idDistritoOrigen"
               label="Distrito"
               required
               :options="distritosOrigenOptions"
-              :disabled="saving || !idProvinciaOrigen"
+              :disabled="saving || !idProvinciaOrigen || aplicandoOrigenSucursal"
               :error="distritoOrigenError"
             />
           </div>
@@ -244,17 +275,16 @@
           <button
             v-if="puedeUsarUbicacionCliente"
             type="button"
-            class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-500 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:text-brand-400"
+            class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 text-xs font-medium text-brand-600 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20"
             :disabled="saving || aplicandoUbicacionCliente || cargandoDirecciones"
             @click="usarUbicacionCliente"
           >
             <AppIcon
-              v-if="aplicandoUbicacionCliente"
-              :name="ICONS.loader"
+              :name="aplicandoUbicacionCliente ? ICONS.loader : ICONS.mapPin"
               :size="14"
-              class="animate-spin"
+              :class="aplicandoUbicacionCliente ? 'animate-spin' : ''"
             />
-            {{ aplicandoUbicacionCliente ? 'Cargando ubicación...' : 'Usar ubicación del cliente' }}
+            {{ aplicandoUbicacionCliente ? 'Cargando...' : 'Usar ubicación del cliente' }}
           </button>
           <div class="relative space-y-3">
             <div
@@ -623,8 +653,10 @@ const canCreateDireccion = computed(() =>
   authStore.hasPermission(PermisoBanderas.DIRECCIONES_CREAR),
 )
 const llegadaHint = ref('')
+const origenHint = ref('')
 const clienteUbicacionCache = ref<Cliente | null>(null)
 const aplicandoUbicacionCliente = ref(false)
+const aplicandoOrigenSucursal = ref(false)
 const puedeUsarUbicacionCliente = computed(() => {
   const c = clienteUbicacionCache.value
   if (!c || !idDestinatario.value) return false
@@ -855,6 +887,17 @@ const [idVehiculo] = defineField('idVehiculo')
 const [idTransportista] = defineField('idTransportista')
 const [observaciones] = defineField('observaciones')
 
+const sucursalSeleccionada = computed(() => {
+  const id = idSucursal.value
+  if (!id) return null
+  return (sucursalesQuery.data.value?.data ?? []).find((s) => s.id === Number(id)) ?? null
+})
+const sucursalSeleccionadaNombre = computed(() => sucursalSeleccionada.value?.nombre?.trim() || '')
+const labelUsarDireccionSucursal = computed(() => {
+  const nombre = sucursalSeleccionadaNombre.value
+  return nombre ? `Usar dirección de ${nombre}` : 'Usar dirección de la sucursal'
+})
+
 const numero = ref('')
 const saving = computed(
   () => createMutation.isPending.value || updateMutation.isPending.value,
@@ -1076,6 +1119,7 @@ async function applyOrigenDesdeSucursal(sucursal: {
   id_departamento?: number | null
   id_provincia?: number | null
   id_distrito?: number | null
+  nombre_departamento?: string | null
   nombre_provincia?: string | null
   nombre_distrito?: string | null
 }) {
@@ -1107,8 +1151,30 @@ async function applyOrigenDesdeSucursal(sucursal: {
     )
     idDistritoOrigen.value = sucursal.id_distrito ?? ''
     await nextTick()
+
+    origenHint.value = sucursal.id_distrito
+      ? ''
+      : 'La sucursal no tiene ubigeo configurado. Complétalo aquí o edita la sucursal en Configuración.'
   } finally {
     endUbigeoSuppress()
+  }
+}
+
+async function usarDireccionSucursal() {
+  const id = idSucursal.value
+  if (!id) return
+  const sucursal = (sucursalesQuery.data.value?.data ?? []).find((s) => s.id === Number(id))
+  if (!sucursal) {
+    toastWarning('No se encontró la sucursal seleccionada')
+    return
+  }
+
+  aplicandoOrigenSucursal.value = true
+  try {
+    await applyOrigenDesdeSucursal(sucursal)
+    toastSuccess('Dirección de la sucursal aplicada. Puedes ajustarla si es necesario.')
+  } finally {
+    aplicandoOrigenSucursal.value = false
   }
 }
 
@@ -1569,6 +1635,7 @@ function resetLocal() {
   distritoLlegadaError.value = ''
   direccionLlegadaSelectError.value = ''
   llegadaHint.value = ''
+  origenHint.value = ''
   clienteUbicacionCache.value = null
 }
 

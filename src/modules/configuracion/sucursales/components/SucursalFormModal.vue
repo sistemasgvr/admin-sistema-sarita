@@ -4,7 +4,7 @@
     :title="mode === 'create' ? 'Nueva sucursal' : 'Editar sucursal'"
     :subtitle="
       mode === 'create'
-        ? 'Registra una nueva sucursal.'
+        ? 'Registra una nueva sucursal con su ubicación (punto de partida de guías).'
         : 'Actualiza los datos de la sucursal seleccionada.'
     "
     size="lg"
@@ -16,25 +16,27 @@
       autocomplete="off"
       @submit="onSubmit"
     >
-      <AppInput
-        v-model="codigo"
-        label="Código"
-        placeholder="SUC-001"
-        required
-        v-bind="codigoAttrs"
-        :disabled="isSubmitting"
-        :error="errors.codigo"
-      />
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppInput
+          v-model="codigo"
+          label="Código"
+          placeholder="SUC-001"
+          required
+          v-bind="codigoAttrs"
+          :disabled="isSubmitting"
+          :error="errors.codigo"
+        />
 
-      <AppInput
-        v-model="nombre"
-        label="Nombre"
-        placeholder="Sucursal Principal"
-        required
-        v-bind="nombreAttrs"
-        :disabled="isSubmitting"
-        :error="errors.nombre"
-      />
+        <AppInput
+          v-model="nombre"
+          label="Nombre"
+          placeholder="Sucursal Principal"
+          required
+          v-bind="nombreAttrs"
+          :disabled="isSubmitting"
+          :error="errors.nombre"
+        />
+      </div>
 
       <AppInput
         v-model="direccion"
@@ -43,6 +45,55 @@
         v-bind="direccionAttrs"
         :disabled="isSubmitting"
       />
+
+      <div class="grid grid-cols-2 gap-3">
+        <AppSelect
+          v-model="idPaisUI"
+          label="País"
+          :placeholder="paisesQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          :options="paisesOptions"
+          :disabled="isSubmitting || paisesQuery.isLoading.value"
+        />
+        <AppSelect
+          v-model="idDepartamentoUI"
+          label="Departamento"
+          :placeholder="
+            !idPaisUI
+              ? 'Selecciona un país'
+              : departamentosQuery.isLoading.value
+                ? 'Cargando...'
+                : 'Selecciona...'
+          "
+          :options="departamentosOptions"
+          :disabled="isSubmitting || !idPaisUI || departamentosQuery.isLoading.value"
+        />
+        <AppSelect
+          v-model="idProvinciaUI"
+          label="Provincia"
+          :placeholder="
+            !idDepartamentoUI
+              ? 'Selecciona un departamento'
+              : provinciasQuery.isLoading.value
+                ? 'Cargando...'
+                : 'Selecciona...'
+          "
+          :options="provinciasOptions"
+          :disabled="isSubmitting || !idDepartamentoUI || provinciasQuery.isLoading.value"
+        />
+        <AppSelect
+          v-model="idDistritoUI"
+          label="Distrito"
+          :placeholder="
+            !idProvinciaUI
+              ? 'Selecciona una provincia'
+              : distritosQuery.isLoading.value
+                ? 'Cargando...'
+                : 'Selecciona...'
+          "
+          :options="distritosOptions"
+          :disabled="isSubmitting || !idProvinciaUI || distritosQuery.isLoading.value"
+        />
+      </div>
 
       <AppInput
         v-model="telefono"
@@ -75,10 +126,17 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
+import {
+  useDepartamentosQuery,
+  useDistritosQuery,
+  usePaisesQuery,
+  useProvinciasQuery,
+} from '@/modules/catalogos/composables/useUbigeoQueries'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import {
   useCreateSucursalMutation,
   useUpdateSucursalMutation,
@@ -87,7 +145,7 @@ import type {
   Sucursal,
   SucursalFormMode,
 } from '@/modules/configuracion/sucursales/interfaces/sucursal.interface'
-import { AppInput, AppModal } from '@/shared/components'
+import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface SucursalFormModalProps {
@@ -128,15 +186,58 @@ const [nombre, nombreAttrs] = defineField('nombre')
 const [direccion, direccionAttrs] = defineField('direccion')
 const [telefono, telefonoAttrs] = defineField('telefono')
 
-const syncFormValues = () => {
+const idPaisUI = ref<number | ''>('')
+const idDepartamentoUI = ref<number | ''>('')
+const idProvinciaUI = ref<number | ''>('')
+const idDistritoUI = ref<number | ''>('')
+let isSyncingUbigeo = false
+
+const paisesQuery = usePaisesQuery()
+const departamentosQuery = useDepartamentosQuery(idPaisUI)
+const provinciasQuery = useProvinciasQuery(idDepartamentoUI)
+const distritosQuery = useDistritosQuery(idProvinciaUI)
+
+const paisesOptions = computed(() => toSelectOptions(paisesQuery.data.value))
+const departamentosOptions = computed(() => toSelectOptions(departamentosQuery.data.value))
+const provinciasOptions = computed(() => toSelectOptions(provinciasQuery.data.value))
+const distritosOptions = computed(() => toSelectOptions(distritosQuery.data.value))
+
+watch(idPaisUI, () => {
+  if (isSyncingUbigeo) return
+  idDepartamentoUI.value = ''
+  idProvinciaUI.value = ''
+  idDistritoUI.value = ''
+})
+
+watch(idDepartamentoUI, () => {
+  if (isSyncingUbigeo) return
+  idProvinciaUI.value = ''
+  idDistritoUI.value = ''
+})
+
+watch(idProvinciaUI, () => {
+  if (isSyncingUbigeo) return
+  idDistritoUI.value = ''
+})
+
+const syncFormValues = async () => {
+  const s = props.sucursal
   resetForm({
     values: {
-      codigo: props.sucursal?.codigo ?? '',
-      nombre: props.sucursal?.nombre ?? '',
-      direccion: props.sucursal?.direccion ?? '',
-      telefono: props.sucursal?.telefono ?? '',
+      codigo: s?.codigo ?? '',
+      nombre: s?.nombre ?? '',
+      direccion: s?.direccion ?? '',
+      telefono: s?.telefono ?? '',
     },
   })
+
+  isSyncingUbigeo = true
+  idPaisUI.value = paisesQuery.data.value?.[0]?.id ?? ''
+  idDepartamentoUI.value = s?.id_departamento ?? ''
+  idProvinciaUI.value = s?.id_provincia ?? ''
+  idDistritoUI.value = s?.id_distrito ?? ''
+  await nextTick()
+  isSyncingUbigeo = false
 }
 
 const handleClose = () => {
@@ -149,6 +250,9 @@ const onSubmit = handleSubmit(async (values) => {
       codigo: values.codigo,
       nombre: values.nombre,
       direccion: values.direccion || undefined,
+      idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
+      idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
+      idDistrito: idDistritoUI.value ? Number(idDistritoUI.value) : undefined,
       telefono: values.telefono || undefined,
     }
 
@@ -174,7 +278,7 @@ watch(
   () => open.value,
   (isOpen) => {
     if (isOpen) {
-      syncFormValues()
+      void syncFormValues()
     }
   },
 )
@@ -183,7 +287,16 @@ watch(
   () => props.sucursal,
   () => {
     if (open.value) {
-      syncFormValues()
+      void syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => paisesQuery.data.value,
+  (paises) => {
+    if (open.value && !idPaisUI.value && paises?.[0]?.id) {
+      idPaisUI.value = paises[0].id
     }
   },
 )
