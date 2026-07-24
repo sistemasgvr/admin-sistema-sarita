@@ -70,6 +70,12 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         path: '/admin/operativa/actividades',
         permission: PermisoBanderas.ACTIVIDADES_LISTAR,
       },
+      {
+        icon: ICONS.shoppingcard,
+        name: 'Compras',
+        path: '/admin/finanzas/compras',
+        permission: PermisoBanderas.COMPRAS_LISTAR,
+      },
     ],
   },
   {

@@ -72,6 +72,7 @@ export const ICONS = {
   upload: 'lucide:upload',
   replace: 'lucide:replace',
   receipt: 'lucide:receipt',
+  shoppingcard: 'lucide:shopping-cart',
   /** Ticket / voucher (sin símbolo $) */
   ticket: 'lucide:ticket',
   refreshCw: 'lucide:refresh-cw',

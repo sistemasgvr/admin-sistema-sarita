@@ -238,6 +238,12 @@ export const PermisoBanderas = {
   ACTIVIDADES_CREAR: 'actividades.crear',
   ACTIVIDADES_EDITAR: 'actividades.editar',
   ACTIVIDADES_ELIMINAR: 'actividades.eliminar',
+
+  COMPRAS_LISTAR: 'compras.listar',
+  COMPRAS_VER: 'compras.ver',
+  COMPRAS_CREAR: 'compras.crear',
+  COMPRAS_EDITAR: 'compras.editar',
+  COMPRAS_ELIMINAR: 'compras_eliminar',
 } as const
 
 export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBanderas]
