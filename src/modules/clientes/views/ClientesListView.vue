@@ -19,15 +19,14 @@
             </div>
           </div>
 
-          <button
+          <RouterLink
             v-if="canCreate"
-            type="button"
+            :to="{ name: 'admin-clientes-nuevo' }"
             class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
           >
             <AppIcon :name="ICONS.plus" :size="18" />
             Nuevo
-          </button>
+          </RouterLink>
         </div>
       </template>
 
@@ -80,7 +79,7 @@
           v-if="canEdit"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
+          @click="openEditView(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
         </button>
@@ -137,13 +136,6 @@
       </template>
     </AppTable>
 
-    <ClienteFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :cliente="selectedCliente"
-      @saved="onClienteSaved"
-    />
-
     <ClienteDetailModal v-model="detailModalOpen" :cliente="clienteToView" />
 
     <ClienteBajaModal
@@ -196,17 +188,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/ClienteBajaModal.vue'
 import ClienteReactivacionModal from '@/modules/clientes/bajas-cliente/components/ClienteReactivacionModal.vue'
 import ClienteDetailModal from '@/modules/clientes/components/ClienteDetailModal.vue'
-import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import { useDeleteClienteMutation } from '@/modules/clientes/composables/useClienteMutations'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type {
   Cliente,
   ClienteEstadoFiltro,
-  ClienteFormMode,
   ClienteListFilters,
 } from '@/modules/clientes/interfaces/cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -234,6 +225,7 @@ withDefaults(
 )
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const mostrarClientes = ref<ClienteEstadoFiltro>('activos')
@@ -267,10 +259,6 @@ const filters = ref<ClienteListFilters>({
 
 const clientesQuery = useClientesQuery(filters)
 const deleteMutation = useDeleteClienteMutation()
-
-const formModalOpen = ref(false)
-const formMode = ref<ClienteFormMode>('create')
-const selectedCliente = ref<Cliente | null>(null)
 
 const detailModalOpen = ref(false)
 const clienteToView = ref<Cliente | null>(null)
@@ -347,16 +335,11 @@ watch([pagina, limite], () => {
   }
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedCliente.value = null
-  formModalOpen.value = true
-}
-
-const openEditModal = (cliente: Cliente) => {
-  formMode.value = 'edit'
-  selectedCliente.value = cliente
-  formModalOpen.value = true
+const openEditView = (cliente: Cliente) => {
+  void router.push({
+    name: 'admin-clientes-editar',
+    params: { id: String(cliente.id) },
+  })
 }
 
 const openDetailModal = (cliente: Cliente) => {
@@ -400,7 +383,4 @@ const confirmDelete = async () => {
   } catch {}
 }
 
-const onClienteSaved = () => {
-  selectedCliente.value = null
-}
 </script>

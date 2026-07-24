@@ -1,18 +1,8 @@
 <template>
-  <AppModal
-    v-model="open"
-    :title="mode === 'create' ? 'Nuevo mantenimiento' : 'Editar mantenimiento'"
-    :subtitle="
-      mode === 'create'
-        ? 'Ingreso a taller: cilindro de inventario o servicio al cilindro que trae el cliente.'
-        : 'Actualiza datos operativos. Para cerrar el ciclo use Finalizar en el listado.'
-    "
-    size="xl"
-    @close="handleClose"
-  >
+  <div>
     <div
       v-if="isLoadingMantenimiento"
-      class="py-8 text-center text-sm text-gray-500 dark:text-gray-400"
+      class="rounded-2xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400"
     >
       Cargando mantenimiento...
     </div>
@@ -20,6 +10,7 @@
     <form
       v-else
       id="mantenimiento-form"
+      class="space-y-5"
       autocomplete="off"
       @submit="onSubmit"
     >
@@ -208,13 +199,12 @@
               />
             </div>
 
-            <AppSelect
+            <ClienteSelectField
               v-model="idProveedor"
               label="Proveedor / taller"
               placeholder="Opcional"
-              v-bind="idProveedorAttrs"
-              :disabled="isSubmitting || !esExterno || clientesQuery.isLoading.value"
-              :options="proveedorOptions"
+              :disabled="isSubmitting || !esExterno"
+              :error="errors.idProveedor"
             />
           </div>
         </DetailSectionCard>
@@ -257,40 +247,39 @@
           />
         </DetailSectionCard>
       </FormCardsLayout>
+
+      <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+          :disabled="isSubmitting"
+          @click="emit('cancel')"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          :disabled="isSubmitting"
+        >
+          {{
+            isSubmitting
+              ? 'Guardando...'
+              : mode === 'create'
+                ? 'Registrar mantenimiento'
+                : 'Guardar cambios'
+          }}
+        </button>
+      </div>
     </form>
 
-    <template #footer>
-      <button
-        type="button"
-        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
-        :disabled="isSubmitting"
-        @click="handleClose"
-      >
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        form="mantenimiento-form"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="isSubmitting"
-      >
-        {{
-          isSubmitting
-            ? 'Guardando...'
-            : mode === 'create'
-              ? 'Registrar mantenimiento'
-              : 'Guardar cambios'
-        }}
-      </button>
-    </template>
-  </AppModal>
-
-  <BalonFormModal
-    v-if="canCreateBalon"
-    v-model="balonModalOpen"
-    mode="create"
-    @created="onBalonCreated"
-  />
+    <BalonFormModal
+      v-if="canCreateBalon"
+      v-model="balonModalOpen"
+      mode="create"
+      @created="onBalonCreated"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -312,9 +301,9 @@ import {
 } from '@/modules/balones/mantenimientos/composables/useMantenimientoMutations'
 import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
-import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppCheckbox, AppInput, AppModal, AppSelect, AppSelectSearch, AppTextarea } from '@/shared/components'
+import { AppCheckbox, AppInput, AppSelect, AppSelectSearch, AppTextarea } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
@@ -323,17 +312,20 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
-interface MantenimientoFormModalProps {
+interface MantenimientoFormProps {
   mode: MantenimientoFormMode
   mantenimientoId?: number | null
+  active?: boolean
 }
 
-const props = defineProps<MantenimientoFormModalProps>()
-
-const open = defineModel<boolean>({ default: false })
+const props = withDefaults(defineProps<MantenimientoFormProps>(), {
+  mantenimientoId: null,
+  active: true,
+})
 
 const emit = defineEmits<{
   saved: []
+  cancel: []
 }>()
 
 const authStore = useAuthStore()
@@ -347,7 +339,7 @@ const balonBuscar = ref('')
 const mantenimientoIdRef = computed(() => (props.mode === 'edit' ? props.mantenimientoId : null))
 const mantenimientoQuery = useMantenimientoQuery(mantenimientoIdRef)
 const isLoadingMantenimiento = computed(
-  () => props.mode === 'edit' && open.value && mantenimientoQuery.isFetching.value,
+  () => props.mode === 'edit' && props.active && mantenimientoQuery.isFetching.value,
 )
 const mantenimientoDetalle = computed(() => mantenimientoQuery.data.value ?? null)
 
@@ -366,9 +358,6 @@ watch(balonBuscar, (term) => {
     }
   }, 350)
 })
-
-const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
-const clientesQuery = useClientesQuery(clientesFilters)
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
 const listaEstadoMantenimientoId = ref(ListaIds.ESTADO_MANTENIMIENTO)
@@ -456,17 +445,6 @@ const estadoMantenimientoOptions = computed(() => {
   ]
 })
 
-const proveedorOptions = computed(() => [
-  { value: '', label: 'Sin proveedor' },
-  ...(clientesQuery.data.value?.data ?? []).map((cliente) => ({
-    value: cliente.id,
-    label:
-      cliente.razon_social ||
-      [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
-      cliente.numero_documento,
-  })),
-])
-
 const today = () => new Date().toISOString().slice(0, 10)
 const toDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '')
 
@@ -525,7 +503,7 @@ const [fechaSalida, fechaSalidaAttrs] = defineField('fechaSalida')
 const [descripcion, descripcionAttrs] = defineField('descripcion')
 const [costo, costoAttrs] = defineField('costo')
 const [esExterno] = defineField('esExterno')
-const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
+const [idProveedor] = defineField('idProveedor')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
 const [idComprobanteCompra, idComprobanteCompraAttrs] = defineField('idComprobanteCompra')
 const [observacion, observacionAttrs] = defineField('observacion')
@@ -626,10 +604,6 @@ const resetCreateForm = () => {
   })
 }
 
-const handleClose = () => {
-  open.value = false
-}
-
 const onSubmit = handleSubmit(async (values) => {
   const currentUserId = authStore.user?.id
   if (!currentUserId) return
@@ -660,16 +634,15 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     emit('saved')
-    open.value = false
   } catch {
     // toast en mutation
   }
 })
 
 watch(
-  () => [open.value, props.mode, props.mantenimientoId] as const,
-  ([isOpen, mode]) => {
-    if (!isOpen) return
+  () => [props.active, props.mode, props.mantenimientoId] as const,
+  ([isActive, mode]) => {
+    if (!isActive) return
     if (mode === 'edit') {
       syncFormValues()
     } else {
@@ -682,7 +655,7 @@ watch(
 watch(
   () => mantenimientoQuery.data.value,
   () => {
-    if (open.value && props.mode === 'edit') {
+    if (props.active && props.mode === 'edit') {
       syncFormValues()
     }
   },

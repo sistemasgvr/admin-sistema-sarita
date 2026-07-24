@@ -44,16 +44,12 @@
               required
               @created="seleccionarCliente"
             />
-            <AppSelectSearch
+            <AlmacenSelectField
               v-model="idAlmacen"
-              v-model:search="almacenBuscar"
-              label="Almacén"
-              placeholder="Selecciona almacén"
-              search-placeholder="Nombre del almacén..."
-              :options="almacenOptions"
-              :loading="almacenesQuery.isLoading.value"
-              :disabled="almacenesQuery.isLoading.value"
+              searchable
               required
+              :disabled="almacenesQuery.isLoading.value"
+              @created="onAlmacenCreated"
             />
           </div>
 
@@ -96,13 +92,15 @@
                 <AppSelectSearch
                   v-model="linea.idProducto"
                   v-model:search="linea.buscar"
-                  :label="linea.rol === 'regulador' ? 'Servicio / producto' : 'Producto'"
+                  :label="labelProductoParaRol(linea.rol)"
                   placeholder="Selecciona..."
                   search-placeholder="Código o nombre..."
+                  remote
                   :options="optionsParaRol(linea.rol)"
                   :loading="loadingProductosParaRol(linea.rol)"
                   :required="linea.rol === 'regulador'"
                   @update:model-value="(id) => onProductoLinea(linea, id)"
+                  @update:search="(term) => onBuscarProductoRol(linea.rol, term)"
                 />
                 <AppInput
                   v-model="linea.cantidad"
@@ -143,11 +141,13 @@
                 <AppSelectSearch
                   v-model="linea.idProducto"
                   v-model:search="linea.buscar"
-                  label="Producto"
+                  label="Producto (venta)"
                   placeholder="Selecciona..."
                   search-placeholder="Código o nombre..."
+                  remote
                   :options="productoVentaOptions"
                   :loading="productosVentaQuery.isLoading.value"
+                  @update:search="(term) => onBuscarProductoRol('descartable', term)"
                   @update:model-value="(id) => onProductoLinea(linea, id)"
                 />
                 <AppInput
@@ -261,6 +261,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { alquileresDetalleService } from '@/modules/balones/alquileres/services/alquileres-detalle.service'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
@@ -332,17 +333,46 @@ const imprimiendoTicket = ref(false)
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
-const serviciosFilters = ref({ pagina: 1, limite: 100, esServicio: true, esAlquilable: true })
-const serviciosQuery = useProductosQuery(serviciosFilters)
+/** Regulador: solo servicios alquilables. */
+const serviciosAlquilerFilters = ref({
+  pagina: 1,
+  limite: 100,
+  esServicio: true,
+  esAlquilable: true,
+  soloActivos: 1,
+  buscar: undefined as string | undefined,
+})
+const serviciosQuery = useProductosQuery(serviciosAlquilerFilters)
 
-const productosVentaFilters = ref({ pagina: 1, limite: 100, buscar: undefined as string | undefined })
+/** Contenido / descartables: productos (no servicios). */
+const productosVentaFilters = ref({
+  pagina: 1,
+  limite: 100,
+  esServicio: false,
+  soloActivos: 1,
+  buscar: undefined as string | undefined,
+})
 const productosVentaQuery = useProductosQuery(productosVentaFilters)
+
+/** Flete: servicios no alquilables. */
+const serviciosFleteFilters = ref({
+  pagina: 1,
+  limite: 100,
+  esServicio: true,
+  esAlquilable: false,
+  soloActivos: 1,
+  buscar: undefined as string | undefined,
+})
+const serviciosFleteQuery = useProductosQuery(serviciosFleteFilters)
 
 const idBalon = ref<number | ''>('')
 const idAlmacen = ref<number | ''>('')
-const almacenBuscar = ref('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+
+async function onAlmacenCreated() {
+  await almacenesQuery.refetch()
+}
 
 const hoy = new Date().toISOString().slice(0, 10)
 const fechaInicio = ref(hoy)
@@ -358,15 +388,9 @@ const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
 
-const almacenOptions = computed(() =>
-  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre,
-  })),
-)
-
 const serviciosAlquiler = computed(() => serviciosQuery.data.value?.data ?? [])
 const productosVenta = computed(() => productosVentaQuery.data.value?.data ?? [])
+const serviciosFlete = computed(() => serviciosFleteQuery.data.value?.data ?? [])
 
 const servicioOptions = computed(() =>
   serviciosAlquiler.value.map((producto) => ({
@@ -377,6 +401,13 @@ const servicioOptions = computed(() =>
 
 const productoVentaOptions = computed(() =>
   productosVenta.value.map((producto) => ({
+    value: producto.id,
+    label: `${producto.codigo} — ${producto.nombre}`,
+  })),
+)
+
+const servicioFleteOptions = computed(() =>
+  serviciosFlete.value.map((producto) => ({
     value: producto.id,
     label: `${producto.codigo} — ${producto.nombre}`,
   })),
@@ -410,19 +441,50 @@ const puedeGuardar = computed(() => {
   )
 })
 
+function labelProductoParaRol(rol: KitMedicinalRol) {
+  switch (rol) {
+    case 'regulador':
+      return 'Servicio alquilable'
+    case 'flete':
+      return 'Servicio (flete)'
+    case 'contenido':
+      return 'Producto (contenido)'
+    default:
+      return 'Producto'
+  }
+}
+
 function optionsParaRol(rol: KitMedicinalRol) {
-  return rol === 'regulador' ? servicioOptions.value : productoVentaOptions.value
+  if (rol === 'regulador') return servicioOptions.value
+  if (rol === 'flete') return servicioFleteOptions.value
+  return productoVentaOptions.value
 }
 
 function loadingProductosParaRol(rol: KitMedicinalRol) {
-  return rol === 'regulador'
-    ? serviciosQuery.isLoading.value
-    : productosVentaQuery.isLoading.value
+  if (rol === 'regulador') return serviciosQuery.isLoading.value
+  if (rol === 'flete') return serviciosFleteQuery.isLoading.value
+  return productosVentaQuery.isLoading.value
+}
+
+function onBuscarProductoRol(rol: KitMedicinalRol, term: string) {
+  const buscar = term.trim() || undefined
+  if (rol === 'regulador') {
+    serviciosAlquilerFilters.value = { ...serviciosAlquilerFilters.value, buscar }
+    return
+  }
+  if (rol === 'flete') {
+    serviciosFleteFilters.value = { ...serviciosFleteFilters.value, buscar }
+    return
+  }
+  productosVentaFilters.value = { ...productosVentaFilters.value, buscar }
 }
 
 function findProducto(rol: KitMedicinalRol, id: number): Producto | undefined {
   if (rol === 'regulador') {
     return serviciosAlquiler.value.find((item) => item.id === id)
+  }
+  if (rol === 'flete') {
+    return serviciosFlete.value.find((item) => item.id === id)
   }
   return productosVenta.value.find((item) => item.id === id)
 }
@@ -553,7 +615,6 @@ async function registrarKit() {
 async function limpiarFormulario() {
   idBalon.value = ''
   idAlmacen.value = ''
-  almacenBuscar.value = ''
   const inicio = new Date().toISOString().slice(0, 10)
   fechaInicio.value = inicio
   fechaFinPactada.value = addDaysIso(inicio, 14)

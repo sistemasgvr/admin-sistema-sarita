@@ -90,7 +90,7 @@ const props = defineProps<CategoriaProductoFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [categoria: CategoriaProducto]
 }>()
 
 const createMutation = useCreateCategoriaProductoMutation()
@@ -132,10 +132,12 @@ const onSubmit = handleSubmit(async (values) => {
       descripcion: values.descripcion || undefined,
     }
 
+    let categoriaGuardada: CategoriaProducto
+
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      categoriaGuardada = await createMutation.mutateAsync(payload)
     } else if (props.categoria) {
-      await updateMutation.mutateAsync({
+      categoriaGuardada = await updateMutation.mutateAsync({
         id: props.categoria.id,
         payload,
       })
@@ -143,7 +145,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved')
+    emit('saved', categoriaGuardada)
     open.value = false
   } catch {
     // toast en mutation

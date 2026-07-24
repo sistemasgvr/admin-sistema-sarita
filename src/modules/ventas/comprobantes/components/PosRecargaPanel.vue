@@ -48,16 +48,13 @@
               required
               @created="seleccionarCliente"
             />
-            <AppSelectSearch
+            <AlmacenSelectField
               v-model="idAlmacen"
-              v-model:search="almacenBuscar"
               label="Almacén (stock gas)"
-              placeholder="Selecciona almacén"
-              search-placeholder="Nombre..."
-              :options="almacenOptions"
-              :loading="almacenesQuery.isLoading.value"
-              :disabled="almacenesQuery.isLoading.value"
+              searchable
               required
+              :disabled="almacenesQuery.isLoading.value"
+              @created="onAlmacenCreated"
             />
           </div>
 
@@ -149,6 +146,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useCreateRecargaClienteMutation } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
@@ -200,9 +198,12 @@ const imprimiendoTicket = ref(false)
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
-const almacenBuscar = ref('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+
+async function onAlmacenCreated() {
+  await almacenesQuery.refetch()
+}
 
 const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
 const productosQuery = useProductosQuery(productosFilters)
@@ -218,13 +219,6 @@ const observacion = ref('')
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
-
-const almacenOptions = computed(() =>
-  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre,
-  })),
-)
 
 const productoOptions = computed(() =>
   (productosQuery.data.value?.data ?? []).map((producto) => ({
@@ -301,7 +295,6 @@ async function limpiarFormulario() {
   idBalon.value = ''
   idProducto.value = ''
   idAlmacen.value = ''
-  almacenBuscar.value = ''
   gasBuscar.value = ''
   cantidad.value = 1
   capacidad.value = ''

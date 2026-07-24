@@ -144,7 +144,7 @@ const props = defineProps<TipoBalonFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [tipo: TipoBalon]
 }>()
 
 const authStore = useAuthStore()
@@ -231,10 +231,12 @@ const onSubmit = handleSubmit(async (values) => {
   }
 
   try {
+    let tipoGuardado: TipoBalon
+
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      tipoGuardado = await createMutation.mutateAsync(payload)
     } else if (props.tipoBalon) {
-      await updateMutation.mutateAsync({
+      tipoGuardado = await updateMutation.mutateAsync({
         id: props.tipoBalon.id,
         payload,
       })
@@ -242,7 +244,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved')
+    emit('saved', tipoGuardado)
     open.value = false
   } catch {
     // toast en mutation

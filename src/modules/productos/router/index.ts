@@ -38,6 +38,26 @@ export const productosRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'articulos/nuevo',
+        name: 'admin-productos-articulos-nuevo',
+        component: () => import('@/modules/productos/articulos/views/ProductoFormView.vue'),
+        meta: {
+          title: 'Nuevo producto',
+          module: 'productos',
+          permission: PermisoBanderas.PRODUCTOS_CREAR,
+        },
+      },
+      {
+        path: 'articulos/:id/editar',
+        name: 'admin-productos-articulos-editar',
+        component: () => import('@/modules/productos/articulos/views/ProductoFormView.vue'),
+        meta: {
+          title: 'Editar producto',
+          module: 'productos',
+          permission: PermisoBanderas.PRODUCTOS_EDITAR,
+        },
+      },
+      {
         path: 'stock',
         name: 'admin-productos-stock',
         component: () => import('@/modules/productos/stock/views/StockListView.vue'),

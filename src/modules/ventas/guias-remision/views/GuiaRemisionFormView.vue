@@ -95,14 +95,15 @@
           :disabled="saving || sucursalesQuery.isLoading.value"
           :error="errors.idSucursal"
         />
-        <AppSelect
+        <AlmacenSelectField
           v-model="idAlmacen"
           label="Almacén"
           placeholder="Selecciona"
           required
           :options="almacenOptions"
-          :disabled="saving || almacenesQuery.isLoading.value"
+          :disabled="saving"
           :error="errors.idAlmacen"
+          @created="onAlmacenCreated"
         />
         <AppInput
           v-model="pesoBruto"
@@ -563,6 +564,8 @@ import type { Chofer } from '@/modules/choferes/interfaces/chofer.interface'
 import DireccionFormModal from '@/modules/direcciones/components/DireccionFormModal.vue'
 import VehiculoFormModal from '@/modules/vehiculos/components/VehiculoFormModal.vue'
 import type { Vehiculo } from '@/modules/vehiculos/interfaces/vehiculo.interface'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
@@ -1350,6 +1353,11 @@ async function searchClientes(query: string): Promise<SelectOption[]> {
     value: c.id,
     label: getClienteOptionLabel(c),
   }))
+}
+
+function onAlmacenCreated(almacen: Almacen) {
+  idAlmacen.value = almacen.id
+  void almacenesQuery.refetch()
 }
 
 function onDestinatarioCreado(cliente: Cliente) {

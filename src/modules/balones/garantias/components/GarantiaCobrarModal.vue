@@ -30,13 +30,14 @@
           v-model="idProducto"
           v-model:search="productoBuscar"
           label="Producto / tipo envase"
-          placeholder="Selecciona producto"
+          placeholder="Selecciona producto (no servicios)"
           search-placeholder="Código o nombre..."
           class="sm:col-span-2"
           required
           remote
           :options="productoOptions"
           :loading="productosQuery.isFetching.value"
+          hint="Solo productos. Los servicios no aplican a garantía industrial."
         />
         <AppSelect
           v-model="idTipoComprobante"
@@ -151,6 +152,7 @@ const productosFilters = ref<ProductoListFilters>({
   pagina: 1,
   limite: 80,
   soloActivos: 1,
+  esServicio: false,
   buscar: undefined,
 })
 const productosQuery = useProductosQuery(productosFilters)

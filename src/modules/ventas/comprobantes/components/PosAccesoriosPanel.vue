@@ -46,16 +46,12 @@
               :can-create="canCreateCliente"
               @created="seleccionarCliente"
             />
-            <AppSelectSearch
+            <AlmacenSelectField
               v-model="idAlmacen"
-              v-model:search="almacenBuscar"
-              label="Almacén"
-              placeholder="Selecciona almacén"
-              search-placeholder="Nombre..."
-              :options="almacenOptions"
-              :loading="almacenesQuery.isLoading.value"
-              :disabled="almacenesQuery.isLoading.value"
+              searchable
               :required="requiereAlmacen"
+              :disabled="almacenesQuery.isLoading.value"
+              @created="onAlmacenCreated"
             />
           </div>
         </DetailSectionCard>
@@ -167,6 +163,7 @@ import { subCategoriasProductoService } from '@/modules/productos/sub-categorias
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
@@ -187,7 +184,7 @@ import {
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
-import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppInput, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
@@ -228,9 +225,12 @@ const imprimiendoTicket = ref(false)
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
-const almacenBuscar = ref('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+
+async function onAlmacenCreated() {
+  await almacenesQuery.refetch()
+}
 
 const categorias = ref<CategoriaProducto[]>([])
 const subCategorias = ref<SubCategoriaProducto[]>([])
@@ -254,13 +254,6 @@ const comprobanteGuardadoNumero = ref<string | null>(null)
 const lineas = ref<PosLineItem[]>([])
 
 const productosBase = computed(() => productosQuery.data.value?.data ?? [])
-
-const almacenOptions = computed(() =>
-  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre,
-  })),
-)
 
 const productos = computed(() => {
   const marca = dynamicFilters.value.marca
@@ -522,7 +515,6 @@ async function limpiarFormulario() {
   lineas.value = []
   glosa.value = ''
   idAlmacen.value = ''
-  almacenBuscar.value = ''
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null
   comprobanteGuardadoNumero.value = null

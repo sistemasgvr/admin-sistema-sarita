@@ -1,18 +1,8 @@
 <template>
-  <AppModal
-    v-model="open"
-    :title="mode === 'create' ? 'Recarga planta externa' : 'Editar recarga planta externa'"
-    :subtitle="
-      mode === 'create'
-        ? 'Envío del cilindro propio a un tercero (GRE, factura compra, lote y P.H.).'
-        : 'Actualiza los datos del envío a planta externa.'
-    "
-    size="xl"
-    @close="handleClose"
-  >
+  <div>
     <div
       v-if="isLoadingRecarga"
-      class="py-8 text-center text-sm text-gray-500 dark:text-gray-400"
+      class="rounded-2xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400"
     >
       Cargando recarga...
     </div>
@@ -20,6 +10,7 @@
     <form
       v-else
       id="movimiento-recarga-form"
+      class="space-y-5"
       autocomplete="off"
       @submit="onSubmit"
     >
@@ -59,22 +50,21 @@
               :options="balonOptions"
             />
 
-            <AppSelect
+            <AlmacenSelectField
               v-model="idAlmacen"
-              label="Almacén"
-              placeholder="Opcional"
-              v-bind="idAlmacenAttrs"
-              :disabled="isSubmitting || almacenesQuery.isLoading.value"
-              :options="almacenOptions"
+              :disabled="isSubmitting"
+              :error="errors.idAlmacen"
             />
 
-            <AppSelect
+            <ProductoSelectField
               v-model="idProducto"
               label="Producto (gas)"
               placeholder="Opcional"
+              :es-gas="true"
+              :searchable="false"
+              :disabled="isSubmitting"
               v-bind="idProductoAttrs"
-              :disabled="isSubmitting || productosQuery.isLoading.value"
-              :options="gasOptions"
+              :error="errors.idProducto"
             />
 
             <AppInput
@@ -177,13 +167,12 @@
               :disabled="isSubmitting"
             />
 
-            <AppSelect
+            <ClienteSelectField
               v-model="idProveedor"
               label="Proveedor / planta"
               placeholder="Opcional"
-              v-bind="idProveedorAttrs"
-              :disabled="isSubmitting || clientesQuery.isLoading.value"
-              :options="proveedorOptions"
+              :disabled="isSubmitting"
+              :error="errors.idProveedor"
             />
 
             <AppInput
@@ -226,33 +215,32 @@
           />
         </DetailSectionCard>
       </FormCardsLayout>
-    </form>
 
-    <template #footer>
-      <button
-        type="button"
-        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
-        :disabled="isSubmitting || isLoadingRecarga"
-        @click="handleClose"
-      >
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        form="movimiento-recarga-form"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="isSubmitting || isLoadingRecarga"
-      >
-        {{
-          isSubmitting
-            ? 'Guardando...'
-            : mode === 'create'
-              ? 'Registrar recarga'
-              : 'Guardar cambios'
-        }}
-      </button>
-    </template>
-  </AppModal>
+      <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+          :disabled="isSubmitting || isLoadingRecarga"
+          @click="emit('cancel')"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          :disabled="isSubmitting || isLoadingRecarga"
+        >
+          {{
+            isSubmitting
+              ? 'Guardando...'
+              : mode === 'create'
+                ? 'Registrar recarga'
+                : 'Guardar cambios'
+          }}
+        </button>
+      </div>
+    </form>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -262,8 +250,8 @@ import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
-import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
-import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import {
   useCreateMovimientoRecargaMutation,
@@ -271,9 +259,9 @@ import {
 } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
 import { useMovimientoRecargaQuery } from '@/modules/balones/recargas/composables/useMovimientosRecargaQuery'
 import type { MovimientoRecargaFormMode } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { AppInput, AppSelect, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -281,17 +269,20 @@ import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
-interface MovimientoRecargaFormModalProps {
+interface MovimientoRecargaFormProps {
   mode: MovimientoRecargaFormMode
   recargaId?: number | null
+  active?: boolean
 }
 
-const props = defineProps<MovimientoRecargaFormModalProps>()
-
-const open = defineModel<boolean>({ default: false })
+const props = withDefaults(defineProps<MovimientoRecargaFormProps>(), {
+  recargaId: null,
+  active: true,
+})
 
 const emit = defineEmits<{
   saved: []
+  cancel: []
 }>()
 
 const authStore = useAuthStore()
@@ -301,21 +292,12 @@ const updateMutation = useUpdateMovimientoRecargaMutation()
 const recargaIdRef = computed(() => (props.mode === 'edit' ? props.recargaId : null))
 const recargaQuery = useMovimientoRecargaQuery(recargaIdRef)
 const isLoadingRecarga = computed(
-  () => props.mode === 'edit' && open.value && recargaQuery.isFetching.value,
+  () => props.mode === 'edit' && props.active && recargaQuery.isFetching.value,
 )
 const recargaDetalle = computed(() => recargaQuery.data.value ?? null)
 
 const balonesFilters = ref({ pagina: 1, limite: 200 })
 const balonesQuery = useBalonesQuery(balonesFilters)
-
-const almacenesFilters = ref({ pagina: 1, limite: 200 })
-const almacenesQuery = useAlmacenesQuery(almacenesFilters)
-
-const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
-const productosQuery = useProductosQuery(productosFilters)
-
-const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
-const clientesQuery = useClientesQuery(clientesFilters)
 
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
@@ -326,33 +308,6 @@ const balonOptions = computed(() =>
     label: balon.codigo_balon,
   })),
 )
-
-const almacenOptions = computed(() => [
-  { value: '', label: 'Sin almacén' },
-  ...(almacenesQuery.data.value?.data ?? []).map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre,
-  })),
-])
-
-const gasOptions = computed(() => [
-  { value: '', label: 'Sin producto' },
-  ...(productosQuery.data.value?.data ?? []).map((producto) => ({
-    value: producto.id,
-    label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-])
-
-const proveedorOptions = computed(() => [
-  { value: '', label: 'Sin proveedor' },
-  ...(clientesQuery.data.value?.data ?? []).map((cliente) => ({
-    value: cliente.id,
-    label:
-      cliente.razon_social ||
-      [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
-      cliente.numero_documento,
-  })),
-])
 
 const unidadMedidaOptions = computed(() => [
   { value: '', label: 'Sin unidad' },
@@ -417,7 +372,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 
 const [fechaSalidaAlmacen, fechaSalidaAlmacenAttrs] = defineField('fechaSalidaAlmacen')
 const [idBalon, idBalonAttrs] = defineField('idBalon')
-const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
+const [idAlmacen] = defineField('idAlmacen')
 const [idProducto, idProductoAttrs] = defineField('idProducto')
 const [capacidad, capacidadAttrs] = defineField('capacidad')
 const [idUnidadMedida, idUnidadMedidaAttrs] = defineField('idUnidadMedida')
@@ -433,7 +388,7 @@ const [lote, loteAttrs] = defineField('lote')
 const [fechaVencimientoLote, fechaVencimientoLoteAttrs] = defineField('fechaVencimientoLote')
 const [fechaPruebaHidrostatica, fechaPruebaHidrostaticaAttrs] =
   defineField('fechaPruebaHidrostatica')
-const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
+const [idProveedor] = defineField('idProveedor')
 const [observacion, observacionAttrs] = defineField('observacion')
 
 const toOptionalNumber = (value: string | number | undefined) =>
@@ -532,10 +487,6 @@ const resetCreateForm = () => {
   })
 }
 
-const handleClose = () => {
-  open.value = false
-}
-
 const onSubmit = handleSubmit(async (values) => {
   const currentUserId = authStore.user?.id
   if (!currentUserId) return
@@ -577,23 +528,23 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     emit('saved')
-    open.value = false
   } catch {
     // toast en mutation
   }
 })
 
 watch(
-  () => open.value,
-  (isOpen) => {
-    if (isOpen && props.mode === 'create') {
+  () => [props.active, props.mode] as const,
+  ([isActive, mode]) => {
+    if (isActive && mode === 'create') {
       resetCreateForm()
     }
   },
+  { immediate: true },
 )
 
 watch(recargaDetalle, () => {
-  if (open.value && props.mode === 'edit') {
+  if (props.active && props.mode === 'edit') {
     syncFormValues()
   }
 })

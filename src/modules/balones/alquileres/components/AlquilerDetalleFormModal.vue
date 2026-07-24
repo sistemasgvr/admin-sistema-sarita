@@ -25,16 +25,16 @@
     >
       <FormCardsLayout>
         <DetailSectionCard title="Cilindro" :icon="ICONS.cylinder" :full-width="true">
-          <AppSelect
-            v-model="idBalon"
+          <PosBalonSelectField
+            v-model="idBalonAsModel"
+            mode="alquiler"
             label="Cilindro"
             placeholder="Selecciona cilindro"
             required
-            v-bind="idBalonAttrs"
-            :disabled="isSubmitting || balonesQuery.isLoading.value"
-            :error="errors.idBalon"
-            :options="balonOptions"
+            :disabled="isSubmitting"
+            empty-text="Sin cilindros. Registra uno nuevo."
           />
+          <p v-if="errors.idBalon" class="mt-1 text-sm text-error-500">{{ errors.idBalon }}</p>
         </DetailSectionCard>
       </FormCardsLayout>
     </form>
@@ -67,19 +67,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
-import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import {
   useCreateAlquilerDetalleMutation,
   useUpdateAlquilerDetalleMutation,
 } from '@/modules/balones/alquileres/composables/useAlquilerDetalleMutations'
 import { useAlquilerDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import type { AlquilerDetalleFormMode } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
+import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppModal, AppSelect } from '@/shared/components'
+import { AppModal } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -109,16 +109,6 @@ const isLoadingDetalle = computed(
   () => props.mode === 'edit' && open.value && detalleQuery.isFetching.value,
 )
 
-const balonesFilters = ref({ pagina: 1, limite: 200 })
-const balonesQuery = useBalonesQuery(balonesFilters)
-
-const balonOptions = computed(() =>
-  (balonesQuery.data.value?.data ?? []).map((balon) => ({
-    value: balon.id,
-    label: balon.codigo_balon,
-  })),
-)
-
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
@@ -130,7 +120,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   },
 })
 
-const [idBalon, idBalonAttrs] = defineField('idBalon')
+const [idBalon] = defineField('idBalon')
+
+const idBalonAsModel = computed({
+  get: () => (idBalon.value === '' || idBalon.value == null ? '' : Number(idBalon.value)),
+  set: (value: number | '') => {
+    idBalon.value = value === '' ? '' : value
+  },
+})
 
 const syncFormValues = () => {
   const data = detalleQuery.data.value

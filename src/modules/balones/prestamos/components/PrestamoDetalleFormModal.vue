@@ -26,22 +26,21 @@
       <FormCardsLayout>
         <DetailSectionCard title="Datos del cilindro" :icon="ICONS.cylinder">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppSelect
-              v-model="idBalon"
+            <PosBalonSelectField
+              v-model="idBalonAsModel"
+              mode="general"
               label="Cilindro"
               placeholder="Selecciona cilindro"
-              v-bind="idBalonAttrs"
-              :disabled="isSubmitting || balonesQuery.isLoading.value"
-              :options="balonOptions"
+              :disabled="isSubmitting"
+              empty-text="Sin cilindros. Registra uno nuevo."
             />
 
-            <AppSelect
+            <ProductoSelectField
               v-model="idProducto"
               label="Producto (gas)"
               placeholder="Opcional"
-              v-bind="idProductoAttrs"
-              :disabled="isSubmitting || productosQuery.isLoading.value"
-              :options="gasOptions"
+              :es-gas="true"
+              :disabled="isSubmitting"
             />
 
             <AppInput
@@ -197,14 +196,14 @@ import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
-import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import {
   useCreatePrestamoDetalleMutation,
   useUpdatePrestamoDetalleMutation,
 } from '@/modules/balones/prestamos/composables/usePrestamoDetalleMutations'
 import { usePrestamoDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import type { PrestamoDetalleFormMode } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
+import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -237,30 +236,8 @@ const isLoadingDetalle = computed(
   () => props.mode === 'edit' && open.value && detalleQuery.isFetching.value,
 )
 
-const balonesFilters = ref({ pagina: 1, limite: 200 })
-const balonesQuery = useBalonesQuery(balonesFilters)
-
-const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
-const productosQuery = useProductosQuery(productosFilters)
-
 const listaEstadoDetalleId = ref(ListaIds.ESTADO_PRESTAMO_DETALLE)
 const estadosDetalleQuery = useListaOpcionesQuery(listaEstadoDetalleId)
-
-const balonOptions = computed(() => [
-  { value: '', label: 'Sin cilindro' },
-  ...(balonesQuery.data.value?.data ?? []).map((balon) => ({
-    value: balon.id,
-    label: balon.codigo_balon,
-  })),
-])
-
-const gasOptions = computed(() => [
-  { value: '', label: 'Sin producto' },
-  ...(productosQuery.data.value?.data ?? []).map((producto) => ({
-    value: producto.id,
-    label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-])
 
 const estadoDetalleOptions = computed(() => [
   { value: '', label: 'Sin estado' },
@@ -312,8 +289,15 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   },
 })
 
-const [idBalon, idBalonAttrs] = defineField('idBalon')
-const [idProducto, idProductoAttrs] = defineField('idProducto')
+const [idBalon] = defineField('idBalon')
+const [idProducto] = defineField('idProducto')
+
+const idBalonAsModel = computed({
+  get: () => (idBalon.value === '' || idBalon.value == null ? '' : Number(idBalon.value)),
+  set: (value: number | '') => {
+    idBalon.value = value === '' ? '' : value
+  },
+})
 const [motivoEspecifico, motivoEspecificoAttrs] = defineField('motivoEspecifico')
 const [fechaEntregado, fechaEntregadoAttrs] = defineField('fechaEntregado')
 const [fechaPrestamo, fechaPrestamoAttrs] = defineField('fechaPrestamo')

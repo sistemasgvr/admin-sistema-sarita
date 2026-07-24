@@ -1,5 +1,6 @@
 import {
   apiDelete,
+  apiGet,
   apiGetPaginated,
   apiPatch,
   apiPost,
@@ -16,6 +17,10 @@ import type {
 export const productosService = {
   listar(filters: ProductoListFilters = {}) {
     return apiGetPaginated<Producto>('/productos', { params: filters })
+  },
+
+  obtenerPorId(id: number) {
+    return apiGet<Producto>(`/productos/${id}`)
   },
 
   crear(payload: CreateProductoPayload) {
