@@ -134,10 +134,10 @@
           <AppInput
             v-model="razonSocial"
             label="Razón social"
-            placeholder="Comercial Los Andes S.A.C."
-            :required="esDocumentoRUC || esDocumentoVSD"
+            placeholder="Razón social de la empresa"
+            :required="esDocumentoRUC"
             v-bind="razonSocialAttrs"
-            :disabled="isSubmitting || (!esDocumentoRUC && !esDocumentoVSD)"
+            :disabled="isSubmitting || !esDocumentoRUC"
             :error="errors.razonSocial"
             hint="Obligatorio para RUC."
           />
@@ -149,7 +149,7 @@
               v-model="nombres"
               label="Nombres"
               placeholder="Juan"
-              :required="requiereNombres"
+              :required="requiereNombres || esDocumentoVSD"
               v-bind="nombresAttrs"
               :disabled="isSubmitting"
               :error="errors.nombres"

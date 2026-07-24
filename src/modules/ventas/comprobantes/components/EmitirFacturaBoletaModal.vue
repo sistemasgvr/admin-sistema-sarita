@@ -21,22 +21,40 @@
       </DetailCardsLayout>
 
       <DetailSectionCard title="Documento a emitir" :icon="ICONS.fileText" :full-width="true">
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <AppInput
-            v-model="serie"
-            label="Serie"
-            :placeholder="esFactura ? 'F001' : 'B001'"
-            :disabled="saving"
-            required
+        <div class="space-y-3">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <AppInput
+              v-model="serie"
+              label="Serie"
+              :placeholder="esFactura ? 'F001' : 'B001'"
+              :disabled="saving"
+              required
+            />
+            <AppInput
+              v-model="fecha"
+              label="Fecha"
+              type="date"
+              :disabled="saving"
+              required
+            />
+          </div>
+          <PosClienteField
+            v-model="idCliente"
+            v-model:search="clienteBuscar"
+            :options="clienteOptions"
+            :loading="clientesQuery.isFetching.value"
+            :disabled="clientesQuery.isLoading.value || saving"
+            :can-create="canCreateCliente"
+            @created="seleccionarCliente"
           />
-          <AppInput
-            v-model="fecha"
-            label="Fecha"
-            type="date"
+          <AppTextarea
+            v-model="observaciones"
+            label="Observaciones"
+            placeholder="Opcional"
+            :rows="2"
             :disabled="saving"
-            required
           />
-          <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300">
+          <label class="flex items-end gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input v-model="emitirTrasCrear" type="checkbox" class="rounded border-gray-300" :disabled="saving" />
             Emitir a SUNAT al crear
           </label>
@@ -100,6 +118,22 @@
         {{ saving ? 'Procesando...' : emitirTrasCrear ? 'Crear y emitir' : 'Crear comprobante' }}
       </button>
     </template>
+
+    <ClienteSinDocumentoModal
+      v-model="emitWarningModalOpen"
+      :accion="emitirTrasCrear ? 'creará y emitirá' : 'creará'"
+      :continue-label="`Continuar y ${emitirTrasCrear ? 'emitir' : 'crear'}`"
+      :disabled="saving"
+      @edit-client="confirmEditClienteEnEmitir"
+      @continue="confirmCrear"
+    />
+
+    <ClienteFormModal
+      v-model="clienteEditModalOpen"
+      mode="edit"
+      :cliente="clienteParaEditar"
+      @saved="onClienteSaved"
+    />
   </AppModal>
 </template>
 
@@ -116,10 +150,18 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
-import { AppInput, AppModal, ListaOpcionBadge } from '@/shared/components'
+import { AppInput, AppModal, AppTextarea, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastApiError, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
+import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
+import ClienteSinDocumentoModal from '@/modules/ventas/comprobantes/components/ClienteSinDocumentoModal.vue'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 
 interface LineaItem {
   key: string
@@ -163,7 +205,65 @@ const origenQuery = useComprobanteQuery(origenId)
 const serie = ref('')
 const fecha = ref(new Date().toISOString().slice(0, 10))
 const emitirTrasCrear = ref(true)
+const observaciones = ref('')
 const lineas = ref<LineaItem[]>([])
+
+const idCliente = ref<number | ''>('')
+const clienteBuscar = ref('')
+const clientesFilters = ref({
+  pagina: 1,
+  limite: 50,
+  soloActivos: 1 as number,
+  buscar: undefined as string | undefined,
+})
+const clientesQuery = useClientesQuery(clientesFilters)
+
+let clienteBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+watch(clienteBuscar, (value) => {
+  if (clienteBuscarTimeout) clearTimeout(clienteBuscarTimeout)
+  clienteBuscarTimeout = setTimeout(() => {
+    clientesFilters.value = {
+      ...clientesFilters.value,
+      buscar: value.trim() || undefined,
+    }
+  }, 350)
+})
+
+const clienteOptions = computed(() =>
+  (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+    value: cliente.id,
+    label: getClienteOptionLabel(cliente),
+  })),
+)
+
+const canCreateCliente = computed(() =>
+  authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
+)
+
+function seleccionarCliente(cliente: Cliente) {
+  idCliente.value = cliente.id
+  clienteDocumento.value = cliente.numero_documento
+}
+
+const clienteDocumento = ref('')
+
+watch(idCliente, (id) => {
+  if (!id) {
+    clienteDocumento.value = ''
+    return
+  }
+  const found = (clientesQuery.data.value?.data ?? []).find((c) => c.id === id)
+  if (found) {
+    clienteDocumento.value = found.numero_documento
+  }
+})
+
+const emitWarningModalOpen = ref(false)
+
+const clienteEditModalOpen = ref(false)
+const idClienteParaEditar = ref<number | undefined>(undefined)
+const clienteEditQuery = useClienteDetailQuery(idClienteParaEditar, clienteEditModalOpen)
+const clienteParaEditar = computed(() => clienteEditQuery.data.value ?? null)
 
 const open = computed({
   get: () => props.modelValue,
@@ -198,6 +298,7 @@ const sections = computed<DetailSection[]>(() => {
           value: row.nombre_tipo_comprobante ?? row.codigo_tipo_comprobante ?? '—',
         },
         { label: 'Cliente', value: row.nombre_cliente ?? '—' },
+        { label: 'Observaciones', value: origenQuery.data.value?.observaciones ?? '—' },
         { label: 'Fecha', value: row.fecha ?? '—' },
         {
           label: 'Total',
@@ -231,6 +332,7 @@ watch(
     if (!isOpen) return
     fecha.value = new Date().toISOString().slice(0, 10)
     emitirTrasCrear.value = true
+    observaciones.value = ''
     serie.value = seriePorDefectoDesdeCodigo(props.codigoTipo, '')
   },
 )
@@ -248,6 +350,8 @@ watch(
   () => origenQuery.data.value,
   (data) => {
     if (!data) return
+    idCliente.value = data.id_cliente ?? ''
+    clienteDocumento.value = data.documento_cliente ?? ''
     lineas.value = (data.detalles ?? []).map((detalle, index) => ({
       key: `${detalle.id ?? detalle.id_producto}-${index}`,
       idProducto: detalle.id_producto,
@@ -279,19 +383,29 @@ async function confirm() {
     return
   }
 
+  if (!clienteDocumento.value || String(clienteDocumento.value).trim() === '') {
+    emitWarningModalOpen.value = true
+    return
+  }
+
+  await ejecutarCrear(row, origen, userId)
+}
+
+async function ejecutarCrear(row: ComprobanteListItem, origen: NonNullable<ReturnType<typeof origenQuery.data.value>>, userId: number) {
   try {
     const creado = await createMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idTipoComprobante: idTipoComprobante.value!,
       serie: serie.value.trim().toUpperCase(),
       fecha: fecha.value,
-      idCliente: origen.id_cliente,
+      idCliente: Number(idCliente.value) || origen.id_cliente,
       idComprobanteOrigen: row.id,
       idMoneda: origen.id_moneda ?? undefined,
       idMedioPago: origen.id_medio_pago ?? undefined,
       idAlmacen: origen.id_almacen ?? undefined,
       idTipoOperacionSunat: origen.id_tipo_operacion_sunat ?? undefined,
       glosa: `${esFactura.value ? 'Factura' : 'Boleta'} de VSD ${row.serie}-${row.numero}`,
+      observaciones: observaciones.value.trim() || undefined,
       detalles: lineas.value.map((linea) => ({
         idProducto: linea.idProducto,
         cantidad: Number(linea.cantidad),
@@ -316,5 +430,29 @@ async function confirm() {
       toastApiError(error, 'No se pudo crear el comprobante')
     }
   }
+}
+
+function confirmCrear() {
+  const row = props.comprobante
+  const origen = origenQuery.data.value
+  const userId = authStore.user?.id
+  if (!row || !origen || !userId) return
+  emitWarningModalOpen.value = false
+  ejecutarCrear(row, origen, userId)
+}
+
+function confirmEditClienteEnEmitir() {
+  const id = Number(idCliente.value)
+  if (!id) return
+  emitWarningModalOpen.value = false
+  idClienteParaEditar.value = id
+  clienteEditModalOpen.value = true
+}
+
+function onClienteSaved(cliente: Cliente) {
+  clienteEditModalOpen.value = false
+  idClienteParaEditar.value = undefined
+  idCliente.value = cliente.id
+  clienteDocumento.value = cliente.numero_documento
 }
 </script>

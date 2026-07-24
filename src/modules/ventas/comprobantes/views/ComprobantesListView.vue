@@ -146,6 +146,21 @@
         </button>
       </template>
     </AppModal>
+
+    <ClienteSinDocumentoModal
+      v-model="emitWarningModalOpen"
+      :nombre-cliente="comprobanteToEmitWarning?.nombre_cliente ?? undefined"
+      :disabled="emitMutation.isPending.value"
+      @edit-client="confirmEditCliente"
+      @continue="confirmEmitir"
+    />
+
+    <ClienteFormModal
+      v-model="clienteEditModalOpen"
+      mode="edit"
+      :cliente="clienteParaEditar"
+      @saved="onClienteSaved"
+    />
   </div>
 </template>
 
@@ -164,6 +179,10 @@ import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/Compro
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
 import ComprobanteNotaCreditoModal from '@/modules/ventas/comprobantes/components/ComprobanteNotaCreditoModal.vue'
+import ClienteSinDocumentoModal from '@/modules/ventas/comprobantes/components/ClienteSinDocumentoModal.vue'
+import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
+import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import type {
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -238,6 +257,14 @@ const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
 
 const anularModalOpen = ref(false)
 const comprobanteToAnular = ref<ComprobanteListItem | null>(null)
+
+const emitWarningModalOpen = ref(false)
+const comprobanteToEmitWarning = ref<ComprobanteListItem | null>(null)
+
+const clienteEditModalOpen = ref(false)
+const idClienteParaEditar = ref<number | undefined>(undefined)
+const clienteEditQuery = useClienteDetailQuery(idClienteParaEditar, clienteEditModalOpen)
+const clienteParaEditar = computed(() => clienteEditQuery.data.value ?? null)
 
 const pdfBusyId = ref<number | null>(null)
 
@@ -632,6 +659,17 @@ async function emitirComprobante(row: ComprobanteListItem) {
     return
   }
 
+  const doc = row.documento_cliente
+  if (!doc || String(doc).trim() === '') {
+    comprobanteToEmitWarning.value = row
+    emitWarningModalOpen.value = true
+    return
+  }
+
+  await ejecutarEmitir(row, userId)
+}
+
+async function ejecutarEmitir(row: ComprobanteListItem, userId: number) {
   try {
     const resultado = await emitirConImpresionTicket({
       comprobanteId: row.id,
@@ -647,6 +685,30 @@ async function emitirComprobante(row: ComprobanteListItem) {
   } catch {
     // mutateAsync ya muestra el toast de error
   }
+}
+
+function confirmEmitir() {
+  const row = comprobanteToEmitWarning.value
+  const userId = authStore.user?.id
+  if (!row || !userId) return
+  emitWarningModalOpen.value = false
+  comprobanteToEmitWarning.value = null
+  ejecutarEmitir(row, userId)
+}
+
+function confirmEditCliente() {
+  const row = comprobanteToEmitWarning.value
+  if (!row?.id_cliente) return
+  emitWarningModalOpen.value = false
+  idClienteParaEditar.value = row.id_cliente
+  clienteEditModalOpen.value = true
+}
+
+function onClienteSaved(_cliente: Cliente) {
+  clienteEditModalOpen.value = false
+  idClienteParaEditar.value = undefined
+  comprobanteToEmitWarning.value = null
+  syncFilters()
 }
 
 async function confirmDelete() {

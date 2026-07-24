@@ -37,7 +37,7 @@
             <AppInput v-model="fecha" label="Fecha" type="date" />
           </div>
 
-          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
             <PosClienteField
               v-model="idCliente"
               v-model:search="clienteBuscar"
@@ -47,6 +47,11 @@
               :can-create="canCreateCliente"
               required
               @created="seleccionarCliente"
+            />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
             />
             <AppSelectSearch
               v-model="idAlmacen"
@@ -191,6 +196,7 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
+  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createMutation = useCreateRecargaClienteMutation()
@@ -289,7 +295,7 @@ async function registrarRecarga() {
     serie: serie.value.trim(),
     capacidad: capacidad.value !== '' ? Number(capacidad.value) : undefined,
     idAlmacen: Number(idAlmacen.value),
-    observacion: observacion.value || undefined,
+    observacion: [observacion.value, clienteDescripcion.value].filter(Boolean).join(' - ') || undefined,
   })
 
   comprobanteGuardadoId.value = result.comprobante.id
