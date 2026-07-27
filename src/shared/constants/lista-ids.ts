@@ -70,6 +70,21 @@ export const ListaIds = {
   /** gen_lista.nombre = TipoSolicitud */
   TIPO_SOLICITUD: 51,
 
+  // ──────────────────────────────────────────────
+  //  COMPRAS
+  // ──────────────────────────────────────────────
+
+  /** gen_lista.nombre = TipoComprobanteCompra (Factura, Boleta, etc.) */
+  TIPO_COMPROBANTE: 0, // TODO: reemplazar 0 con el ID real de gen_lista
+
+  /** gen_lista.nombre = TipoRegistroCompra (COMPRA, GASTO, etc.) */
+  TIPO_REGISTRO: 0, // TODO: reemplazar 0 con el ID real de gen_lista
+
+  /** gen_lista.nombre = CategoriaGasto (Insumos, Servicios, etc.) */
+  CATEGORIA_GASTO: 0, // TODO: reemplazar 0 con el ID real de gen_lista
+
+  /** gen_lista.nombre = Moneda (SOLES, DOLARES, etc.) */
+  MONEDA: 0, // TODO: reemplazar 0 con el ID real de gen_lista
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds
