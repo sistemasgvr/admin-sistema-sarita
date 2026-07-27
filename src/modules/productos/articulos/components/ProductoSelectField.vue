@@ -1,39 +1,41 @@
 <template>
-  <AppSelectWithCreate
-    :can-create="canCreate"
-    :create-title="createTitle"
-    :disabled="disabled"
-    @create="modalOpen = true"
-  >
-    <AppSelectSearch
-      v-if="searchable"
-      v-model="model"
-      v-model:search="search"
-      remote
-      :label="label"
-      :placeholder="placeholder"
-      :search-placeholder="searchPlaceholder"
-      :options="mergedOptions"
-      :loading="loading || productosQuery.isFetching.value"
+  <div>
+    <AppSelectWithCreate
+      :can-create="canCreate"
+      :create-title="createTitle"
       :disabled="disabled"
-      :required="required"
-      :error="error"
-      :hint="hint"
-    />
-    <AppSelect
-      v-else
-      v-model="model"
-      :label="label"
-      :placeholder="placeholder"
-      :options="mergedOptions"
-      :disabled="disabled || loading || productosQuery.isLoading.value"
-      :required="required"
-      :error="error"
-      :hint="hint"
-    />
-  </AppSelectWithCreate>
+      @create="modalOpen = true"
+    >
+      <AppSelectSearch
+        v-if="searchable"
+        v-model="model"
+        v-model:search="search"
+        remote
+        :label="label"
+        :placeholder="placeholder"
+        :search-placeholder="searchPlaceholder"
+        :options="mergedOptions"
+        :loading="loading || productosQuery.isFetching.value"
+        :disabled="disabled"
+        :required="required"
+        :error="error"
+        :hint="hint"
+      />
+      <AppSelect
+        v-else
+        v-model="model"
+        :label="label"
+        :placeholder="placeholder"
+        :options="mergedOptions"
+        :disabled="disabled || loading || productosQuery.isLoading.value"
+        :required="required"
+        :error="error"
+        :hint="hint"
+      />
+    </AppSelectWithCreate>
 
-  <ProductoFormModal v-model="modalOpen" mode="create" @saved="onCreated" />
+    <ProductoFormModal v-model="modalOpen" mode="create" @saved="onCreated" />
+  </div>
 </template>
 
 <script setup lang="ts">
