@@ -12,39 +12,40 @@ import type {
   CompraListFilters,
   CreateCompraDetalleLineaPayload,
   CreateCompraPayload,
+  EliminarCompraResponse,
 } from '@/modules/compras/interfaces/compra.interface'
 
 export const comprasService = {
   listar(filters: CompraListFilters) {
-    return apiGetPaginated<CompraListItem>('/finanzas/compras', {
+    return apiGetPaginated<CompraListItem>('/compras', {
       params: filters,
     })
   },
 
   obtenerPorId(id: number) {
-    return apiGet<Compra>(`/finanzas/compras/${id}`)
+    return apiGet<Compra>(`/compras/${id}`)
   },
 
   crear(payload: CreateCompraPayload) {
-    return apiPost<Compra>('/finanzas/compras', payload)
+    return apiPost<Compra>('/compras', payload)
   },
 
   actualizarCabecera(id: number, payload: ActualizarCompraCabeceraPayload) {
-    return apiPatch<Compra>(`/finanzas/compras/${id}`, payload)
+    return apiPatch<Compra>(`/compras/${id}`, payload)
   },
 
   crearDetalle(id: number, payload: CreateCompraDetalleLineaPayload) {
-    return apiPost<Compra>(`/finanzas/compras/${id}/detalle`, payload)
+    return apiPost<Compra>(`/compras/${id}/detalle`, payload)
   },
 
   eliminarDetalle(idDetalle: number, idUsuarioAuditoria: number) {
-    return apiDelete<Compra>(`/finanzas/compras/detalle/${idDetalle}`, {
+    return apiDelete<EliminarCompraResponse>(`/compras/detalle/${idDetalle}`, {
       data: { idUsuarioAuditoria },
     })
   },
 
   anular(id: number, idUsuarioAuditoria: number) {
-    return apiDelete<{ id: number; anulado: boolean }>(`/finanzas/compras/${id}`, {
+    return apiDelete<EliminarCompraResponse>(`/compras/${id}`, {
       data: { idUsuarioAuditoria },
     })
   },

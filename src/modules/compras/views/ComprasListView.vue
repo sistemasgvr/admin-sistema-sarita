@@ -5,8 +5,10 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
+          search-placeholder="Serie, número, glosa o proveedor..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -41,18 +43,13 @@
       </template>
 
       <template #cell-estado="{ row }">
-        <span v-if="row.estado === 0" class="inline-flex items-center gap-1 rounded-full bg-error-100 px-2 py-0.5 text-xs font-medium text-error-700 dark:bg-error-500/10 dark:text-error-300">
-          Anulado
-        </span>
-        <span v-else class="inline-flex items-center gap-1 rounded-full bg-success-100 px-2 py-0.5 text-xs font-medium text-success-700 dark:bg-success-500/10 dark:text-success-300">
-          Activo
-        </span>
+        <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
+          {{ row.estado === 1 ? 'Activo' : 'Anulado' }}
+        </AppBadge>
       </template>
 
       <template #cell-tiene_movimientos_inventario="{ value }">
-        <span v-if="value" class="inline-flex items-center gap-1 rounded-full bg-warning-100 px-2 py-0.5 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">
-          Con mov.
-        </span>
+        <AppBadge v-if="value" color="warning">Con mov.</AppBadge>
         <span v-else class="text-xs text-gray-400">—</span>
       </template>
 
@@ -87,7 +84,12 @@
 
     <CompraDetailModal v-model="detailModalOpen" :compra-id="compraToViewId" />
 
-    <CompraFormModal v-model="formModalOpen" :compra="compraToEdit" @saved="syncFilters" />
+    <CompraFormModal
+      v-model="formModalOpen"
+      :compra-id="compraToEditId"
+      :referencia-compra-id="compraReferenciaId"
+      @saved="onSaved"
+    />
 
     <AppModal v-model="anularModalOpen" title="Anular comprobante de compra" size="sm">
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -133,7 +135,7 @@ import CompraFormModal from '@/modules/compras/components/CompraFormModal.vue'
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import { AppActionMenu, AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -149,10 +151,12 @@ const breadcrumbItems = comprasBreadcrumbItems('Compras')
 const authStore = useAuthStore()
 
 const dynamicFilters = ref<DynamicFilterValues>({})
+const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
 
 const filters = ref<CompraListFilters>({
+  buscar: '',
   pagina: 1,
   limite: 10,
 })
@@ -164,7 +168,8 @@ const detailModalOpen = ref(false)
 const compraToViewId = ref<number | null>(null)
 
 const formModalOpen = ref(false)
-const compraToEdit = ref<CompraListItem | null>(null)
+const compraToEditId = ref<number | null>(null)
+const compraReferenciaId = ref<number | null>(null)
 
 const anularModalOpen = ref(false)
 const compraToAnular = ref<CompraListItem | null>(null)
@@ -240,6 +245,7 @@ function syncFilters() {
   const active = dynamicFilters.value
 
   filters.value = {
+    buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
@@ -255,6 +261,15 @@ function onFiltersChange() {
   syncFilters()
 }
 
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
+watch(buscar, () => {
+  clearTimeout(buscarTimeout)
+  buscarTimeout = setTimeout(() => {
+    pagina.value = 1
+    syncFilters()
+  }, 350)
+})
+
 watch([pagina, limite], () => {
   syncFilters()
 })
@@ -269,13 +284,26 @@ function openDetail(row: CompraListItem) {
 }
 
 function openCreate() {
-  compraToEdit.value = null
+  compraToEditId.value = null
+  compraReferenciaId.value = null
   formModalOpen.value = true
 }
 
 function openEdit(row: CompraListItem) {
-  compraToEdit.value = row
+  compraToEditId.value = row.id
+  compraReferenciaId.value = null
   formModalOpen.value = true
+}
+
+function openCorreccion(row: CompraListItem) {
+  compraToEditId.value = null
+  compraReferenciaId.value = row.id
+  formModalOpen.value = true
+}
+
+function onSaved() {
+  pagina.value = 1
+  syncFilters()
 }
 
 function openAnular(row: CompraListItem) {
@@ -286,7 +314,7 @@ function openAnular(row: CompraListItem) {
 function actionItemsForRow(row: CompraListItem): ActionMenuItem[] {
   const items: ActionMenuItem[] = []
 
-  if (canEdit.value) {
+  if (canEdit.value && row.estado === 1) {
     items.push({
       key: 'edit',
       label: row.tiene_movimientos_inventario ? 'Editar cabecera' : 'Editar',
@@ -303,6 +331,14 @@ function actionItemsForRow(row: CompraListItem): ActionMenuItem[] {
     })
   }
 
+  if (canCreate.value && row.estado === 0) {
+    items.push({
+      key: 'correccion',
+      label: 'Crear corrección',
+      icon: ICONS.refreshCw,
+    })
+  }
+
   return items
 }
 
@@ -312,6 +348,8 @@ function onActionSelect(key: string, row: CompraListItem) {
       return openEdit(row)
     case 'anular':
       return openAnular(row)
+    case 'correccion':
+      return openCorreccion(row)
   }
 }
 

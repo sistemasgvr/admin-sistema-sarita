@@ -391,7 +391,7 @@ async function confirm() {
   await ejecutarCrear(row, origen, userId)
 }
 
-async function ejecutarCrear(row: ComprobanteListItem, origen: NonNullable<ReturnType<typeof origenQuery.data.value>>, userId: number) {
+async function ejecutarCrear(row: ComprobanteListItem, origen: Exclude<typeof origenQuery.data.value, undefined>, userId: number) {
   try {
     const creado = await createMutation.mutateAsync({
       idUsuarioAuditoria: userId,

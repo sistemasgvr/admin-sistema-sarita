@@ -80,6 +80,7 @@ export interface Compra {
 }
 
 export interface CompraListFilters {
+  buscar?: string
   pagina?: number
   limite?: number
   fechaDesde?: string
@@ -135,4 +136,17 @@ export interface CreateCompraDetalleLineaPayload {
   descripcion?: string
   idUnidadMedida?: number
   idAlmacen?: number
+}
+
+export interface EliminarCompraResponse {
+  eliminado: boolean
+  id: number
+}
+
+export interface CompraLineaForm {
+  key: string
+  idProducto: number | ''
+  productoLabel: string | null
+  cantidad: number | ''
+  precioUnitario: number | ''
 }

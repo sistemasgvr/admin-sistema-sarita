@@ -267,7 +267,7 @@ const props = defineProps<ProductoFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [producto?: Producto]
 }>()
 
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
@@ -469,10 +469,12 @@ const onSubmit = handleSubmit(async (formValues) => {
       precioGarantia: formValues.esAlquilable ? (formValues.precioGarantia ?? 0) : 0,
     }
 
+    let createdProducto: Producto | undefined
+
     if (props.mode === 'create') {
-      const created = await createMutation.mutateAsync(payload)
-      if (created?.id) {
-        await uploadPendingImages(created.id)
+      createdProducto = await createMutation.mutateAsync(payload)
+      if (createdProducto?.id) {
+        await uploadPendingImages(createdProducto.id)
       }
     } else if (props.producto) {
       await updateMutation.mutateAsync({
@@ -483,7 +485,7 @@ const onSubmit = handleSubmit(async (formValues) => {
       return
     }
 
-    emit('saved')
+    emit('saved', createdProducto)
     open.value = false
   } catch {
     // toast en mutation

@@ -123,7 +123,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
     .test('identificacion-cliente', function (values) {
       const idTipoPersona = values.idTipoPersona
       const tipoPersona =
-        idTipoPersona != null && idTipoPersona !== ''
+        idTipoPersona != null
           ? normalizeCatalogName(getTipoPersonaNombre?.(idTipoPersona))
           : undefined
       const razonSocial = values.razonSocial?.trim()

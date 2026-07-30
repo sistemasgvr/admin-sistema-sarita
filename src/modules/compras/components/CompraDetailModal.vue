@@ -73,9 +73,9 @@
           </div>
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Estado</p>
-            <p class="font-medium" :class="cabecera.estado === 1 ? 'text-success-600' : 'text-error-600'">
+            <AppBadge class="mt-0.5" :color="cabecera.estado === 1 ? 'success' : 'error'">
               {{ cabecera.estado === 1 ? 'Activo' : 'Anulado' }}
-            </p>
+            </AppBadge>
           </div>
         </div>
 
@@ -109,16 +109,16 @@
           </div>
         </div>
 
-        <div class="mt-3 flex flex-wrap items-center gap-4 text-xs">
-          <span v-if="cabecera.declarar_sunat" class="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
-            <AppIcon :name="ICONS.check" :size="12" /> Declarar SUNAT
-          </span>
-          <span v-if="cabecera.tiene_movimientos_inventario" class="inline-flex items-center gap-1 rounded-full bg-warning-100 px-2 py-0.5 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">
-            <AppIcon :name="ICONS.alertTriangle" :size="12" /> Afectó inventario
-          </span>
-          <span v-else class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-gray-600 dark:bg-white/5 dark:text-gray-400">
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <AppBadge v-if="cabecera.declarar_sunat" color="primary" :icon="ICONS.check">
+            Declarar SUNAT
+          </AppBadge>
+          <AppBadge v-if="cabecera.tiene_movimientos_inventario" color="warning" :icon="ICONS.alertTriangle">
+            Afectó inventario
+          </AppBadge>
+          <AppBadge v-else color="neutral">
             Sin movimientos de inventario
-          </span>
+          </AppBadge>
         </div>
       </DetailSectionCard>
 
@@ -131,7 +131,7 @@
                 <th class="px-3 py-2 text-left">Producto</th>
                 <th class="px-3 py-2 text-left">Almacén</th>
                 <th class="px-3 py-2 text-right">Cant.</th>
-                <th class="px-3 py-2 text-right">P. unit.</th>
+                <th class="px-3 py-2 text-right">P. unit. (IGV inc.)</th>
                 <th class="px-3 py-2 text-right">Importe</th>
               </tr>
             </thead>
@@ -168,25 +168,16 @@
 import { computed } from 'vue'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import { AppModal } from '@/shared/components'
-import AppIcon from '@/shared/components/AppIcon.vue'
+import { AppBadge, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{
-  modelValue: boolean
   compraId: number | null
 }>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-}>()
+const open = defineModel<boolean>({ default: false })
 
-const open = computed({
-  get: () => props.modelValue,
-  set: (value: boolean) => emit('update:modelValue', value),
-})
-
-const compraId = computed(() => (props.modelValue ? props.compraId : null))
+const compraId = computed(() => (open.value ? props.compraId : null))
 const compraQuery = useCompraQuery(compraId)
 const compra = computed(() => compraQuery.data.value ?? null)
 const cabecera = computed(() => compra.value?.cabecera ?? null)
