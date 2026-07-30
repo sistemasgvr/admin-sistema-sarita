@@ -169,9 +169,29 @@ async function onSelect(item: Notificacion) {
     }
   }
 
-  if (item.tipo_referencia === 'ALQUILER' && item.id_referencia) {
-    closeDropdown()
+  closeDropdown()
+  if (item.tipo_referencia === 'ALQUILER') {
     void router.push({ name: 'admin-balones-alquileres' })
+    return
+  }
+  if (item.tipo_referencia === 'PRESTAMO') {
+    void router.push({ name: 'admin-balones-prestamos' })
+    return
+  }
+  if (item.tipo_referencia === 'BALON') {
+    void router.push({ name: 'admin-balones-cilindros', query: { tab: 'aprobaciones' } })
+    return
+  }
+  if (item.tipo_referencia === 'CLIENTE') {
+    void router.push({ name: 'admin-clientes', query: { tab: 'aprobaciones' } })
+    return
+  }
+  if (item.tipo_referencia === 'COMPROBANTE') {
+    void router.push({ name: 'admin-ventas-comprobantes' })
+    return
+  }
+  if (item.tipo_referencia === 'STOCK') {
+    void router.push({ name: 'admin-productos-stock' })
   }
 }
 
