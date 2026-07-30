@@ -113,6 +113,7 @@ import {
 } from '@/modules/notificaciones/composables/useNotificacionesQuery'
 import { useNotificacionesSocket } from '@/modules/notificaciones/composables/useNotificacionesSocket'
 import type { Notificacion } from '@/modules/notificaciones/interfaces/notificacion.interface'
+import { resolveNotificacionTarget } from '@/modules/notificaciones/utils/notificacion-navigation'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -170,28 +171,9 @@ async function onSelect(item: Notificacion) {
   }
 
   closeDropdown()
-  if (item.tipo_referencia === 'ALQUILER') {
-    void router.push({ name: 'admin-balones-alquileres' })
-    return
-  }
-  if (item.tipo_referencia === 'PRESTAMO') {
-    void router.push({ name: 'admin-balones-prestamos' })
-    return
-  }
-  if (item.tipo_referencia === 'BALON') {
-    void router.push({ name: 'admin-balones-cilindros', query: { tab: 'aprobaciones' } })
-    return
-  }
-  if (item.tipo_referencia === 'CLIENTE') {
-    void router.push({ name: 'admin-clientes', query: { tab: 'aprobaciones' } })
-    return
-  }
-  if (item.tipo_referencia === 'COMPROBANTE') {
-    void router.push({ name: 'admin-ventas-comprobantes' })
-    return
-  }
-  if (item.tipo_referencia === 'STOCK') {
-    void router.push({ name: 'admin-productos-stock' })
+  const target = resolveNotificacionTarget(item)
+  if (target) {
+    void router.push(target)
   }
 }
 

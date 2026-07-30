@@ -197,6 +197,7 @@ import type {
   StockFormMode,
   StockListFilters,
 } from '@/modules/productos/stock/interfaces/stock.interface'
+import { stockService } from '@/modules/productos/stock/services/stock.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
@@ -207,13 +208,19 @@ import {
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import {
+  parsePositiveIntQuery,
+  useOpenIdFromRouteQuery,
+} from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { useRoute } from 'vue-router'
 
 const authStore = useAuthStore()
+const route = useRoute()
 const breadcrumbItems = productosBreadcrumbItems('Stock')
 
 const almacenes = ref<Almacen[]>([])
@@ -315,6 +322,11 @@ const loadCatalogos = async () => {
 
 onMounted(() => {
   loadCatalogos()
+  const idAlmacenQuery = parsePositiveIntQuery(route.query.idAlmacen)
+  if (idAlmacenQuery) {
+    dynamicFilters.value = { ...dynamicFilters.value, idAlmacen: idAlmacenQuery }
+    syncFilters()
+  }
 })
 
 const syncFilters = () => {
@@ -362,6 +374,17 @@ const openDetailModal = (stock: Stock) => {
   stockToView.value = stock
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  onOpen: async (id) => {
+    try {
+      const stock = await stockService.obtenerPorId(id)
+      openDetailModal(stock)
+    } catch {
+      // si no existe o sin permiso, se queda en el listado
+    }
+  },
+})
 
 const openDeleteModal = (stock: Stock) => {
   stockToDelete.value = stock

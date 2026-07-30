@@ -213,6 +213,7 @@ import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuer
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -634,6 +635,13 @@ function openDetailModal(row: ComprobanteListItem) {
   comprobanteToViewId.value = row.id
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    comprobanteToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
 
 function openEditModal(row: ComprobanteListItem) {
   comprobanteToEdit.value = row

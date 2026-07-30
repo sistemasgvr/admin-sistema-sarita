@@ -167,6 +167,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
@@ -318,6 +319,13 @@ const openDetailModal = (row: Alquiler) => {
   alquilerToViewId.value = row.id
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    alquilerToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
 
 const openDeleteModal = (row: Alquiler) => {
   alquilerToDelete.value = row

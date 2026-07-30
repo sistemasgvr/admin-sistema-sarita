@@ -236,8 +236,10 @@ import {
 } from '@/modules/balones/bajas-pendientes/composables/useBajaSolicitudMutations'
 import { useBajasPendientesQuery } from '@/modules/balones/bajas-pendientes/composables/useBajasPendientesQuery'
 import type { BajaSolicitud } from '@/modules/balones/bajas-pendientes/interfaces/baja-solicitud.interface'
+import { bajasPendientesService } from '@/modules/balones/bajas-pendientes/services/bajas-pendientes.service'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import {
   AppActionMenu,
   AppHelpTip,
@@ -326,6 +328,24 @@ const openDetailModal = (row: BajaSolicitud) => {
   solicitudSeleccionada.value = row
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  queryKey: 'idBaja',
+  onOpen: async (id) => {
+    const fromRows = rows.value.find((row) => row.id === id)
+    if (fromRows) {
+      openDetailModal(fromRows)
+      return
+    }
+    try {
+      const response = await bajasPendientesService.listar({ pagina: 1, limite: 100 })
+      const found = response.data.find((row) => row.id === id)
+      if (found) openDetailModal(found)
+    } catch {
+      // sin permiso o no pendiente
+    }
+  },
+})
 
 const openAprobarModal = (row: BajaSolicitud) => {
   solicitudSeleccionada.value = row

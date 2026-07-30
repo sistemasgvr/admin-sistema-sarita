@@ -243,6 +243,7 @@ import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { AppBadge, AppHelpTip, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastSuccess } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -431,6 +432,17 @@ const openDetailModal = (row: BajaCliente) => {
   detailEnabled.value = true
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  queryKey: 'idBaja',
+  onOpen: (id) => {
+    const fromRows = rows.value.find((row) => row.id === id)
+    solicitudSeleccionada.value = fromRows ?? ({ id } as BajaCliente)
+    detailId.value = id
+    detailEnabled.value = true
+    detailModalOpen.value = true
+  },
+})
 
 const openAprobarModal = (row: BajaCliente) => {
   solicitudSeleccionada.value = row

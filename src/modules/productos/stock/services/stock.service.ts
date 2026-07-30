@@ -1,5 +1,6 @@
 import {
   apiDelete,
+  apiGet,
   apiGetPaginated,
   apiPatch,
   apiPost,
@@ -15,6 +16,10 @@ import type {
 export const stockService = {
   listar(filters: StockListFilters = {}) {
     return apiGetPaginated<Stock>('/productos/stock', { params: filters })
+  },
+
+  obtenerPorId(id: number) {
+    return apiGet<Stock>(`/productos/stock/${id}`)
   },
 
   crear(payload: CreateStockPayload) {

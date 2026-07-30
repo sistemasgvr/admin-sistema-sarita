@@ -138,6 +138,7 @@ import type {
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { downloadBlob } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/guias-remision.service'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 import {
   AppActionMenu,
@@ -378,6 +379,13 @@ function openDetail(row: GuiaRemisionListItem) {
   guiaToViewId.value = row.id
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    guiaToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
 
 async function descargarPdf(row: GuiaRemisionListItem) {
   if (pdfBusyId.value !== null) return
