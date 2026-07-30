@@ -14,7 +14,7 @@
         >
           <template #actions>
             <AppHelpTip
-              text="Solicitudes de baja de cilindros pendientes de aprobación. Solo un administrador distinto al solicitante puede aprobar o rechazar."
+              text="Solicitudes de baja de cilindros pendientes. Solo un administrador con permiso de aprobar/rechazar bajas puede gestionarlas (incluido el solicitante)."
             />
           </template>
         </AppListToolbar>
@@ -293,7 +293,15 @@ const esAdministrador = computed(() =>
 
 const canAprobar = computed(
   () =>
-    esAdministrador.value && authStore.hasPermission(PermisoBanderas.BALONES_EDITAR),
+    esAdministrador.value &&
+    authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR),
+)
+
+const canRechazar = computed(
+  () =>
+    esAdministrador.value &&
+    (authStore.hasPermission(PermisoBanderas.BAJAS_BALON_RECHAZAR) ||
+      authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR)),
 )
 
 const isLoading = computed(
@@ -343,7 +351,7 @@ function actionItemsForRow(_row: BajaSolicitud): ActionMenuItem[] {
       label: 'Rechazar',
       icon: ICONS.x,
       danger: true,
-      hidden: !canAprobar.value,
+      hidden: !canRechazar.value,
     },
   ]
 }

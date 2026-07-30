@@ -19,7 +19,9 @@ export function useSolicitarBajaClienteMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.lists() })
-      toastSuccess('Solicitud de baja registrada. Un administrador debe aprobarla.')
+      toastSuccess(
+        'Solicitud de baja registrada. Un administrador con permiso debe aprobarla.',
+      )
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar la solicitud de baja')
@@ -36,7 +38,9 @@ export function useSolicitarReactivacionClienteMutation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.lists() })
-      toastSuccess('Solicitud de reactivación registrada. Un administrador debe aprobarla.')
+      toastSuccess(
+        'Solicitud de reactivación registrada. Un administrador con permiso debe aprobarla.',
+      )
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar la solicitud de reactivación')

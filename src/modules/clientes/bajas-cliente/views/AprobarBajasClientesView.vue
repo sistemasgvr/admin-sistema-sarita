@@ -8,7 +8,7 @@
         >
           <template #actions>
             <AppHelpTip
-              text="Solicitudes de baja de clientes pendientes de aprobación. Solo un administrador distinto al solicitante puede aprobar o rechazar."
+              text="Solicitudes de baja/reactivación pendientes. Solo un administrador con permiso de aprobar/rechazar bajas de cliente puede gestionarlas (incluido el solicitante)."
             />
           </template>
         </AppListToolbar>
@@ -70,7 +70,7 @@
         </button>
 
         <button
-          v-if="canAprobar && row.nombre_estado_aprobacion === 'PENDIENTE'"
+          v-if="canRechazar && row.nombre_estado_aprobacion === 'PENDIENTE'"
           type="button"
           title="Rechazar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
@@ -291,7 +291,16 @@ const esAdministrador = computed(() =>
 )
 
 const canAprobar = computed(
-  () => esAdministrador.value && authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR),
+  () =>
+    esAdministrador.value &&
+    authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_APROBAR),
+)
+
+const canRechazar = computed(
+  () =>
+    esAdministrador.value &&
+    (authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_RECHAZAR) ||
+      authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_APROBAR)),
 )
 
 const isLoading = computed(() => bajasQuery.isFetching.value || bajasQuery.isLoading.value)

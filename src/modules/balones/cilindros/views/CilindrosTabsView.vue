@@ -67,7 +67,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const canVerAprobaciones = computed(() =>
-  authStore.hasPermission(PermisoBanderas.BALONES_EDITAR),
+  authStore.hasPermission(PermisoBanderas.BAJAS_BALON_LISTAR) ||
+  authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR),
 )
 
 const bajasCountFilters = ref({ pagina: 1, limite: 1 })

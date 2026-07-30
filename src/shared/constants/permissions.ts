@@ -225,6 +225,12 @@ export const PermisoBanderas = {
   GUIAS_REMISION_ELIMINAR: 'guias_remision.eliminar',
   GUIAS_REMISION_EMITIR: 'guias_remision.emitir',
 
+  BAJAS_BALON_LISTAR: 'bajas_balon.listar',
+  BAJAS_BALON_VER: 'bajas_balon.ver',
+  BAJAS_BALON_SOLICITAR: 'bajas_balon.solicitar',
+  BAJAS_BALON_APROBAR: 'bajas_balon.aprobar',
+  BAJAS_BALON_RECHAZAR: 'bajas_balon.rechazar',
+
   BAJAS_CLIENTE_LISTAR: 'bajas_cliente.listar',
   BAJAS_CLIENTE_VER: 'bajas_cliente.ver',
   BAJAS_CLIENTE_SOLICITAR: 'bajas_cliente.solicitar',
