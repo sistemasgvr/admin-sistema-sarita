@@ -1,7 +1,7 @@
 import * as yup from 'yup'
 import { toTypedSchema } from '@vee-validate/yup'
 import type { TypedSchema } from 'vee-validate'
-import { optionalEmail, optionalString, requiredSelect } from '@/shared/validation'
+import { optionalEmail, optionalPhone, optionalString, requiredSelect } from '@/shared/validation'
 import { validationMessages as msg } from '@/shared/validation/messages'
 
 export interface ClienteFormSchemaOptions {
@@ -107,7 +107,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
         MAX.apellido,
         msg.maxLength('El apellido materno', MAX.apellido),
       ),
-      telefono: optionalString().max(MAX.telefono, msg.maxLength('El teléfono', MAX.telefono)),
+      telefono: optionalPhone().max(MAX.telefono, msg.maxLength('El teléfono', MAX.telefono)),
       email: optionalEmail().max(MAX.email, msg.maxLength('El correo', MAX.email)),
       direccion: optionalString().max(MAX.direccion, msg.maxLength('La dirección', MAX.direccion)),
       referencia: optionalString().max(

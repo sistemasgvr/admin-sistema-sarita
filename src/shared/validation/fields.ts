@@ -17,6 +17,18 @@ export const optionalEmail = () =>
     .transform((value) => value || undefined)
     .optional()
 
+export const optionalPhone = () =>
+  yup
+    .string()
+    .trim()
+    .test('phone', msg.phone, (value) => {
+      if (!value) return true
+      const digitsOnly = value.replace(/[\s()-]/g, '')
+      return /^\+?\d{6,15}$/.test(digitsOnly)
+    })
+    .transform((value) => value || undefined)
+    .optional()
+
 export const requiredSelect = (label: string) =>
   yup
     .mixed<string | number>()

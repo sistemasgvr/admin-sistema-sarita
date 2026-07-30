@@ -4,6 +4,7 @@ export {
   optionalEmail,
   optionalNumber,
   optionalPasswordMin,
+  optionalPhone,
   optionalString,
   requiredEmail,
   requiredPasswordMin,

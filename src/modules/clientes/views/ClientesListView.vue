@@ -44,7 +44,7 @@
           </p>
         </div>
         <AppBadge v-if="row.nombre_tipo_persona" size="sm" color="neutral" class="mt-1">
-          {{ row.nombre_tipo_persona }}
+          {{ formatListaOpcionLabel(row.nombre_tipo_persona) }}
         </AppBadge>
       </template>
       <template #cell-contacto="{ row }">
@@ -223,6 +223,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 withDefaults(
   defineProps<{

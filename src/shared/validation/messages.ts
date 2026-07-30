@@ -4,6 +4,7 @@ export const validationMessages = {
   minLength: (field: string, min: number) => `${field} debe tener al menos ${min} caracteres`,
   maxLength: (field: string, max: number) => `${field} no puede superar ${max} caracteres`,
   email: 'Ingresa un correo válido',
+  phone: 'Ingresa un teléfono válido (solo números, 6 a 15 dígitos)',
   nonNegativeNumber: 'Ingresa un número válido mayor o igual a 0',
   documentDni: 'El DNI debe tener 8 dígitos numéricos',
   documentRuc: 'El RUC debe tener 11 dígitos numéricos',
