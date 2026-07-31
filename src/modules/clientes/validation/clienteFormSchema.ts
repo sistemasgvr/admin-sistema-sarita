@@ -3,6 +3,7 @@ import { toTypedSchema } from '@vee-validate/yup'
 import type { TypedSchema } from 'vee-validate'
 import { optionalEmail, optionalPhone, optionalString, requiredSelect } from '@/shared/validation'
 import { validationMessages as msg } from '@/shared/validation/messages'
+import { formatoDocumentoError } from '@/shared/validation/documento'
 
 export interface ClienteFormSchemaOptions {
   getTipoDocumentoNombre?: (id: string | number) => string | undefined
@@ -14,10 +15,8 @@ const MAX = {
   razonSocial: 200,
   nombres: 150,
   apellido: 150,
-  numeroDocumento: 20,
   direccion: 250,
   referencia: 250,
-  telefono: 20,
   email: 150,
 } as const
 
@@ -47,22 +46,13 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
           if (tipo === 'VSD') return true
           return !!value
         })
-        .max(MAX.numeroDocumento, msg.maxLength('El número de documento', MAX.numeroDocumento))
         .test('formato-documento', function (value) {
           if (!value) return true
 
           const tipo = normalizeCatalogName(getTipoDocumentoNombre?.(this.parent.idTipoDocumento))
-          const digitsOnly = value.replace(/\D/g, '')
+          const error = formatoDocumentoError(tipo, value)
 
-          if (tipo === 'DNI' && !/^\d{8}$/.test(digitsOnly)) {
-            return this.createError({ message: msg.documentDni })
-          }
-
-          if (tipo === 'RUC' && !/^\d{11}$/.test(digitsOnly)) {
-            return this.createError({ message: msg.documentRuc })
-          }
-
-          return true
+          return error ? this.createError({ message: error }) : true
         }),
       codigoInterno: optionalString().max(
         MAX.codigoInterno,
@@ -107,7 +97,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
         MAX.apellido,
         msg.maxLength('El apellido materno', MAX.apellido),
       ),
-      telefono: optionalPhone().max(MAX.telefono, msg.maxLength('El teléfono', MAX.telefono)),
+      telefono: optionalPhone(),
       email: optionalEmail().max(MAX.email, msg.maxLength('El correo', MAX.email)),
       direccion: optionalString().max(MAX.direccion, msg.maxLength('La dirección', MAX.direccion)),
       referencia: optionalString().max(
@@ -121,6 +111,9 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
       observacion: optionalString(),
     })
     .test('identificacion-cliente', function (values) {
+      const tipoDocumento = normalizeCatalogName(
+        getTipoDocumentoNombre?.(values.idTipoDocumento ?? ''),
+      )
       const idTipoPersona = values.idTipoPersona
       const tipoPersona =
         idTipoPersona != null
@@ -129,14 +122,14 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
       const razonSocial = values.razonSocial?.trim()
       const nombres = values.nombres?.trim()
 
-      if (isPersonaJuridica(tipoPersona)) {
+      if (tipoDocumento === 'RUC' || isPersonaJuridica(tipoPersona)) {
         if (!razonSocial) {
           return this.createError({ path: 'razonSocial', message: msg.razonSocialRequerida })
         }
         return true
       }
 
-      if (isPersonaNatural(tipoPersona)) {
+      if (tipoDocumento === 'DNI' || tipoDocumento === 'VSD' || isPersonaNatural(tipoPersona)) {
         if (!nombres) {
           return this.createError({ path: 'nombres', message: msg.nombresRequeridos })
         }
@@ -144,7 +137,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
       }
 
       if (!razonSocial && !nombres) {
-        return this.createError({ path: 'razonSocial', message: msg.identificacionCliente })
+        return this.createError({ path: 'nombres', message: msg.identificacionCliente })
       }
 
       return true

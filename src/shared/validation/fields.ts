@@ -23,8 +23,7 @@ export const optionalPhone = () =>
     .trim()
     .test('phone', msg.phone, (value) => {
       if (!value) return true
-      const digitsOnly = value.replace(/[\s()-]/g, '')
-      return /^\+?\d{6,15}$/.test(digitsOnly)
+      return /^\d{9}$/.test(value)
     })
     .transform((value) => value || undefined)
     .optional()

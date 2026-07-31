@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-full min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+    class="w-full min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3"
   >
     <div v-if="$slots.toolbar" class="border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
       <slot name="toolbar" />
