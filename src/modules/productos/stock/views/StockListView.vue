@@ -118,7 +118,6 @@
       :mode="formMode"
       :stock="selectedStock"
       :almacenes="almacenes"
-      :productos="productos"
       @saved="onStockSaved"
     />
 
@@ -185,8 +184,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
-import { productosService } from '@/modules/productos/articulos/services/productos.service'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
 import StockDetailModal from '@/modules/productos/stock/components/StockDetailModal.vue'
 import { useDeleteStockMutation } from '@/modules/productos/stock/composables/useStockMutations'
@@ -224,7 +221,6 @@ const route = useRoute()
 const breadcrumbItems = productosBreadcrumbItems('Stock')
 
 const almacenes = ref<Almacen[]>([])
-const productos = ref<Producto[]>([])
 const isLoadingAlmacenes = ref(false)
 
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -306,15 +302,10 @@ const formatCantidad = (value: unknown) => {
 const loadCatalogos = async () => {
   isLoadingAlmacenes.value = true
   try {
-    const [almacenesResponse, productosResponse] = await Promise.all([
-      almacenesService.listar({ pagina: 1, limite: 100 }),
-      productosService.listar({ pagina: 1, limite: 500, afectaStock: true }),
-    ])
+    const almacenesResponse = await almacenesService.listar({ pagina: 1, limite: 100 })
     almacenes.value = almacenesResponse.data
-    productos.value = productosResponse.data
   } catch {
     almacenes.value = []
-    productos.value = []
   } finally {
     isLoadingAlmacenes.value = false
   }

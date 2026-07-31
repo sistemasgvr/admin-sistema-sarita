@@ -138,10 +138,10 @@ import { useProductosQuery } from '@/modules/productos/articulos/composables/use
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
-import {
-  useCreateComprobanteMutation,
-  useEmitirComprobanteMutation,
-} from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { useEmitirComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
+import { comprobantesQueryKeys } from '@/modules/ventas/comprobantes/constants/comprobantesQueryKeys'
+import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
@@ -150,13 +150,16 @@ import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
-import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { useQueryClient } from '@tanstack/vue-query'
 
 const {
   authStore,
@@ -184,11 +187,11 @@ const {
   clienteDescripcion,
 } = usePosComprobanteForm()
 
-const createComprobanteMutation = useCreateComprobanteMutation()
+const queryClient = useQueryClient()
 const emitMutation = useEmitirComprobanteMutation()
 const imprimiendoTicket = ref(false)
 
-const productosFilters = ref({ pagina: 1, limite: 100, esServicio: true })
+const productosFilters = ref({ pagina: 1, limite: 200, esServicio: true, soloActivos: 1 })
 const productosQuery = useProductosQuery(productosFilters)
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
@@ -211,14 +214,7 @@ const comprobanteGuardadoNumero = ref<string | null>(null)
 
 const tipoMantenimientoOptions = computed(() => toSelectOptions(tiposMantenimientoQuery.data.value))
 
-const serviciosMantenimiento = computed(() =>
-  (productosQuery.data.value?.data ?? []).filter(
-    (producto) =>
-      producto.nombre.toLowerCase().includes('mantenimiento') ||
-      producto.codigo.toUpperCase().includes('MANT') ||
-      producto.codigo.toUpperCase().includes('SRV'),
-  ),
-)
+const serviciosMantenimiento = computed(() => productosQuery.data.value?.data ?? [])
 
 const servicioOptions = computed(() =>
   serviciosMantenimiento.value.map((producto) => ({
@@ -271,7 +267,7 @@ async function registrarMantenimiento() {
   guardando.value = true
 
   try {
-    const comprobante = await createComprobanteMutation.mutateAsync({
+    const comprobante = await comprobantesService.crear({
       idUsuarioAuditoria: userId,
       idTipoComprobante: Number(idTipoComprobante.value),
       serie: serie.value.trim(),
@@ -294,23 +290,42 @@ async function registrarMantenimiento() {
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Mantenimiento de cilindro',
       observaciones: clienteDescripcion.value || undefined,
+      origenPos: OrigenPos.MANTENIMIENTO,
     })
 
-    await mantenimientosService.crear({
-      idUsuarioAuditoria: userId,
-      idBalon: Number(idBalon.value),
-      fechaIngreso: fechaIngreso.value,
-      idTipoMantenimiento: idTipoMantenimiento.value ? Number(idTipoMantenimiento.value) : undefined,
-      descripcion: descripcion.value || producto.nombre,
-      costo: Number(costo.value),
-      idComprobanteVenta: comprobante.id,
-      observacion: observacion.value || undefined,
-    })
+    try {
+      await mantenimientosService.crear({
+        idUsuarioAuditoria: userId,
+        idBalon: Number(idBalon.value),
+        fechaIngreso: fechaIngreso.value,
+        idTipoMantenimiento: idTipoMantenimiento.value
+          ? Number(idTipoMantenimiento.value)
+          : undefined,
+        descripcion: descripcion.value || producto.nombre,
+        costo: Number(costo.value),
+        idComprobanteVenta: comprobante.id,
+        observacion: observacion.value || undefined,
+      })
+    } catch (error) {
+      toastApiError(
+        error,
+        `Comprobante ${comprobante.serie}-${comprobante.numero} creado, pero falló el registro de mantenimiento`,
+      )
+      return
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() }),
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() }),
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() }),
+    ])
 
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
     toastSuccess('Mantenimiento registrado y comprobante generado')
+  } catch (error) {
+    toastApiError(error, 'No se pudo registrar el mantenimiento')
   } finally {
     guardando.value = false
   }

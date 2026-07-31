@@ -60,8 +60,10 @@ const canIndustrial = computed(
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_LISTAR) ||
     authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR),
 )
-const canMantenimiento = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR),
+const canMantenimiento = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR) &&
+    authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR),
 )
 
 const allTabs = computed<AppTabItem[]>(() => [

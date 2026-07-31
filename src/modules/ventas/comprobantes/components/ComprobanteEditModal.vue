@@ -78,12 +78,22 @@
         </template>
 
         <div class="mb-3">
-          <ProductoSelectField
+          <AppSelectSearch
             v-model="idProductoAgregar"
+            v-model:search="productoBuscar"
+            remote
             label="Agregar producto"
             placeholder="Buscar y agregar al detalle"
             search-placeholder="Código o nombre..."
-            :disabled="saving"
+            :options="productoOptions"
+            :loading="productosQuery.isFetching.value"
+            :disabled="saving || !idAlmacen"
+            :hint="productoSelectHint"
+            :empty-text="
+              productosQuery.isError.value
+                ? 'No se pudieron cargar productos. Reintenta.'
+                : 'Sin resultados'
+            "
           />
         </div>
 
@@ -135,14 +145,11 @@
                     </p>
                   </td>
                   <td class="px-3 py-2.5">
-                    <input
-                      v-model.number="linea.cantidad"
-                      type="number"
-                      min="0.001"
-                      step="0.001"
-                      class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-1.5 text-right tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
+                    <CantidadUnidadInput
+                      v-model="linea.cantidad"
+                      :name="`comprobante-edit-cantidad-${linea.key}`"
+                      :nombre-unidad="linea.nombreUnidadMedida"
                       :disabled="saving"
-                      aria-label="Cantidad"
                     />
                   </td>
                   <td class="px-3 py-2.5">
@@ -248,11 +255,14 @@ import {
   esVentaSinDocumentoTipo,
   LABEL_VENTA_SIN_DOCUMENTO,
 } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { productosService } from '@/modules/productos/articulos/services/productos.service'
-import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
+import type {
+  Producto,
+  ProductoListFilters,
+} from '@/modules/productos/articulos/interfaces/producto.interface'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
+import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
@@ -260,11 +270,22 @@ import {
   AppHelpTip,
   AppInput,
   AppModal,
+  AppSelectSearch,
   AppTextarea,
   ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
+import {
+  filtrosPorCatalogoPos,
+  labelCatalogoPosEdicion,
+  resolverCatalogoPosEdicion,
+  type CatalogoPosEdicion,
+} from '@/modules/ventas/comprobantes/utils/catalogoPosEdicion'
+import {
+  unidadRequiereCantidadEntera,
+  validarCantidadSegunUnidad,
+} from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 
@@ -272,6 +293,7 @@ interface LineaEdit {
   key: string
   idProducto: number
   descripcion: string
+  nombreUnidadMedida?: string | null
   cantidad: number
   precioUnitario: number
   descuento: number
@@ -303,7 +325,61 @@ const idAlmacen = ref<number | ''>('')
 const lineas = ref<LineaEdit[]>([])
 
 const idProductoAgregar = ref<number | ''>('')
+const productoBuscar = ref('')
 const notasOpen = ref(false)
+/** Catálogo POS inferido del detalle al abrir (no cambia al agregar ítems). */
+const catalogoPos = ref<CatalogoPosEdicion>('todos')
+
+const productosFilters = ref<ProductoListFilters>({
+  pagina: 1,
+  limite: 80,
+  soloActivos: 1,
+})
+const productosQuery = useProductosQuery(productosFilters)
+
+let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+
+const productoSelectHint = computed(() => {
+  if (!idAlmacen.value) {
+    return 'Selecciona un almacén para listar productos con stock'
+  }
+  return labelCatalogoPosEdicion(catalogoPos.value)
+})
+
+function syncProductosFilters(buscar?: string) {
+  productosFilters.value = {
+    pagina: 1,
+    limite: 80,
+    soloActivos: 1,
+    buscar: buscar?.trim() || undefined,
+    idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
+    ...filtrosPorCatalogoPos(catalogoPos.value),
+  }
+}
+
+watch(productoBuscar, (value) => {
+  if (productoBuscarTimeout) clearTimeout(productoBuscarTimeout)
+  productoBuscarTimeout = setTimeout(() => {
+    syncProductosFilters(value)
+  }, 300)
+})
+
+watch(idAlmacen, () => {
+  syncProductosFilters(productoBuscar.value)
+})
+
+const productoOptions = computed(() =>
+  (productosQuery.data.value?.data ?? []).map((producto) => {
+    const base = [producto.codigo, producto.nombre].filter(Boolean).join(' — ')
+    if (producto.stock_actual == null) {
+      return { value: producto.id, label: base }
+    }
+    return {
+      value: producto.id,
+      label: `${base} (stock: ${producto.stock_actual})`,
+    }
+  }),
+)
 
 const open = computed({
   get: () => props.modelValue,
@@ -359,6 +435,7 @@ watch(
       idProducto: detalle.id_producto,
       descripcion:
         detalle.descripcion || detalle.nombre_producto || `Producto ${detalle.id_producto}`,
+      nombreUnidadMedida: detalle.nombre_unidad_medida ?? null,
       cantidad: Number(detalle.cantidad),
       precioUnitario: Number(detalle.precio_unitario),
       descuento: Number(detalle.descuento ?? 0),
@@ -366,22 +443,33 @@ watch(
       idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
     }))
     idProductoAgregar.value = ''
+    productoBuscar.value = ''
     notasOpen.value = Boolean((data.glosa ?? '').trim() || (data.observaciones ?? '').trim())
+    catalogoPos.value = resolverCatalogoPosEdicion({
+      origenPos: data.origen_pos,
+      detalles: data.detalles ?? [],
+    })
+    syncProductosFilters('')
   },
   { immediate: true },
 )
 
-watch(idProductoAgregar, async (id) => {
+watch(idProductoAgregar, (id) => {
   if (id === '' || id == null) return
   const selectedId = Number(id)
   idProductoAgregar.value = ''
 
-  try {
-    const producto = await productosService.obtenerPorId(selectedId)
-    agregarProducto(producto)
-  } catch {
-    toastWarning('No se pudo cargar el producto seleccionado. Intenta de nuevo.')
+  if (!idAlmacen.value) {
+    toastWarning('Selecciona el almacén antes de agregar productos')
+    return
   }
+
+  const producto = (productosQuery.data.value?.data ?? []).find((item) => item.id === selectedId)
+  if (!producto) {
+    toastWarning('No se pudo cargar el producto seleccionado. Intenta de nuevo.')
+    return
+  }
+  agregarProducto(producto)
 })
 
 function formatMoney(value: number) {
@@ -398,11 +486,15 @@ function removeLinea(index: number) {
 
 function agregarProducto(producto: Producto) {
   const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
+  const unidad = producto.nombre_unidad_medida ?? null
+  const incremento = unidadRequiereCantidadEntera(unidad) ? 1 : 0.01
   const cantidadDeseada = existente
-    ? Math.max(0.001, Number(existente.cantidad || 0) + 1)
+    ? Math.max(incremento, Number(existente.cantidad || 0) + incremento)
     : 1
 
-  const errorStock = validarStockParaAgregar(producto, cantidadDeseada)
+  const errorStock = validarStockParaAgregar(producto, cantidadDeseada, {
+    requiereAlmacenSeleccionado: true,
+  })
   if (errorStock) {
     toastWarning(errorStock)
     return
@@ -410,6 +502,7 @@ function agregarProducto(producto: Producto) {
 
   if (existente) {
     existente.cantidad = cantidadDeseada
+    existente.nombreUnidadMedida = unidad ?? existente.nombreUnidadMedida
     toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
     return
   }
@@ -419,6 +512,7 @@ function agregarProducto(producto: Producto) {
     key: crypto.randomUUID(),
     idProducto: producto.id,
     descripcion: producto.nombre,
+    nombreUnidadMedida: unidad,
     cantidad: 1,
     precioUnitario: Number(producto.precio ?? 0),
     descuento: 0,
@@ -436,6 +530,18 @@ async function confirm() {
   if (lineas.value.some((l) => !l.idProducto || l.cantidad <= 0)) {
     toastWarning('Revisa cantidades y productos del detalle')
     return
+  }
+
+  for (const linea of lineas.value) {
+    const errorCantidad = validarCantidadSegunUnidad(
+      Number(linea.cantidad),
+      linea.nombreUnidadMedida,
+      linea.descripcion,
+    )
+    if (errorCantidad) {
+      toastWarning(errorCantidad)
+      return
+    }
   }
 
   if (!idAlmacen.value) {

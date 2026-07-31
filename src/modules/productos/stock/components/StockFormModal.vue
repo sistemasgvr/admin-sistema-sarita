@@ -21,6 +21,7 @@
           title="Ubicación y producto"
           :icon="ICONS.warehouse"
           :full-width="true"
+          help="Usa + para registrar un producto nuevo que afecte stock."
         >
           <div class="space-y-4">
             <AlmacenSelectField
@@ -41,8 +42,6 @@
               required
               :disabled="isSubmitting"
               :error="errors.idProducto"
-              :options="productoOptions"
-              hint="Usa + para registrar un producto nuevo que afecte stock."
             />
           </div>
         </DetailSectionCard>
@@ -129,7 +128,6 @@ import {
 } from '@/modules/productos/stock/composables/useStockMutations'
 import type { Stock, StockFormMode } from '@/modules/productos/stock/interfaces/stock.interface'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { AppInput, AppModal } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
@@ -141,7 +139,6 @@ interface StockFormModalProps {
   mode: StockFormMode
   stock?: Stock | null
   almacenes: Almacen[]
-  productos: Producto[]
 }
 
 const props = defineProps<StockFormModalProps>()
@@ -162,13 +159,6 @@ const almacenOptions = computed(() =>
     label: almacen.nombre_sucursal
       ? `${almacen.nombre} (${almacen.nombre_sucursal})`
       : almacen.nombre,
-  })),
-)
-
-const productoOptions = computed(() =>
-  props.productos.map((producto) => ({
-    value: producto.id,
-    label: `${producto.codigo} — ${producto.nombre}`,
   })),
 )
 

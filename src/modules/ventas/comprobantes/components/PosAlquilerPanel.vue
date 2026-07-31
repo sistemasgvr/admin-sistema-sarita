@@ -288,6 +288,7 @@ import {
   type KitMedicinalLinea,
   type KitMedicinalRol,
 } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
+import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import {
   calcularTotalesDesdeImporte,
@@ -577,6 +578,7 @@ async function registrarKit() {
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Kit medicinal',
       observaciones: clienteDescripcion.value || undefined,
+      origenPos: OrigenPos.MEDICINAL,
     })
 
     const alquiler = await alquileresService.crear({

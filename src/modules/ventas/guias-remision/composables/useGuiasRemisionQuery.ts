@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { computed, type ComputedRef, type Ref } from 'vue'
 import { guiasRemisionQueryKeys } from '@/modules/ventas/guias-remision/constants/guiasRemisionQueryKeys'
 import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/guias-remision.service'
@@ -8,6 +8,7 @@ export function useGuiasRemisionQuery(filters: Ref<GuiaRemisionListFilters>) {
   return useQuery({
     queryKey: computed(() => guiasRemisionQueryKeys.list(filters.value)),
     queryFn: () => guiasRemisionService.listar(filters.value),
+    placeholderData: keepPreviousData,
   })
 }
 

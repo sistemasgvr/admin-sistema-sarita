@@ -1,5 +1,5 @@
 import { computed, type Ref } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { notificacionesQueryKeys } from '@/modules/notificaciones/constants/notificacionesQueryKeys'
 import type { NotificacionListFilters } from '@/modules/notificaciones/interfaces/notificacion.interface'
 import { notificacionesService } from '@/modules/notificaciones/services/notificaciones.service'
@@ -12,6 +12,7 @@ export function useNotificacionesQuery(filters: Ref<NotificacionListFilters>) {
   return useQuery({
     queryKey: computed(() => notificacionesQueryKeys.list(filters.value)),
     queryFn: () => notificacionesService.listar(filters.value),
+    placeholderData: keepPreviousData,
     enabled: computed(
       () =>
         authStore.isAuthenticated &&

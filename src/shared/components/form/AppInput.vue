@@ -24,6 +24,7 @@
           :max="max"
           :step="step"
           :class="inputClasses"
+          @blur="emit('blur', $event)"
         />
 
         <button
@@ -71,6 +72,10 @@ const props = withDefaults(defineProps<AppInputProps>(), {
   type: 'text',
   state: 'default',
 })
+
+const emit = defineEmits<{
+  blur: [event: FocusEvent]
+}>()
 
 const model = defineModel<string | number | null>({ default: '' })
 
