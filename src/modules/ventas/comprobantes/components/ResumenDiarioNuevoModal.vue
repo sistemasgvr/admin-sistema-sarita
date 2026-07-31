@@ -39,6 +39,13 @@
         </div>
       </DetailSectionCard>
 
+      <div
+        v-if="errorMessage"
+        class="rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+      >
+        {{ errorMessage }}
+      </div>
+
       <DetailSectionCard title="Comprobantes a incluir" :icon="ICONS.clipboardList" :full-width="true">
         <div
           v-if="previewLoading"
@@ -136,7 +143,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { AppInput, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { toastApiError } from '@/shared/composables/useToast'
+import { getApiErrorMessage, toastApiError } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{
@@ -155,6 +162,7 @@ const fecha = ref(new Date().toISOString().slice(0, 10))
 const correlativo = ref('001')
 const preview = ref<ResumenDiarioPreview | null>(null)
 const previewLoading = ref(false)
+const errorMessage = ref<string | null>(null)
 
 const open = computed({
   get: () => props.modelValue,
@@ -166,7 +174,13 @@ const busy = computed(() => previewLoading.value || enviarMutation.isPending.val
 watch(
   () => props.modelValue,
   async (isOpen) => {
-    if (!isOpen) return
+    if (!isOpen) {
+      errorMessage.value = null
+      enviarMutation.reset()
+      return
+    }
+    errorMessage.value = null
+    enviarMutation.reset()
     fecha.value = new Date().toISOString().slice(0, 10)
     await syncCorrelativo()
     await cargarPreview()
@@ -208,7 +222,18 @@ async function cargarPreview() {
 
 async function enviar() {
   const userId = authStore.user?.id
-  if (!userId || !preview.value?.items.length) return
+  if (!userId) {
+    errorMessage.value = 'No hay sesión activa para enviar el resumen.'
+    toastApiError(new Error(errorMessage.value))
+    return
+  }
+  if (!preview.value?.items.length) {
+    errorMessage.value = 'No hay comprobantes para incluir en el resumen.'
+    toastApiError(new Error(errorMessage.value))
+    return
+  }
+
+  errorMessage.value = null
 
   try {
     const result = await enviarMutation.mutateAsync({
@@ -217,10 +242,19 @@ async function enviar() {
       correlativo: correlativo.value.trim() || '001',
       idsComprobante: preview.value.items.map((item) => item.id),
     })
+
+    const resumenId = result?.resumen?.id
+    if (!resumenId) {
+      throw new Error(
+        'El envío terminó sin registrar el resumen. Revisa la respuesta de SUNAT o inténtalo de nuevo.',
+      )
+    }
+
     open.value = false
-    emit('created', result.resumen.id)
-  } catch {
-    // toast en mutación
+    emit('created', resumenId)
+  } catch (error) {
+    // Toast lo emite la mutación (onError); aquí dejamos el mensaje visible en el modal.
+    errorMessage.value = getApiErrorMessage(error, 'No se pudo enviar el resumen diario')
   }
 }
 </script>
