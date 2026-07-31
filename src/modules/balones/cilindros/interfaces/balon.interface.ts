@@ -142,6 +142,8 @@ export interface BalonListFilters {
 export interface BalonPayload {
   idUsuarioAuditoria: number
   codigoBalon: string
+  idTipoBalon: number
+  idProductoGas: number
   libroCilindro?: string
   paginaLibro?: number
   fechaRegistro?: string
@@ -150,8 +152,6 @@ export interface BalonPayload {
   idPropietario?: number
   idClientePropietario?: number
   idReferencia?: number
-  idTipoBalon?: number
-  idProductoGas?: number
   idEstadoBalon?: number
   fechaUltimaPruebaHidrostatica?: string
   vigenciaPruebaHidrostaticaAnios?: number
