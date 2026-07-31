@@ -379,6 +379,8 @@ function openDevolver(row: PrestamoAntiguedadItem) {
     id_balon: row.id_balon,
     codigo_balon: row.codigo_balon,
     numero_prestamo: row.numero_prestamo,
+    id_cliente: row.id_cliente,
+    id_almacen: row.id_almacen ?? null,
     fecha_devolucion: row.fecha_devolucion,
     estado: 1,
     fecha_creacion: '',

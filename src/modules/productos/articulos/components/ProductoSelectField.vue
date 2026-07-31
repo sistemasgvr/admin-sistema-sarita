@@ -10,7 +10,7 @@
         v-if="searchable"
         v-model="model"
         v-model:search="search"
-        remote
+        :remote="useRemote"
         :label="label"
         :placeholder="placeholder"
         :search-placeholder="searchPlaceholder"
@@ -59,6 +59,12 @@ const props = withDefaults(
     disabled?: boolean
     required?: boolean
     searchable?: boolean
+    /**
+     * true = cada tecla consulta API.
+     * false = carga catálogo filtrado y filtra en cliente.
+     * omitir = auto (catálogos gas/servicio/alquilable → local; resto → remoto).
+     */
+    remote?: boolean
     label?: string
     placeholder?: string
     searchPlaceholder?: string
@@ -78,6 +84,7 @@ const props = withDefaults(
     disabled: false,
     required: false,
     searchable: true,
+    remote: undefined,
     label: 'Producto',
     placeholder: 'Selecciona producto',
     searchPlaceholder: 'Código o nombre...',
@@ -103,12 +110,21 @@ const createTitle = computed(() =>
   props.esServicio ? 'Nuevo servicio' : 'Nuevo producto',
 )
 
+/** Catálogos acotados: carga una vez + filtro local (mismo patrón que POS Recarga). */
+const useRemote = computed(() => {
+  if (props.remote !== undefined) return props.remote
+  const catalogoAcotado =
+    props.esGas === true || props.esServicio === true || props.esAlquilable === true
+  return !catalogoAcotado
+})
+
 function buildFilters(buscar?: string): ProductoListFilters {
   const filters: ProductoListFilters = {
     pagina: 1,
-    limite: 80,
+    limite: useRemote.value ? 80 : 200,
     soloActivos: props.soloActivos,
-    buscar: buscar?.trim() || undefined,
+    incluirImagenes: false,
+    buscar: useRemote.value ? buscar?.trim() || undefined : undefined,
   }
 
   if (props.esGas !== undefined) filters.esGas = props.esGas
@@ -134,6 +150,12 @@ const emptyText = computed(() => {
   if (productosQuery.isError.value) {
     return 'No se pudieron cargar productos. Reintenta.'
   }
+  if (isFetchingProductos.value || isLoadingProductos.value) {
+    return 'Cargando productos...'
+  }
+  if (search.value.trim()) {
+    return 'Sin coincidencias. Borra el buscador para ver el listado.'
+  }
   return 'Sin resultados'
 })
 
@@ -146,14 +168,15 @@ watch(
       props.afectaStock,
       props.soloActivos,
       props.idAlmacen,
+      useRemote.value,
     ] as const,
   () => {
-    productosFilters.value = buildFilters(search.value)
+    productosFilters.value = buildFilters(useRemote.value ? search.value : undefined)
   },
 )
 
 watch(search, (term) => {
-  if (!props.searchable) return
+  if (!props.searchable || !useRemote.value) return
   if (searchTimeout) clearTimeout(searchTimeout)
   searchTimeout = setTimeout(() => {
     productosFilters.value = buildFilters(term)
@@ -166,19 +189,18 @@ function productoLabel(producto: Producto) {
   return `${base} (stock: ${producto.stock_actual})`
 }
 
-const queryOptions = computed<SelectOption[]>(() =>
-  (productosQuery.data.value?.data ?? []).map((producto) => ({
+const queryOptions = computed<SelectOption[]>(() => {
+  const rows = productosQuery.data.value?.data
+  if (!Array.isArray(rows)) return []
+  return rows.map((producto) => ({
     value: producto.id,
     label: productoLabel(producto),
-  })),
-)
+  }))
+})
 
 const mergedOptions = computed(() => {
-  // Sin búsqueda: se puede usar un catálogo estático del padre.
   if (!props.searchable) {
-    const base = props.options?.length
-      ? [...props.options]
-      : [...queryOptions.value]
+    const base = props.options?.length ? [...props.options] : [...queryOptions.value]
     if (
       createdOption.value &&
       !base.some((item) => String(item.value) === String(createdOption.value!.value))
@@ -188,7 +210,6 @@ const mergedOptions = computed(() => {
     return base
   }
 
-  // Remoto: la query filtra; no mezclar todo el catálogo del padre (rompe el buscador).
   const base = [...queryOptions.value]
   const extras: SelectOption[] = []
 
@@ -196,7 +217,6 @@ const mergedOptions = computed(() => {
     extras.push(createdOption.value)
   }
 
-  // Mantener visible la opción seleccionada si no viene en la página actual.
   if (model.value !== '' && model.value != null) {
     const selected =
       queryOptions.value.find((opt) => String(opt.value) === String(model.value)) ??

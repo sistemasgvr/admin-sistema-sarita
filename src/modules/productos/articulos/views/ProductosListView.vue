@@ -248,6 +248,7 @@ const filters = ref<ProductoListFilters>({
   pagina: 1,
   limite: 10,
   soloActivos: 1,
+  incluirImagenes: true,
 })
 
 const productosQuery = useProductosQuery(filters)
@@ -378,6 +379,7 @@ const syncFilters = () => {
     esServicio:
       tipoFiltro.value === 'todos' ? undefined : tipoFiltro.value === 'servicio',
     soloActivos: buildSoloActivos(mostrarProductos.value),
+    incluirImagenes: true,
   }
 }
 

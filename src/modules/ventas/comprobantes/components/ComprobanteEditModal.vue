@@ -86,14 +86,10 @@
             placeholder="Buscar y agregar al detalle"
             search-placeholder="Código o nombre..."
             :options="productoOptions"
-            :loading="productosQuery.isFetching.value"
+            :loading="isFetchingProductos"
             :disabled="saving || !idAlmacen"
             :hint="productoSelectHint"
-            :empty-text="
-              productosQuery.isError.value
-                ? 'No se pudieron cargar productos. Reintenta.'
-                : 'Sin resultados'
-            "
+            :empty-text="productoSelectEmptyText"
           />
         </div>
 
@@ -334,8 +330,11 @@ const productosFilters = ref<ProductoListFilters>({
   pagina: 1,
   limite: 80,
   soloActivos: 1,
+  incluirImagenes: false,
 })
 const productosQuery = useProductosQuery(productosFilters)
+const isFetchingProductos = computed(() => productosQuery.isFetching.value)
+const isProductosError = computed(() => productosQuery.isError.value)
 
 let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
 
@@ -346,11 +345,22 @@ const productoSelectHint = computed(() => {
   return labelCatalogoPosEdicion(catalogoPos.value)
 })
 
+const productoSelectEmptyText = computed(() => {
+  if (isProductosError.value) {
+    return 'No se pudieron cargar productos. Reintenta.'
+  }
+  if (isFetchingProductos.value) {
+    return 'Cargando productos...'
+  }
+  return 'Sin resultados'
+})
+
 function syncProductosFilters(buscar?: string) {
   productosFilters.value = {
     pagina: 1,
     limite: 80,
     soloActivos: 1,
+    incluirImagenes: false,
     buscar: buscar?.trim() || undefined,
     idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
     ...filtrosPorCatalogoPos(catalogoPos.value),

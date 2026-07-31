@@ -16,7 +16,11 @@ import type {
 
 export const productosService = {
   listar(filters: ProductoListFilters = {}) {
-    return apiGetPaginated<Producto>('/productos', { params: filters })
+    // Por defecto sin firmar imágenes (rápido para selects). Quien necesite
+    // miniaturas debe pasar incluirImagenes: true.
+    return apiGetPaginated<Producto>('/productos', {
+      params: { incluirImagenes: false, ...filters },
+    })
   },
 
   obtenerPorId(id: number) {

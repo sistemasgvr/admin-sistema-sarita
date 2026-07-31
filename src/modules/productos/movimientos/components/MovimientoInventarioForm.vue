@@ -67,6 +67,7 @@
                 placeholder="Selecciona producto con stock"
                 :afecta-stock="true"
                 :es-servicio="false"
+                :remote="true"
                 required
                 class="sm:col-span-2"
                 :disabled="isSubmitting"

@@ -251,6 +251,7 @@ const filters = ref<ProductoListFilters>({
   limite: 500,
   esGas: false,
   esServicio: false,
+  incluirImagenes: true,
 })
 
 const productosQuery = useProductosQuery(filters)
@@ -391,6 +392,7 @@ const syncFilters = () => {
     esGas: false,
     esServicio: false,
     soloActivos: 1,
+    incluirImagenes: true,
     idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
