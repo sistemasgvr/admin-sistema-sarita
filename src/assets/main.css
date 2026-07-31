@@ -206,3 +206,97 @@ layer(base);
     @apply bg-gray-300 dark:bg-gray-500;
   }
 }
+
+/* ============================================================
+   Fondo claymorphism verde del layout principal (#00873E).
+   Capa fija detrás del contenido + orbes decorativos difuminados.
+   ============================================================ */
+.admin-shell-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  /* Fondo base en gradiente con tonos derivados de #00873E */
+  background: linear-gradient(135deg, #e6f3ec 0%, #a3d6b9 45%, #5cb884 100%);
+}
+
+.admin-shell-bg::before,
+.admin-shell-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+.admin-shell-bg::before {
+  width: 40vw;
+  height: 40vw;
+  min-width: 340px;
+  min-height: 340px;
+  top: -8vw;
+  right: -6vw;
+  /* Orbe superior: verde medio vibrante */
+  background: #28a760;
+}
+
+.admin-shell-bg::after {
+  width: 44vw;
+  height: 44vw;
+  min-width: 360px;
+  min-height: 360px;
+  bottom: -12vw;
+  left: -8vw;
+  /* Orbe inferior: tu verde exacto */
+  background: #00873E;
+}
+
+/* Modo Oscuro (Dark Mode) */
+.dark .admin-shell-bg {
+  background: linear-gradient(135deg, #001f0e 0%, #003d1c 55%, #005c2a 100%);
+}
+.dark .admin-shell-bg::before {
+  background: #007033;
+}
+.dark .admin-shell-bg::after {
+  background: #005225;
+}
+
+/* ============================================================
+   Claymorphism verde en los items del sidebar (hover + activo).
+   Sólido, con volumen, sin transparencias de fondo ni blur.
+   ============================================================ */
+.menu-item,
+.menu-dropdown-item {
+  transition: all 0.2s ease;
+}
+
+.menu-item.menu-item-inactive:hover,
+.menu-dropdown-item.menu-dropdown-item-inactive:hover {
+  background: linear-gradient(145deg, #10b981 0%, #047857 100%);
+  color: #ffffff;
+  box-shadow:
+    0 4px 14px rgba(16, 185, 129, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.menu-item.menu-item-active,
+.menu-dropdown-item.menu-dropdown-item-active {
+  background: linear-gradient(145deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  box-shadow:
+    0 2px 8px rgba(16, 185, 129, 0.3),
+    inset 0 2px 5px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Íconos y textos en blanco y 100% opacos (hover + activo). */
+.menu-item.menu-item-inactive:hover *,
+.menu-dropdown-item.menu-dropdown-item-inactive:hover *,
+.menu-item.menu-item-active *,
+.menu-dropdown-item.menu-dropdown-item-active * {
+  color: #ffffff;
+  opacity: 1;
+}

@@ -350,6 +350,108 @@ Copiar `.env.example` a `.env` y ajustar según entorno.
 
 ---
 
+## 🧭 Guía visual para el desarrollador
+
+Diagramas rápidos para entender cómo fluye todo. (Se renderizan en GitHub.)
+
+### 1. Arquitectura en capas
+
+Cada capa solo conoce a la de abajo. Las **vistas** nunca llaman a `axios` directo: pasan por composables → services → apiClient.
+
+```mermaid
+flowchart TD
+  U([👤 Usuario]) --> V[Vistas / Views<br/>pantallas del router]
+  V --> C[Composables<br/>useXxxQuery / useXxxMutation]
+  V --> ST[Stores Pinia<br/>auth · sidebar · theme]
+  C --> QC[(TanStack Query<br/>caché en memoria)]
+  C --> S[Services<br/>solo llamadas HTTP]
+  S --> API[apiClient axios<br/>+ interceptores]
+  API -->|Bearer JWT| BE[(API NestJS)]
+  ST -. token .-> API
+```
+
+### 2. Lectura de datos (listado)
+
+```mermaid
+sequenceDiagram
+  participant V as Vista
+  participant Q as useXxxQuery
+  participant S as Service
+  participant A as apiClient
+  participant B as Backend
+  V->>Q: filtros (ref reactivo)
+  Q->>S: queryFn(filtros)
+  S->>A: apiGetPaginated(url, { params })
+  A->>B: GET /recurso  (Authorization: Bearer)
+  B-->>A: { data, meta }
+  A-->>S: PaginatedResult
+  S-->>Q: se cachea por queryKey
+  Q-->>V: data · isLoading · isError
+  Note over Q: Si cambia el queryKey,<br/>refetch automático
+```
+
+### 3. Escritura de datos (mutación)
+
+```mermaid
+sequenceDiagram
+  participant V as Vista / Modal
+  participant M as useXxxMutation
+  participant S as Service
+  participant B as Backend
+  participant QC as QueryClient
+  V->>M: mutate(payload)
+  M->>S: apiPost / apiPatch / apiDelete
+  S->>B: request
+  B-->>M: respuesta
+  M->>QC: invalidateQueries(queryKeys)
+  M-->>V: toast éxito / error
+  QC-->>V: refetch automático de los listados
+```
+
+### 4. Anatomía de un módulo
+
+```mermaid
+flowchart LR
+  subgraph mod [Modulo en src/modules]
+    direction LR
+    I[interfaces/<br/>tipos del dominio] --> S[services/<br/>HTTP puro]
+    K[constants/<br/>queryKeys] --> C[composables/<br/>queries · mutations]
+    S --> C
+    C --> VW[views/<br/>pantallas]
+    C --> CM[components/<br/>modales · forms]
+    CM --> VW
+    VW --> R[router.ts<br/>rutas /admin]
+  end
+```
+
+### 5. Permisos en 3 capas
+
+Una misma bandera (`PermisoBanderas.X`) se aplica en el menú, el router y la UI.
+
+```mermaid
+flowchart TD
+  P[PermisoBanderas<br/>ej. clientes.listar] --> Menu[Menú lateral<br/>oculta items sin permiso]
+  P --> Guard[Router guard beforeEach<br/>valida meta.permission]
+  P --> UI["Botones / acciones<br/>authStore.hasPermission()"]
+  Super(["auth.todo<br/>(superadmin, omite todo)"]) -.-> Menu & Guard & UI
+```
+
+### 6. Receta: agregar un módulo nuevo
+
+```mermaid
+flowchart LR
+  A[1 · Revisar<br/>endpoint backend] --> B[2 · Registrar<br/>permisos]
+  B --> C[3 · Crear carpeta<br/>del módulo]
+  C --> D[4 · Registrar<br/>ruta en router]
+  D --> E[5 · Agregar al<br/>menú lateral]
+  E --> F[6 · Proteger<br/>acciones UI]
+  F --> G[7 · npm run build]
+```
+
+> El detalle paso a paso está arriba, en **Flujo para integrar un nuevo módulo**.
+
+---
+
 ## Licencia
 
 Uso interno — Oxígeno Sarita

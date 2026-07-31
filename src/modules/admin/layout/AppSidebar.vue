@@ -129,7 +129,7 @@
                         <router-link
                           :to="subItem.path"
                           :class="[
-                            'menu-dropdown-item',
+                            'menu-dropdown-item flex items-center gap-2',
                             {
                               'menu-dropdown-item-active': isSubmenuRouteActive(
                                 subItem.path,
@@ -142,7 +142,13 @@
                             },
                           ]"
                         >
-                          {{ subItem.name }}
+                          <AppIcon
+                            v-if="subItem.icon"
+                            :name="subItem.icon"
+                            :size="16"
+                            class="shrink-0 opacity-80"
+                          />
+                          <span class="truncate">{{ subItem.name }}</span>
                         </router-link>
                       </li>
                     </ul>

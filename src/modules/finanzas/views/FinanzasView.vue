@@ -1,22 +1,20 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Dashboard" />
+    <PageBreadcrumb page-title="Finanzas" />
 
     <template v-if="visibleTabs.length">
-      <DashboardFilters v-model="filterValues" />
-
       <AppTabs
         v-model="activeTab"
         :tabs="visibleTabs"
         inline
         full-width
-        aria-label="Dashboards"
+        aria-label="Finanzas"
         class="mb-6"
       />
 
       <KeepAlive>
-        <ClientesDashboardTab v-if="activeTab === 'clientes'" />
-        <BalonesDashboardTab v-else-if="activeTab === 'balones'" />
+        <CuentasListView v-if="activeTab === 'cobrar'" tipo="COBRAR" />
+        <CuentasListView v-else-if="activeTab === 'pagar'" tipo="PAGAR" />
       </KeepAlive>
     </template>
 
@@ -25,7 +23,7 @@
       class="rounded-2xl border border-gray-200 bg-white px-5 py-12 text-center dark:border-gray-800 dark:bg-white/[0.03]"
     >
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        No tienes acceso a ningún panel del dashboard.
+        No tienes acceso a los módulos de finanzas.
       </p>
     </div>
   </div>
@@ -36,20 +34,13 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { AppTabs } from '@/shared/components'
-import ClientesDashboardTab from '@/modules/dashboard/tabs/ClientesDashboardTab.vue'
-import BalonesDashboardTab from '@/modules/dashboard/tabs/BalonesDashboardTab.vue'
-import DashboardFilters from '@/modules/dashboard/components/DashboardFilters.vue'
-import {
-  provideDashboardFilters,
-  type DashboardGlobalFilters,
-} from '@/modules/dashboard/composables/useDashboardFilters'
+import CuentasListView from '@/modules/finanzas/views/CuentasListView.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
-import type { DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
-interface DashboardTab extends AppTabItem {
+interface FinanzasTab extends AppTabItem {
   permission: PermissionBandera
 }
 
@@ -57,39 +48,23 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-/* ---------- Filtros globales del dashboard ---------- */
-const filterValues = ref<DynamicFilterValues>({})
-
-const globalFilters = computed<DashboardGlobalFilters>(() => {
-  const idCliente = filterValues.value.idCliente
-  const fechaDesde = filterValues.value.fechaDesde
-  const fechaHasta = filterValues.value.fechaHasta
-  return {
-    fechaDesde: fechaDesde ? String(fechaDesde) : undefined,
-    fechaHasta: fechaHasta ? String(fechaHasta) : undefined,
-    idCliente: idCliente ? Number(idCliente) : undefined,
-  }
-})
-
-provideDashboardFilters(globalFilters)
-
-const dashboardTabs: DashboardTab[] = [
+const finanzasTabs: FinanzasTab[] = [
   {
-    key: 'clientes',
-    label: 'Clientes',
-    icon: ICONS.users,
-    permission: PermisoBanderas.DASHBOARD_VER_CLIENTES,
+    key: 'cobrar',
+    label: 'Cuentas por Cobrar',
+    icon: ICONS.banknote,
+    permission: PermisoBanderas.FINANZAS_CXC_VER,
   },
   {
-    key: 'balones',
-    label: 'Balones',
-    icon: ICONS.cylinder,
-    permission: PermisoBanderas.DASHBOARD_VER_BALONES,
+    key: 'pagar',
+    label: 'Cuentas por Pagar',
+    icon: ICONS.wallet,
+    permission: PermisoBanderas.FINANZAS_CXP_VER,
   },
 ]
 
 const visibleTabs = computed<AppTabItem[]>(() =>
-  dashboardTabs
+  finanzasTabs
     .filter((tab) => authStore.hasPermission(tab.permission))
     .map((tab) => ({ key: tab.key, label: tab.label, icon: tab.icon })),
 )

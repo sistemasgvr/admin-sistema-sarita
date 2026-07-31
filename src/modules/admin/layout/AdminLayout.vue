@@ -1,9 +1,10 @@
 <template>
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+  <div class="admin-shell relative min-h-screen">
+    <!-- <div class="admin-shell-bg" aria-hidden="true"></div -->
     <AppSidebar />
     <Backdrop />
     <div
-      class="min-w-0 transition-all duration-300 ease-in-out"
+      class="relative min-w-0 transition-all duration-300 ease-in-out"
       :class="[isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]']"
     >
       <AppHeader />

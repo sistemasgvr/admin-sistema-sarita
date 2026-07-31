@@ -8,6 +8,7 @@ export interface AdminMenuSubItem {
   name: string
   path: string
   permission?: PermissionBandera
+  icon?: string
 }
 
 export interface AdminMenuItem {
@@ -15,6 +16,8 @@ export interface AdminMenuItem {
   name: string
   path?: string
   permission?: PermissionBandera
+  /** Visible si el usuario tiene AL MENOS UNO de estos permisos (OR). */
+  anyPermission?: PermissionBandera[]
   subItems?: AdminMenuSubItem[]
 }
 
@@ -69,6 +72,15 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         name: 'Actividades',
         path: '/admin/operativa/actividades',
         permission: PermisoBanderas.ACTIVIDADES_LISTAR,
+      },
+      {
+        icon: ICONS.banknote,
+        name: 'Finanzas',
+        path: '/admin/finanzas',
+        anyPermission: [
+          PermisoBanderas.FINANZAS_CXC_VER,
+          PermisoBanderas.FINANZAS_CXP_VER,
+        ],
       },
     ],
   },
