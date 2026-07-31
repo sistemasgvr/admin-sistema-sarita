@@ -52,6 +52,8 @@ const props = withDefaults(
     mode: PosBalonSelectMode
     idCliente?: number | ''
     idAlmacen?: number | ''
+    /** Ej. medicinal: solo cilindros de esa familia de gas */
+    familiaGas?: string
     registerLabel?: string
     emptyText?: string
   }>(),
@@ -60,6 +62,7 @@ const props = withDefaults(
     placeholder: 'Selecciona cilindro',
     idCliente: '',
     idAlmacen: '',
+    familiaGas: undefined,
     registerLabel: 'Registrar cilindro',
     emptyText: 'Sin cilindros. Registra uno nuevo.',
   },
@@ -72,6 +75,7 @@ const balonModalOpen = ref(false)
 
 const idClienteRef = toRef(() => props.idCliente)
 const idAlmacenRef = toRef(() => props.idAlmacen)
+const familiaGasRef = toRef(() => props.familiaGas)
 
 const canRegister = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_CREAR))
 
@@ -86,6 +90,7 @@ const {
   mode: props.mode,
   idCliente: idClienteRef,
   idAlmacen: idAlmacenRef,
+  familiaGas: familiaGasRef,
 })
 
 watch(
@@ -101,6 +106,14 @@ watch(
   () => props.idAlmacen,
   () => {
     if (props.mode !== 'alquiler') return
+    model.value = ''
+    syncBalonFilters()
+  },
+)
+
+watch(
+  () => props.familiaGas,
+  () => {
     model.value = ''
     syncBalonFilters()
   },

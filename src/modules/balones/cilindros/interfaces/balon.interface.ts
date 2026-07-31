@@ -137,6 +137,8 @@ export interface BalonListFilters {
   phPorVencerDias?: number
   /** true = historial de dados de baja/robados */
   soloBajas?: boolean
+  /** Familia de gas (ej. medicinal / industrial) según tipo o producto gas */
+  familiaGas?: string
 }
 
 export interface BalonPayload {

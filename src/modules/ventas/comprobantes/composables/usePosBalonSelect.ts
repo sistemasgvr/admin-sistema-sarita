@@ -49,6 +49,8 @@ export function usePosBalonSelect(options: {
   mode: PosBalonSelectMode
   idCliente: Ref<number | ''>
   idAlmacen?: Ref<number | ''>
+  /** Ej. `medicinal` para kit POS: solo cilindros de esa familia de gas. */
+  familiaGas?: Ref<string | undefined>
 }) {
   const balonBuscar = ref('')
   const balonesFilters = ref<BalonListFilters>({ pagina: 1, limite: 50 })
@@ -93,6 +95,11 @@ export function usePosBalonSelect(options: {
       }
     }
 
+    const familia = options.familiaGas?.value?.trim()
+    if (familia) {
+      filters.familiaGas = familia
+    }
+
     balonesFilters.value = filters
   }
 
@@ -105,7 +112,12 @@ export function usePosBalonSelect(options: {
   })
 
   watch(
-    [() => options.idCliente.value, () => options.idAlmacen?.value, estadoEnAlmacenId],
+    [
+      () => options.idCliente.value,
+      () => options.idAlmacen?.value,
+      () => options.familiaGas?.value,
+      estadoEnAlmacenId,
+    ],
     () => {
       syncBalonFilters()
     },
