@@ -1,6 +1,7 @@
 import { onUnmounted, watch } from 'vue'
 import { useQueryClient } from '@tanstack/vue-query'
 import { io, type Socket } from 'socket.io-client'
+
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { notificacionesQueryKeys } from '@/modules/notificaciones/constants/notificacionesQueryKeys'
 import type { Notificacion } from '@/modules/notificaciones/interfaces/notificacion.interface'

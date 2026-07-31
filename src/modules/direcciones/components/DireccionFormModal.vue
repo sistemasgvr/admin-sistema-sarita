@@ -175,7 +175,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -334,14 +334,13 @@ async function onMapLocationConfirmed(location: MapaLocationConfirmed) {
   }
 
   const extraido = extractUbigeoDesdeNominatim(address, location.displayName)
-  const idPaisPeru = Number(idPaisUI.value || paisesQuery.data.value?.[0]?.id || 1)
+  const idPaisPeru = Number(idPais.value || paisesQuery.data.value?.[0]?.id || 1)
 
   isSyncingUbigeo = true
   try {
-    // Limpiar siempre: si no hay match, el usuario completa a mano (sin valores viejos).
-    idPaisUI.value = idPaisPeru
-    idDepartamentoUI.value = ''
-    idProvinciaUI.value = ''
+    idPais.value = idPaisPeru
+    idDepartamento.value = undefined
+    idProvincia.value = undefined
     idDistrito.value = undefined
 
     if (!extraido.departamento && !extraido.provincias.length && !extraido.distritos.length) {
@@ -358,11 +357,11 @@ async function onMapLocationConfirmed(location: MapaLocationConfirmed) {
     })
 
     if (coincidencias.idDepartamento) {
-      idDepartamentoUI.value = coincidencias.idDepartamento
+      idDepartamento.value = coincidencias.idDepartamento
       await waitForOptions(() => departamentosOptions.value, coincidencias.idDepartamento)
     }
     if (coincidencias.idProvincia) {
-      idProvinciaUI.value = coincidencias.idProvincia
+      idProvincia.value = coincidencias.idProvincia
       await waitForOptions(() => provinciasOptions.value, coincidencias.idProvincia)
     }
     if (coincidencias.idDistrito) {
