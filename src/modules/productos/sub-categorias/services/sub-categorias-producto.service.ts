@@ -30,4 +30,11 @@ export const subCategoriasProductoService = {
       data: {},
     })
   },
+
+  restaurar(id: number, idUsuarioAuditoria?: number) {
+    return apiPatch<DeleteSubCategoriaProductoResponse>(
+      `/productos/sub-categorias/${id}/restaurar`,
+      { idUsuarioAuditoria },
+    )
+  },
 }

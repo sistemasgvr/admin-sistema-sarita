@@ -164,6 +164,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import MovimientoInventarioDetailModal from '@/modules/productos/movimientos/components/MovimientoInventarioDetailModal.vue'
@@ -258,10 +259,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     type: 'select',
     placeholder: 'Seleccionar tipo',
     disabled: tiposMovimientoQuery.isFetching.value,
-    options: (tiposMovimientoQuery.data.value ?? []).map((opcion) => ({
-      value: opcion.id,
-      label: opcion.nombre,
-    })),
+    options: toSelectOptions(tiposMovimientoQuery.data.value),
   },
 ])
 

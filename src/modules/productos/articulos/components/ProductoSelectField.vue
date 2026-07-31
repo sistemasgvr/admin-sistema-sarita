@@ -114,7 +114,10 @@ const createTitle = computed(() =>
 const useRemote = computed(() => {
   if (props.remote !== undefined) return props.remote
   const catalogoAcotado =
-    props.esGas === true || props.esServicio === true || props.esAlquilable === true
+    props.esGas === true ||
+    props.esServicio === true ||
+    props.esAlquilable === true ||
+    props.afectaStock === true
   return !catalogoAcotado
 })
 
@@ -175,13 +178,16 @@ watch(
   },
 )
 
-watch(search, (term) => {
-  if (!props.searchable || !useRemote.value) return
-  if (searchTimeout) clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    productosFilters.value = buildFilters(term)
-  }, 300)
-})
+watch(
+  () => search.value,
+  (term) => {
+    if (!props.searchable || !useRemote.value) return
+    if (searchTimeout) clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => {
+      productosFilters.value = buildFilters(term)
+    }, 300)
+  },
+)
 
 function productoLabel(producto: Producto) {
   const base = `${producto.codigo} — ${producto.nombre}`

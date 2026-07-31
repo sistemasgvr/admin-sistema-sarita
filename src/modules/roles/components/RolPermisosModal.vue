@@ -97,6 +97,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastSuccess } from '@/shared/composables/useToast'
+import { matchesSearchText, normalizeSearchText } from '@/shared/utils/normalizeSearchText'
 
 interface RolPermisosModalProps {
   rol?: Rol | null
@@ -209,7 +210,7 @@ const permisoGroups = computed(() => {
 })
 
 const filteredGroups = computed(() => {
-  const term = buscar.value.trim().toLowerCase()
+  const term = normalizeSearchText(buscar.value.trim())
   if (!term) return permisoGroups.value
 
   return permisoGroups.value
@@ -218,8 +219,7 @@ const filteredGroups = computed(() => {
       items: group.items.filter((permiso) => {
         const label = permisoLabels.value[permiso.id] ?? permiso.nombre
         return (
-          permiso.nombre.toLowerCase().includes(term) ||
-          label.toLowerCase().includes(term)
+          matchesSearchText(permiso.nombre, term) || matchesSearchText(label, term)
         )
       }),
     }))

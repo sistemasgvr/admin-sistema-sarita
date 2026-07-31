@@ -39,7 +39,6 @@
               placeholder="Selecciona un producto"
               :afecta-stock="true"
               :es-servicio="false"
-              :remote="true"
               required
               :disabled="isSubmitting"
               :error="errors.idProducto"

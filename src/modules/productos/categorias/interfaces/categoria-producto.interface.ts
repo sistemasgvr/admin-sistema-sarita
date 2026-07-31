@@ -12,6 +12,7 @@ export interface CategoriaProductoListFilters {
   buscar?: string
   pagina?: number
   limite?: number
+  soloActivos?: number | null
 }
 
 export interface CreateCategoriaProductoPayload {

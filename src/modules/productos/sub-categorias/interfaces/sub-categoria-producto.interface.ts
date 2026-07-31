@@ -15,6 +15,7 @@ export interface SubCategoriaProductoListFilters {
   pagina?: number
   limite?: number
   idCategoria?: number
+  soloActivos?: number | null
 }
 
 export interface CreateSubCategoriaProductoPayload {

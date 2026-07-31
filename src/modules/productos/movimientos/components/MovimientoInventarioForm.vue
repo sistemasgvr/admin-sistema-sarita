@@ -24,7 +24,7 @@
         >
           <div class="text-sm">
             <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ movimiento.nombre_tipo_movimiento }} —
+              {{ formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) }} —
               {{ formatCantidad(movimiento.cantidad) }}
             </p>
             <p class="mt-1 text-gray-600 dark:text-gray-400">
@@ -67,7 +67,6 @@
                 placeholder="Selecciona producto con stock"
                 :afecta-stock="true"
                 :es-servicio="false"
-                :remote="true"
                 required
                 class="sm:col-span-2"
                 :disabled="isSubmitting"
@@ -176,6 +175,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import {
@@ -190,6 +190,7 @@ import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import {
   optionalNumber,
   optionalString,
@@ -232,10 +233,7 @@ const isLoadingMovimiento = computed(
 const productoBuscar = ref('')
 
 const tipoMovimientoOptions = computed(() =>
-  (tiposMovimientoQuery.data.value ?? []).map((opcion) => ({
-    value: opcion.id,
-    label: opcion.nombre,
-  })),
+  toSelectOptions(tiposMovimientoQuery.data.value),
 )
 
 const tipoDocumentoOptions = computed(() => [

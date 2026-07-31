@@ -33,4 +33,10 @@ export const stockService = {
   eliminar(id: number) {
     return apiDelete<DeleteStockResponse>(`/productos/stock/${id}`, { data: {} })
   },
+
+  restaurar(id: number, idUsuarioAuditoria?: number) {
+    return apiPatch<DeleteStockResponse>(`/productos/stock/${id}/restaurar`, {
+      idUsuarioAuditoria,
+    })
+  },
 }
