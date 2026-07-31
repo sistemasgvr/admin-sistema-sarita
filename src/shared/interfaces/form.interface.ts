@@ -5,6 +5,10 @@ export interface SelectOption {
   value: string | number
   disabled?: boolean
 }
+export interface RangoFechas {
+  start: string
+  end: string
+}
 
 export type InputType =
   | 'text'

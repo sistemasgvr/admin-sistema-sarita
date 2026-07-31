@@ -8,6 +8,7 @@ export const ICONS = {
   chevronDown: 'lucide:chevron-down',
   chevronLeft: 'lucide:chevron-left',
   chevronRight: 'lucide:chevron-right',
+  calendarRange: 'lucide:calendar-range',
   ellipsis: 'lucide:ellipsis',
   ellipsisVertical: 'lucide:ellipsis-vertical',
   userCircle: 'lucide:user-circle',

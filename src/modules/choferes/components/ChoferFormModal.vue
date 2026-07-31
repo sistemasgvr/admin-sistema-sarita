@@ -99,6 +99,7 @@
           label="Teléfono"
           placeholder="987654321"
           maxlength="9"
+          required
           :sanitize="sanitizeSoloNumeros"
           v-bind="telefonoAttrs"
           :disabled="isSubmitting"
@@ -201,7 +202,7 @@ import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { optionalPhone, optionalString, requiredString } from '@/shared/validation'
+import { optionalString, requiredPhone, requiredString } from '@/shared/validation'
 
 interface ChoferFormModalProps {
   mode: ChoferFormMode
@@ -298,7 +299,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       apellidoMaterno: optionalString(),
       idTipoDocumento: yup.number().required('El tipo de documento es obligatorio'),
       numeroDocumento: requiredString('El número de documento'),
-      telefono: optionalPhone(),
+      telefono: requiredPhone('El teléfono'),
       codigoLicencia: requiredString('El número de licencia'),
       idTipoLicencia: yup.number().required('El tipo de licencia es obligatorio'),
       idCategoriaLicencia: yup.number().required('La categoría de licencia es obligatoria'),

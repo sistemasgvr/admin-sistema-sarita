@@ -37,7 +37,7 @@
         <AppInput v-model="email" type="email" label="Correo" placeholder="correo@ejemplo.com" v-bind="emailAttrs"
           :disabled="isSubmitting" :error="errors.email" />
 
-        <AppInput v-model="telefono1" label="Teléfono principal" placeholder="999888777" maxlength="9"
+        <AppInput v-model="telefono1" label="Teléfono principal" placeholder="999888777" maxlength="9" required
           :sanitize="sanitizeSoloNumeros" v-bind="telefono1Attrs" :disabled="isSubmitting" :error="errors.telefono1" />
       </div>
 
@@ -93,7 +93,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { optionalPhone, optionalString, requiredString } from '@/shared/validation'
+import { optionalPhone, optionalString, requiredPhone, requiredString } from '@/shared/validation'
 
 interface ContactoFormModalProps {
   mode: ContactoFormMode
@@ -185,7 +185,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       apellidoMaterno: optionalString(),
       direccion: optionalString(),
       email: yup.string().email('Correo electrónico no válido').optional(),
-      telefono1: optionalPhone(),
+      telefono1: requiredPhone('El teléfono principal'),
       telefono2: optionalPhone(),
       telefono3: optionalPhone(),
       esPrincipal: yup.boolean().default(false),

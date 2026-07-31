@@ -8,6 +8,7 @@ export {
   optionalString,
   requiredEmail,
   requiredPasswordMin,
+  requiredPhone,
   requiredSelect,
   requiredString,
 } from '@/shared/validation/fields'

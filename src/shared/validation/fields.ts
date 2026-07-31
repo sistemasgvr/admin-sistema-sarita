@@ -28,6 +28,13 @@ export const optionalPhone = () =>
     .transform((value) => value || undefined)
     .optional()
 
+export const requiredPhone = (label = 'El teléfono') =>
+  yup
+    .string()
+    .trim()
+    .required(msg.required(label))
+    .test('phone', msg.phone, (value) => !value || /^\d{9}$/.test(value))
+
 export const requiredSelect = (label: string) =>
   yup
     .mixed<string | number>()

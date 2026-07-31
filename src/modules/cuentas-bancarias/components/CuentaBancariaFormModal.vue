@@ -18,7 +18,9 @@
         <SearchableSelect
           v-model="idCliente"
           placeholder="Busca por razón social, nombres o documento..."
-          :clearable="true"
+          required
+          :clearable="false"
+          v-bind="idClienteAttrs"
           :model-label="clienteLabel"
           :disabled="isSubmitting"
           :error="errors.idCliente"
@@ -47,6 +49,8 @@
             v-model="idBanco"
             label="Banco"
             placeholder="Selecciona..."
+            required
+            v-bind="idBancoAttrs"
             :options="bancoOptions"
             :disabled="isSubmitting || bancoQuery.isLoading.value"
             :error="errors.idBanco"
@@ -56,6 +60,8 @@
             v-model="idTipoCuenta"
             label="Tipo de cuenta"
             placeholder="Selecciona..."
+            required
+            v-bind="idTipoCuentaAttrs"
             :options="tipoCuentaOptions"
             :disabled="isSubmitting || tipoCuentaQuery.isLoading.value"
             :error="errors.idTipoCuenta"
@@ -65,6 +71,7 @@
             v-model="numeroCuenta"
             label="Número de cuenta"
             placeholder="1234567890"
+            required
             v-bind="numeroCuentaAttrs"
             :disabled="isSubmitting"
             :error="errors.numeroCuenta"
@@ -147,7 +154,7 @@ import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { ListaIds } from '@/shared/constants/lista-ids'
-import { optionalString, requiredString } from '@/shared/validation'
+import { optionalString, requiredSelect, requiredString } from '@/shared/validation'
 
 interface CuentaBancariaFormModalProps {
   mode: CuentaBancariaFormMode
@@ -236,12 +243,12 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       titular: requiredString('El titular'),
-      idBanco: yup.number().optional(),
-      idTipoCuenta: yup.number().optional(),
-      numeroCuenta: optionalString(),
+      idBanco: requiredSelect('El banco'),
+      idTipoCuenta: requiredSelect('El tipo de cuenta'),
+      numeroCuenta: requiredString('El número de cuenta'),
       numeroCuentaInterbancaria: optionalString(),
       telefonoBilletera: optionalString(),
-      idCliente: yup.number().optional(),
+      idCliente: requiredSelect('El cliente'),
       esPrincipal: yup.boolean().default(false),
     }),
   ),
@@ -258,12 +265,12 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 })
 
 const [titular, titularAttrs] = defineField('titular')
-const [idBanco] = defineField('idBanco')
-const [idTipoCuenta] = defineField('idTipoCuenta')
+const [idBanco, idBancoAttrs] = defineField('idBanco')
+const [idTipoCuenta, idTipoCuentaAttrs] = defineField('idTipoCuenta')
 const [numeroCuenta, numeroCuentaAttrs] = defineField('numeroCuenta')
 const [numeroCuentaInterbancaria, numeroCuentaInterbancariaAttrs] = defineField('numeroCuentaInterbancaria')
 const [telefonoBilletera, telefonoBilleteraAttrs] = defineField('telefonoBilletera')
-const [idCliente] = defineField('idCliente')
+const [idCliente, idClienteAttrs] = defineField('idCliente')
 const [esPrincipal] = defineField('esPrincipal')
 
 const syncFormValues = () => {
@@ -296,12 +303,12 @@ const onSubmit = handleSubmit(async (values) => {
       await createMutation.mutateAsync({
         idUsuarioAuditoria: currentUserId,
         titular: values.titular,
-        idBanco: values.idBanco || undefined,
-        idTipoCuenta: values.idTipoCuenta || undefined,
-        numeroCuenta: values.numeroCuenta || undefined,
+        idBanco: Number(values.idBanco),
+        idTipoCuenta: Number(values.idTipoCuenta),
+        numeroCuenta: values.numeroCuenta,
         numeroCuentaInterbancaria: values.numeroCuentaInterbancaria || undefined,
         telefonoBilletera: values.telefonoBilletera || undefined,
-        idCliente: values.idCliente || undefined,
+        idCliente: Number(values.idCliente),
         esPrincipal: values.esPrincipal ?? false,
       })
     } else if (props.cuenta) {
@@ -310,12 +317,12 @@ const onSubmit = handleSubmit(async (values) => {
         payload: {
           idUsuarioAuditoria: currentUserId,
           titular: values.titular,
-          idBanco: values.idBanco || undefined,
-          idTipoCuenta: values.idTipoCuenta || undefined,
-          numeroCuenta: values.numeroCuenta || undefined,
+          idBanco: Number(values.idBanco),
+          idTipoCuenta: Number(values.idTipoCuenta),
+          numeroCuenta: values.numeroCuenta,
           numeroCuentaInterbancaria: values.numeroCuentaInterbancaria || undefined,
           telefonoBilletera: values.telefonoBilletera || undefined,
-          idCliente: values.idCliente || undefined,
+          idCliente: Number(values.idCliente),
           esPrincipal: values.esPrincipal ?? false,
         },
       })

@@ -32,7 +32,7 @@
                 required
                 v-bind="idProveedorAttrs"
                 :options="proveedorOptions"
-                :loading="proveedoresQuery.isFetching.value"
+                :loading="proveedoresLoading"
                 :disabled="saving"
                 :error="errors.idProveedor"
               />
@@ -45,28 +45,53 @@
                 :disabled="saving"
                 :error="errors.fecha"
               />
-              <AppInput v-model="serie" label="Serie" placeholder="F001" :disabled="saving" />
-              <AppInput v-model="numero" label="Número" placeholder="00001234" :disabled="saving" />
+              <AppInput
+                v-model="serie"
+                label="Serie"
+                placeholder="F001"
+                required
+                v-bind="serieAttrs"
+                :disabled="saving"
+                :error="errors.serie"
+              />
+              <AppInput
+                v-model="numero"
+                label="Número"
+                placeholder="00001234"
+                required
+                v-bind="numeroAttrs"
+                :disabled="saving"
+                :error="errors.numero"
+              />
               <AppSelect
                 v-model="idTipoComprobante"
                 label="Tipo comprobante"
                 placeholder="Seleccionar"
+                required
+                v-bind="idTipoComprobanteAttrs"
                 :options="tipoComprobanteOptions"
                 :disabled="saving"
+                :error="errors.idTipoComprobante"
               />
               <AppSelect
                 v-model="idTipoRegistro"
                 label="Tipo registro"
                 placeholder="Seleccionar"
+                required
+                v-bind="idTipoRegistroAttrs"
                 :options="tipoRegistroOptions"
                 :disabled="saving"
+                :error="errors.idTipoRegistro"
               />
               <AppSelect
                 v-model="idCategoriaGasto"
                 label="Categoría gasto"
                 placeholder="Seleccionar"
+                required
+                v-bind="idCategoriaGastoAttrs"
                 :options="categoriaGastoOptions"
                 :disabled="saving"
+                :error="errors.idCategoriaGasto"
               />
               <AppSelectSearch
                 v-model="idAlmacen"
@@ -91,8 +116,11 @@
                 v-model="idMoneda"
                 label="Moneda"
                 placeholder="Seleccionar"
+                required
+                v-bind="idMonedaAttrs"
                 :options="monedaOptions"
                 :disabled="saving"
+                :error="errors.idMoneda"
               />
               <AppSelectSearch
                 v-model="idCondicionPago"
@@ -353,6 +381,7 @@ import {
 } from '@/modules/compras/composables/useCompraMutations'
 import type { CompraLineaForm } from '@/modules/compras/interfaces/compra.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
@@ -364,7 +393,7 @@ import CompraProductoField from '@/modules/compras/components/CompraProductoFiel
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { ListaIds } from '@/shared/constants/lista-ids'
+import { ListaIds, TipoClienteIds } from '@/shared/constants/lista-ids'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { AppCheckbox, AppInput, AppModal, AppSelect, AppSelectSearch, AppTextarea } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -441,15 +470,15 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       fecha: requiredDateOnCreate(),
-      serie: optionalString(),
-      numero: optionalString(),
+      serie: requiredOnCreate('La serie'),
+      numero: requiredOnCreate('El número'),
       idProveedor: requiredOnCreate('El proveedor'),
       idAlmacen: requiredOnCreate('El almacén'),
-      idTipoComprobante: yup.mixed<string | number>().optional(),
-      idTipoRegistro: yup.mixed<string | number>().optional(),
-      idCategoriaGasto: yup.mixed<string | number>().optional(),
+      idTipoComprobante: requiredOnCreate('El tipo de comprobante'),
+      idTipoRegistro: requiredOnCreate('El tipo de registro'),
+      idCategoriaGasto: requiredOnCreate('La categoría de gasto'),
       idSucursal: yup.mixed<string | number>().optional(),
-      idMoneda: yup.mixed<string | number>().optional(),
+      idMoneda: requiredOnCreate('La moneda'),
       idCondicionPago: yup.mixed<string | number>().optional(),
       glosa: optionalString(),
       declararSunat: yup.boolean().default(false),
@@ -473,15 +502,15 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
 })
 
 const [fecha, fechaAttrs] = defineField('fecha')
-const [serie] = defineField('serie')
-const [numero] = defineField('numero')
+const [serie, serieAttrs] = defineField('serie')
+const [numero, numeroAttrs] = defineField('numero')
 const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
 const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
-const [idTipoComprobante] = defineField('idTipoComprobante')
-const [idTipoRegistro] = defineField('idTipoRegistro')
-const [idCategoriaGasto] = defineField('idCategoriaGasto')
+const [idTipoComprobante, idTipoComprobanteAttrs] = defineField('idTipoComprobante')
+const [idTipoRegistro, idTipoRegistroAttrs] = defineField('idTipoRegistro')
+const [idCategoriaGasto, idCategoriaGastoAttrs] = defineField('idCategoriaGasto')
 const [idSucursal] = defineField('idSucursal')
-const [idMoneda] = defineField('idMoneda')
+const [idMoneda, idMonedaAttrs] = defineField('idMoneda')
 const [idCondicionPago] = defineField('idCondicionPago')
 const [glosa] = defineField('glosa')
 const [declararSunat] = defineField('declararSunat')
@@ -504,19 +533,35 @@ const tipoRegistroOptions = computed(() => toSelectOptions(tipoRegistroQuery.dat
 const categoriaGastoOptions = computed(() => toSelectOptions(categoriaGastoQuery.data.value))
 const monedaOptions = computed(() => toSelectOptions(monedaQuery.data.value))
 
-// Proveedores
+// Proveedores (solo clientes con tipo Proveedor o Cliente/Proveedor)
 const proveedorBuscar = ref('')
-const proveedoresFilters = ref({ pagina: 1, limite: 50, soloActivos: 1 as number, buscar: undefined as string | undefined })
+const proveedoresFiltersBase: ClienteListFilters = { pagina: 1, limite: 50, soloActivos: 1 }
+const proveedoresFilters = ref<ClienteListFilters>({
+  ...proveedoresFiltersBase,
+  idTipoCliente: TipoClienteIds.PROVEEDOR,
+})
+const clienteProveedoresFilters = ref<ClienteListFilters>({
+  ...proveedoresFiltersBase,
+  idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR,
+})
 const proveedoresQuery = useClientesQuery(proveedoresFilters)
+const clienteProveedoresQuery = useClientesQuery(clienteProveedoresFilters)
 let proveedorBuscarTimeout: ReturnType<typeof setTimeout> | undefined
 watch(proveedorBuscar, (v) => {
   clearTimeout(proveedorBuscarTimeout)
   proveedorBuscarTimeout = setTimeout(() => {
-    proveedoresFilters.value = { ...proveedoresFilters.value, buscar: v.trim() || undefined }
+    const buscar = v.trim() || undefined
+    proveedoresFilters.value = { ...proveedoresFilters.value, buscar }
+    clienteProveedoresFilters.value = { ...clienteProveedoresFilters.value, buscar }
   }, 350)
 })
+const proveedoresLoading = computed(
+  () => proveedoresQuery.isFetching.value || clienteProveedoresQuery.isFetching.value,
+)
 const proveedorOptions = computed(() =>
-  (proveedoresQuery.data.value?.data ?? []).map((c) => ({ value: c.id, label: getClienteOptionLabel(c) })),
+  [...(proveedoresQuery.data.value?.data ?? []), ...(clienteProveedoresQuery.data.value?.data ?? [])].map(
+    (c) => ({ value: c.id, label: getClienteOptionLabel(c) }),
+  ),
 )
 
 // Almacenes
@@ -565,7 +610,6 @@ async function onProductoCreado(producto: Producto) {
   lineaIdProducto.value = producto.id
 }
 
-// --- Línea en edición (temporal, antes de agregarla) ---
 const lineaIdProducto = ref<number | ''>('')
 const lineaCantidad = ref<number | ''>('')
 const lineaPrecio = ref<number | ''>('')
@@ -621,10 +665,6 @@ async function agregarLineaNueva() {
 const totalLineas = computed(() =>
   lineas.reduce((acc, lin) => acc + (Number(lin.precioUnitario) || 0) * Number(lin.cantidad), 0),
 )
-
-// precioUnitario se ingresa con IGV incluido (igual que en ventas); se
-// descompone solo para mostrar el desglose, el backend recalcula lo mismo
-// al guardar (com_crear_compra / com_recalcular_totales_compra).
 const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value))
 
 function formatMoney(value: number) {
@@ -678,8 +718,7 @@ function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.data.val
     },
   })
 
-  // Trae al proveedor referenciado a las opciones cargadas (la lista por
-  // defecto solo trae los primeros 50 activos y podría no incluirlo).
+  // Trae al proveedor referenciado a las opciones cargadas 
   proveedorBuscar.value = c.proveedor ?? ''
 
   lineas.splice(
@@ -696,11 +735,7 @@ function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.data.val
   lineasError.value = ''
 }
 
-// --- Reset/prellenado al abrir en modo creación ---
-// Si hay referenciaCompraId: espera los datos de la compra anulada (pueden
-// venir de caché, así que se evalúa junto con open/isEdit en un solo watcher
-// para no depender de que referenciaQuery.data "cambie") y prellena con
-// ellos. Si no hay referencia, arranca en blanco.
+
 watch(
   () => [open.value, isEdit.value, props.referenciaCompraId, referenciaQuery.data.value] as const,
   ([isOpen, edit, refId, refData]) => {
@@ -718,7 +753,6 @@ watch(
   { immediate: true },
 )
 
-// --- Cargar cabecera al abrir en modo edición ---
 watch(
   () => detailQuery.data.value,
   (data) => {
@@ -784,8 +818,8 @@ const onSubmit = handleSubmit(async (values) => {
   const created = await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     fecha: values.fecha as string,
-    serie: values.serie?.trim() || undefined,
-    numero: values.numero?.trim() || undefined,
+    serie: String(values.serie ?? '').trim() || undefined,
+    numero: String(values.numero ?? '').trim() || undefined,
     idProveedor: toOptionalNumber(values.idProveedor),
     idAlmacen: toOptionalNumber(values.idAlmacen),
     idTipoComprobante: toOptionalNumber(values.idTipoComprobante),

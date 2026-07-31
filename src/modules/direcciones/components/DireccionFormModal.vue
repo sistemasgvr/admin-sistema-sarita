@@ -57,51 +57,62 @@
 
       <div class="grid grid-cols-2 gap-3">
         <AppSelect
-          v-model="idPaisUI"
+          v-model="idPais"
           label="País"
           :placeholder="paisesQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          required
+          v-bind="idPaisAttrs"
           :options="paisesOptions"
           :disabled="isSubmitting || paisesQuery.isLoading.value"
+          :error="errors.idPais"
         />
         <AppSelect
-          v-model="idDepartamentoUI"
+          v-model="idDepartamento"
           label="Departamento"
           :placeholder="
-            !idPaisUI
+            !idPais
               ? 'Selecciona un país'
               : departamentosQuery.isLoading.value
                 ? 'Cargando...'
                 : 'Selecciona...'
           "
+          required
+          v-bind="idDepartamentoAttrs"
           :options="departamentosOptions"
-          :disabled="isSubmitting || !idPaisUI || departamentosQuery.isLoading.value"
+          :disabled="isSubmitting || !idPais || departamentosQuery.isLoading.value"
+          :error="errors.idDepartamento"
         />
         <AppSelect
-          v-model="idProvinciaUI"
+          v-model="idProvincia"
           label="Provincia"
           :placeholder="
-            !idDepartamentoUI
+            !idDepartamento
               ? 'Selecciona un departamento'
               : provinciasQuery.isLoading.value
                 ? 'Cargando...'
                 : 'Selecciona...'
           "
+          required
+          v-bind="idProvinciaAttrs"
           :options="provinciasOptions"
-          :disabled="isSubmitting || !idDepartamentoUI || provinciasQuery.isLoading.value"
+          :disabled="isSubmitting || !idDepartamento || provinciasQuery.isLoading.value"
+          :error="errors.idProvincia"
         />
         <AppSelect
           v-model="idDistrito"
           label="Distrito"
           :placeholder="
-            !idProvinciaUI
+            !idProvincia
               ? 'Selecciona una provincia'
               : distritosQuery.isLoading.value
                 ? 'Cargando...'
                 : 'Selecciona...'
           "
+          required
           v-bind="idDistritoAttrs"
           :options="distritosOptions"
-          :disabled="isSubmitting || !idProvinciaUI || distritosQuery.isLoading.value"
+          :disabled="isSubmitting || !idProvincia || distritosQuery.isLoading.value"
+          :error="errors.idDistrito"
         />
       </div>
 
@@ -116,7 +127,7 @@
 
       <div>
         <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Ubicación en el mapa
+          Ubicación en el mapa<span class="text-red-500"> *</span>
         </label>
         <MapaLeaflet
           v-model:latitud="latitud"
@@ -127,6 +138,7 @@
           :readonly="false"
           :resolve-google-maps-link="resolverCoordenadasDesdeLink"
         />
+        <p v-if="errors.latitud" class="mt-1.5 text-xs text-red-500">{{ errors.latitud }}</p>
       </div>
 
       <AppCheckbox
@@ -158,7 +170,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -264,9 +276,17 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idCliente: yup.number().required('El cliente es obligatorio'),
       descripcion: optionalString(),
       direccion: requiredString('La dirección'),
-      idDistrito: yup.number().optional(),
+      idPais: yup.number().required('El país es obligatorio'),
+      idDepartamento: yup.number().required('El departamento es obligatorio'),
+      idProvincia: yup.number().required('La provincia es obligatoria'),
+      idDistrito: yup.number().required('El distrito es obligatorio'),
       referencia: optionalString(),
-      latitud: yup.number().optional(),
+      latitud: yup
+        .number()
+        .test('ubicacion-requerida', 'Selecciona la ubicación en el mapa', function (value) {
+          const longitud = (this.parent as { longitud?: number }).longitud
+          return value != null && longitud != null
+        }),
       longitud: yup.number().optional(),
       esPrincipal: yup.boolean().default(false),
     }),
@@ -275,6 +295,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idCliente: undefined as number | undefined,
     descripcion: '',
     direccion: '',
+    idPais: undefined as number | undefined,
+    idDepartamento: undefined as number | undefined,
+    idProvincia: undefined as number | undefined,
     idDistrito: undefined as number | undefined,
     referencia: '',
     latitud: undefined as number | undefined,
@@ -286,20 +309,19 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 const [idCliente, idClienteAttrs] = defineField('idCliente')
 const [descripcion, descripcionAttrs] = defineField('descripcion')
 const [direccion, direccionAttrs] = defineField('direccion')
+const [idPais, idPaisAttrs] = defineField('idPais')
+const [idDepartamento, idDepartamentoAttrs] = defineField('idDepartamento')
+const [idProvincia, idProvinciaAttrs] = defineField('idProvincia')
 const [idDistrito, idDistritoAttrs] = defineField('idDistrito')
 const [referencia, referenciaAttrs] = defineField('referencia')
 const [latitud] = defineField('latitud')
 const [longitud] = defineField('longitud')
 const [esPrincipal] = defineField('esPrincipal')
 
-const idPaisUI = ref<number | ''>('')
-const idDepartamentoUI = ref<number | ''>('')
-const idProvinciaUI = ref<number | ''>('')
-
 const paisesQuery = usePaisesQuery()
-const departamentosQuery = useDepartamentosQuery(idPaisUI)
-const provinciasQuery = useProvinciasQuery(idDepartamentoUI)
-const distritosQuery = useDistritosQuery(idProvinciaUI)
+const departamentosQuery = useDepartamentosQuery(idPais)
+const provinciasQuery = useProvinciasQuery(idDepartamento)
+const distritosQuery = useDistritosQuery(idProvincia)
 
 const paisesOptions = computed(() => toSelectOptions(paisesQuery.data.value))
 const departamentosOptions = computed(() => toSelectOptions(departamentosQuery.data.value))
@@ -307,20 +329,20 @@ const provinciasOptions = computed(() => toSelectOptions(provinciasQuery.data.va
 const distritosOptions = computed(() => toSelectOptions(distritosQuery.data.value))
 let isSyncingUbigeo = false
 
-watch(idPaisUI, () => {
+watch(idPais, () => {
   if (isSyncingUbigeo) return
-  idDepartamentoUI.value = ''
-  idProvinciaUI.value = ''
+  idDepartamento.value = undefined
+  idProvincia.value = undefined
   idDistrito.value = undefined
 })
 
-watch(idDepartamentoUI, () => {
+watch(idDepartamento, () => {
   if (isSyncingUbigeo) return
-  idProvinciaUI.value = ''
+  idProvincia.value = undefined
   idDistrito.value = undefined
 })
 
-watch(idProvinciaUI, () => {
+watch(idProvincia, () => {
   if (isSyncingUbigeo) return
   idDistrito.value = undefined
 })
@@ -328,11 +350,15 @@ watch(idProvinciaUI, () => {
 const syncFormValues = async () => {
   const d = direccionActual.value
 
+  isSyncingUbigeo = true
   resetForm({
     values: {
       idCliente: d?.id_cliente ?? props.defaultClienteId ?? undefined,
       descripcion: d?.descripcion ?? '',
       direccion: d?.direccion ?? '',
+      idPais: d?.id_pais ?? paisesQuery.data.value?.[0]?.id ?? undefined,
+      idDepartamento: d?.id_departamento ?? undefined,
+      idProvincia: d?.id_provincia ?? undefined,
       idDistrito: d?.id_distrito ?? undefined,
       referencia: d?.referencia ?? '',
       latitud: d?.latitud ?? undefined,
@@ -340,11 +366,6 @@ const syncFormValues = async () => {
       esPrincipal: d?.es_principal ?? false,
     },
   })
-
-  isSyncingUbigeo = true
-  idPaisUI.value = d?.id_pais ?? paisesQuery.data.value?.[0]?.id ?? ''
-  idDepartamentoUI.value = d?.id_departamento ?? ''
-  idProvinciaUI.value = d?.id_provincia ?? ''
   await nextTick()
   isSyncingUbigeo = false
 }
@@ -364,13 +385,13 @@ const onSubmit = handleSubmit(async (values) => {
         idCliente: Number(values.idCliente),
         direccion: values.direccion,
         descripcion: values.descripcion || undefined,
-        idPais: idPaisUI.value ? Number(idPaisUI.value) : undefined,
-        idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
-        idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
-        idDistrito: values.idDistrito ? Number(values.idDistrito) : undefined,
+        idPais: Number(values.idPais),
+        idDepartamento: Number(values.idDepartamento),
+        idProvincia: Number(values.idProvincia),
+        idDistrito: Number(values.idDistrito),
         referencia: values.referencia || undefined,
-        latitud: values.latitud || undefined,
-        longitud: values.longitud  || undefined,
+        latitud: values.latitud,
+        longitud: values.longitud,
         esPrincipal: values.esPrincipal ?? false,
       })
     } else if (props.direccion) {
@@ -380,13 +401,13 @@ const onSubmit = handleSubmit(async (values) => {
           idUsuarioAuditoria: currentUserId,
           direccion: values.direccion,
           descripcion: values.descripcion || undefined,
-          idPais: idPaisUI.value ? Number(idPaisUI.value) : undefined,
-          idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
-          idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
-          idDistrito: values.idDistrito ? Number(values.idDistrito) : undefined,
+          idPais: Number(values.idPais),
+          idDepartamento: Number(values.idDepartamento),
+          idProvincia: Number(values.idProvincia),
+          idDistrito: Number(values.idDistrito),
           referencia: values.referencia || undefined,
-          latitud: values.latitud || undefined,
-          longitud: values.longitud  || undefined,
+          latitud: values.latitud,
+          longitud: values.longitud,
           esPrincipal: values.esPrincipal ?? false,
         },
       })

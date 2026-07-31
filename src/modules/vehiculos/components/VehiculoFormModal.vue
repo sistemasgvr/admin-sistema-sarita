@@ -21,7 +21,8 @@
           v-model="idCliente"
           label="Cliente / Proveedor dueño"
           placeholder="Busca por razón social, nombres o documento..."
-          empty-option-label="Sin cliente asignado"
+          required
+          :clearable="false"
           :model-label="clienteLabelActual"
           v-bind="idClienteAttrs"
           :disabled="isSubmitting"
@@ -178,7 +179,7 @@ import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { optionalString, requiredString } from '@/shared/validation'
+import { optionalString, requiredSelect, requiredString } from '@/shared/validation'
 
 interface VehiculoFormModalProps {
   mode: VehiculoFormMode
@@ -244,7 +245,7 @@ const clienteLabelActual = computed(() => {
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      idCliente: yup.number().optional(),
+      idCliente: requiredSelect('El cliente'),
       idTipoVehiculo: yup.number().required('El tipo de vehículo es obligatorio'),
       placa: requiredString('La placa'),
       placa2: optionalString(),
@@ -315,7 +316,7 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
       idUsuarioAuditoria: currentUserId,
-      idCliente: values.idCliente ? Number(values.idCliente) : undefined,
+      idCliente: Number(values.idCliente),
       idTipoVehiculo: Number(values.idTipoVehiculo),
       placa: values.placa,
       placa2: values.placa2 || undefined,

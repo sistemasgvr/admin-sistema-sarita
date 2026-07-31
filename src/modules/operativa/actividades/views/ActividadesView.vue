@@ -23,12 +23,8 @@
             />
           </div>
 
-          <div>
-            <AppInput v-model="fechaDesde" type="date" label="Desde" />
-          </div>
-
-          <div>
-            <AppInput v-model="fechaHasta" type="date" label="Hasta" />
+          <div class="lg:w-64">
+            <AppDateRangePicker v-model="rangoFechas" label="Rango de fechas" />
           </div>
         </div>
 
@@ -193,6 +189,7 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
+  AppDateRangePicker,
   AppInput,
   AppModal,
   AppPagination,
@@ -205,7 +202,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { RangoFechas, SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
 import { formatListDate } from '@/shared/utils/date'
@@ -230,8 +227,7 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVID
 // --- Filtros compartidos entre la vista de lista y de calendario ---
 const buscar = ref('')
 const idEstadoFiltro = ref<string | number>('')
-const fechaDesde = ref('')
-const fechaHasta = ref('')
+const rangoFechas = ref<RangoFechas>({ start: '', end: '' })
 
 const listaEstadoActividadId = computed(() => ListaIds.ESTADO_ACTIVIDAD)
 const estadoActividadQuery = useListaOpcionesQuery(listaEstadoActividadId)
@@ -284,15 +280,19 @@ watch(idEstadoFiltro, (value) => {
   }
 })
 
-watch([fechaDesde, fechaHasta], ([desde, hasta]) => {
-  pagina.value = 1
-  listFilters.value = {
-    ...listFilters.value,
-    fechaDesde: desde || undefined,
-    fechaHasta: hasta || undefined,
-    pagina: 1,
-  }
-})
+watch(
+  rangoFechas,
+  ({ start, end }) => {
+    pagina.value = 1
+    listFilters.value = {
+      ...listFilters.value,
+      fechaDesde: start || undefined,
+      fechaHasta: end || undefined,
+      pagina: 1,
+    }
+  },
+  { deep: true },
+)
 
 watch([pagina, limite], () => {
   listFilters.value = { ...listFilters.value, pagina: pagina.value, limite: limite.value }
