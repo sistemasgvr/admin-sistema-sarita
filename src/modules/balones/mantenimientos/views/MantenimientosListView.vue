@@ -16,7 +16,7 @@
               v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
+              @click="goToCreate"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
@@ -96,13 +96,6 @@
       </template>
     </AppTable>
 
-    <MantenimientoFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :mantenimiento-id="selectedMantenimientoId"
-      @saved="onMantenimientoSaved"
-    />
-
     <MantenimientoDetailModal
       v-model="detailModalOpen"
       :mantenimiento-id="mantenimientoToViewId"
@@ -156,8 +149,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import MantenimientoFormModal from '@/modules/balones/mantenimientos/components/MantenimientoFormModal.vue'
 import MantenimientoDetailModal from '@/modules/balones/mantenimientos/components/MantenimientoDetailModal.vue'
 import MantenimientoFinalizarModal from '@/modules/balones/mantenimientos/components/MantenimientoFinalizarModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
@@ -165,7 +158,6 @@ import { useDeleteMantenimientoMutation } from '@/modules/balones/mantenimientos
 import { useMantenimientosQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import type {
   Mantenimiento,
-  MantenimientoFormMode,
   MantenimientoListFilters,
 } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
@@ -191,6 +183,7 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -212,10 +205,6 @@ const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
 const listaEstadoMantenimientoId = ref(ListaIds.ESTADO_MANTENIMIENTO)
 const tiposMantenimientoQuery = useListaOpcionesQuery(listaTipoMantenimientoId)
 const estadosMantenimientoQuery = useListaOpcionesQuery(listaEstadoMantenimientoId)
-
-const formModalOpen = ref(false)
-const formMode = ref<MantenimientoFormMode>('create')
-const selectedMantenimientoId = ref<number | null>(null)
 
 const detailModalOpen = ref(false)
 const mantenimientoToViewId = ref<number | null>(null)
@@ -335,16 +324,15 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedMantenimientoId.value = null
-  formModalOpen.value = true
+const goToCreate = () => {
+  void router.push({ name: 'admin-balones-mantenimientos-nuevo' })
 }
 
-const openEditModal = (row: Mantenimiento) => {
-  formMode.value = 'edit'
-  selectedMantenimientoId.value = row.id
-  formModalOpen.value = true
+const goToEdit = (row: Mantenimiento) => {
+  void router.push({
+    name: 'admin-balones-mantenimientos-editar',
+    params: { id: row.id },
+  })
 }
 
 const openDetailModal = (row: Mantenimiento) => {
@@ -407,7 +395,7 @@ function actionItemsForRow(row: Mantenimiento): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: Mantenimiento) {
   if (key === 'finalizar') openFinalizarModal(row)
-  if (key === 'edit') openEditModal(row)
+  if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
 }
 

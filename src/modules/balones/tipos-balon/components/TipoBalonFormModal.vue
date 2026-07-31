@@ -24,15 +24,17 @@
               :error="errors.nombre"
             />
 
-            <AppSelect
+            <ProductoSelectField
               v-model="idGas"
+              v-model:search="gasBuscar"
               label="Gas (producto)"
-              :placeholder="productosQuery.isLoading.value ? 'Cargando...' : 'Selecciona un gas...'"
-              :options="gasOptions"
-              :disabled="isSubmitting || productosQuery.isLoading.value"
-              v-bind="idGasAttrs"
+              placeholder="Buscar y seleccionar gas..."
+              search-placeholder="Código o nombre..."
+              :es-gas="true"
+              :options="gasSelectedOptions"
+              :disabled="isSubmitting"
               :error="errors.idGas"
-              hint="Solo productos marcados como gas."
+              hint="Solo productos marcados como gas. Borra el buscador para ver el listado."
             />
 
             <div class="grid gap-4 sm:grid-cols-2">
@@ -51,9 +53,9 @@
               <AppSelect
                 v-model="idUnidadMedida"
                 label="Unidad de medida"
-                :placeholder="unidadMedidaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                :placeholder="isLoadingUnidadMedida ? 'Cargando...' : 'Selecciona...'"
                 :options="unidadMedidaOptions"
-                :disabled="isSubmitting || unidadMedidaQuery.isLoading.value"
+                :disabled="isSubmitting || isLoadingUnidadMedida"
                 v-bind="idUnidadMedidaAttrs"
                 :error="errors.idUnidadMedida"
               />
@@ -124,7 +126,7 @@ import type {
   TipoBalon,
   TipoBalonFormMode,
 } from '@/modules/balones/tipos-balon/interfaces/tipo-balon.interface'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -144,27 +146,26 @@ const props = defineProps<TipoBalonFormModalProps>()
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: []
+  saved: [tipo: TipoBalon]
 }>()
 
 const authStore = useAuthStore()
 const createMutation = useCreateTipoBalonMutation()
 const updateMutation = useUpdateTipoBalonMutation()
 
-const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
-const productosQuery = useProductosQuery(productosFilters)
-
+const gasBuscar = ref('')
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
-
-const gasOptions = computed(() =>
-  (productosQuery.data.value?.data ?? []).map((producto) => ({
-    label: `${producto.codigo} — ${producto.nombre}`,
-    value: producto.id,
-  })),
-)
+const isLoadingUnidadMedida = computed(() => unidadMedidaQuery.isLoading.value)
 
 const unidadMedidaOptions = computed(() => toSelectOptions(unidadMedidaQuery.data.value))
+
+const gasSelectedOptions = computed(() => {
+  const id = props.tipoBalon?.id_gas
+  const nombre = props.tipoBalon?.nombre_gas
+  if (id == null || !nombre) return []
+  return [{ value: id, label: nombre }]
+})
 
 const vigenciaPhOptions = [
   { label: '5 años', value: 5 },
@@ -193,13 +194,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 })
 
 const [nombre, nombreAttrs] = defineField('nombre')
-const [idGas, idGasAttrs] = defineField('idGas')
+const [idGas] = defineField('idGas')
 const [capacidad, capacidadAttrs] = defineField('capacidad')
 const [idUnidadMedida, idUnidadMedidaAttrs] = defineField('idUnidadMedida')
 const [peso, pesoAttrs] = defineField('peso')
 const [vigenciaPhAnios, vigenciaPhAniosAttrs] = defineField('vigenciaPhAnios')
 
 const syncFormValues = () => {
+  gasBuscar.value = ''
   resetForm({
     values: {
       nombre: props.tipoBalon?.nombre ?? '',
@@ -231,10 +233,12 @@ const onSubmit = handleSubmit(async (values) => {
   }
 
   try {
+    let tipoGuardado: TipoBalon
+
     if (props.mode === 'create') {
-      await createMutation.mutateAsync(payload)
+      tipoGuardado = await createMutation.mutateAsync(payload)
     } else if (props.tipoBalon) {
-      await updateMutation.mutateAsync({
+      tipoGuardado = await updateMutation.mutateAsync({
         id: props.tipoBalon.id,
         payload,
       })
@@ -242,7 +246,7 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
 
-    emit('saved')
+    emit('saved', tipoGuardado)
     open.value = false
   } catch {
     // toast en mutation

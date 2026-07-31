@@ -5,7 +5,25 @@ import type {
   CreateGuiaRemisionPayload,
   UpdateGuiaRemisionPayload,
 } from '@/modules/ventas/guias-remision/interfaces/guia-remision.interface'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import {
+  toastApiError,
+  toastError,
+  toastSuccess,
+  toastWarning,
+} from '@/shared/composables/useToast'
+
+function toastEstadoSunat(prefix: string, estado: string) {
+  const normalized = (estado ?? '').toUpperCase()
+  if (normalized === 'ACEPTADO') {
+    toastSuccess(`${prefix}: ACEPTADO`)
+    return
+  }
+  if (normalized === 'PENDIENTE') {
+    toastWarning(`${prefix}: PENDIENTE — usa «Consultar estado» en unos segundos`)
+    return
+  }
+  toastError(`${prefix}: ${estado || 'RECHAZADO'}`)
+}
 
 export function useCreateGuiaRemisionMutation() {
   const queryClient = useQueryClient()
@@ -48,7 +66,7 @@ export function useEmitirGuiaRemisionMutation() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.detail(variables.id) })
-      toastSuccess(`Guía emitida: ${data.sunat.estado}`)
+      toastEstadoSunat('Guía emitida', data.sunat.estado)
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo emitir la guía')
@@ -65,7 +83,7 @@ export function useConsultarEstadoGuiaRemisionMutation() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.detail(variables.id) })
-      toastSuccess(`Estado SUNAT: ${data.sunat.estado}`)
+      toastEstadoSunat('Estado SUNAT', data.sunat.estado)
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo consultar el estado')

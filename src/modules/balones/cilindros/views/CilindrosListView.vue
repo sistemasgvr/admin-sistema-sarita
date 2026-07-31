@@ -52,7 +52,7 @@
               v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
+              @click="goToCreate"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
@@ -131,13 +131,6 @@
         />
       </template>
     </AppTable>
-
-    <BalonFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :balon-id="selectedBalonId"
-      @saved="onBalonSaved"
-    />
 
     <BalonBajaModal
       v-model="bajaModalOpen"
@@ -245,7 +238,6 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import BalonBajaModal from '@/modules/balones/cilindros/components/BalonBajaModal.vue'
-import BalonFormModal from '@/modules/balones/cilindros/components/BalonFormModal.vue'
 import {
   useDeleteBalonMutation,
   useRestaurarBalonMutation,
@@ -253,7 +245,6 @@ import {
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import type {
   Balon,
-  BalonFormMode,
   BalonListFilters,
   EstadoPh,
 } from '@/modules/balones/cilindros/interfaces/balon.interface'
@@ -337,10 +328,6 @@ const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
 const marcaQuery = useListaOpcionesQuery(listaMarcaId)
 
-const formModalOpen = ref(false)
-const formMode = ref<BalonFormMode>('create')
-const selectedBalonId = ref<number | null>(null)
-
 const deleteModalOpen = ref(false)
 const balonToDelete = ref<Balon | null>(null)
 const deleteBlocked = computed(() => balonToDelete.value?.puede_eliminar === false)
@@ -358,6 +345,9 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.BALONES
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_ELIMINAR))
+const canSolicitarBaja = computed(() =>
+  authStore.hasPermission(PermisoBanderas.BAJAS_BALON_SOLICITAR),
+)
 
 const isLoading = computed(() => balonesQuery.isFetching.value)
 const rows = computed(() => balonesQuery.data.value?.data ?? [])
@@ -526,16 +516,15 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedBalonId.value = null
-  formModalOpen.value = true
+const goToCreate = () => {
+  router.push({ name: 'admin-balones-cilindros-nuevo' })
 }
 
-const openEditModal = (balon: Balon) => {
-  formMode.value = 'edit'
-  selectedBalonId.value = balon.id
-  formModalOpen.value = true
+const goToEdit = (balon: Balon) => {
+  router.push({
+    name: 'admin-balones-cilindros-editar',
+    params: { id: String(balon.id) },
+  })
 }
 
 const openDetailView = (balon: Balon) => {
@@ -575,7 +564,7 @@ function actionItemsForRow(row: Balon): ActionMenuItem[] {
       label: 'Solicitar baja',
       icon: ICONS.archive,
       disabled: busy,
-      hidden: !(canEdit.value && puedeDarDeBaja(row)),
+      hidden: !(canSolicitarBaja.value && puedeDarDeBaja(row)),
     },
     {
       key: 'restaurar',
@@ -596,7 +585,7 @@ function actionItemsForRow(row: Balon): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Balon) {
-  if (key === 'edit') openEditModal(row)
+  if (key === 'edit') goToEdit(row)
   if (key === 'baja') openBajaModal(row)
   if (key === 'restaurar') openRestaurarModal(row)
   if (key === 'delete') openDeleteModal(row)
@@ -642,7 +631,4 @@ const confirmRestaurar = async () => {
   }
 }
 
-const onBalonSaved = () => {
-  selectedBalonId.value = null
-}
 </script>

@@ -60,7 +60,7 @@
 
       <template #cell-nombre_estado_sunat="{ row }">
         <div class="space-y-1">
-          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" raw />
+          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
           <p
             v-if="plazoLabel(row)"
             class="text-[11px] font-medium"
@@ -150,6 +150,7 @@
     <ClienteSinDocumentoModal
       v-model="emitWarningModalOpen"
       :nombre-cliente="comprobanteToEmitWarning?.nombre_cliente ?? undefined"
+      :allow-clientes-varios="!emitWarningEsFactura"
       :disabled="emitMutation.isPending.value"
       @edit-client="confirmEditCliente"
       @continue="confirmEmitir"
@@ -174,6 +175,8 @@ import {
   useDeleteComprobanteMutation,
   useEmitirComprobanteMutation,
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { CLIENTES_VARIOS_DOCUMENTO } from '@/modules/clientes/constants/clientesVarios'
+import { obtenerClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
@@ -210,6 +213,7 @@ import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuer
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -260,6 +264,13 @@ const comprobanteToAnular = ref<ComprobanteListItem | null>(null)
 
 const emitWarningModalOpen = ref(false)
 const comprobanteToEmitWarning = ref<ComprobanteListItem | null>(null)
+const emitWarningEsFactura = computed(() => {
+  const row = comprobanteToEmitWarning.value
+  if (!row) return false
+  const codigo = (row.codigo_tipo_comprobante ?? '').trim()
+  if (codigo === '01') return true
+  return (row.serie ?? '').toUpperCase().startsWith('F')
+})
 
 const clienteEditModalOpen = ref(false)
 const idClienteParaEditar = ref<number | undefined>(undefined)
@@ -625,6 +636,13 @@ function openDetailModal(row: ComprobanteListItem) {
   detailModalOpen.value = true
 }
 
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    comprobanteToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
+
 function openEditModal(row: ComprobanteListItem) {
   comprobanteToEdit.value = row
   editModalOpen.value = true
@@ -687,13 +705,38 @@ async function ejecutarEmitir(row: ComprobanteListItem, userId: number) {
   }
 }
 
-function confirmEmitir() {
+async function confirmEmitir() {
   const row = comprobanteToEmitWarning.value
   const userId = authStore.user?.id
   if (!row || !userId) return
+
+  if (emitWarningEsFactura.value) {
+    toastWarning('La factura requiere un cliente con RUC. Edita el cliente o elige otro.')
+    return
+  }
+
+  const varios = await obtenerClientesVarios()
+  if (!varios) {
+    toastWarning(
+      'No se encontró el cliente Clientes Varios (CVARIOS). Edita el cliente o créalo en el catálogo.',
+    )
+    return
+  }
+
+  try {
+    await comprobantesService.actualizar(row.id, {
+      idUsuarioAuditoria: userId,
+      idCliente: varios.id,
+    })
+  } catch (error) {
+    toastApiError(error, 'No se pudo asignar Clientes Varios al comprobante')
+    return
+  }
+
   emitWarningModalOpen.value = false
   comprobanteToEmitWarning.value = null
-  ejecutarEmitir(row, userId)
+  toastSuccess(`Se usará Clientes Varios (${CLIENTES_VARIOS_DOCUMENTO}) para emitir a SUNAT`)
+  await ejecutarEmitir(row, userId)
 }
 
 function confirmEditCliente() {

@@ -38,6 +38,26 @@ export const productosRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'articulos/nuevo',
+        name: 'admin-productos-articulos-nuevo',
+        component: () => import('@/modules/productos/articulos/views/ProductoFormView.vue'),
+        meta: {
+          title: 'Nuevo producto',
+          module: 'productos',
+          permission: PermisoBanderas.PRODUCTOS_CREAR,
+        },
+      },
+      {
+        path: 'articulos/:id/editar',
+        name: 'admin-productos-articulos-editar',
+        component: () => import('@/modules/productos/articulos/views/ProductoFormView.vue'),
+        meta: {
+          title: 'Editar producto',
+          module: 'productos',
+          permission: PermisoBanderas.PRODUCTOS_EDITAR,
+        },
+      },
+      {
         path: 'stock',
         name: 'admin-productos-stock',
         component: () => import('@/modules/productos/stock/views/StockListView.vue'),
@@ -56,6 +76,28 @@ export const productosRoutes: RouteRecordRaw[] = [
           title: 'Movimientos',
           module: 'productos',
           permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
+        },
+      },
+      {
+        path: 'movimientos/nuevo',
+        name: 'admin-productos-movimientos-nuevo',
+        component: () =>
+          import('@/modules/productos/movimientos/views/MovimientoInventarioFormView.vue'),
+        meta: {
+          title: 'Nuevo movimiento',
+          module: 'productos',
+          permission: PermisoBanderas.MOVIMIENTOS_CREAR,
+        },
+      },
+      {
+        path: 'movimientos/:id/editar',
+        name: 'admin-productos-movimientos-editar',
+        component: () =>
+          import('@/modules/productos/movimientos/views/MovimientoInventarioFormView.vue'),
+        meta: {
+          title: 'Editar movimiento',
+          module: 'productos',
+          permission: PermisoBanderas.MOVIMIENTOS_EDITAR,
         },
       },
       {

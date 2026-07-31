@@ -52,3 +52,18 @@ export function useDeleteStockMutation() {
     },
   })
 }
+
+export function useRestaurarStockMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => stockService.restaurar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
+      toastSuccess('Registro de stock restaurado correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo restaurar el registro de stock')
+    },
+  })
+}

@@ -375,9 +375,7 @@ import { toastWarning } from '@/shared/composables/useToast'
 interface ClienteFormModalProps {
   mode: ClienteFormMode
   cliente?: Cliente | null
-}
-
-const props = defineProps<ClienteFormModalProps>()
+}>()
 
 const open = defineModel<boolean>({ default: false })
 
@@ -661,89 +659,8 @@ const handleClose = () => {
   open.value = false
 }
 
-const onSubmit = handleSubmit(async (values) => {
-  const currentUserId = authStore.user?.id
-  if (!currentUserId) return
-
-  if (documentoDuplicado.value) {
-    setFieldError('numeroDocumento', 'Este número de documento ya está registrado')
-    return
-  }
-
-  const payload: ClientePayload = {
-    idUsuarioAuditoria: currentUserId,
-    idTipoDocumento: Number(values.idTipoDocumento),
-    numeroDocumento: values.numeroDocumento?.trim() ? values.numeroDocumento.trim() : null,
-    codigoInterno: values.codigoInterno || undefined,
-    idTipoCliente: Number(values.idTipoCliente),
-    idTipoPersona: Number(values.idTipoPersona),
-    razonSocial: values.razonSocial || undefined,
-    nombres: values.nombres || undefined,
-    apellidoPaterno: values.apellidoPaterno || undefined,
-    apellidoMaterno: values.apellidoMaterno || undefined,
-    telefono: values.telefono || undefined,
-    email: values.email || undefined,
-    direccion: values.direccion || undefined,
-    referencia: values.referencia || undefined,
-    latitud: values.latitud || undefined,
-    longitud: values.longitud || undefined,
-    idPais: idPaisUI.value ? Number(idPaisUI.value) : undefined,
-    idDepartamento: idDepartamentoUI.value ? Number(idDepartamentoUI.value) : undefined,
-    idProvincia: idProvinciaUI.value ? Number(idProvinciaUI.value) : undefined,
-    idDistrito: values.idDistrito ? Number(values.idDistrito) : undefined,
-    esAgentePercepcion: esAgentePercepcion.value,
-    esBuenContribuyente: esBuenContribuyente.value,
-    esAgenteRetenedor: esAgenteRetenedor.value,
-    afectoRus: afectoRus.value,
-    situacionSunat: sunatActivo.value ? 'ACTIVO' : 'BAJA',
-    estadoContribuyenteSunat: sunatHabido.value ? 'HABIDO' : 'NO HABIDO',
-    observacion: values.observacion || undefined,
-  }
-
-  try {
-    let clienteGuardado: Cliente
-
-    if (props.mode === 'create') {
-      clienteGuardado = await createMutation.mutateAsync(payload)
-    } else if (props.cliente) {
-      clienteGuardado = await updateMutation.mutateAsync({
-        id: props.cliente.id,
-        payload,
-      })
-    } else {
-      return
-    }
-
-    emit('saved', clienteGuardado)
-    open.value = false
-  } catch {
-    // toast en mutation
-  }
-})
-
-watch(
-  () => open.value,
-  (isOpen) => {
-    if (isOpen) {
-      syncFormValues()
-    }
-  },
-)
-
-watch(
-  () => props.cliente,
-  () => {
-    if (open.value) {
-      syncFormValues()
-    }
-  },
-)
-watch(
-  () => detailQuery.data.value,
-  (data) => {
-    if (open.value && data) {
-      syncFormValues()
-    }
-  },
-)
+const onSaved = (cliente: Cliente) => {
+  emit('saved', cliente)
+  open.value = false
+}
 </script>

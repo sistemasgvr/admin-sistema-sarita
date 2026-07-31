@@ -4,6 +4,7 @@
     :hint="hint"
     :error="error"
     :required="required"
+    :optional="optional"
     :disabled="disabled"
     :id="id"
   >
@@ -39,6 +40,7 @@ interface AppTextareaProps {
   disabled?: boolean
   readonly?: boolean
   required?: boolean
+  optional?: boolean
   rows?: number
   state?: FormControlState
 }

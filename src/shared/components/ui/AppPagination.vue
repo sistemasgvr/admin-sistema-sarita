@@ -175,10 +175,10 @@ watch(limiteModel, (newLimit, oldLimit) => {
 })
 
 watch(currentTotal, (total) => {
-  if (total <= 0) {
-    paginaModel.value = 1
-    return
-  }
+  // No forzar página 1 si total=0: durante un fetch sin keepPreviousData
+  // meta queda vacía un instante y eso devolvía al usuario a la página 1.
+  // Las vistas ya reinician página al cambiar filtros reales.
+  if (total <= 0) return
 
   if (paginaModel.value > getTotalPages(total, limiteModel.value)) {
     paginaModel.value = Math.max(getTotalPages(total, limiteModel.value), 1)

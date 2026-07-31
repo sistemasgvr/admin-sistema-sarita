@@ -71,14 +71,19 @@ const activeTab = ref(resolveTab(route.query.tab))
 
 const tabs = computed<AppTabItem[]>(() => [
   { key: 'alquileres', label: 'Alquileres', icon: ICONS.boxes },
-  { key: 'antiguedad', label: 'Antigüedad', icon: ICONS.alertCircle },
+  { key: 'antiguedad', label: 'Días de atraso', icon: ICONS.alertCircle },
 ])
 
 watch(activeTab, (tab) => {
   const wantsAntiguedad = tab === 'antiguedad'
   const hasAntiguedadQuery = route.query.tab === 'antiguedad'
   if (wantsAntiguedad !== hasAntiguedadQuery) {
-    router.replace({ query: wantsAntiguedad ? { tab: 'antiguedad' } : {} })
+    if (wantsAntiguedad) {
+      router.replace({ query: { ...route.query, tab: 'antiguedad' } })
+    } else {
+      const { tab: _tab, ...rest } = route.query
+      router.replace({ query: rest })
+    }
   }
 })
 

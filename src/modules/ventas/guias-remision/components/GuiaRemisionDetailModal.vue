@@ -27,7 +27,7 @@
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Estado SUNAT</p>
-          <ListaOpcionBadge :value="guia.nombre_estado_sunat ?? 'PENDIENTE'" raw />
+          <ListaOpcionBadge :value="guia.nombre_estado_sunat ?? 'PENDIENTE'" />
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Fecha emisión</p>
@@ -102,9 +102,16 @@
               class="border-t border-gray-100 dark:border-gray-800"
             >
               <td class="px-3 py-2">{{ detalle.item }}</td>
-              <td class="px-3 py-2">{{ detalle.codigo_producto ?? '—' }}</td>
               <td class="px-3 py-2">
-                {{ detalle.descripcion || detalle.nombre_producto || detalle.id_producto }}
+                {{ detalle.codigo_balon || detalle.codigo_producto || '—' }}
+              </td>
+              <td class="px-3 py-2">
+                {{
+                  detalle.glosa ||
+                  detalle.descripcion ||
+                  detalle.nombre_producto ||
+                  detalle.id_producto
+                }}
               </td>
               <td class="px-3 py-2 text-right tabular-nums">{{ detalle.cantidad }}</td>
               <td class="px-3 py-2">{{ detalle.nombre_unidad_medida ?? '—' }}</td>

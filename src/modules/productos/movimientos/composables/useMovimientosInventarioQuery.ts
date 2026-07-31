@@ -11,3 +11,15 @@ export function useMovimientosInventarioQuery(filters: Ref<MovimientoInventarioL
     placeholderData: keepPreviousData,
   })
 }
+
+export function useMovimientoInventarioQuery(
+  id: Ref<number | null | undefined>,
+  enabled?: Ref<boolean>,
+) {
+  return useQuery({
+    queryKey: computed(() => movimientosQueryKeys.detail(id.value ?? 0)),
+    queryFn: () => movimientosInventarioService.obtenerPorId(id.value as number),
+    enabled: computed(() => (enabled?.value ?? true) && !!id.value),
+    staleTime: 30 * 1000,
+  })
+}

@@ -45,6 +45,8 @@ export const ICONS = {
   clipboardCheck: 'lucide:clipboard-check',
   copy: 'lucide:copy',
   mapPin: 'lucide:map-pin',
+  locateFixed: 'lucide:locate-fixed',
+  expand: 'lucide:expand',
   calendar: 'lucide:calendar',
   messageSquare: 'lucide:message-square',
   history: 'lucide:history',

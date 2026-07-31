@@ -82,7 +82,12 @@ watch(activeTab, (tab) => {
   const wantsAprobaciones = tab === 'aprobaciones'
   const hasAprobacionesQuery = route.query.tab === 'aprobaciones'
   if (wantsAprobaciones !== hasAprobacionesQuery) {
-    router.replace({ query: wantsAprobaciones ? { tab: 'aprobaciones' } : {} })
+    if (wantsAprobaciones) {
+      router.replace({ query: { ...route.query, tab: 'aprobaciones' } })
+    } else {
+      const { tab: _tab, idBaja: _idBaja, ...rest } = route.query
+      router.replace({ query: rest })
+    }
   }
 })
 

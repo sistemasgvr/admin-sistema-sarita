@@ -51,16 +51,12 @@
               label="Observaciones"
               placeholder="Opcional"
             />
-            <AppSelectSearch
+            <AlmacenSelectField
               v-model="idAlmacen"
-              v-model:search="almacenBuscar"
-              label="Almacén"
-              placeholder="Selecciona almacén"
-              search-placeholder="Nombre..."
-              :options="almacenOptions"
-              :loading="almacenesQuery.isLoading.value"
-              :disabled="almacenesQuery.isLoading.value"
+              searchable
               :required="requiereAlmacen"
+              :disabled="almacenesQuery.isLoading.value"
+              @created="onAlmacenCreated"
             />
           </div>
         </DetailSectionCard>
@@ -120,12 +116,11 @@
             </div>
 
             <div class="grid grid-cols-2 gap-2">
-              <AppInput
+              <CantidadUnidadInput
                 v-model="linea.cantidad"
-                label="Cant."
-                type="number"
-                :min="NUMBER_MIN.unit"
-                :step="NUMBER_STEP.unit"
+                :name="`pos-accesorios-cantidad-${linea.key}`"
+                :nombre-unidad="linea.nombreUnidadMedida ?? 'UNID'"
+                label="Cant"
               />
               <AppInput
                 v-model="linea.precioUnitario"
@@ -172,7 +167,9 @@ import { subCategoriasProductoService } from '@/modules/productos/sub-categorias
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
@@ -191,8 +188,10 @@ import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
+import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
-import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
+import { AppInput, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
@@ -234,9 +233,12 @@ const imprimiendoTicket = ref(false)
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
-const almacenBuscar = ref('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+
+async function onAlmacenCreated() {
+  await almacenesQuery.refetch()
+}
 
 const categorias = ref<CategoriaProducto[]>([])
 const subCategorias = ref<SubCategoriaProducto[]>([])
@@ -249,6 +251,7 @@ const filters = ref<ProductoListFilters>({
   limite: 500,
   esGas: false,
   esServicio: false,
+  incluirImagenes: true,
 })
 
 const productosQuery = useProductosQuery(filters)
@@ -261,18 +264,55 @@ const lineas = ref<PosLineItem[]>([])
 
 const productosBase = computed(() => productosQuery.data.value?.data ?? [])
 
-const almacenOptions = computed(() =>
-  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
-    value: almacen.id,
-    label: almacen.nombre,
-  })),
-)
-
 const productos = computed(() => {
   const marca = dynamicFilters.value.marca
   if (!marca) return productosBase.value
 
   return productosBase.value.filter((producto) => producto.marca === marca)
+})
+
+/**
+ * IDs vistos en el catálogo de la pestaña (esGas/esServicio ya filtrados).
+ * Se acumulan cuando no hay filtro de categoría, para no perder opciones al filtrar.
+ */
+const categoriaIdsEnPestana = ref<Set<number>>(new Set())
+const subCategoriaIdsEnPestana = ref<Set<number>>(new Set())
+
+watch(
+  productosBase,
+  (list) => {
+    if (dynamicFilters.value.idCategoria != null) return
+
+    const cats = new Set(categoriaIdsEnPestana.value)
+    const subs = new Set(subCategoriaIdsEnPestana.value)
+    for (const producto of list) {
+      if (producto.id_categoria != null) cats.add(producto.id_categoria)
+      if (producto.id_sub_categoria != null) subs.add(producto.id_sub_categoria)
+    }
+    categoriaIdsEnPestana.value = cats
+    subCategoriaIdsEnPestana.value = subs
+  },
+  { immediate: true },
+)
+
+const categoriasEnPestana = computed(() => {
+  const ids = new Set(categoriaIdsEnPestana.value)
+  const selected = dynamicFilters.value.idCategoria
+  if (selected != null) ids.add(Number(selected))
+
+  return categorias.value
+    .filter((categoria) => ids.has(categoria.id))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+})
+
+const subCategoriasEnPestana = computed(() => {
+  const ids = new Set(subCategoriaIdsEnPestana.value)
+  const selected = dynamicFilters.value.idSubCategoria
+  if (selected != null) ids.add(Number(selected))
+
+  return subCategorias.value
+    .filter((subCategoria) => ids.has(subCategoria.id))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 })
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => {
@@ -293,7 +333,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => {
       label: 'Categoría',
       type: 'select',
       placeholder: 'Seleccionar categoría',
-      options: categorias.value.map((categoria) => ({
+      options: categoriasEnPestana.value.map((categoria) => ({
         value: categoria.id,
         label: categoria.nombre,
       })),
@@ -304,7 +344,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => {
       type: 'select',
       placeholder: 'Seleccionar subcategoría',
       disabled: !categoriaId,
-      options: subCategorias.value
+      options: subCategoriasEnPestana.value
         .filter((subCategoria) =>
           categoriaId ? subCategoria.id_categoria === categoriaId : true,
         )
@@ -352,6 +392,7 @@ const syncFilters = () => {
     esGas: false,
     esServicio: false,
     soloActivos: 1,
+    incluirImagenes: true,
     idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
@@ -414,7 +455,14 @@ const puedeGuardar = computed(
   () =>
     comprobanteBaseValido() &&
     lineasActivas.value.length > 0 &&
-    (!requiereAlmacen.value || Boolean(idAlmacen.value)),
+    (!requiereAlmacen.value || Boolean(idAlmacen.value)) &&
+    lineasActivas.value.every(
+      (linea) =>
+        !validarCantidadSegunUnidad(
+          Number(linea.cantidad),
+          linea.nombreUnidadMedida ?? 'UNID',
+        ),
+    ),
 )
 
 function crearLineaDesdeProducto(producto: Producto): PosLineItem {
@@ -428,6 +476,7 @@ function crearLineaDesdeProducto(producto: Producto): PosLineItem {
     idAfectacionIgv: idAfectacionGravado.value,
     afectaStock: producto.afecta_stock !== false,
     stockDisponible: producto.stock_actual ?? null,
+    nombreUnidadMedida: producto.nombre_unidad_medida ?? 'UNID',
   }
 }
 
@@ -483,6 +532,16 @@ async function guardarComprobante() {
   }
 
   for (const linea of lineasActivas.value) {
+    const errorCantidad = validarCantidadSegunUnidad(
+      Number(linea.cantidad),
+      linea.nombreUnidadMedida ?? 'UNID',
+      linea.nombre,
+    )
+    if (errorCantidad) {
+      toastWarning(errorCantidad)
+      return
+    }
+
     if (linea.afectaStock === false) continue
     const stock = linea.stockDisponible
     if (stock != null && Number(linea.cantidad) > Number(stock)) {
@@ -518,6 +577,7 @@ async function guardarComprobante() {
     idMoneda: idMonedaPen.value,
     glosa: glosa.value || undefined,
     observaciones: clienteDescripcion.value || undefined,
+    origenPos: OrigenPos.ACCESORIOS,
   })
 
   comprobanteGuardadoId.value = comprobante.id
@@ -529,7 +589,6 @@ async function limpiarFormulario() {
   lineas.value = []
   glosa.value = ''
   idAlmacen.value = ''
-  almacenBuscar.value = ''
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null
   comprobanteGuardadoNumero.value = null

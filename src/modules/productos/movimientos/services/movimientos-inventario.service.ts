@@ -1,5 +1,6 @@
 import {
   apiDelete,
+  apiGet,
   apiGetPaginated,
   apiPatch,
   apiPost,
@@ -15,6 +16,10 @@ import type {
 export const movimientosInventarioService = {
   listar(filters: MovimientoInventarioListFilters = {}) {
     return apiGetPaginated<MovimientoInventario>('/productos/movimientos', { params: filters })
+  },
+
+  obtenerPorId(id: number) {
+    return apiGet<MovimientoInventario>(`/productos/movimientos/${id}`)
   },
 
   crear(payload: CreateMovimientoInventarioPayload) {

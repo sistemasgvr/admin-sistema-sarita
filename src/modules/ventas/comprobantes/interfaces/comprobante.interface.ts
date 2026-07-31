@@ -35,7 +35,11 @@ export interface ComprobanteDetalle {
   id_producto: number
   codigo_producto?: string | null
   nombre_producto?: string | null
+  es_gas?: boolean | null
+  es_servicio?: boolean | null
+  es_alquilable?: boolean | null
   descripcion?: string | null
+  nombre_unidad_medida?: string | null
   cantidad: number
   precio_unitario: number
   descuento?: number | null
@@ -69,6 +73,8 @@ export interface Comprobante extends ComprobanteListItem {
   id_medio_pago?: number | null
   id_almacen?: number | null
   id_tipo_operacion_sunat?: number | null
+  /** Pestaña POS de emisión: accesorios|recarga|medicinal|industrial|mantenimiento */
+  origen_pos?: string | null
   detalles: ComprobanteDetalle[]
   cuotas?: unknown[]
 }
@@ -113,6 +119,8 @@ export interface CreateComprobantePayload {
   idAlmacen?: number
   glosa?: string
   observaciones?: string
+  /** Pestaña POS: accesorios|recarga|medicinal|industrial|mantenimiento */
+  origenPos?: string
 }
 
 export interface UpdateComprobantePayload {
@@ -126,6 +134,7 @@ export interface UpdateComprobantePayload {
   idAlmacen?: number
   glosa?: string
   observaciones?: string
+  origenPos?: string
 }
 
 export interface EmitirComprobanteResponse {
@@ -276,4 +285,6 @@ export interface PosLineItem {
   afectaStock?: boolean
   /** Stock del almacén al momento de agregar (para validar cantidades). */
   stockDisponible?: number | null
+  /** Nombre U.M. del producto (p. ej. UNID) para validar cantidades enteras. */
+  nombreUnidadMedida?: string | null
 }

@@ -67,7 +67,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const canVerAprobaciones = computed(() =>
-  authStore.hasPermission(PermisoBanderas.BALONES_EDITAR),
+  authStore.hasPermission(PermisoBanderas.BAJAS_BALON_LISTAR) ||
+  authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR),
 )
 
 const bajasCountFilters = ref({ pagina: 1, limite: 1 })
@@ -105,7 +106,12 @@ watch(activeTab, (tab) => {
   const wantsAprobaciones = tab === 'aprobaciones'
   const hasAprobacionesQuery = route.query.tab === 'aprobaciones'
   if (wantsAprobaciones !== hasAprobacionesQuery) {
-    router.replace({ query: wantsAprobaciones ? { tab: 'aprobaciones' } : {} })
+    if (wantsAprobaciones) {
+      router.replace({ query: { ...route.query, tab: 'aprobaciones' } })
+    } else {
+      const { tab: _tab, idBaja: _idBaja, ...rest } = route.query
+      router.replace({ query: rest })
+    }
   }
 })
 

@@ -4,6 +4,7 @@
     :hint="hint"
     :error="error"
     :required="required"
+    :optional="optional"
     :disabled="disabled"
     :id="id"
   >
@@ -97,6 +98,7 @@ interface AppSelectProps {
   id?: string
   disabled?: boolean
   required?: boolean
+  optional?: boolean
   options: SelectOption[]
   state?: FormControlState
 }

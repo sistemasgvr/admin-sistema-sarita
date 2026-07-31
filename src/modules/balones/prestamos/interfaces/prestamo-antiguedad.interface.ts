@@ -17,6 +17,7 @@ export interface PrestamoAntiguedadItem {
   id_detalle: number
   id_prestamo: number
   numero_prestamo?: string | null
+  id_almacen?: number | null
   id_cliente?: number | null
   nombre_cliente?: string | null
   id_proveedor?: number | null

@@ -74,6 +74,8 @@ export function usePosBalonSelect(options: {
       pagina: 1,
       limite: 50,
       buscar: term || undefined,
+      // Nunca ofrecer dados de baja / robados en selects operativos.
+      soloBajas: false,
     }
 
     // Recarga / general: prestados (ubicación) + propios (propietario)

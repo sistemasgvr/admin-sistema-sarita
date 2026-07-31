@@ -24,7 +24,7 @@
               v-if="canCreate"
               type="button"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-              @click="openCreateModal"
+              @click="goToCreatePlanta"
             >
               Planta externa
             </button>
@@ -104,13 +104,6 @@
       </template>
     </AppTable>
 
-    <MovimientoRecargaFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :recarga-id="selectedRecargaId"
-      @saved="onRecargaSaved"
-    />
-
     <MovimientoRecargaDetailModal
       v-model="detailModalOpen"
       :recarga-id="recargaToViewId"
@@ -158,15 +151,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import MovimientoRecargaFormModal from '@/modules/balones/recargas/components/MovimientoRecargaFormModal.vue'
 import MovimientoRecargaDetailModal from '@/modules/balones/recargas/components/MovimientoRecargaDetailModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteMovimientoRecargaMutation } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
 import { useMovimientosRecargaQuery } from '@/modules/balones/recargas/composables/useMovimientosRecargaQuery'
 import type {
   MovimientoRecarga,
-  MovimientoRecargaFormMode,
   MovimientoRecargaListFilters,
 } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
@@ -190,6 +182,7 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -209,10 +202,6 @@ const balonesQuery = useBalonesQuery(balonesFilters)
 
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
-
-const formModalOpen = ref(false)
-const formMode = ref<MovimientoRecargaFormMode>('create')
-const selectedRecargaId = ref<number | null>(null)
 
 const detailModalOpen = ref(false)
 const recargaToViewId = ref<number | null>(null)
@@ -326,16 +315,15 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedRecargaId.value = null
-  formModalOpen.value = true
+const goToCreatePlanta = () => {
+  void router.push({ name: 'admin-balones-recargas-planta-nueva' })
 }
 
-const openEditModal = (row: MovimientoRecarga) => {
-  formMode.value = 'edit'
-  selectedRecargaId.value = row.id
-  formModalOpen.value = true
+const goToEditPlanta = (row: MovimientoRecarga) => {
+  void router.push({
+    name: 'admin-balones-recargas-planta-editar',
+    params: { id: row.id },
+  })
 }
 
 const openDetailModal = (row: MovimientoRecarga) => {
@@ -372,12 +360,8 @@ function actionItemsForRow(row: MovimientoRecarga): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: MovimientoRecarga) {
-  if (key === 'edit') openEditModal(row)
+  if (key === 'edit') goToEditPlanta(row)
   if (key === 'delete') openDeleteModal(row)
-}
-
-const onRecargaSaved = () => {
-  recargasQuery.refetch()
 }
 
 const confirmDelete = async () => {

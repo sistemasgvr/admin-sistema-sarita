@@ -6,6 +6,7 @@ export { default as AppFormField } from '@/shared/components/form/AppFormField.v
 export { default as AppInput } from '@/shared/components/form/AppInput.vue'
 export { default as AppSelect } from '@/shared/components/form/AppSelect.vue'
 export { default as AppSelectSearch } from '@/shared/components/form/AppSelectSearch.vue'
+export { default as AppSelectWithCreate } from '@/shared/components/form/AppSelectWithCreate.vue'
 export { default as AppTextarea } from '@/shared/components/form/AppTextarea.vue'
 export { default as AppTimePicker } from '@/shared/components/form/AppTimePicker.vue'
 export { default as AppBadge } from '@/shared/components/ui/AppBadge.vue'

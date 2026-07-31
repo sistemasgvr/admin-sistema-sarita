@@ -60,6 +60,28 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'guias-remision/nueva',
+        name: 'admin-ventas-guias-remision-nueva',
+        component: () =>
+          import('@/modules/ventas/guias-remision/views/GuiaRemisionFormView.vue'),
+        meta: {
+          title: 'Nueva guía de remisión',
+          module: 'ventas',
+          permission: PermisoBanderas.GUIAS_REMISION_CREAR,
+        },
+      },
+      {
+        path: 'guias-remision/:id/editar',
+        name: 'admin-ventas-guias-remision-editar',
+        component: () =>
+          import('@/modules/ventas/guias-remision/views/GuiaRemisionFormView.vue'),
+        meta: {
+          title: 'Editar guía de remisión',
+          module: 'ventas',
+          permission: PermisoBanderas.GUIAS_REMISION_EDITAR,
+        },
+      },
+      {
         path: 'resumen-diario',
         name: 'admin-ventas-resumen-diario',
         component: () =>

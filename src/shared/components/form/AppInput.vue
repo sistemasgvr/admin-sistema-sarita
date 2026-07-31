@@ -4,6 +4,7 @@
     :hint="hint"
     :error="error"
     :required="required"
+    :optional="optional"
     :disabled="disabled"
     :id="id"
   >
@@ -25,6 +26,7 @@
           :maxlength="maxlength"
           :class="inputClasses"
           @input="onSanitizeInput"
+          @blur="emit('blur', $event)"
         />
 
         <button
@@ -60,6 +62,7 @@ interface AppInputProps {
   disabled?: boolean
   readonly?: boolean
   required?: boolean
+  optional?: boolean
   autocomplete?: string
   min?: string | number
   max?: string | number
@@ -74,6 +77,10 @@ const props = withDefaults(defineProps<AppInputProps>(), {
   type: 'text',
   state: 'default',
 })
+
+const emit = defineEmits<{
+  blur: [event: FocusEvent]
+}>()
 
 const model = defineModel<string | number | null>({ default: '' })
 

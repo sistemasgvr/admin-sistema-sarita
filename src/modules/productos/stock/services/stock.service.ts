@@ -1,5 +1,6 @@
 import {
   apiDelete,
+  apiGet,
   apiGetPaginated,
   apiPatch,
   apiPost,
@@ -17,6 +18,10 @@ export const stockService = {
     return apiGetPaginated<Stock>('/productos/stock', { params: filters })
   },
 
+  obtenerPorId(id: number) {
+    return apiGet<Stock>(`/productos/stock/${id}`)
+  },
+
   crear(payload: CreateStockPayload) {
     return apiPost<Stock>('/productos/stock', payload)
   },
@@ -27,5 +32,11 @@ export const stockService = {
 
   eliminar(id: number) {
     return apiDelete<DeleteStockResponse>(`/productos/stock/${id}`, { data: {} })
+  },
+
+  restaurar(id: number, idUsuarioAuditoria?: number) {
+    return apiPatch<DeleteStockResponse>(`/productos/stock/${id}/restaurar`, {
+      idUsuarioAuditoria,
+    })
   },
 }

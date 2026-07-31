@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { computed, type Ref } from 'vue'
 import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
 import { comprasService } from '@/modules/compras/services/compras.service'
@@ -8,6 +8,7 @@ export function useComprasQuery(filters: Ref<CompraListFilters>) {
   return useQuery({
     queryKey: computed(() => comprasQueryKeys.list(filters.value)),
     queryFn: () => comprasService.listar(filters.value),
+    placeholderData: keepPreviousData,
   })
 }
 

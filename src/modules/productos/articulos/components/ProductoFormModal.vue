@@ -4,265 +4,35 @@
     :title="mode === 'create' ? 'Nuevo producto' : 'Editar producto'"
     :subtitle="
       mode === 'create'
-        ? 'Registra gases, accesorios o servicios del catálogo.'
+        ? 'Registra un producto o servicio en el catálogo.'
         : 'Actualiza los datos del producto seleccionado.'
     "
-    size="lg"
+    size="xl"
     @close="handleClose"
   >
-    <form
-      id="producto-form"
-      autocomplete="off"
-      @submit="onSubmit"
-    >
-      <FormCardsLayout>
-        <DetailSectionCard title="Identificación" :icon="ICONS.package">
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AppInput
-                v-model="codigo"
-                label="Código"
-                placeholder="GAS-OX-001"
-                required
-                v-bind="codigoAttrs"
-                :disabled="isSubmitting"
-                :error="errors.codigo"
-              />
-
-              <AppInput
-                v-model="codigoBarra"
-                label="Código de barras"
-                placeholder="Opcional"
-                v-bind="codigoBarraAttrs"
-                :disabled="isSubmitting"
-              />
-            </div>
-
-            <AppInput
-              v-model="nombre"
-              label="Nombre"
-              placeholder="Oxígeno industrial"
-              required
-              v-bind="nombreAttrs"
-              :disabled="isSubmitting"
-              :error="errors.nombre"
-            />
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AppInput
-                v-model="marca"
-                label="Marca"
-                placeholder="Opcional"
-                v-bind="marcaAttrs"
-                :disabled="isSubmitting"
-              />
-
-              <AppInput
-                v-model="presentacion"
-                label="Presentación"
-                placeholder="Ej. Cilindro 10 m³"
-                v-bind="presentacionAttrs"
-                :disabled="isSubmitting"
-              />
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-              <AppInput
-                v-model="codigoUbicacion"
-                label="Código de ubicación"
-                placeholder="Ej. ARO-GEN-01"
-                v-bind="codigoUbicacionAttrs"
-                :disabled="isSubmitting || isGeneratingUbicacion"
-              />
-              <button
-                type="button"
-                class="inline-flex h-[42px] items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                :disabled="isSubmitting || isGeneratingUbicacion"
-                @click="generarCodigoUbicacion"
-              >
-                {{ isGeneratingUbicacion ? 'Generando...' : 'Generar' }}
-              </button>
-            </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-              Genera iniciales del nombre y marca (ej. ARO-GEN-01). En edición se guarda de inmediato.
-            </p>
-          </div>
-        </DetailSectionCard>
-
-        <DetailSectionCard title="Clasificación" :icon="ICONS.tags">
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AppSelect
-                v-model="idCategoria"
-                label="Categoría"
-                placeholder="Selecciona categoría"
-                v-bind="idCategoriaAttrs"
-                :disabled="isSubmitting"
-                :options="categoriaOptions"
-              />
-
-              <AppSelect
-                v-model="idSubCategoria"
-                label="Subcategoría"
-                placeholder="Selecciona subcategoría"
-                v-bind="idSubCategoriaAttrs"
-                :disabled="isSubmitting || !idCategoria"
-                :options="subCategoriaOptions"
-              />
-            </div>
-
-            <AppSelect
-              v-model="idUnidadMedida"
-              label="Unidad de medida"
-              placeholder="Selecciona unidad"
-              v-bind="idUnidadMedidaAttrs"
-              :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
-              :options="unidadMedidaOptions"
-            />
-          </div>
-        </DetailSectionCard>
-
-        <DetailSectionCard title="Comercial" :icon="ICONS.creditCard">
-          <div class="space-y-4">
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <AppCheckbox v-model="esGas" :disabled="isSubmitting" label="Es gas" />
-              <AppCheckbox v-model="esServicio" :disabled="isSubmitting" label="Es servicio" />
-              <AppCheckbox v-model="esAlquilable" :disabled="isSubmitting" label="Es alquilable" />
-              <AppCheckbox v-model="afectaStock" :disabled="isSubmitting" label="Afecta stock" />
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AppInput
-                v-model="precio"
-                label="Precio de venta"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                v-bind="precioAttrs"
-                :disabled="isSubmitting"
-                :error="errors.precio"
-              />
-
-              <AppInput
-                v-model="precioCompra"
-                label="Precio de compra"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                v-bind="precioCompraAttrs"
-                :disabled="isSubmitting"
-                :error="errors.precioCompra"
-              />
-            </div>
-
-            <AppInput
-              v-if="esAlquilable"
-              v-model="precioGarantia"
-              label="Precio de garantía / depósito"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              v-bind="precioGarantiaAttrs"
-              :disabled="isSubmitting"
-              :error="errors.precioGarantia"
-            />
-            <p v-if="esAlquilable" class="text-xs text-gray-500 dark:text-gray-400">
-              Se usa como depósito al alquilar o prestar este producto.
-            </p>
-          </div>
-        </DetailSectionCard>
-
-        <DetailSectionCard title="Imágenes" :icon="ICONS.images">
-          <ProductoImagenesManager
-            v-if="mode === 'edit' && producto?.id"
-            :id-producto="producto.id"
-            editable
-          />
-
-          <div v-else class="space-y-3">
-            <AppDropzone
-              v-model="pendingImages"
-              label="Imágenes iniciales"
-              title="Arrastra y suelta tus imágenes"
-              description="PNG, JPG, WEBP o GIF. Arrástralas aquí o selecciónalas desde tu equipo."
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif"
-              multiple
-              :max-files="20"
-              :max-filesize="10"
-              :disabled="isSubmitting"
-            />
-          </div>
-        </DetailSectionCard>
-      </FormCardsLayout>
-    </form>
-
-    <template #footer>
-      <button
-        type="button"
-        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
-        :disabled="isSubmitting"
-        @click="handleClose"
-      >
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        form="producto-form"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="isSubmitting"
-      >
-        {{ isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear producto' : 'Guardar cambios' }}
-      </button>
-    </template>
+    <ProductoForm
+      :mode="mode"
+      :producto-id="productoId"
+      :active="open"
+      @saved="onSaved"
+      @cancel="handleClose"
+    />
   </AppModal>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useQueryClient } from '@tanstack/vue-query'
-import { useForm } from 'vee-validate'
-import { toTypedSchema } from '@vee-validate/yup'
-import * as yup from 'yup'
-import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
-import {
-  useCreateProductoMutation,
-  useUpdateProductoMutation,
-} from '@/modules/productos/articulos/composables/useProductoMutations'
-import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
-import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
+import { computed } from 'vue'
+import ProductoForm from '@/modules/productos/articulos/components/ProductoForm.vue'
 import type {
   Producto,
   ProductoFormMode,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
-import { productosService } from '@/modules/productos/articulos/services/productos.service'
-import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
-import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
-import {
-  AppCheckbox,
-  AppDropzone,
-  AppInput,
-  AppModal,
-  AppSelect,
-} from '@/shared/components'
-import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
-import { ICONS } from '@/shared/constants/icons'
-import { ListaIds } from '@/shared/constants/lista-ids'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
-import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
+import { AppModal } from '@/shared/components'
 
-interface ProductoFormModalProps {
+const props = defineProps<{
   mode: ProductoFormMode
   producto?: Producto | null
-  categorias: CategoriaProducto[]
-  subCategorias: SubCategoriaProducto[]
-}
-
-const props = defineProps<ProductoFormModalProps>()
+}>()
 
 const open = defineModel<boolean>({ default: false })
 
@@ -389,6 +159,10 @@ const handleClose = () => {
   open.value = false
 }
 
+const onSaved = (producto: Producto) => {
+  emit('saved', producto)
+  open.value = false
+}
 const generarCodigoUbicacion = async () => {
   const nombreActual = (nombre.value ?? '').trim()
   if (!nombreActual) {

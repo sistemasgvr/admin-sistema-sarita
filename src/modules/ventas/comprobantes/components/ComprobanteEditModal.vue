@@ -1,7 +1,7 @@
 <template>
   <AppModal
     v-model="open"
-    title="Editar comprobante"
+    :title="modalTitle"
     :subtitle="comprobanteLabel"
     size="xl"
   >
@@ -13,128 +13,217 @@
     </div>
 
     <div v-else-if="comprobante" class="space-y-4">
-      <DetailSectionCard title="Datos" :icon="ICONS.receipt" :full-width="true">
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Comprobante</p>
-            <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ comprobante.serie }}-{{ comprobante.numero }}
-            </p>
+      <!-- Identidad del documento -->
+      <div
+        class="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03]"
+      >
+        <div class="min-w-0">
+          <p class="text-xs text-gray-500 dark:text-gray-400">Documento</p>
+          <p class="text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
+            {{ comprobante.serie }}-{{ comprobante.numero }}
+          </p>
+          <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <ListaOpcionBadge
+              v-if="comprobante.nombre_tipo_comprobante || comprobante.codigo_tipo_comprobante"
+              :value="comprobante.nombre_tipo_comprobante ?? comprobante.codigo_tipo_comprobante"
+            />
+            <ListaOpcionBadge
+              v-if="comprobante.nombre_estado_sunat"
+              :value="comprobante.nombre_estado_sunat"
+            />
           </div>
-          <PosClienteField
-            v-model="idCliente"
-            v-model:search="clienteBuscar"
-            :options="clienteOptions"
-            :loading="clientesQuery.isFetching.value"
-            :disabled="clientesQuery.isLoading.value || updateMutation.isPending.value"
-            :can-create="canCreateCliente"
-            @created="seleccionarCliente"
+        </div>
+        <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span>Al editar cantidades se ajusta el stock</span>
+          <AppHelpTip
+            text="Si aumentas cantidad se descuenta stock; si bajas o quitas un producto, se restaura. El almacén debe coincidir con el de la venta."
           />
+        </div>
+      </div>
+
+      <!-- 1. Cabecera -->
+      <DetailSectionCard title="Cabecera" :icon="ICONS.receipt" :full-width="true">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <ClienteSelectField
+              v-model="idCliente"
+              label="Cliente"
+              required
+              :disabled="saving"
+            />
+          </div>
           <AppInput
             v-model="fecha"
             label="Fecha"
             type="date"
-            :disabled="updateMutation.isPending.value"
+            :disabled="saving"
             required
           />
-          <AppInput
-            v-model="glosa"
-            label="Glosa"
-            placeholder="Opcional"
-            :disabled="updateMutation.isPending.value"
-          />
-        </div>
-        <div class="mt-3">
-          <AppTextarea
-            v-model="observaciones"
-            label="Observaciones"
-            placeholder="Opcional"
-            :rows="2"
-            :disabled="updateMutation.isPending.value"
+          <AlmacenSelectField
+            v-model="idAlmacen"
+            label="Almacén"
+            hint="Desde aquí se descuenta o restaura stock"
+            :disabled="saving"
+            required
           />
         </div>
       </DetailSectionCard>
 
-      <DetailSectionCard title="Detalle" :icon="ICONS.clipboardList" :full-width="true">
+      <!-- 2. Productos (foco principal) -->
+      <DetailSectionCard title="Productos" :icon="ICONS.package" :full-width="true">
+        <template #actions>
+          <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+            {{ lineas.length }} {{ lineas.length === 1 ? 'ítem' : 'ítems' }}
+          </span>
+        </template>
+
         <div class="mb-3">
           <AppSelectSearch
             v-model="idProductoAgregar"
             v-model:search="productoBuscar"
+            remote
             label="Agregar producto"
-            placeholder="Buscar y agregar"
-            search-placeholder="Código, ubicación o nombre..."
+            placeholder="Buscar y agregar al detalle"
+            search-placeholder="Código o nombre..."
             :options="productoOptions"
-            :loading="productosQuery.isFetching.value"
-            :disabled="updateMutation.isPending.value"
+            :loading="isFetchingProductos"
+            :disabled="saving || !idAlmacen"
+            :hint="productoSelectHint"
+            :empty-text="productoSelectEmptyText"
           />
         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-          <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 dark:bg-white/5">
-              <tr>
-                <th class="px-3 py-2 text-left">Producto</th>
-                <th class="px-3 py-2 text-right">Cant.</th>
-                <th class="px-3 py-2 text-right">P. unit.</th>
-                <th class="px-3 py-2 text-right">Importe</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(linea, index) in lineas"
-                :key="linea.key"
-                class="border-t border-gray-100 dark:border-gray-800"
-              >
-                <td class="px-3 py-2">
-                  {{ linea.descripcion }}
-                </td>
-                <td class="px-3 py-2 text-right">
-                  <input
-                    v-model.number="linea.cantidad"
-                    type="number"
-                    min="0.001"
-                    step="0.001"
-                    class="w-24 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-right tabular-nums dark:border-gray-700"
-                    :disabled="updateMutation.isPending.value"
-                  />
-                </td>
-                <td class="px-3 py-2 text-right">
-                  <input
-                    v-model.number="linea.precioUnitario"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    class="w-28 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-right tabular-nums dark:border-gray-700"
-                    :disabled="updateMutation.isPending.value"
-                  />
-                </td>
-                <td class="px-3 py-2 text-right tabular-nums">
-                  {{ formatMoney(linea.cantidad * linea.precioUnitario) }}
-                  <button
-                    v-if="lineas.length > 1"
-                    type="button"
-                    class="ml-2 text-error-500 hover:underline"
-                    :disabled="updateMutation.isPending.value"
-                    @click="removeLinea(index)"
-                  >
-                    Quitar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div
+          v-if="lineas.length === 0"
+          class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+        >
+          No hay productos. Busca arriba para agregar al menos uno.
         </div>
-        <p class="mt-3 text-right text-sm font-semibold text-gray-800 dark:text-white/90">
-          Total: {{ formatMoney(totalEstimado) }}
-        </p>
+
+        <div
+          v-else
+          class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
+        >
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 dark:bg-white/5">
+                <tr>
+                  <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                    Producto
+                  </th>
+                  <th
+                    class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300"
+                  >
+                    Cant.
+                  </th>
+                  <th
+                    class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300"
+                  >
+                    P. unit.
+                  </th>
+                  <th
+                    class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300"
+                  >
+                    Importe
+                  </th>
+                  <th class="w-12 px-2 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(linea, index) in lineas"
+                  :key="linea.key"
+                  class="border-t border-gray-100 dark:border-gray-800"
+                >
+                  <td class="px-3 py-2.5">
+                    <p class="font-medium text-gray-800 dark:text-white/90">
+                      {{ linea.descripcion }}
+                    </p>
+                  </td>
+                  <td class="px-3 py-2.5">
+                    <CantidadUnidadInput
+                      v-model="linea.cantidad"
+                      :name="`comprobante-edit-cantidad-${linea.key}`"
+                      :nombre-unidad="linea.nombreUnidadMedida"
+                      :disabled="saving"
+                    />
+                  </td>
+                  <td class="px-3 py-2.5">
+                    <input
+                      v-model.number="linea.precioUnitario"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-1.5 text-right tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
+                      :disabled="saving"
+                      aria-label="Precio unitario"
+                    />
+                  </td>
+                  <td
+                    class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
+                  >
+                    {{ formatMoney(linea.cantidad * linea.precioUnitario) }}
+                  </td>
+                  <td class="px-2 py-2.5 text-center">
+                    <button
+                      type="button"
+                      title="Quitar producto"
+                      class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-error-50 hover:text-error-500 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-error-500/10"
+                      :disabled="saving || lineas.length <= 1"
+                      @click="removeLinea(index)"
+                    >
+                      <AppIcon :name="ICONS.trash" :size="15" />
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            class="flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03]"
+          >
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Total estimado (con IGV en precio)
+            </p>
+            <p class="text-base font-semibold tabular-nums text-gray-900 dark:text-white">
+              {{ formatMoney(totalEstimado) }}
+            </p>
+          </div>
+        </div>
       </DetailSectionCard>
+
+      <!-- 3. Notas (secundario) -->
+      <AppCollapsibleSection
+        v-model:open="notasOpen"
+        title="Notas"
+        description="Glosa y observaciones opcionales"
+        :icon="ICONS.messageSquare"
+        :badge="tieneNotas ? 'Con texto' : undefined"
+      >
+        <div class="grid grid-cols-1 gap-3">
+          <AppInput
+            v-model="glosa"
+            label="Glosa"
+            placeholder="Texto corto en el comprobante"
+            :disabled="saving"
+          />
+          <AppTextarea
+            v-model="observaciones"
+            label="Observaciones"
+            placeholder="Notas internas u observaciones"
+            :rows="2"
+            :disabled="saving"
+          />
+        </div>
+      </AppCollapsibleSection>
     </div>
 
     <template #footer>
       <button
         type="button"
         class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-        :disabled="updateMutation.isPending.value"
+        :disabled="saving"
         @click="open = false"
       >
         Cancelar
@@ -142,10 +231,12 @@
       <button
         type="button"
         class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-        :disabled="updateMutation.isPending.value || !canSave"
+        :disabled="saving || !canSave"
         @click="confirm"
       >
-        {{ updateMutation.isPending.value ? 'Guardando...' : 'Guardar cambios' }}
+        <AppIcon v-if="!saving" :name="ICONS.check" :size="16" />
+        <AppIcon v-else :name="ICONS.refreshCw" :size="16" class="animate-spin" />
+        {{ saving ? 'Guardando...' : 'Guardar cambios' }}
       </button>
     </template>
   </AppModal>
@@ -156,24 +247,49 @@ import { computed, ref, watch } from 'vue'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { useUpdateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import {
+  esVentaSinDocumentoTipo,
+  LABEL_VENTA_SIN_DOCUMENTO,
+} from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import type {
+  Producto,
+  ProductoListFilters,
+} from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
+import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import { AppInput, AppModal, AppSelectSearch, AppTextarea } from '@/shared/components'
+import {
+  AppCollapsibleSection,
+  AppHelpTip,
+  AppInput,
+  AppModal,
+  AppSelectSearch,
+  AppTextarea,
+  ListaOpcionBadge,
+} from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
+import {
+  filtrosPorCatalogoPos,
+  labelCatalogoPosEdicion,
+  resolverCatalogoPosEdicion,
+  type CatalogoPosEdicion,
+} from '@/modules/ventas/comprobantes/utils/catalogoPosEdicion'
+import {
+  unidadRequiereCantidadEntera,
+  validarCantidadSegunUnidad,
+} from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
-import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
-import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
-import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
-import { PermisoBanderas } from '@/shared/constants/permissions'
-import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 
 interface LineaEdit {
   key: string
   idProducto: number
   descripcion: string
+  nombreUnidadMedida?: string | null
   cantidad: number
   precioUnitario: number
   descuento: number
@@ -192,6 +308,7 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 const updateMutation = useUpdateComprobanteMutation()
+const saving = computed(() => updateMutation.isPending.value)
 
 const comprobanteId = computed(() => (props.modelValue ? props.comprobante?.id ?? null : null))
 const comprobanteQuery = useComprobanteQuery(comprobanteId)
@@ -199,70 +316,79 @@ const comprobanteQuery = useComprobanteQuery(comprobanteId)
 const fecha = ref('')
 const glosa = ref('')
 const observaciones = ref('')
-const lineas = ref<LineaEdit[]>([])
-
 const idCliente = ref<number | ''>('')
-const clienteBuscar = ref('')
-const clientesFilters = ref({
-  pagina: 1,
-  limite: 50,
-  soloActivos: 1 as number,
-  buscar: undefined as string | undefined,
-})
-const clientesQuery = useClientesQuery(clientesFilters)
-
-let clienteBuscarTimeout: ReturnType<typeof setTimeout> | undefined
-watch(clienteBuscar, (value) => {
-  if (clienteBuscarTimeout) clearTimeout(clienteBuscarTimeout)
-  clienteBuscarTimeout = setTimeout(() => {
-    clientesFilters.value = {
-      ...clientesFilters.value,
-      buscar: value.trim() || undefined,
-    }
-  }, 350)
-})
-
-const clienteOptions = computed(() =>
-  (clientesQuery.data.value?.data ?? []).map((cliente) => ({
-    value: cliente.id,
-    label: getClienteOptionLabel(cliente),
-  })),
-)
-
-const canCreateCliente = computed(() =>
-  authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
-)
-
-function seleccionarCliente(cliente: Cliente) {
-  idCliente.value = cliente.id
-}
+const idAlmacen = ref<number | ''>('')
+const lineas = ref<LineaEdit[]>([])
 
 const idProductoAgregar = ref<number | ''>('')
 const productoBuscar = ref('')
-const productosFilters = ref({
+const notasOpen = ref(false)
+/** Catálogo POS inferido del detalle al abrir (no cambia al agregar ítems). */
+const catalogoPos = ref<CatalogoPosEdicion>('todos')
+
+const productosFilters = ref<ProductoListFilters>({
   pagina: 1,
-  limite: 40,
-  soloActivos: 1 as number | null,
-  buscar: undefined as string | undefined,
+  limite: 80,
+  soloActivos: 1,
+  incluirImagenes: false,
 })
 const productosQuery = useProductosQuery(productosFilters)
+const isFetchingProductos = computed(() => productosQuery.isFetching.value)
+const isProductosError = computed(() => productosQuery.isError.value)
 
 let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+
+const productoSelectHint = computed(() => {
+  if (!idAlmacen.value) {
+    return 'Selecciona un almacén para listar productos con stock'
+  }
+  return labelCatalogoPosEdicion(catalogoPos.value)
+})
+
+const productoSelectEmptyText = computed(() => {
+  if (isProductosError.value) {
+    return 'No se pudieron cargar productos. Reintenta.'
+  }
+  if (isFetchingProductos.value) {
+    return 'Cargando productos...'
+  }
+  return 'Sin resultados'
+})
+
+function syncProductosFilters(buscar?: string) {
+  productosFilters.value = {
+    pagina: 1,
+    limite: 80,
+    soloActivos: 1,
+    incluirImagenes: false,
+    buscar: buscar?.trim() || undefined,
+    idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
+    ...filtrosPorCatalogoPos(catalogoPos.value),
+  }
+}
+
 watch(productoBuscar, (value) => {
   if (productoBuscarTimeout) clearTimeout(productoBuscarTimeout)
   productoBuscarTimeout = setTimeout(() => {
-    productosFilters.value = {
-      ...productosFilters.value,
-      buscar: value.trim() || undefined,
-    }
+    syncProductosFilters(value)
   }, 300)
 })
 
+watch(idAlmacen, () => {
+  syncProductosFilters(productoBuscar.value)
+})
+
 const productoOptions = computed(() =>
-  (productosQuery.data.value?.data ?? []).map((producto) => ({
-    value: producto.id,
-    label: [producto.codigo, producto.nombre].filter(Boolean).join(' — '),
-  })),
+  (productosQuery.data.value?.data ?? []).map((producto) => {
+    const base = [producto.codigo, producto.nombre].filter(Boolean).join(' — ')
+    if (producto.stock_actual == null) {
+      return { value: producto.id, label: base }
+    }
+    return {
+      value: producto.id,
+      label: `${base} (stock: ${producto.stock_actual})`,
+    }
+  }),
 )
 
 const open = computed({
@@ -272,10 +398,25 @@ const open = computed({
 
 const comprobante = computed(() => comprobanteQuery.data.value ?? null)
 
+const esVsd = computed(() =>
+  esVentaSinDocumentoTipo({
+    codigo: comprobante.value?.codigo_tipo_comprobante ?? props.comprobante?.codigo_tipo_comprobante,
+    nombre: comprobante.value?.nombre_tipo_comprobante ?? props.comprobante?.nombre_tipo_comprobante,
+  }),
+)
+
+const modalTitle = computed(() =>
+  esVsd.value ? `Editar ${LABEL_VENTA_SIN_DOCUMENTO.toLowerCase()}` : 'Editar comprobante',
+)
+
 const comprobanteLabel = computed(() => {
   if (!props.comprobante) return undefined
   return `${props.comprobante.serie}-${props.comprobante.numero}`
 })
+
+const tieneNotas = computed(
+  () => Boolean(glosa.value.trim()) || Boolean(observaciones.value.trim()),
+)
 
 const totalEstimado = computed(() =>
   lineas.value.reduce((acc, linea) => acc + Number(linea.cantidad) * Number(linea.precioUnitario), 0),
@@ -284,6 +425,8 @@ const totalEstimado = computed(() =>
 const canSave = computed(
   () =>
     Boolean(fecha.value) &&
+    Boolean(idCliente.value) &&
+    Boolean(idAlmacen.value) &&
     lineas.value.length > 0 &&
     lineas.value.every((l) => l.cantidad > 0 && l.precioUnitario >= 0),
 )
@@ -296,11 +439,13 @@ watch(
     glosa.value = data.glosa ?? ''
     observaciones.value = data.observaciones ?? ''
     idCliente.value = data.id_cliente ?? ''
+    idAlmacen.value = data.id_almacen ?? ''
     lineas.value = (data.detalles ?? []).map((detalle, index) => ({
       key: `${detalle.id ?? detalle.id_producto}-${index}`,
       idProducto: detalle.id_producto,
       descripcion:
         detalle.descripcion || detalle.nombre_producto || `Producto ${detalle.id_producto}`,
+      nombreUnidadMedida: detalle.nombre_unidad_medida ?? null,
       cantidad: Number(detalle.cantidad),
       precioUnitario: Number(detalle.precio_unitario),
       descuento: Number(detalle.descuento ?? 0),
@@ -309,17 +454,32 @@ watch(
     }))
     idProductoAgregar.value = ''
     productoBuscar.value = ''
+    notasOpen.value = Boolean((data.glosa ?? '').trim() || (data.observaciones ?? '').trim())
+    catalogoPos.value = resolverCatalogoPosEdicion({
+      origenPos: data.origen_pos,
+      detalles: data.detalles ?? [],
+    })
+    syncProductosFilters('')
   },
   { immediate: true },
 )
 
 watch(idProductoAgregar, (id) => {
   if (id === '' || id == null) return
-  const producto = (productosQuery.data.value?.data ?? []).find((item) => item.id === id)
-  if (producto) {
-    agregarProducto(producto)
-  }
+  const selectedId = Number(id)
   idProductoAgregar.value = ''
+
+  if (!idAlmacen.value) {
+    toastWarning('Selecciona el almacén antes de agregar productos')
+    return
+  }
+
+  const producto = (productosQuery.data.value?.data ?? []).find((item) => item.id === selectedId)
+  if (!producto) {
+    toastWarning('No se pudo cargar el producto seleccionado. Intenta de nuevo.')
+    return
+  }
+  agregarProducto(producto)
 })
 
 function formatMoney(value: number) {
@@ -327,16 +487,24 @@ function formatMoney(value: number) {
 }
 
 function removeLinea(index: number) {
+  if (lineas.value.length <= 1) {
+    toastWarning('Debe quedar al menos un producto')
+    return
+  }
   lineas.value.splice(index, 1)
 }
 
 function agregarProducto(producto: Producto) {
   const existente = lineas.value.find((linea) => linea.idProducto === producto.id)
+  const unidad = producto.nombre_unidad_medida ?? null
+  const incremento = unidadRequiereCantidadEntera(unidad) ? 1 : 0.01
   const cantidadDeseada = existente
-    ? Math.max(0.001, Number(existente.cantidad || 0) + 1)
+    ? Math.max(incremento, Number(existente.cantidad || 0) + incremento)
     : 1
 
-  const errorStock = validarStockParaAgregar(producto, cantidadDeseada)
+  const errorStock = validarStockParaAgregar(producto, cantidadDeseada, {
+    requiereAlmacenSeleccionado: true,
+  })
   if (errorStock) {
     toastWarning(errorStock)
     return
@@ -344,6 +512,7 @@ function agregarProducto(producto: Producto) {
 
   if (existente) {
     existente.cantidad = cantidadDeseada
+    existente.nombreUnidadMedida = unidad ?? existente.nombreUnidadMedida
     toastSuccess(`${producto.nombre}: cantidad ${existente.cantidad}`)
     return
   }
@@ -353,6 +522,7 @@ function agregarProducto(producto: Producto) {
     key: crypto.randomUUID(),
     idProducto: producto.id,
     descripcion: producto.nombre,
+    nombreUnidadMedida: unidad,
     cantidad: 1,
     precioUnitario: Number(producto.precio ?? 0),
     descuento: 0,
@@ -372,12 +542,30 @@ async function confirm() {
     return
   }
 
+  for (const linea of lineas.value) {
+    const errorCantidad = validarCantidadSegunUnidad(
+      Number(linea.cantidad),
+      linea.nombreUnidadMedida,
+      linea.descripcion,
+    )
+    if (errorCantidad) {
+      toastWarning(errorCantidad)
+      return
+    }
+  }
+
+  if (!idAlmacen.value) {
+    toastWarning('Selecciona el almacén')
+    return
+  }
+
   try {
     await updateMutation.mutateAsync({
       id: row.id,
       payload: {
         idUsuarioAuditoria: userId,
         idCliente: Number(idCliente.value) || undefined,
+        idAlmacen: Number(idAlmacen.value) || undefined,
         fecha: fecha.value,
         glosa: glosa.value.trim() || undefined,
         observaciones: observaciones.value.trim() || undefined,

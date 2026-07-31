@@ -10,8 +10,9 @@
       <div
         class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
       >
-        La solicitud quedará pendiente hasta que un administrador (distinto a ti) la apruebe en
-        <strong>Aprobar bajas</strong>. El cliente seguirá activo mientras tanto.
+        La solicitud quedará pendiente hasta que un administrador con permiso la apruebe en
+        <strong>Aprobar bajas</strong> (si eres admin con permiso, también puedes aprobarla tú).
+        El cliente seguirá activo mientras tanto.
       </div>
 
       <div class="flex items-center gap-2 text-sm">

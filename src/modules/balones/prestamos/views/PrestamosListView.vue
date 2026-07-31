@@ -16,15 +16,14 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <button
+            <RouterLink
               v-if="canCreate"
-              type="button"
+              :to="{ name: 'admin-balones-prestamos-nuevo' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
-            </button>
+            </RouterLink>
           </template>
         </AppListToolbar>
       </template>
@@ -92,13 +91,6 @@
       </template>
     </AppTable>
 
-    <PrestamoFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :prestamo-id="selectedPrestamoId"
-      @saved="onPrestamoSaved"
-    />
-
     <PrestamoDetailModal v-model="detailModalOpen" :prestamo-id="prestamoToViewId" />
 
     <AppModal
@@ -139,15 +131,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import PrestamoFormModal from '@/modules/balones/prestamos/components/PrestamoFormModal.vue'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeletePrestamoMutation } from '@/modules/balones/prestamos/composables/usePrestamoMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import type {
   Prestamo,
-  PrestamoFormMode,
   PrestamoListFilters,
 } from '@/modules/balones/prestamos/interfaces/prestamo.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
@@ -167,11 +158,13 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -193,10 +186,6 @@ const estadosPrestamoQuery = useListaOpcionesQuery(listaEstadoPrestamoId)
 
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
-
-const formModalOpen = ref(false)
-const formMode = ref<PrestamoFormMode>('create')
-const selectedPrestamoId = ref<number | null>(null)
 
 const detailModalOpen = ref(false)
 const prestamoToViewId = ref<number | null>(null)
@@ -301,22 +290,24 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedPrestamoId.value = null
-  formModalOpen.value = true
-}
-
-const openEditModal = (row: Prestamo) => {
-  formMode.value = 'edit'
-  selectedPrestamoId.value = row.id
-  formModalOpen.value = true
+const goToEdit = (row: Prestamo) => {
+  router.push({
+    name: 'admin-balones-prestamos-editar',
+    params: { id: String(row.id) },
+  })
 }
 
 const openDetailModal = (row: Prestamo) => {
   prestamoToViewId.value = row.id
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    prestamoToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
 
 const openDeleteModal = (row: Prestamo) => {
   prestamoToDelete.value = row
@@ -358,12 +349,8 @@ function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Prestamo) {
-  if (key === 'edit') openEditModal(row)
+  if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
-}
-
-const onPrestamoSaved = () => {
-  prestamosQuery.refetch()
 }
 
 const confirmDelete = async () => {

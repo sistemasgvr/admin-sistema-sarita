@@ -15,24 +15,33 @@
             <div class="w-full sm:w-44">
               <AppSelect v-model="mostrarClientes" :options="estadoFiltroOptions" />
             </div>
-            <button
+            <RouterLink
               v-if="canCreate"
-              type="button"
+              :to="{ name: 'admin-clientes-nuevo' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
-            >
+              >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
-            </button>
+            </RouterLink>
           </template>
         </AppListToolbar>
       </template>
 
       <template #cell-cliente="{ row }">
         <div class="flex flex-col gap-0.5">
-          <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
-            {{ row.razon_social }}
-          </p>
+          <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+            <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
+              {{ row.razon_social }}
+            </p>
+            <AppBadge
+              v-if="esClientesVarios(row)"
+              size="sm"
+              color="primary"
+              title="Cliente de sistema para ventas sin documento"
+            >
+              Sistema
+            </AppBadge>
+          </div>
           <p
             v-if="row.nombres || row.apellido_paterno || row.apellido_materno"
             class="truncate text-sm text-gray-500 dark:text-gray-400"
@@ -74,16 +83,16 @@
         </button>
 
         <button
-          v-if="canEdit"
+          v-if="canEdit && !esClientesVarios(row)"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-          @click="openEditModal(row)"
+          @click="openEditView(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
         </button>
 
         <button
-          v-if="canEdit && row.estado === 1"
+          v-if="canEdit && row.estado === 1 && !esClientesVarios(row)"
           type="button"
           title="Solicitar baja"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
@@ -102,7 +111,7 @@
         </button> -->
 
         <button
-          v-if="canSolicitarBaja && row.estado !== 1"
+          v-if="canSolicitarBaja && row.estado !== 1 && !esClientesVarios(row)"
           type="button"
           title="Solicitar reactivación"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
@@ -133,13 +142,6 @@
         />
       </template>
     </AppTable>
-
-    <ClienteFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :cliente="selectedCliente"
-      @saved="onClienteSaved"
-    />
 
     <ClienteDetailModal v-model="detailModalOpen" :cliente="clienteToView" />
 
@@ -193,21 +195,21 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/ClienteBajaModal.vue'
 import ClienteReactivacionModal from '@/modules/clientes/bajas-cliente/components/ClienteReactivacionModal.vue'
 import ClienteDetailModal from '@/modules/clientes/components/ClienteDetailModal.vue'
-import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import { useDeleteClienteMutation } from '@/modules/clientes/composables/useClienteMutations'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type {
   Cliente,
   ClienteEstadoFiltro,
-  ClienteFormMode,
   ClienteListFilters,
 } from '@/modules/clientes/interfaces/cliente.interface'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
@@ -236,6 +238,7 @@ withDefaults(
 )
 
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -283,10 +286,6 @@ const filters = ref<ClienteListFilters>({
 
 const clientesQuery = useClientesQuery(filters)
 const deleteMutation = useDeleteClienteMutation()
-
-const formModalOpen = ref(false)
-const formMode = ref<ClienteFormMode>('create')
-const selectedCliente = ref<Cliente | null>(null)
 
 const detailModalOpen = ref(false)
 const clienteToView = ref<Cliente | null>(null)
@@ -369,16 +368,12 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedCliente.value = null
-  formModalOpen.value = true
-}
-
-const openEditModal = (cliente: Cliente) => {
-  formMode.value = 'edit'
-  selectedCliente.value = cliente
-  formModalOpen.value = true
+const openEditView = (cliente: Cliente) => {
+  if (esClientesVarios(cliente)) return
+  void router.push({
+    name: 'admin-clientes-editar',
+    params: { id: String(cliente.id) },
+  })
 }
 
 const openDetailModal = (cliente: Cliente) => {
@@ -422,7 +417,4 @@ const confirmDelete = async () => {
   } catch {}
 }
 
-const onClienteSaved = () => {
-  selectedCliente.value = null
-}
 </script>

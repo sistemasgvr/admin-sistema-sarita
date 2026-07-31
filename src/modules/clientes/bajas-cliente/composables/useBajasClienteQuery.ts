@@ -17,6 +17,7 @@ export function useBajasClienteQuery(
   return useQuery({
     queryKey: computed(() => bajasClienteQueryKeys.list(filters.value)),
     queryFn: () => bajasClienteService.listar(filters.value),
+    placeholderData: keepPreviousData,
     enabled,
     placeholderData: keepPreviousData,
   })

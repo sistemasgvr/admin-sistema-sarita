@@ -8,6 +8,8 @@ export interface AlquilerDetalle {
   estado_devolucion?: 'PENDIENTE' | 'DEVUELTO' | string | null
   id_cliente?: number | null
   nombre_cliente?: string | null
+  /** Almacén del alquiler (para preseleccionar destino al devolver). */
+  id_almacen?: number | null
   fecha_inicio?: string | null
   fecha_fin_pactada?: string | null
   fecha_fin_real?: string | null

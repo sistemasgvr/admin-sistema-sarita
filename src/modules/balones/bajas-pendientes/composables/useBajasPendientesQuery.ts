@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { computed, type Ref } from 'vue'
 import { bajasPendientesQueryKeys } from '@/modules/balones/bajas-pendientes/constants/bajasPendientesQueryKeys'
 import type { BajaSolicitudListFilters } from '@/modules/balones/bajas-pendientes/interfaces/baja-solicitud.interface'
@@ -17,6 +17,7 @@ export function useBajasPendientesQuery(
   return useQuery({
     queryKey: computed(() => bajasPendientesQueryKeys.list(filters.value)),
     queryFn: () => bajasPendientesService.listar(filters.value),
+    placeholderData: keepPreviousData,
     enabled,
   })
 }

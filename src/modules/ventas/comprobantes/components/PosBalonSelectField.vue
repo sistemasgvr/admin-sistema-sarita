@@ -1,39 +1,33 @@
 <template>
-  <div class="flex w-full min-w-0 items-end gap-2">
-    <div class="min-w-0 flex-1 overflow-hidden">
-      <AppSelectSearch
-        v-model="model"
-        v-model:search="balonBuscar"
-        remote
-        :label="label"
-        :placeholder="placeholder"
-        :required="required"
-        search-placeholder="Código, serie o tipo..."
-        :options="balonOptions"
-        :loading="balonesQuery.isFetching.value"
-        :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
-        :empty-text="emptyText"
-      />
-    </div>
-
-    <button
-      v-if="canRegister && !disabled && !balonSelectDisabled"
-      type="button"
-      class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
-      :title="registerLabel"
-      @click="balonModalOpen = true"
-    >
-      <AppIcon :name="ICONS.plus" :size="18" />
-    </button>
-
-    <BalonFormModal
-      v-if="canRegister"
-      v-model="balonModalOpen"
-      mode="create"
-      :preset="balonPreset"
-      @created="onBalonCreated"
+  <AppSelectWithCreate
+    :can-create="canRegister && !disabled && !balonSelectDisabled"
+    :create-title="registerLabel"
+    :disabled="disabled || balonSelectDisabled"
+    @create="balonModalOpen = true"
+  >
+    <AppSelectSearch
+      v-model="model"
+      v-model:search="balonBuscar"
+      remote
+      :label="label"
+      :placeholder="placeholder"
+      :required="required"
+      :error="error"
+      search-placeholder="Código, serie o tipo..."
+      :options="balonOptions"
+      :loading="balonesQuery.isFetching.value"
+      :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
+      :empty-text="emptyText"
     />
-  </div>
+  </AppSelectWithCreate>
+
+  <BalonFormModal
+    v-if="canRegister"
+    v-model="balonModalOpen"
+    mode="create"
+    :preset="balonPreset"
+    @created="onBalonCreated"
+  />
 </template>
 
 <script setup lang="ts">
@@ -45,9 +39,7 @@ import {
   type PosBalonSelectMode,
 } from '@/modules/ventas/comprobantes/composables/usePosBalonSelect'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppSelectSearch } from '@/shared/components'
-import AppIcon from '@/shared/components/AppIcon.vue'
-import { ICONS } from '@/shared/constants/icons'
+import { AppSelectSearch, AppSelectWithCreate } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
 const props = withDefaults(
@@ -56,6 +48,7 @@ const props = withDefaults(
     placeholder?: string
     required?: boolean
     disabled?: boolean
+    error?: string
     mode: PosBalonSelectMode
     idCliente?: number | ''
     idAlmacen?: number | ''
