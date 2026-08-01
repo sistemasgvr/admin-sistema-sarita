@@ -44,6 +44,20 @@
         </AppListToolbar>
       </template>
 
+      <template #cell-nombre="{ row }">
+        <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ row.nombre }}</span>
+          <AppBadge
+            v-if="esProductoSistema(row)"
+            size="sm"
+            color="primary"
+            title="Producto de sistema para facturación del POS"
+          >
+            Sistema
+          </AppBadge>
+        </div>
+      </template>
+
       <template #cell-categoria="{ row }">
         <span class="text-sm text-gray-700 dark:text-gray-300">
           {{ row.nombre_categoria ?? '—' }}
@@ -181,6 +195,7 @@ import type {
   ProductoEstadoFiltro,
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { esProductoSistema } from '@/modules/productos/articulos/utils/productosSistema'
 import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -465,6 +480,7 @@ const restaurarProducto = async (producto: Producto) => {
 function actionItemsForRow(row: Producto): ActionMenuItem[] {
   const busy = restaurarMutation.isPending.value || deleteMutation.isPending.value
   const blockedByStock = Boolean(row.tiene_stock)
+  const esSistema = esProductoSistema(row)
 
   return [
     {
@@ -472,7 +488,7 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
       label: 'Editar',
       icon: ICONS.pencil,
       disabled: busy,
-      hidden: !(canEdit.value && row.estado === 1),
+      hidden: !(canEdit.value && row.estado === 1 && !esSistema),
     },
     {
       key: 'restore',
@@ -480,7 +496,7 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
       icon: ICONS.check,
       disabled: busy,
       loading: restaurarMutation.isPending.value,
-      hidden: !(canRestore.value && row.estado !== 1),
+      hidden: !(canRestore.value && row.estado !== 1 && !esSistema),
     },
     {
       key: 'delete',
@@ -488,7 +504,7 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
       icon: ICONS.trash,
       danger: !blockedByStock,
       disabled: busy || blockedByStock,
-      hidden: !(canDelete.value && row.estado === 1),
+      hidden: !(canDelete.value && row.estado === 1 && !esSistema),
     },
   ]
 }

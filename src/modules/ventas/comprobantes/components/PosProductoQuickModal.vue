@@ -46,16 +46,14 @@
               <dd
                 class="mt-0.5 text-sm font-medium"
                 :class="
-                  producto?.stock_bajo || Number(producto?.stock_actual) <= 0
-                    ? 'text-error-500'
-                    : 'text-gray-800 dark:text-white/90'
+                  etiquetaStock
+                    ? producto?.stock_bajo || Number(producto?.stock_actual) <= 0
+                      ? 'text-error-500'
+                      : 'text-gray-800 dark:text-white/90'
+                    : 'text-gray-500 dark:text-gray-400'
                 "
               >
-                {{
-                  producto?.stock_actual != null
-                    ? formatStock(producto.stock_actual)
-                    : '—'
-                }}
+                {{ etiquetaStock || 'No aplica (servicio)' }}
               </dd>
             </div>
             <div class="rounded-xl border border-gray-100 px-3 py-2.5 dark:border-gray-800">
@@ -113,7 +111,10 @@
 import { computed, ref, watch } from 'vue'
 import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { productoSinStockParaVenta } from '@/modules/ventas/comprobantes/utils/stockPos'
+import {
+  etiquetaStockPos,
+  productoSinStockParaVenta,
+} from '@/modules/ventas/comprobantes/utils/stockPos'
 import { AppModal, AppTabs } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
@@ -147,6 +148,10 @@ const subtitle = computed(() => {
   if (!codigo) return undefined
   return ubicacion.value ? `${codigo} · Ub: ${ubicacion.value}` : codigo
 })
+
+const etiquetaStock = computed(() =>
+  props.producto ? etiquetaStockPos(props.producto) : null,
+)
 
 const puedeAgregar = computed(
   () => Boolean(props.producto) && !productoSinStockParaVenta(props.producto!),
@@ -184,9 +189,4 @@ function agregar() {
   open.value = false
 }
 
-function formatStock(value: number | null | undefined) {
-  return new Intl.NumberFormat('es-PE', {
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0))
-}
 </script>

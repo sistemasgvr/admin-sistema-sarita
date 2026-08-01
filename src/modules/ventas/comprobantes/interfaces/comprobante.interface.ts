@@ -287,4 +287,37 @@ export interface PosLineItem {
   stockDisponible?: number | null
   /** Nombre U.M. del producto (p. ej. UNID) para validar cantidades enteras. */
   nombreUnidadMedida?: string | null
+  esGas?: boolean
+  esServicio?: boolean
+  esAlquilable?: boolean
+  /** Origen del flujo Añadir en POS. */
+  tipoPos?: 'accesorio' | 'gas' | 'alquiler' | 'mantenimiento'
+  /** Balón vinculado (recarga, entrega de cilindro o mantenimiento). */
+  idBalon?: number
+  /** Etiqueta legible del cilindro (código · tipo · …). */
+  etiquetaBalon?: string
+  capacidad?: number
+  fechaInicioAlquiler?: string
+  fechaFinAlquiler?: string
+  observacionLinea?: string
+  /**
+   * Escenario al vender gas:
+   * solo_gas | balon_cliente | entregar_alquiler | comprar_balon.
+   */
+  escenarioGas?: 'solo_gas' | 'balon_cliente' | 'entregar_alquiler' | 'comprar_balon'
+  /** Precio del envase cuando se vende el cilindro junto con el gas. */
+  precioBalon?: number
+  /** Producto con el que se factura el envase (venta de cilindro). */
+  idProductoEnvase?: number
+  nombreProductoEnvase?: string
+  /** Precio del periodo de alquiler cuando se entrega cilindro con el gas. */
+  precioAlquiler?: number
+  /** Producto/servicio con el que se factura el alquiler. */
+  idProductoAlquiler?: number
+  nombreProductoAlquiler?: string
+  /** Mantenimiento (registro independiente en balones). */
+  esMantenimiento?: boolean
+  idTipoMantenimiento?: number
+  fechaIngresoMantenimiento?: string
+  descripcionMantenimiento?: string
 }

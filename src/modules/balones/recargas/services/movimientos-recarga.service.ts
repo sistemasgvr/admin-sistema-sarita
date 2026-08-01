@@ -7,6 +7,7 @@ import type {
   MovimientoRecargaListFilters,
   RecargaClienteResult,
   UpdateMovimientoRecargaPayload,
+  VincularRecargaClienteComprobantePayload,
 } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 
 export const movimientosRecargaService = {
@@ -24,6 +25,13 @@ export const movimientosRecargaService = {
 
   crearRecargaCliente(payload: CreateRecargaClientePayload) {
     return apiPost<RecargaClienteResult>('/balones/movimientos-recarga/recarga-cliente', payload)
+  },
+
+  vincularRecargaClienteComprobante(payload: VincularRecargaClienteComprobantePayload) {
+    return apiPost<MovimientoRecarga>(
+      '/balones/movimientos-recarga/vincular-cliente-comprobante',
+      payload,
+    )
   },
 
   actualizar(id: number, payload: UpdateMovimientoRecargaPayload) {

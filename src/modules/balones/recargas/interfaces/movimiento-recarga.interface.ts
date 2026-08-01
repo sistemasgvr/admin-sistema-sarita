@@ -69,6 +69,17 @@ export interface CreateMovimientoRecargaPayload {
   idAlmacen?: number
 }
 
+export interface VincularRecargaClienteComprobantePayload {
+  idUsuarioAuditoria: number
+  idComprobante: number
+  idCliente: number
+  idBalon: number
+  idProducto: number
+  capacidad?: number
+  idAlmacen?: number
+  observacion?: string
+}
+
 export interface CreateRecargaClientePayload {
   idUsuarioAuditoria: number
   idCliente: number
