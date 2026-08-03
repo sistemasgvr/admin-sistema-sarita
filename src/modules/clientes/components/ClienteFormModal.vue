@@ -1,12 +1,8 @@
 <template>
   <AppModal
     v-model="open"
-    :title="mode === 'create' ? 'Nuevo cliente' : 'Editar cliente'"
-    :subtitle="
-      mode === 'create'
-        ? 'Registra un nuevo cliente en el sistema.'
-        : 'Actualiza los datos del cliente seleccionado.'
-    "
+    :title="modalTitle"
+    :subtitle="modalSubtitle"
     size="lg"
     @close="handleClose"
   >
@@ -14,6 +10,7 @@
       :mode="mode"
       :cliente-id="clienteId"
       :active="open"
+      :default-id-tipo-cliente="defaultIdTipoCliente"
       @saved="onSaved"
       @cancel="handleClose"
     />
@@ -26,10 +23,28 @@ import ClienteForm from '@/modules/clientes/components/ClienteForm.vue'
 import type { Cliente, ClienteFormMode } from '@/modules/clientes/interfaces/cliente.interface'
 import { AppModal } from '@/shared/components'
 
-const props = defineProps<{
-  mode: ClienteFormMode
-  cliente?: Cliente | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    mode: ClienteFormMode
+    cliente?: Cliente | null
+    createTitle?: string
+    createSubtitle?: string
+    defaultIdTipoCliente?: number
+  }>(),
+  {
+    createTitle: 'Nuevo cliente',
+    createSubtitle: 'Registra un nuevo cliente en el sistema.',
+  },
+)
+
+const modalTitle = computed(() =>
+  props.mode === 'create' ? props.createTitle : 'Editar cliente',
+)
+const modalSubtitle = computed(() =>
+  props.mode === 'create'
+    ? props.createSubtitle
+    : 'Actualiza los datos del cliente seleccionado.',
+)
 
 const open = defineModel<boolean>({ default: false })
 

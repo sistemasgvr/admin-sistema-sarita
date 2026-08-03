@@ -7,6 +7,7 @@ import {
 } from '@/shared/api/apiClient'
 import type {
   ActualizarCompraCabeceraPayload,
+  ActualizarCompraDetallePayload,
   Compra,
   CompraListItem,
   CompraListFilters,
@@ -36,6 +37,10 @@ export const comprasService = {
 
   crearDetalle(id: number, payload: CreateCompraDetalleLineaPayload) {
     return apiPost<Compra>(`/compras/${id}/detalle`, payload)
+  },
+
+  actualizarDetalle(idDetalle: number, payload: ActualizarCompraDetallePayload) {
+    return apiPatch<Compra>(`/compras/detalle/${idDetalle}`, payload)
   },
 
   eliminarDetalle(idDetalle: number, idUsuarioAuditoria: number) {

@@ -136,7 +136,11 @@ export function cantidadPorUnidadMedidaSchema(
     .required('La cantidad es obligatoria')
 
   if (unidadRequiereCantidadEntera(nombreUnidad, esGas)) {
-    return base.integer(MSG_CANTIDAD_UNID_ENTERA)
+    return base.test(
+      'cantidad-entera',
+      MSG_CANTIDAD_UNID_ENTERA,
+      (value) => value == null || esCantidadEntera(value),
+    )
   }
   return base
 }
@@ -159,7 +163,11 @@ export function stockPorUnidadMedidaSchema(
     .required(`${etiquetaCampo} es obligatoria`)
 
   if (unidadRequiereCantidadEntera(nombreUnidad, esGas)) {
-    return base.integer(`${etiquetaCampo}: ${MSG_STOCK_UNID_ENTERO}`)
+    return base.test(
+      'stock-entero',
+      `${etiquetaCampo}: ${MSG_STOCK_UNID_ENTERO}`,
+      (value) => value == null || esCantidadEnteraIncluyeCero(value),
+    )
   }
   return base
 }

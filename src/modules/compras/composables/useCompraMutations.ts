@@ -3,6 +3,7 @@ import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
 import { comprasService } from '@/modules/compras/services/compras.service'
 import type {
   ActualizarCompraCabeceraPayload,
+  ActualizarCompraDetallePayload,
   CreateCompraDetalleLineaPayload,
   CreateCompraPayload,
 } from '@/modules/compras/interfaces/compra.interface'
@@ -52,6 +53,27 @@ export function useCrearDetalleMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo agregar la línea')
+    },
+  })
+}
+
+export function useActualizarDetalleMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      idDetalle,
+      payload,
+    }: {
+      idDetalle: number
+      payload: ActualizarCompraDetallePayload
+    }) => comprasService.actualizarDetalle(idDetalle, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      toastSuccess('Línea actualizada (stock ajustado si aplica)')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo actualizar la línea')
     },
   })
 }

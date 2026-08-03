@@ -1,3 +1,5 @@
+export type CompraFormMode = 'create' | 'edit'
+
 export interface CompraListItem {
   id: number
   serie: string | null
@@ -138,6 +140,12 @@ export interface CreateCompraDetalleLineaPayload {
   idAlmacen?: number
 }
 
+export interface ActualizarCompraDetallePayload {
+  idUsuarioAuditoria: number
+  cantidad?: number
+  precioUnitario?: number
+}
+
 export interface EliminarCompraResponse {
   eliminado: boolean
   id: number
@@ -145,8 +153,13 @@ export interface EliminarCompraResponse {
 
 export interface CompraLineaForm {
   key: string
-  idProducto: number | ''
-  productoLabel: string | null
-  cantidad: number | ''
-  precioUnitario: number | ''
+  idProducto: number
+  productoLabel: string
+  cantidad: number
+  precioUnitario: number
+  idUnidadMedida?: number | null
+  nombreUnidadMedida?: string | null
+  esGas?: boolean
+  /** Snapshot UI: si el producto genera ingreso al registrar la compra */
+  afectaStock?: boolean
 }

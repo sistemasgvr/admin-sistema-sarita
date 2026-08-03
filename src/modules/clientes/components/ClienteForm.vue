@@ -441,6 +441,8 @@ const props = withDefaults(
     mode: ClienteFormMode
     clienteId?: number
     active?: boolean
+    /** Prefill al crear (ej. Proveedor desde compras). */
+    defaultIdTipoCliente?: number
   }>(),
   {
     active: true,
@@ -709,7 +711,9 @@ const syncFormValues = async () => {
       idTipoDocumento: cliente?.id_tipo_documento ?? '',
       numeroDocumento: cliente?.numero_documento ?? '',
       codigoInterno: cliente?.codigo_interno ?? '',
-      idTipoCliente: cliente?.id_tipo_cliente ?? '',
+      idTipoCliente:
+        cliente?.id_tipo_cliente ??
+        (props.mode === 'create' ? (props.defaultIdTipoCliente ?? '') : ''),
       idTipoPersona: cliente?.id_tipo_persona ?? '',
       razonSocial: cliente?.razon_social ?? '',
       nombreComercial: cliente?.nombre_comercial ?? '',

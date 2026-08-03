@@ -84,13 +84,6 @@
 
     <CompraDetailModal v-model="detailModalOpen" :compra-id="compraToViewId" />
 
-    <CompraFormModal
-      v-model="formModalOpen"
-      :compra-id="compraToEditId"
-      :referencia-compra-id="compraReferenciaId"
-      @saved="onSaved"
-    />
-
     <AppModal v-model="anularModalOpen" title="Anular comprobante de compra" size="sm">
       <p class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas anular
@@ -127,11 +120,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useComprasQuery } from '@/modules/compras/composables/useComprasQuery'
 import { useAnularCompraMutation } from '@/modules/compras/composables/useCompraMutations'
 import type { CompraListFilters, CompraListItem } from '@/modules/compras/interfaces/compra.interface'
 import CompraDetailModal from '@/modules/compras/components/CompraDetailModal.vue'
-import CompraFormModal from '@/modules/compras/components/CompraFormModal.vue'
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -148,6 +141,7 @@ import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables
 
 const breadcrumbItems = comprasBreadcrumbItems('Compras')
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -166,10 +160,6 @@ const anularMutation = useAnularCompraMutation()
 
 const detailModalOpen = ref(false)
 const compraToViewId = ref<number | null>(null)
-
-const formModalOpen = ref(false)
-const compraToEditId = ref<number | null>(null)
-const compraReferenciaId = ref<number | null>(null)
 
 const anularModalOpen = ref(false)
 const compraToAnular = ref<CompraListItem | null>(null)
@@ -284,26 +274,21 @@ function openDetail(row: CompraListItem) {
 }
 
 function openCreate() {
-  compraToEditId.value = null
-  compraReferenciaId.value = null
-  formModalOpen.value = true
+  void router.push({ name: 'admin-finanzas-compras-nuevo' })
 }
 
 function openEdit(row: CompraListItem) {
-  compraToEditId.value = row.id
-  compraReferenciaId.value = null
-  formModalOpen.value = true
+  void router.push({
+    name: 'admin-finanzas-compras-editar',
+    params: { id: String(row.id) },
+  })
 }
 
 function openCorreccion(row: CompraListItem) {
-  compraToEditId.value = null
-  compraReferenciaId.value = row.id
-  formModalOpen.value = true
-}
-
-function onSaved() {
-  pagina.value = 1
-  syncFilters()
+  void router.push({
+    name: 'admin-finanzas-compras-nuevo',
+    query: { referencia: String(row.id) },
+  })
 }
 
 function openAnular(row: CompraListItem) {
@@ -317,7 +302,7 @@ function actionItemsForRow(row: CompraListItem): ActionMenuItem[] {
   if (canEdit.value && row.estado === 1) {
     items.push({
       key: 'edit',
-      label: row.tiene_movimientos_inventario ? 'Editar cabecera' : 'Editar',
+      label: 'Editar',
       icon: ICONS.pencil,
     })
   }

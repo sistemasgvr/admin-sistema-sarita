@@ -4,8 +4,8 @@
     type="number"
     :label="label"
     :name="name"
-    :min="minCantidadPorUnidad(nombreUnidad)"
-    :step="stepInputCantidadPorUnidad(nombreUnidad)"
+    :min="minCantidadPorUnidad(nombreUnidad, esGas)"
+    :step="stepInputCantidadPorUnidad(nombreUnidad, esGas)"
     :disabled="disabled"
     :error="errorMessage || undefined"
     :hint="hint"
@@ -16,8 +16,8 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import { toTypedSchema } from '@vee-validate/yup'
 import { useField } from 'vee-validate'
+import * as yup from 'yup'
 import {
   cantidadPorUnidadMedidaSchema,
   minCantidadPorUnidad,
@@ -30,6 +30,7 @@ const props = withDefaults(
     name: string
     modelValue: number
     nombreUnidad?: string | null
+    esGas?: boolean | null
     label?: string
     hint?: string
     disabled?: boolean
@@ -37,6 +38,7 @@ const props = withDefaults(
   {
     label: undefined,
     nombreUnidad: null,
+    esGas: null,
     hint: undefined,
     disabled: false,
   },
@@ -46,16 +48,31 @@ const emit = defineEmits<{
   'update:modelValue': [value: number]
 }>()
 
-const validationSchema = computed(() =>
-  toTypedSchema(cantidadPorUnidadMedidaSchema(props.nombreUnidad)),
+const rules = computed(() =>
+  yup.number().test({
+    name: 'cantidad-unidad',
+    test: async (value, ctx) => {
+      try {
+        await cantidadPorUnidadMedidaSchema(props.nombreUnidad, props.esGas).validate(value)
+        return true
+      } catch (err) {
+        if (err instanceof yup.ValidationError) {
+          return ctx.createError({ message: err.message })
+        }
+        return ctx.createError({ message: 'Ingresa una cantidad válida' })
+      }
+    },
+  }),
 )
 
-const { value, errorMessage, handleBlur, setValue, validate } = useField<number>(
+const { value, errorMessage, handleBlur, setValue, validate, meta } = useField<number>(
   () => props.name,
-  validationSchema,
+  rules,
   {
     initialValue: Number(props.modelValue) || 0,
     validateOnValueUpdate: true,
+    /** Independiente del useForm padre: el padre debe llamar validate() al guardar. */
+    standalone: true,
   },
 )
 
@@ -63,14 +80,14 @@ watch(
   () => props.modelValue,
   (next) => {
     const n = Number(next)
-    if (Number.isFinite(n) && n !== value.value) {
-      setValue(n, false)
-    }
+    if (!Number.isFinite(n) || n === value.value) return
+    setValue(n)
+    void validate()
   },
 )
 
 watch(
-  () => props.nombreUnidad,
+  () => [props.nombreUnidad, props.esGas] as const,
   () => {
     void validate()
   },
@@ -78,8 +95,10 @@ watch(
 
 function onInput(raw: string | number | null) {
   const n = raw === '' || raw == null ? 0 : Number(raw)
-  setValue(Number.isFinite(n) ? n : 0)
-  emit('update:modelValue', Number.isFinite(n) ? n : 0)
+  const next = Number.isFinite(n) ? n : 0
+  setValue(next)
+  emit('update:modelValue', next)
+  void validate()
 }
 
 function onBlur(event: FocusEvent) {
@@ -87,8 +106,14 @@ function onBlur(event: FocusEvent) {
   void validate()
 }
 
+async function validateField() {
+  const result = await validate()
+  return result
+}
+
 defineExpose({
-  validate,
+  validate: validateField,
   errorMessage,
+  meta,
 })
 </script>
