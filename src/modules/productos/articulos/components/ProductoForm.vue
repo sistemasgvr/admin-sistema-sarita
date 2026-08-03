@@ -20,6 +20,14 @@
     autocomplete="off"
     @submit="onSubmit"
   >
+    <div
+      v-if="esProductoDeSistema"
+      class="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200"
+    >
+      Producto de sistema ({{ producto?.codigo }}). Se usa internamente en el POS; no se edita ni
+      elimina como un artículo de catálogo.
+    </div>
+
     <FormCardsLayout>
       <DetailSectionCard
         title="Tipo de ítem"
@@ -294,7 +302,7 @@
       <button
         type="submit"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || esProductoDeSistema"
       >
         {{ isSubmitting ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Crear' }}
       </button>
@@ -338,6 +346,10 @@ import type {
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
+import {
+  codigoProductoSistema,
+  esProductoSistema,
+} from '@/modules/productos/articulos/utils/productosSistema'
 import CategoriaProductoFormModal from '@/modules/productos/categorias/components/CategoriaProductoFormModal.vue'
 import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
@@ -356,7 +368,7 @@ import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
 type TipoItem = 'producto' | 'servicio'
@@ -385,6 +397,7 @@ const idParaEditar = computed(() => (props.mode === 'edit' ? props.productoId : 
 const activeRef = toRef(props, 'active')
 const productoQuery = useProductoDetailQuery(idParaEditar, activeRef)
 const producto = computed(() => productoQuery.data.value ?? null)
+const esProductoDeSistema = computed(() => esProductoSistema(producto.value))
 
 const categorias = ref<CategoriaProducto[]>([])
 const subCategorias = ref<SubCategoriaProducto[]>([])
@@ -637,6 +650,19 @@ const uploadPendingImages = async (idProducto: number) => {
 
 const onSubmit = handleSubmit(async (formValues) => {
   try {
+    if (esProductoDeSistema.value) {
+      toastWarning('Los productos de sistema no se pueden modificar')
+      return
+    }
+
+    const codigoNuevo = formValues.codigo.trim().toUpperCase()
+    if (codigoProductoSistema(codigoNuevo) && !esProductoDeSistema.value) {
+      toastWarning(
+        `El código ${codigoNuevo} está reservado para un producto de sistema`,
+      )
+      return
+    }
+
     const esServicioValue = tipoItem.value === 'servicio'
     const payload = {
       codigo: formValues.codigo,

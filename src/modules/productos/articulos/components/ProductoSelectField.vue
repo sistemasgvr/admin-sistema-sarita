@@ -47,6 +47,7 @@ import type {
   Producto,
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppSelect, AppSelectSearch, AppSelectWithCreate } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -198,7 +199,7 @@ function productoLabel(producto: Producto) {
 const queryOptions = computed<SelectOption[]>(() => {
   const rows = productosQuery.data.value?.data
   if (!Array.isArray(rows)) return []
-  return rows.map((producto) => ({
+  return filtrarProductosCatalogo(rows).map((producto) => ({
     value: producto.id,
     label: productoLabel(producto),
   }))

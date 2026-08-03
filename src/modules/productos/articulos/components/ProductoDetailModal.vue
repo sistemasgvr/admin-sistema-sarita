@@ -10,6 +10,13 @@
         <AppBadge :color="producto?.es_servicio ? 'warning' : 'primary'">
           {{ producto?.es_servicio ? 'Servicio' : 'Producto' }}
         </AppBadge>
+        <AppBadge
+          v-if="producto && esProductoSistema(producto)"
+          color="primary"
+          title="Producto de sistema para facturación del POS"
+        >
+          Sistema
+        </AppBadge>
         <AppBadge v-if="producto?.es_gas" color="primary" variant="light">Gas</AppBadge>
         <AppBadge v-if="producto?.es_alquilable" color="neutral" variant="light">
           Alquilable
@@ -47,6 +54,7 @@
 import { computed } from 'vue'
 import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { esProductoSistema } from '@/modules/productos/articulos/utils/productosSistema'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {

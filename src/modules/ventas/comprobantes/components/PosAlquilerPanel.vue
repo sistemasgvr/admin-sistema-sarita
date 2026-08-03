@@ -64,10 +64,11 @@
               mode="alquiler"
               :id-cliente="idCliente"
               :id-almacen="idAlmacen"
+              familia-gas="medicinal"
               label="Cilindro a entregar"
-              placeholder="Selecciona cilindro disponible"
+              placeholder="Selecciona cilindro medicinal disponible"
               register-label="Registrar cilindro en almacén"
-              empty-text="Sin cilindros disponibles."
+              empty-text="Sin cilindros medicinales disponibles."
               required
             />
           </div>
