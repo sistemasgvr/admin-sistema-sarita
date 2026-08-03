@@ -324,7 +324,6 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
-  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createComprobanteMutation = useCreateComprobanteMutation()

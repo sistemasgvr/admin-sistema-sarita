@@ -9,9 +9,12 @@
         </p>
       </div>
       <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <p class="text-xs text-gray-500 dark:text-gray-400">Cuentas pendientes</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Documentos pendientes</p>
         <p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">
           {{ formatNumber(resumen?.cantidadCuentas) }}
+        </p>
+        <p class="mt-0.5 text-theme-xs text-gray-400 dark:text-gray-500">
+          Incluye cuentas simples y cuotas
         </p>
       </div>
       <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -21,9 +24,12 @@
         </p>
       </div>
       <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ terceroLabelPlural }}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{ terceroLabelPlural }} con saldo</p>
         <p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">
           {{ formatNumber(resumen?.cantidadTerceros) }}
+        </p>
+        <p class="mt-0.5 text-theme-xs text-gray-400 dark:text-gray-500">
+          Solo con deuda pendiente
         </p>
       </div>
     </div>
@@ -58,13 +64,24 @@
 
       <template #cell-tercero="{ row }">
         <div class="min-w-0">
-          <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ row.tercero }}</p>
-          <p class="text-theme-xs text-gray-400 dark:text-gray-500">{{ row.documento_tercero || '—' }}</p>
+          <div class="flex items-center gap-2">
+            <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ row.tercero }}</p>
+            <AppBadge v-if="row.es_plan" color="dark" size="sm">
+              {{ row.numero_cuotas_total }} cuotas
+            </AppBadge>
+          </div>
+          <p class="text-theme-xs text-gray-400 dark:text-gray-500">
+            {{ row.documento_tercero || row.descripcion || '—' }}
+          </p>
         </div>
       </template>
 
       <template #cell-vencimiento="{ row }">
-        <div class="flex flex-col">
+        <div v-if="row.es_plan" class="text-theme-xs text-gray-500 dark:text-gray-400">
+          <AppIcon :name="ICONS.layers" :size="14" class="mr-1 inline align-middle" />
+          Plan de cuotas
+        </div>
+        <div v-else class="flex flex-col">
           <span class="text-gray-600 dark:text-gray-300">{{ formatListDate(row.fecha_vencimiento) }}</span>
           <span v-if="row.dias_vencido > 0" class="text-theme-xs font-medium text-rose-500">
             {{ row.dias_vencido }} d. vencido
@@ -85,20 +102,38 @@
       <template #actions="{ row }">
         <button
           type="button"
-          title="Ver detalle"
+          :title="row.es_plan ? 'Ver cuotas y pagar' : 'Ver detalle'"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openDetalle(row)"
         >
           <AppIcon :name="ICONS.eye" :size="16" />
         </button>
         <button
-          v-if="canRegistrarPago && row.saldo > 0"
+          v-if="canRegistrarPago && !row.es_plan && row.saldo > 0"
           type="button"
           :title="ctaPagoLabel"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openPago(row)"
         >
           <AppIcon :name="ICONS.banknote" :size="16" />
+        </button>
+        <button
+          v-if="canEditar"
+          type="button"
+          title="Editar cuenta"
+          class="inline-flex items-center rounded-lg px-2 py-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+          @click="openEditar(row)"
+        >
+          <AppIcon :name="ICONS.pencil" :size="16" />
+        </button>
+        <button
+          v-if="canEliminar"
+          type="button"
+          title="Eliminar cuenta"
+          class="inline-flex items-center rounded-lg px-2 py-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+          @click="openEliminar(row)"
+        >
+          <AppIcon :name="ICONS.trash" :size="16" />
         </button>
       </template>
 
@@ -118,20 +153,56 @@
       :cuenta-id="cuentaDetalleId"
       :tipo="tipo"
       :can-anular="canRegistrarPago"
+      :can-registrar-pago="canRegistrarPago"
+      @pagar-cuota="onPagarCuota"
     />
     <CrearCuentaModal v-if="canCrear" v-model="crearModalOpen" :tipo="tipo" />
+
+    <EditarCuentaModal
+      v-if="canEditar"
+      v-model="editarModalOpen"
+      :cuenta="cuentaEditando"
+      :tipo="tipo"
+      :tiene-pagos="(cuentaEditando?.monto_abonado ?? 0) > 0"
+      @saved="onCuentaEditada"
+    />
+
+    <AppConfirmDialog
+      v-if="canEliminar"
+      v-model="eliminarModalOpen"
+      title="Eliminar cuenta"
+      variant="danger"
+      confirm-label="Sí, eliminar"
+      loading-label="Eliminando..."
+      :loading="eliminarMutation.isPending.value"
+      @confirm="confirmarEliminar"
+    >
+      <span>
+        ¿Confirmas eliminar esta cuenta? Esta acción es una <strong>baja lógica</strong>
+        y se puede revertir manualmente en la BD. No se permite eliminar cuentas con pagos aplicados.
+      </span>
+    </AppConfirmDialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { AppBadge, AppInput, AppPagination, AppSelect, AppTable } from '@/shared/components'
+import {
+  AppBadge,
+  AppConfirmDialog,
+  AppInput,
+  AppPagination,
+  AppSelect,
+  AppTable,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import RegistrarPagoModal from '@/modules/finanzas/components/RegistrarPagoModal.vue'
 import CuentaDetalleModal from '@/modules/finanzas/components/CuentaDetalleModal.vue'
 import CrearCuentaModal from '@/modules/finanzas/components/CrearCuentaModal.vue'
+import EditarCuentaModal from '@/modules/finanzas/components/EditarCuentaModal.vue'
 import { useCuentasQuery } from '@/modules/finanzas/composables/useCuentasQuery'
 import { useResumenCuentasQuery } from '@/modules/finanzas/composables/useResumenCuentasQuery'
+import { useEliminarCuentaMutation } from '@/modules/finanzas/composables/usePagoMutations'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import type {
   CuentaFinanciera,
@@ -167,6 +238,18 @@ const canRegistrarPago = computed(() =>
 const canCrear = computed(() =>
   authStore.hasPermission(
     esCobrar.value ? PermisoBanderas.FINANZAS_CXC_CREAR : PermisoBanderas.FINANZAS_CXP_CREAR,
+  ),
+)
+
+const canEditar = computed(() =>
+  authStore.hasPermission(
+    esCobrar.value ? PermisoBanderas.FINANZAS_CXC_EDITAR : PermisoBanderas.FINANZAS_CXP_EDITAR,
+  ),
+)
+
+const canEliminar = computed(() =>
+  authStore.hasPermission(
+    esCobrar.value ? PermisoBanderas.FINANZAS_CXC_ELIMINAR : PermisoBanderas.FINANZAS_CXP_ELIMINAR,
   ),
 )
 
@@ -275,6 +358,13 @@ const cuentaDetalleId = ref<number | null>(null)
 
 const crearModalOpen = ref(false)
 
+const editarModalOpen = ref(false)
+const cuentaEditando = ref<CuentaFinanciera | null>(null)
+
+const eliminarModalOpen = ref(false)
+const cuentaAEliminar = ref<CuentaFinanciera | null>(null)
+const eliminarMutation = useEliminarCuentaMutation(props.tipo)
+
 const openPago = (cuenta: CuentaFinanciera) => {
   cuentaSeleccionada.value = cuenta
   pagoModalOpen.value = true
@@ -283,5 +373,43 @@ const openPago = (cuenta: CuentaFinanciera) => {
 const openDetalle = (cuenta: CuentaFinanciera) => {
   cuentaDetalleId.value = cuenta.id
   detalleModalOpen.value = true
+}
+
+/** Recibe una cuota "proyectada" como CuentaFinanciera desde el detalle
+ *  y abre el modal de pago encima. El modal de detalle queda abierto para
+ *  ver el resultado tras cerrar el de pago. */
+const onPagarCuota = (cuota: CuentaFinanciera) => {
+  cuentaSeleccionada.value = cuota
+  pagoModalOpen.value = true
+}
+
+const openEditar = (cuenta: CuentaFinanciera) => {
+  cuentaEditando.value = cuenta
+  editarModalOpen.value = true
+}
+
+const onCuentaEditada = () => {
+  editarModalOpen.value = false
+  cuentaEditando.value = null
+}
+
+const openEliminar = (cuenta: CuentaFinanciera) => {
+  cuentaAEliminar.value = cuenta
+  eliminarModalOpen.value = true
+}
+
+const confirmarEliminar = async () => {
+  const c = cuentaAEliminar.value
+  if (!c) return
+  try {
+    await eliminarMutation.mutateAsync({
+      id: c.id,
+      idUsuarioAuditoria: authStore.user?.id ?? undefined,
+    })
+    eliminarModalOpen.value = false
+    cuentaAEliminar.value = null
+  } catch {
+    // Toast lo maneja la mutación (ej.: si tiene pagos activos)
+  }
 }
 </script>

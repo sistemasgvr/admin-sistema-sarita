@@ -1,0 +1,26 @@
+{
+  "name": "Sistema Sarita",
+  "short_name": "Sarita",
+  "description": "Panel administrativo de Oxígeno Sarita",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "es-PE",
+  "icons": [
+    {
+      "src": "/favicon-Oxigen-Sarita.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

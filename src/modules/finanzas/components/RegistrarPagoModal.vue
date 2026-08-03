@@ -1,5 +1,5 @@
 <template>
-  <AppModal v-model="open" :title="titulo" :subtitle="subtitulo" size="md">
+  <AppModal v-model="open" :title="titulo" :subtitle="subtitulo" size="md" :z-index="100000">
     <div v-if="cuenta" class="space-y-4">
       <!-- Resumen de la cuenta -->
       <div class="grid grid-cols-2 gap-3 rounded-xl bg-gray-50 p-4 dark:bg-white/[0.03]">
@@ -29,17 +29,26 @@
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Monto" required :error="errores.monto">
-          <AppInput
-            v-model="form.monto"
-            type="number"
-            inputmode="decimal"
-            placeholder="0.00"
-            :state="errores.monto ? 'error' : 'default'"
-          />
+          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoNegativo" @focusout="normalizarMonto">
+            <AppInput
+              v-model="form.monto"
+              type="number"
+              inputmode="decimal"
+              placeholder="0.00"
+              :min="0"
+              :step="0.01"
+              :state="errores.monto ? 'error' : 'default'"
+            />
+          </div>
         </AppFormField>
 
-        <AppFormField label="Fecha de pago" required>
-          <AppInput v-model="form.fechaPago" type="date" />
+        <AppFormField label="Fecha de pago" required :error="errores.fechaPago">
+          <AppInput
+            v-model="form.fechaPago"
+            type="date"
+            :min="fechaEmisionMin"
+            :state="errores.fechaPago ? 'error' : 'default'"
+          />
         </AppFormField>
 
         <AppFormField label="Medio de pago">
@@ -92,7 +101,7 @@ import type {
   CuentaFinanciera,
   TipoCuenta,
 } from '@/modules/finanzas/interfaces/cuenta.interface'
-import { formatCurrency } from '@/shared/utils/currency'
+import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
@@ -123,6 +132,8 @@ const medioPagoOptions = computed<SelectOption[]>(() =>
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 
+const fechaEmisionMin = computed(() => props.cuenta?.fecha_emision ?? undefined)
+
 const form = reactive({
   monto: '' as string | number,
   fechaPago: hoy(),
@@ -131,44 +142,96 @@ const form = reactive({
   observacion: '',
 })
 
-const errores = reactive<{ monto?: string }>({})
+const errores = reactive<{ monto?: string; fechaPago?: string }>({})
 
 const resetForm = () => {
-  form.monto = props.cuenta ? Number(props.cuenta.saldo) : ''
-  form.fechaPago = hoy()
+  form.monto = props.cuenta ? Number(props.cuenta.saldo).toFixed(2) : ''
+  // Si hoy es anterior a la emisión (caso raro), usa la fecha de emisión
+  const h = hoy()
+  form.fechaPago = props.cuenta?.fecha_emision && h < props.cuenta.fecha_emision
+    ? props.cuenta.fecha_emision
+    : h
   form.idMedioPago = ''
   form.referencia = ''
   form.observacion = ''
   errores.monto = undefined
+  errores.fechaPago = undefined
 }
 
 watch(open, (isOpen) => {
   if (isOpen) resetForm()
 })
 
+/* Validación reactiva */
+watch(
+  () => form.monto,
+  (v) => {
+    const n = parseMoneyInput(v)
+    if (n != null && n > 0) errores.monto = undefined
+  },
+)
+
+watch(
+  () => form.fechaPago,
+  (v) => {
+    const emision = props.cuenta?.fecha_emision
+    if (v && (!emision || v >= emision)) errores.fechaPago = undefined
+  },
+)
+
+/* Handlers de monto (bloquea negativos, normaliza al blur) */
+const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
+  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault()
+}
+const bloquearPegadoNegativo = (e: ClipboardEvent) => {
+  const texto = e.clipboardData?.getData('text') ?? ''
+  if (/[-+eE]/.test(texto)) e.preventDefault()
+}
+const normalizarMonto = () => {
+  const norm = normalizeMoneyInput(form.monto)
+  if (norm) form.monto = norm
+}
+
 const validar = (): boolean => {
   errores.monto = undefined
-  const monto = Number(form.monto)
+  errores.fechaPago = undefined
+  let ok = true
+
+  const monto = parseMoneyInput(form.monto)
   const saldo = Number(props.cuenta?.saldo ?? 0)
 
-  if (!monto || monto <= 0) {
-    errores.monto = 'Ingresa un monto mayor a cero'
-    return false
-  }
-  if (monto > saldo + 0.0001) {
+  if (monto == null || monto <= 0) {
+    errores.monto = 'Ingresa un monto válido mayor a cero'
+    ok = false
+  } else if (monto > saldo + 0.0001) {
     errores.monto = `El monto no puede superar el saldo (${formatCurrency(saldo)})`
-    return false
+    ok = false
   }
-  return true
+
+  if (!form.fechaPago) {
+    errores.fechaPago = 'La fecha de pago es obligatoria'
+    ok = false
+  } else if (props.cuenta?.fecha_emision && form.fechaPago < props.cuenta.fecha_emision) {
+    errores.fechaPago = `No puede ser anterior a la emisión (${props.cuenta.fecha_emision})`
+    ok = false
+  }
+
+  return ok
 }
 
 const submit = async () => {
-  if (!props.cuenta || !validar()) return
+  if (!props.cuenta) return
+  normalizarMonto()
+  if (!validar()) return
+
+  const monto = parseMoneyInput(form.monto)
+  if (monto == null) return
+  const montoFinal = Math.round(monto * 100) / 100
 
   try {
     await mutation.mutateAsync({
       idCuenta: props.cuenta.id,
-      monto: Number(form.monto),
+      monto: montoFinal,
       fechaPago: form.fechaPago || undefined,
       idMedioPago: form.idMedioPago ? Number(form.idMedioPago) : undefined,
       referencia: form.referencia.trim() || undefined,

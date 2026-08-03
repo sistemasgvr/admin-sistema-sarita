@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { finanzasQueryKeys } from '@/modules/finanzas/constants/finanzasQueryKeys'
 import { finanzasService } from '@/modules/finanzas/services/finanzas.service'
 import type {
+  ActualizarCuentaPayload,
+  CrearCuentaCuotasPayload,
   CrearCuentaPayload,
   RegistrarPagoPayload,
   TipoCuenta,
@@ -35,6 +37,26 @@ export function useCrearCuentaMutation(tipo: TipoCuenta) {
   })
 }
 
+export function useCrearCuentaCuotasMutation(tipo: TipoCuenta) {
+  const invalidate = useInvalidateCuentas(tipo)
+  const exito =
+    tipo === 'COBRAR'
+      ? 'Plan de cuotas por cobrar creado correctamente'
+      : 'Plan de cuotas por pagar creado correctamente'
+
+  return useMutation({
+    mutationFn: (payload: CrearCuentaCuotasPayload) =>
+      finanzasService.crearCuentaCuotas(tipo, payload),
+    onSuccess: () => {
+      invalidate()
+      toastSuccess(exito)
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo crear el plan de cuotas')
+    },
+  })
+}
+
 export function useRegistrarPagoMutation(tipo: TipoCuenta) {
   const invalidate = useInvalidateCuentas(tipo)
   const exito = tipo === 'COBRAR' ? 'Cobranza registrada correctamente' : 'Pago registrado correctamente'
@@ -47,6 +69,38 @@ export function useRegistrarPagoMutation(tipo: TipoCuenta) {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar el pago')
+    },
+  })
+}
+
+export function useActualizarCuentaMutation(tipo: TipoCuenta) {
+  const invalidate = useInvalidateCuentas(tipo)
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ActualizarCuentaPayload }) =>
+      finanzasService.actualizarCuenta(tipo, id, payload),
+    onSuccess: () => {
+      invalidate()
+      toastSuccess('Cuenta actualizada correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo actualizar la cuenta')
+    },
+  })
+}
+
+export function useEliminarCuentaMutation(tipo: TipoCuenta) {
+  const invalidate = useInvalidateCuentas(tipo)
+
+  return useMutation({
+    mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria?: number }) =>
+      finanzasService.eliminarCuenta(tipo, id, idUsuarioAuditoria),
+    onSuccess: () => {
+      invalidate()
+      toastSuccess('Cuenta eliminada correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo eliminar la cuenta')
     },
   })
 }
