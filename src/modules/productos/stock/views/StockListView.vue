@@ -64,13 +64,13 @@
               : 'text-gray-800 dark:text-white/90'
           "
         >
-          {{ formatCantidad(value) }}
+          {{ formatCantidad(value, row.nombre_unidad_medida) }}
         </span>
       </template>
 
-      <template #cell-stock_minimo="{ value }">
+      <template #cell-stock_minimo="{ value, row }">
         <span class="tabular-nums text-gray-600 dark:text-gray-400">
-          {{ formatCantidad(value) }}
+          {{ formatCantidad(value, row.nombre_unidad_medida) }}
         </span>
       </template>
 
@@ -218,6 +218,7 @@ import {
 } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
@@ -323,13 +324,8 @@ const columns = computed<TableColumn<Stock>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-const formatCantidad = (value: unknown) => {
-  const amount = Number(value ?? 0)
-  return new Intl.NumberFormat('es-PE', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  }).format(amount)
-}
+const formatCantidad = (value: unknown, nombreUnidad?: string | null) =>
+  formatCantidadPorUnidad(value, nombreUnidad)
 
 const loadCatalogos = async () => {
   isLoadingAlmacenes.value = true

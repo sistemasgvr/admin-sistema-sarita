@@ -30,12 +30,12 @@
 import { computed } from 'vue'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import {
-  formatDetailCantidad,
   formatDetailDate,
   formatDetailDateTime,
   formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import type { MovimientoInventario } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
 import { AppModal, ListaOpcionBadge } from '@/shared/components'
@@ -51,9 +51,12 @@ const sections = computed<DetailSection[]>(() => {
   const data = props.movimiento
   if (!data) return []
 
+  const formatCantidad = (value: unknown) =>
+    formatCantidadPorUnidad(value, data.nombre_unidad_medida, data.es_gas)
+
   const stockCambio =
     data.stock_anterior != null && data.stock_nuevo != null
-      ? `${formatDetailCantidad(data.stock_anterior)} → ${formatDetailCantidad(data.stock_nuevo)}`
+      ? `${formatCantidad(data.stock_anterior)} → ${formatCantidad(data.stock_nuevo)}`
       : undefined
 
   return [
@@ -63,7 +66,7 @@ const sections = computed<DetailSection[]>(() => {
       items: [
         { label: 'Fecha', value: formatDetailDate(data.fecha) },
         { label: 'Tipo', value: formatDetailListaOpcion(data.nombre_tipo_movimiento) },
-        { label: 'Cantidad', value: formatDetailCantidad(data.cantidad) },
+        { label: 'Cantidad', value: formatCantidad(data.cantidad) },
         { label: 'Stock anterior / nuevo', value: stockCambio },
       ],
     },
@@ -73,6 +76,7 @@ const sections = computed<DetailSection[]>(() => {
       items: [
         { label: 'Producto', value: data.nombre_producto },
         { label: 'Código', value: data.codigo_producto },
+        { label: 'U.M.', value: data.nombre_unidad_medida },
         { label: 'Almacén', value: data.nombre_almacen },
       ],
     },

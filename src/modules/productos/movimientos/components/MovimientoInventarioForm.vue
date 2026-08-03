@@ -89,12 +89,13 @@
                 v-model="cantidad"
                 label="Cantidad"
                 type="number"
-                :min="NUMBER_MIN.unit"
-                :step="NUMBER_STEP.unit"
+                :min="minCantidad"
+                :step="stepCantidad"
                 required
                 v-bind="cantidadAttrs"
                 :disabled="isSubmitting"
                 :error="errors.cantidad"
+                :hint="hintCantidad"
               />
             </template>
           </div>
@@ -187,10 +188,17 @@ import type { MovimientoInventarioFormMode } from '@/modules/productos/movimient
 import { AppInput, AppSelect } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import { ICONS } from '@/shared/constants/icons'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import {
+  formatCantidadPorUnidad,
+  MSG_CANTIDAD_UNID_ENTERA,
+  minCantidadPorUnidad,
+  stepInputCantidadPorUnidad,
+  unidadRequiereCantidadEntera,
+} from '@/shared/utils/unidadMedidaCantidad'
 import {
   optionalNumber,
   optionalString,
@@ -231,6 +239,8 @@ const isLoadingMovimiento = computed(
 )
 
 const productoBuscar = ref('')
+const nombreUnidadMedida = ref<string | null>(null)
+const esGasProducto = ref(false)
 
 const tipoMovimientoOptions = computed(() =>
   toSelectOptions(tiposMovimientoQuery.data.value),
@@ -247,10 +257,19 @@ const tipoDocumentoOptions = computed(() => [
 const today = () => new Date().toISOString().slice(0, 10)
 
 const formatCantidad = (value: unknown) =>
-  new Intl.NumberFormat('es-PE', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  }).format(Number(value ?? 0))
+  formatCantidadPorUnidad(value, nombreUnidadMedida.value, esGasProducto.value)
+
+const stepCantidad = computed(() =>
+  stepInputCantidadPorUnidad(nombreUnidadMedida.value, esGasProducto.value),
+)
+const minCantidad = computed(() =>
+  minCantidadPorUnidad(nombreUnidadMedida.value, esGasProducto.value),
+)
+const hintCantidad = computed(() =>
+  unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)
+    ? 'UNID / piezas: solo números enteros'
+    : undefined,
+)
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
@@ -261,11 +280,23 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idTipoMovimiento: requiredSelect('El tipo de movimiento'),
       cantidad: yup
         .number()
-        .transform((value, originalValue) => (originalValue === '' ? undefined : value))
+        .transform((_value, originalValue) => {
+          if (originalValue === '' || originalValue == null) return undefined
+          const n = typeof originalValue === 'number' ? originalValue : Number(originalValue)
+          return Number.isFinite(n) ? n : undefined
+        })
         .typeError('La cantidad debe ser un número')
         .required('La cantidad es obligatoria')
-        .integer('La cantidad debe ser un número entero')
-        .min(1, 'La cantidad debe ser mayor a cero'),
+        .moreThan(0, 'La cantidad debe ser mayor a cero')
+        .test('unidad-entera', MSG_CANTIDAD_UNID_ENTERA, function (value) {
+          if (value == null || !Number.isFinite(value)) return true
+          if (!unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)) {
+            return true
+          }
+          return Math.abs(value - Math.round(value)) < 1e-9
+            ? true
+            : this.createError({ message: MSG_CANTIDAD_UNID_ENTERA })
+        }),
       idTipoDocumentoRef: yup
         .mixed<string | number>()
         .transform((value) => (value === '' ? undefined : value))
@@ -295,6 +326,27 @@ const [idTipoDocumentoRef, idTipoDocumentoRefAttrs] = defineField('idTipoDocumen
 const [idDocumentoRef, idDocumentoRefAttrs] = defineField('idDocumentoRef')
 const [glosa, glosaAttrs] = defineField('glosa')
 
+watch(
+  () => [props.active, props.mode, idProducto.value] as const,
+  async ([active, mode, productoId]) => {
+    if (!active || mode !== 'create') return
+    const id = Number(productoId)
+    if (!Number.isFinite(id) || id <= 0) {
+      nombreUnidadMedida.value = null
+      esGasProducto.value = false
+      return
+    }
+    try {
+      const producto = await productosService.obtenerPorId(id)
+      nombreUnidadMedida.value = producto.nombre_unidad_medida ?? null
+      esGasProducto.value = Boolean(producto.es_gas)
+    } catch {
+      nombreUnidadMedida.value = null
+      esGasProducto.value = false
+    }
+  },
+)
+
 const syncFormValues = () => {
   const data = movimiento.value
   resetForm({
@@ -314,9 +366,11 @@ const syncFormValues = () => {
 
 watch(
   () => [props.active, props.mode, movimiento.value?.id] as const,
-  ([active]) => {
+  async ([active]) => {
     if (!active) return
     if (props.mode === 'create') {
+      nombreUnidadMedida.value = null
+      esGasProducto.value = false
       resetForm({
         values: {
           fecha: today(),
@@ -331,7 +385,17 @@ watch(
       })
       return
     }
-    if (movimiento.value) syncFormValues()
+    if (movimiento.value) {
+      syncFormValues()
+      try {
+        const producto = await productosService.obtenerPorId(movimiento.value.id_producto)
+        nombreUnidadMedida.value = producto.nombre_unidad_medida ?? null
+        esGasProducto.value = Boolean(producto.es_gas)
+      } catch {
+        nombreUnidadMedida.value = null
+        esGasProducto.value = false
+      }
+    }
   },
   { immediate: true },
 )

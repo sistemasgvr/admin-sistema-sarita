@@ -59,6 +59,13 @@
             <p class="mt-1 text-gray-600 dark:text-gray-400">
               {{ stock.codigo_producto }} — {{ stock.nombre_producto }}
             </p>
+            <p
+              v-if="nombreUnidadMedida"
+              class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400"
+            >
+              U.M.: {{ nombreUnidadMedida }}
+              <span v-if="requiereEnteros"> · solo enteros</span>
+            </p>
           </div>
         </DetailSectionCard>
 
@@ -69,12 +76,13 @@
               label="Cantidad en stock"
               type="number"
               :min="NUMBER_MIN.unitZero"
-              :step="NUMBER_STEP.unit"
+              :step="stepCantidad"
               placeholder="0"
               required
               v-bind="stockCantidadAttrs"
               :disabled="isSubmitting"
               :error="errors.stock"
+              :hint="hintCantidad"
             />
 
             <AppInput
@@ -82,7 +90,7 @@
               label="Stock mínimo"
               type="number"
               :min="NUMBER_MIN.unitZero"
-              :step="NUMBER_STEP.unit"
+              :step="stepCantidad"
               placeholder="0"
               required
               v-bind="stockMinimoAttrs"
@@ -122,6 +130,7 @@ import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import {
   useCreateStockMutation,
   useUpdateStockMutation,
@@ -132,7 +141,12 @@ import { AppInput, AppModal } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { NUMBER_MIN } from '@/shared/constants/number-input'
+import {
+  MSG_STOCK_UNID_ENTERO,
+  stepInputCantidadPorUnidad,
+  unidadRequiereCantidadEntera,
+} from '@/shared/utils/unidadMedidaCantidad'
 import { requiredSelect } from '@/shared/validation'
 
 interface StockFormModalProps {
@@ -152,6 +166,18 @@ const emit = defineEmits<{
 const createMutation = useCreateStockMutation()
 const updateMutation = useUpdateStockMutation()
 const productoBuscar = ref('')
+const nombreUnidadMedida = ref<string | null>(null)
+const esGasProducto = ref(false)
+
+const requiereEnteros = computed(() =>
+  unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value),
+)
+const stepCantidad = computed(() =>
+  stepInputCantidadPorUnidad(nombreUnidadMedida.value, esGasProducto.value),
+)
+const hintCantidad = computed(() =>
+  requiereEnteros.value ? 'UNID / piezas: solo números enteros' : undefined,
+)
 
 const almacenOptions = computed(() =>
   props.almacenes.map((almacen) => ({
@@ -162,23 +188,34 @@ const almacenOptions = computed(() =>
   })),
 )
 
+const cantidadSegunUnidad = (etiquetaCampo: string) =>
+  yup
+    .number()
+    .transform((_value, originalValue) => {
+      if (originalValue === '' || originalValue == null) return undefined
+      const n = typeof originalValue === 'number' ? originalValue : Number(originalValue)
+      return Number.isFinite(n) ? n : undefined
+    })
+    .typeError('Ingresa una cantidad válida')
+    .min(0, `${etiquetaCampo} no puede ser negativa`)
+    .required(`${etiquetaCampo} es obligatoria`)
+    .test('unidad-entera', `${etiquetaCampo}: ${MSG_STOCK_UNID_ENTERO}`, function (value) {
+      if (value == null || !Number.isFinite(value)) return true
+      if (!unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)) {
+        return true
+      }
+      return Math.abs(value - Math.round(value)) < 1e-9
+        ? true
+        : this.createError({ message: `${etiquetaCampo}: ${MSG_STOCK_UNID_ENTERO}` })
+    })
+
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       idAlmacen: requiredSelect('El almacén'),
       idProducto: requiredSelect('El producto'),
-      stock: yup
-        .number()
-        .typeError('Ingresa una cantidad válida')
-        .integer('La cantidad debe ser un número entero')
-        .min(0, 'La cantidad no puede ser negativa')
-        .required('La cantidad es obligatoria'),
-      stockMinimo: yup
-        .number()
-        .typeError('Ingresa un valor válido')
-        .integer('El stock mínimo debe ser un número entero')
-        .min(0, 'El stock mínimo no puede ser negativo')
-        .required('El stock mínimo es obligatorio'),
+      stock: cantidadSegunUnidad('La cantidad'),
+      stockMinimo: cantidadSegunUnidad('El stock mínimo'),
     }),
   ),
   initialValues: {
@@ -204,6 +241,12 @@ const syncFormValues = () => {
     },
   })
   productoBuscar.value = ''
+  if (props.mode === 'edit' && props.stock) {
+    nombreUnidadMedida.value = props.stock.nombre_unidad_medida ?? null
+  } else {
+    nombreUnidadMedida.value = null
+    esGasProducto.value = false
+  }
 }
 
 const handleClose = () => {
@@ -252,6 +295,42 @@ watch(
   () => {
     if (open.value) {
       syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => [open.value, props.mode, idProducto.value] as const,
+  async ([isOpen, mode, productoId]) => {
+    if (!isOpen || mode !== 'create') return
+    const id = Number(productoId)
+    if (!Number.isFinite(id) || id <= 0) {
+      nombreUnidadMedida.value = null
+      esGasProducto.value = false
+      return
+    }
+    try {
+      const producto = await productosService.obtenerPorId(id)
+      nombreUnidadMedida.value = producto.nombre_unidad_medida ?? null
+      esGasProducto.value = Boolean(producto.es_gas)
+    } catch {
+      nombreUnidadMedida.value = null
+      esGasProducto.value = false
+    }
+  },
+)
+
+watch(
+  () => [open.value, props.mode, props.stock?.id_producto] as const,
+  async ([isOpen, mode, productoId]) => {
+    if (!isOpen || mode !== 'edit' || !productoId) return
+    try {
+      const producto = await productosService.obtenerPorId(Number(productoId))
+      nombreUnidadMedida.value =
+        producto.nombre_unidad_medida ?? props.stock?.nombre_unidad_medida ?? null
+      esGasProducto.value = Boolean(producto.es_gas)
+    } catch {
+      esGasProducto.value = false
     }
   },
 )

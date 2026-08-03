@@ -4,6 +4,8 @@ export interface MovimientoInventario {
   id_producto: number
   codigo_producto: string
   nombre_producto: string
+  es_gas?: boolean
+  nombre_unidad_medida?: string | null
   id_almacen: number
   nombre_almacen: string
   id_tipo_movimiento: number

@@ -2,46 +2,26 @@
   <div>
     <PageBreadcrumb page-title="Actividades" :items="breadcrumbItems" />
 
-    <div class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
-      <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
-          <div class="sm:col-span-2 lg:w-72">
-            <AppInput
-              v-model="buscar"
-              type="search"
-              label="Buscar"
-              placeholder="Buscar por título, cliente..."
-            />
-          </div>
-
-          <div class="lg:w-48">
-            <AppSelect
-              v-model="idEstadoFiltro"
-              label="Estado"
-              placeholder="Todos los estados"
-              :options="estadoFiltroOptions"
-            />
-          </div>
-
-          <div>
-            <AppInput v-model="fechaDesde" type="date" label="Desde" />
-          </div>
-
-          <div>
-            <AppInput v-model="fechaHasta" type="date" label="Hasta" />
-          </div>
-        </div>
-
-        <button
-          v-if="canCreate"
-          type="button"
-          class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:w-auto"
-          @click="openCreateModal()"
-        >
-          <AppIcon :name="ICONS.plus" :size="18" />
-          Nueva actividad
-        </button>
-      </div>
+    <div class="mb-4">
+      <AppListToolbar
+        v-model:search="buscar"
+        v-model:filters="dynamicFilters"
+        :filter-fields="filterFields"
+        search-placeholder="Buscar por título, cliente..."
+        @filter-change="onFiltersChange"
+      >
+        <template #actions>
+          <button
+            v-if="canCreate"
+            type="button"
+            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+            @click="openCreateModal()"
+          >
+            <AppIcon :name="ICONS.plus" :size="18" />
+            Nueva actividad
+          </button>
+        </template>
+      </AppListToolbar>
     </div>
 
     <AppTabs v-model="activeTab" :tabs="tabs" inline class="mb-4" />
@@ -58,54 +38,68 @@
         </template>
 
         <template #cell-programacion="{ row }">
-          <p class="text-sm text-gray-700 dark:text-gray-300">
-            {{ formatListDate(row.fecha_programada) }}
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            {{ row.hora_inicio_estimada?.slice(0, 5) }} - {{ row.hora_fin_estimada?.slice(0, 5) }}
-          </p>
+          <div class="flex flex-col gap-1">
+            <AppBadge
+              v-if="row.fecha_programada"
+              size="sm"
+              variant="light"
+              color="primary"
+              :icon="ICONS.calendar"
+              title="Fecha programada"
+            >
+              {{ formatListDate(row.fecha_programada) }}
+            </AppBadge>
+            <AppBadge
+              v-if="row.hora_inicio_estimada || row.hora_fin_estimada"
+              size="sm"
+              variant="light"
+              color="neutral"
+              :icon="ICONS.clock"
+              title="Horario estimado"
+            >
+              {{ formatHoraRango(row.hora_inicio_estimada, row.hora_fin_estimada) }}
+            </AppBadge>
+            <span
+              v-if="!row.fecha_programada && !row.hora_inicio_estimada && !row.hora_fin_estimada"
+              class="text-gray-400"
+            >
+              —
+            </span>
+          </div>
         </template>
 
         <template #cell-prioridad="{ row }">
-          <AppBadge v-if="row.nombre_prioridad" color="warning">
-            {{ row.nombre_prioridad }}
-          </AppBadge>
-          <span v-else>—</span>
+          <ListaOpcionBadge
+            v-if="row.nombre_prioridad"
+            :value="row.nombre_prioridad"
+          />
+          <span v-else class="text-gray-400">—</span>
         </template>
 
         <template #cell-estado="{ row }">
-          <AppBadge v-if="row.nombre_estado_actividad" color="primary">
-            {{ row.nombre_estado_actividad }}
-          </AppBadge>
-          <span v-else>—</span>
+          <ListaOpcionBadge
+            v-if="row.nombre_estado_actividad"
+            :value="row.nombre_estado_actividad"
+          />
+          <span v-else class="text-gray-400">—</span>
         </template>
 
         <template #actions="{ row }">
-          <button
-            type="button"
-            class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-            @click="openDetailModal(row)"
-          >
-            <AppIcon :name="ICONS.eye" :size="16" />
-          </button>
-
-          <button
-            v-if="canEdit"
-            type="button"
-            class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-            @click="openEditModal(row)"
-          >
-            <AppIcon :name="ICONS.pencil" :size="16" />
-          </button>
-
-          <button
-            v-if="canDelete"
-            type="button"
-            class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-            @click="openDeleteModal(row)"
-          >
-            <AppIcon :name="ICONS.trash" :size="16" />
-          </button>
+          <div class="inline-flex items-center justify-end gap-1.5">
+            <button
+              v-if="canView"
+              type="button"
+              title="Ver detalle"
+              class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+              @click="openDetailModal(row)"
+            >
+              <AppIcon :name="ICONS.eye" :size="15" />
+            </button>
+            <AppActionMenu
+              :items="actionItemsForRow(row)"
+              :execute="(key) => onActionSelect(key, row)"
+            />
+          </div>
         </template>
 
         <template #footer>
@@ -177,6 +171,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -192,20 +187,25 @@ import type {
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
+  AppActionMenu,
   AppBadge,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
   AppTabs,
+  ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type {
+  DynamicFilterFieldDef,
+  DynamicFilterValues,
+} from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
 import { formatListDate } from '@/shared/utils/date'
@@ -217,30 +217,67 @@ const breadcrumbItems: BreadcrumbItem[] = [
   { label: 'Actividades' },
 ]
 
+const route = useRoute()
+const router = useRouter()
+
 const tabs: AppTabItem[] = [
   { key: 'lista', label: 'Lista', icon: ICONS.list },
   { key: 'calendario', label: 'Calendario', icon: ICONS.calendar },
 ]
-const activeTab = ref<'lista' | 'calendario'>('lista')
+
+const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]): 'lista' | 'calendario' => {
+  const value = Array.isArray(tab) ? tab[0] : tab
+  return value === 'calendario' ? 'calendario' : 'lista'
+}
+
+const activeTab = ref<'lista' | 'calendario'>(resolveTab(route.query.tab))
+
+watch(activeTab, (tab) => {
+  const wantsCalendario = tab === 'calendario'
+  const hasCalendarioQuery = route.query.tab === 'calendario'
+  if (wantsCalendario === hasCalendarioQuery) return
+  if (wantsCalendario) {
+    router.replace({ query: { ...route.query, tab: 'calendario' } })
+    return
+  }
+  const { tab: _tab, ...rest } = route.query
+  router.replace({ query: rest })
+})
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    const resolved = resolveTab(tab)
+    if (activeTab.value !== resolved) {
+      activeTab.value = resolved
+    }
+  },
+)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_ELIMINAR))
 
-// --- Filtros compartidos entre la vista de lista y de calendario ---
 const buscar = ref('')
-const idEstadoFiltro = ref<string | number>('')
-const fechaDesde = ref('')
-const fechaHasta = ref('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 
 const listaEstadoActividadId = computed(() => ListaIds.ESTADO_ACTIVIDAD)
 const estadoActividadQuery = useListaOpcionesQuery(listaEstadoActividadId)
-const estadoFiltroOptions = computed<SelectOption[]>(() => [
-  { label: 'Todos', value: '' },
-  ...toSelectOptions(estadoActividadQuery.data.value),
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idEstado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos los estados',
+    disabled: estadoActividadQuery.isFetching.value,
+    options: toSelectOptions(estadoActividadQuery.data.value),
+  },
+  { key: 'fechaDesde', label: 'Desde', type: 'date' },
+  { key: 'fechaHasta', label: 'Hasta', type: 'date' },
 ])
 
-// --- Vista de lista (paginada) ---
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -265,40 +302,66 @@ const columns = computed<TableColumn<Actividad>[]>(() => [
   { key: 'estado', label: 'Estado' },
 ])
 
+const formatHoraRango = (inicio?: string | null, fin?: string | null) => {
+  const desde = inicio?.slice(0, 5)
+  const hasta = fin?.slice(0, 5)
+  if (desde && hasta) return `${desde} - ${hasta}`
+  return desde || hasta || '—'
+}
+
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+function parseOptionalId(value: unknown): number | undefined {
+  if (value == null || value === '') return undefined
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+function parseOptionalDate(value: unknown): string | undefined {
+  if (value == null || value === '') return undefined
+  const text = String(value).trim()
+  return text || undefined
+}
+
+function syncListFilters() {
+  const active = dynamicFilters.value
+  listFilters.value = {
+    buscar: buscar.value.trim() || undefined,
+    pagina: pagina.value,
+    limite: limite.value,
+    idEstado: parseOptionalId(active.idEstado),
+    fechaDesde: parseOptionalDate(active.fechaDesde),
+    fechaHasta: parseOptionalDate(active.fechaHasta),
+  }
+}
+
+function syncCalendarSharedFilters() {
+  calendarFilters.value = {
+    ...calendarFilters.value,
+    buscar: buscar.value.trim() || undefined,
+    idEstado: parseOptionalId(dynamicFilters.value.idEstado),
+  }
+}
+
+function onFiltersChange() {
+  pagina.value = 1
+  syncListFilters()
+  syncCalendarSharedFilters()
+}
+
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    listFilters.value = { ...listFilters.value, buscar: value.trim(), pagina: 1 }
+    syncListFilters()
+    syncCalendarSharedFilters()
   }, 350)
 })
 
-watch(idEstadoFiltro, (value) => {
-  pagina.value = 1
-  listFilters.value = {
-    ...listFilters.value,
-    idEstado: value ? Number(value) : undefined,
-    pagina: 1,
-  }
-})
-
-watch([fechaDesde, fechaHasta], ([desde, hasta]) => {
-  pagina.value = 1
-  listFilters.value = {
-    ...listFilters.value,
-    fechaDesde: desde || undefined,
-    fechaHasta: hasta || undefined,
-    pagina: 1,
-  }
-})
-
 watch([pagina, limite], () => {
-  listFilters.value = { ...listFilters.value, pagina: pagina.value, limite: limite.value }
+  syncListFilters()
 })
 
-// --- Vista de calendario (por rango de fechas visible) ---
 const calendarFilters = ref<ActividadListFilters>({
   pagina: 1,
   limite: 500,
@@ -316,21 +379,12 @@ const onCalendarRangeChange = (range: { fechaDesde: string; fechaHasta: string }
   calendarFilters.value = {
     ...calendarFilters.value,
     buscar: buscar.value.trim() || undefined,
-    idEstado: idEstadoFiltro.value ? Number(idEstadoFiltro.value) : undefined,
+    idEstado: parseOptionalId(dynamicFilters.value.idEstado),
     fechaDesde: range.fechaDesde,
     fechaHasta: range.fechaHasta,
   }
 }
 
-watch([buscar, idEstadoFiltro], () => {
-  calendarFilters.value = {
-    ...calendarFilters.value,
-    buscar: buscar.value.trim() || undefined,
-    idEstado: idEstadoFiltro.value ? Number(idEstadoFiltro.value) : undefined,
-  }
-})
-
-// --- Modales compartidos (crear, editar, ver, eliminar) ---
 const deleteMutation = useDeleteActividadMutation()
 
 const formModalOpen = ref(false)
@@ -345,6 +399,32 @@ const deleteModalOpen = ref(false)
 const actividadToDelete = ref<Actividad | null>(null)
 
 const currentUserId = computed(() => authStore.user?.id ?? null)
+
+function actionItemsForRow(_row: Actividad): ActionMenuItem[] {
+  const busy = deleteMutation.isPending.value
+  return [
+    {
+      key: 'edit',
+      label: 'Editar',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !canEdit.value,
+    },
+    {
+      key: 'delete',
+      label: 'Eliminar',
+      icon: ICONS.trash,
+      danger: true,
+      disabled: busy,
+      hidden: !canDelete.value,
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: Actividad) {
+  if (key === 'edit') openEditModal(row)
+  if (key === 'delete') openDeleteModal(row)
+}
 
 const openCreateModal = (fecha?: string) => {
   formMode.value = 'create'

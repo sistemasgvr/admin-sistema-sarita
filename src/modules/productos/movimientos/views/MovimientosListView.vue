@@ -48,19 +48,34 @@
         <ListaOpcionBadge :value="value as string" />
       </template>
 
-      <template #cell-cantidad="{ value }">
-        <span class="tabular-nums font-medium">{{ formatCantidad(value) }}</span>
+      <template #cell-cantidad="{ value, row }">
+        <span class="tabular-nums font-medium">
+          {{ formatCantidad(value, row.nombre_unidad_medida, row.es_gas) }}
+        </span>
       </template>
 
       <template #cell-stock="{ row }">
-        <span
+        <div
           v-if="row.stock_anterior != null && row.stock_nuevo != null"
-          class="tabular-nums text-sm text-gray-600 dark:text-gray-400"
+          class="flex flex-col gap-1"
         >
-          {{ formatCantidad(row.stock_anterior) }}
-          <span class="text-gray-400">/</span>
-          {{ formatCantidad(row.stock_nuevo) }}
-        </span>
+          <div class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="neutral" title="Stock anterior">
+              SA
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-600 dark:text-gray-400">
+              {{ formatCantidad(row.stock_anterior, row.nombre_unidad_medida, row.es_gas) }}
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="primary" title="Stock nuevo">
+              SN
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-800 dark:text-white/90">
+              {{ formatCantidad(row.stock_nuevo, row.nombre_unidad_medida, row.es_gas) }}
+            </span>
+          </div>
+        </div>
         <span v-else class="text-gray-400">—</span>
       </template>
 
@@ -178,6 +193,7 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
+  AppBadge,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -188,6 +204,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
@@ -275,11 +292,11 @@ const columns = computed<TableColumn<MovimientoInventario>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-const formatCantidad = (value: unknown) =>
-  new Intl.NumberFormat('es-PE', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  }).format(Number(value ?? 0))
+const formatCantidad = (
+  value: unknown,
+  nombreUnidad?: string | null,
+  esGas?: boolean | null,
+) => formatCantidadPorUnidad(value, nombreUnidad, esGas)
 
 const formatFecha = (value?: string | null) => {
   if (!value) return '—'

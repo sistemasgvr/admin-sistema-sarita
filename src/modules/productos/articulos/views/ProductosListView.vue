@@ -74,10 +74,25 @@
         </span>
       </template>
 
-      <template #cell-precio="{ value }">
-        <span class="tabular-nums">
-          {{ formatPrecio(value) }}
-        </span>
+      <template #cell-precios="{ row }">
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="primary" title="Precio de venta">
+              PV
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-800 dark:text-white/90">
+              {{ formatPrecio(row.precio) }}
+            </span>
+          </div>
+          <div v-if="!row.es_servicio" class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="neutral" title="Precio de compra">
+              PC
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-600 dark:text-gray-400">
+              {{ formatPrecio(row.precio_compra) }}
+            </span>
+          </div>
+        </div>
       </template>
 
       <template #cell-tipo="{ row }">
@@ -331,7 +346,7 @@ const columns = computed<TableColumn<Producto>[]>(() => [
   { key: 'categoria', label: 'Categoría' },
   { key: 'tipo', label: 'Tipo' },
   { key: 'nombre_unidad_medida', label: 'U.M.' },
-  { key: 'precio', label: 'Precio' },
+  { key: 'precios', label: 'Precios' },
   { key: 'estado', label: 'Estado' },
 ])
 

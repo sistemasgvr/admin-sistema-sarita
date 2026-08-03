@@ -42,9 +42,28 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
+      <template #cell-vigencia_ph_anios="{ value }">
+        <AppBadge
+          v-if="value != null"
+          size="sm"
+          variant="light"
+          color="success"
+          title="Vigencia de prueba hidrostática (P.H.)"
+        >
+          {{ value }} {{ Number(value) === 1 ? 'año' : 'años' }}
+        </AppBadge>
+        <span v-else class="text-gray-400">—</span>
+      </template>
+
       <template #cell-total_balones="{ value }">
-        <AppBadge variant="light" :color="Number(value ?? 0) > 0 ? 'primary' : undefined">
+        <AppBadge
+          size="sm"
+          variant="light"
+          :color="Number(value ?? 0) > 0 ? 'primary' : 'neutral'"
+          title="Cilindros activos asociados a este tipo"
+        >
           {{ value ?? 0 }}
+          {{ Number(value ?? 0) === 1 ? 'cilindro' : 'cilindros' }}
         </AppBadge>
       </template>
 
@@ -208,6 +227,7 @@ const columns = computed<TableColumn<TipoBalon>[]>(() => [
   { key: 'nombre_gas', label: 'Gas' },
   { key: 'capacidad', label: 'Capacidad' },
   { key: 'peso', label: 'Peso tara', cellClass: 'whitespace-nowrap' },
+  { key: 'vigencia_ph_anios', label: 'Vigencia P.H.' },
   { key: 'total_balones', label: 'Cilindros' },
 ])
 
