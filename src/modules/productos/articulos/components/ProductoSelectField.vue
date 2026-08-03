@@ -241,7 +241,11 @@ const mergedOptions = computed(() => {
   return base
 })
 
-function onCreated(producto: Producto) {
+function onCreated(producto?: Producto) {
+  if (!producto) {
+    void productosQuery.refetch()
+    return
+  }
   createdOption.value = {
     value: producto.id,
     label: productoLabel(producto),

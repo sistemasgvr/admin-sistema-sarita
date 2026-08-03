@@ -19,6 +19,5 @@ export function useBajasClienteQuery(
     queryFn: () => bajasClienteService.listar(filters.value),
     placeholderData: keepPreviousData,
     enabled,
-    placeholderData: keepPreviousData,
   })
 }
