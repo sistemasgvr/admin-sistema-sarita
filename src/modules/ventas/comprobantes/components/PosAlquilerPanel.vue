@@ -45,7 +45,7 @@
               @created="seleccionarCliente"
             />
             <AppInput
-              v-model="clienteDescripcion"
+              v-model="observacion"
               label="Observaciones"
               placeholder="Opcional"
             />
@@ -331,7 +331,6 @@ const {
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
-  clienteDescripcion,
 } = usePosComprobanteForm()
 
 const createComprobanteMutation = useCreateComprobanteMutation()
@@ -578,7 +577,7 @@ async function registrarKit() {
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Kit medicinal',
-      observaciones: clienteDescripcion.value || undefined,
+      observaciones: observacion.value || undefined,
       origenPos: OrigenPos.MEDICINAL,
     })
 

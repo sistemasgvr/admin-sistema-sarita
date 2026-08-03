@@ -2,7 +2,8 @@
   <Teleport to="body">
     <div
       v-if="modelValue"
-      class="fixed inset-0 z-99999 flex items-end justify-center p-2 sm:items-center sm:p-6"
+      class="fixed inset-0 flex items-end justify-center p-2 sm:items-center sm:p-6"
+      :style="{ zIndex }"
     >
       <div
         class="fixed inset-0 h-full w-full bg-gray-900/20 backdrop-blur-[2px] dark:bg-gray-950/40"
@@ -90,6 +91,8 @@ interface AppModalProps {
   showCloseButton?: boolean
   closeOnBackdrop?: boolean
   contentClass?: string
+  /** z-index del overlay. Default 99999. Súbelo cuando este modal se abra encima de otro. */
+  zIndex?: number
 }
 
 const props = withDefaults(defineProps<AppModalProps>(), {
@@ -97,6 +100,7 @@ const props = withDefaults(defineProps<AppModalProps>(), {
   showCloseButton: true,
   closeOnBackdrop: true,
   contentClass: '',
+  zIndex: 99999,
 })
 
 const modelValue = defineModel<boolean>({ default: false })

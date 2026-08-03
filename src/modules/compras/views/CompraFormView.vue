@@ -4,7 +4,7 @@
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
       <RouterLink
-        :to="{ name: 'admin-finanzas-compras' }"
+        :to="{ name: 'admin-compras' }"
         class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-800 dark:text-gray-400 dark:hover:text-white/90"
       >
         <AppIcon :name="ICONS.chevronLeft" :size="16" />
@@ -38,7 +38,7 @@ import { ICONS } from '@/shared/constants/icons'
 const route = useRoute()
 const router = useRouter()
 
-const isEdit = computed(() => route.name === 'admin-finanzas-compras-editar')
+const isEdit = computed(() => route.name === 'admin-compras-editar')
 const mode = computed<CompraFormMode>(() => (isEdit.value ? 'edit' : 'create'))
 
 const compraId = computed(() => {
@@ -66,6 +66,6 @@ const pageHelpText = computed(() =>
 const breadcrumbItems = computed(() => comprasFormBreadcrumbItems(pageTitle.value))
 
 const goToList = () => {
-  router.push({ name: 'admin-finanzas-compras' })
+  router.push({ name: 'admin-compras' })
 }
 </script>

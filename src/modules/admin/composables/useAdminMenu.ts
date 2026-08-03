@@ -22,6 +22,13 @@ function filterMenuItem(
     }
   }
 
+  if (item.anyPermission?.length) {
+    const puedeAlguno = item.anyPermission.some((permiso) =>
+      hasPermissionFlag(permisos, permiso),
+    )
+    return puedeAlguno ? item : null
+  }
+
   if (!hasPermissionFlag(permisos, item.permission)) return null
 
   return item

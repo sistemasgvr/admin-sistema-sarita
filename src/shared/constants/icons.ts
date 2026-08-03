@@ -80,8 +80,9 @@ export const ICONS = {
   ticket: 'lucide:ticket',
   refreshCw: 'lucide:refresh-cw',
   ban: 'lucide:ban',
-
-  
+  wallet: 'lucide:wallet',
+  banknote: 'lucide:banknote',
+  userCheck: 'lucide:user-check',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

@@ -274,19 +274,19 @@ function openDetail(row: CompraListItem) {
 }
 
 function openCreate() {
-  void router.push({ name: 'admin-finanzas-compras-nuevo' })
+  void router.push({ name: 'admin-compras-nuevo' })
 }
 
 function openEdit(row: CompraListItem) {
   void router.push({
-    name: 'admin-finanzas-compras-editar',
+    name: 'admin-compras-editar',
     params: { id: String(row.id) },
   })
 }
 
 function openCorreccion(row: CompraListItem) {
   void router.push({
-    name: 'admin-finanzas-compras-nuevo',
+    name: 'admin-compras-nuevo',
     query: { referencia: String(row.id) },
   })
 }

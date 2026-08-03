@@ -3,32 +3,32 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 
 export const comprasRoutes: RouteRecordRaw[] = [
   {
-    path: 'finanzas/compras',
-    name: 'admin-finanzas-compras',
+    path: 'compras',
+    name: 'admin-compras',
     component: () => import('@/modules/compras/views/ComprasListView.vue'),
     meta: {
       title: 'Compras',
-      module: 'finanzas',
+      module: 'compras',
       permission: PermisoBanderas.COMPRAS_LISTAR,
     },
   },
   {
-    path: 'finanzas/compras/nuevo',
-    name: 'admin-finanzas-compras-nuevo',
+    path: 'compras/nuevo',
+    name: 'admin-compras-nuevo',
     component: () => import('@/modules/compras/views/CompraFormView.vue'),
     meta: {
       title: 'Nueva compra',
-      module: 'finanzas',
+      module: 'compras',
       permission: PermisoBanderas.COMPRAS_CREAR,
     },
   },
   {
-    path: 'finanzas/compras/:id(\\d+)/editar',
-    name: 'admin-finanzas-compras-editar',
+    path: 'compras/:id(\\d+)/editar',
+    name: 'admin-compras-editar',
     component: () => import('@/modules/compras/views/CompraFormView.vue'),
     meta: {
       title: 'Editar compra',
-      module: 'finanzas',
+      module: 'compras',
       permission: PermisoBanderas.COMPRAS_EDITAR,
     },
   },
