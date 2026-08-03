@@ -2,8 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
 import { comprasService } from '@/modules/compras/services/compras.service'
 import type {
+  ActualizarCompraCabeceraPayload,
+  CreateCompraDetalleLineaPayload,
   CreateCompraPayload,
-  UpdateCompraPayload,
 } from '@/modules/compras/interfaces/compra.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
@@ -22,35 +23,67 @@ export function useCreateCompraMutation() {
   })
 }
 
-export function useUpdateCompraMutation() {
+export function useActualizarCabeceraMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: UpdateCompraPayload }) =>
-      comprasService.actualizar(id, payload),
-    onSuccess: (_data, variables) => {
+    mutationFn: ({ id, payload }: { id: number; payload: ActualizarCompraCabeceraPayload }) =>
+      comprasService.actualizarCabecera(id, payload),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.detail(variables.id) })
-      toastSuccess('Comprobante de compra actualizado')
+      toastSuccess('Cabecera de compra actualizada')
     },
     onError: (error) => {
-      toastApiError(error, 'No se pudo actualizar el comprobante')
+      toastApiError(error, 'No se pudo actualizar la cabecera')
     },
   })
 }
 
-export function useDeleteCompraMutation() {
+export function useCrearDetalleMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: CreateCompraDetalleLineaPayload }) =>
+      comprasService.crearDetalle(id, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.lists() })
+      toastSuccess('Línea agregada a la compra')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo agregar la línea')
+    },
+  })
+}
+
+export function useEliminarDetalleMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ idDetalle, idUsuarioAuditoria }: { idDetalle: number; idUsuarioAuditoria: number }) =>
+      comprasService.eliminarDetalle(idDetalle, idUsuarioAuditoria),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      toastSuccess('Línea eliminada de la compra')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo eliminar la línea')
+    },
+  })
+}
+
+export function useAnularCompraMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
-      comprasService.eliminar(id, idUsuarioAuditoria),
+      comprasService.anular(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.lists() })
-      toastSuccess('Comprobante de compra eliminado')
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      toastSuccess('Comprobante de compra anulado')
     },
     onError: (error) => {
-      toastApiError(error, 'No se pudo eliminar el comprobante')
+      toastApiError(error, 'No se pudo anular el comprobante')
     },
   })
 }

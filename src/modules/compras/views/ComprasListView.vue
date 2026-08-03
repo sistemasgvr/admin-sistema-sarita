@@ -8,7 +8,7 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Serie, número, proveedor o glosa..."
+          search-placeholder="Serie, número, glosa o proveedor..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -29,17 +29,12 @@
         <p class="font-medium text-gray-800 dark:text-white/90">
           {{ row.serie ?? '—' }}-{{ row.numero ?? '—' }}
         </p>
-        <div class="mt-1">
-          <ListaOpcionBadge :value="row.nombre_tipo_comprobante" />
-        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.fecha }}</p>
       </template>
 
       <template #cell-proveedor="{ row }">
         <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ row.razon_social_proveedor ?? '—' }}
-        </p>
-        <p v-if="row.doc_proveedor" class="text-xs text-gray-500 dark:text-gray-400">
-          {{ row.doc_proveedor }}
+          {{ row.proveedor ?? '—' }}
         </p>
       </template>
 
@@ -47,8 +42,15 @@
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
 
-      <template #cell-nombre_tipo_registro="{ value }">
-        <ListaOpcionBadge :value="String(value ?? '')" raw />
+      <template #cell-estado="{ row }">
+        <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
+          {{ row.estado === 1 ? 'Activo' : 'Anulado' }}
+        </AppBadge>
+      </template>
+
+      <template #cell-tiene_movimientos_inventario="{ value }">
+        <AppBadge v-if="value" color="warning">Con mov.</AppBadge>
+        <span v-else class="text-xs text-gray-400">—</span>
       </template>
 
       <template #actions="{ row }">
@@ -82,36 +84,41 @@
 
     <CompraDetailModal v-model="detailModalOpen" :compra-id="compraToViewId" />
 
-    <CompraFormModal v-model="formModalOpen" :compra="compraToEdit" @saved="syncFilters" />
+    <CompraFormModal
+      v-model="formModalOpen"
+      :compra-id="compraToEditId"
+      :referencia-compra-id="compraReferenciaId"
+      @saved="onSaved"
+    />
 
-    <AppModal v-model="deleteModalOpen" title="Eliminar comprobante de compra" size="sm">
+    <AppModal v-model="anularModalOpen" title="Anular comprobante de compra" size="sm">
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        ¿Confirmas que deseas eliminar
+        ¿Confirmas que deseas anular
         <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ compraToDelete?.serie ?? '—' }}-{{ compraToDelete?.numero ?? '—' }}
+          {{ compraToAnular?.serie ?? '—' }}-{{ compraToAnular?.numero ?? '—' }}
         </span>
         ?
       </p>
       <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        El comprobante se dará de baja lógica.
+        Se revertirán los movimientos de inventario. Esta acción no se puede deshacer.
       </p>
 
       <template #footer>
         <button
           type="button"
           class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
-          :disabled="deleteMutation.isPending.value"
-          @click="deleteModalOpen = false"
+          :disabled="anularMutation.isPending.value"
+          @click="anularModalOpen = false"
         >
           Cancelar
         </button>
         <button
           type="button"
           class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-          :disabled="deleteMutation.isPending.value"
-          @click="confirmDelete"
+          :disabled="anularMutation.isPending.value"
+          @click="confirmAnular"
         >
-          {{ deleteMutation.isPending.value ? 'Eliminando...' : 'Eliminar' }}
+          {{ anularMutation.isPending.value ? 'Anulando...' : 'Anular compra' }}
         </button>
       </template>
     </AppModal>
@@ -121,14 +128,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useComprasQuery } from '@/modules/compras/composables/useComprasQuery'
-import { useDeleteCompraMutation } from '@/modules/compras/composables/useCompraMutations'
+import { useAnularCompraMutation } from '@/modules/compras/composables/useCompraMutations'
 import type { CompraListFilters, CompraListItem } from '@/modules/compras/interfaces/compra.interface'
 import CompraDetailModal from '@/modules/compras/components/CompraDetailModal.vue'
 import CompraFormModal from '@/modules/compras/components/CompraFormModal.vue'
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
+import { AppActionMenu, AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -137,13 +144,14 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 
 const breadcrumbItems = comprasBreadcrumbItems('Compras')
 
 const authStore = useAuthStore()
 
-const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
+const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -154,16 +162,17 @@ const filters = ref<CompraListFilters>({
 })
 
 const comprasQuery = useComprasQuery(filters)
-const deleteMutation = useDeleteCompraMutation()
+const anularMutation = useAnularCompraMutation()
 
 const detailModalOpen = ref(false)
 const compraToViewId = ref<number | null>(null)
 
 const formModalOpen = ref(false)
-const compraToEdit = ref<CompraListItem | null>(null)
+const compraToEditId = ref<number | null>(null)
+const compraReferenciaId = ref<number | null>(null)
 
-const deleteModalOpen = ref(false)
-const compraToDelete = ref<CompraListItem | null>(null)
+const anularModalOpen = ref(false)
+const compraToAnular = ref<CompraListItem | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS_VER))
@@ -173,8 +182,11 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS
 const isLoading = computed(() => comprasQuery.isFetching.value)
 const rows = computed(() => comprasQuery.data.value?.data ?? [])
 
+// Catálogos para filtros
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
+const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
@@ -198,30 +210,49 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
       label: getClienteOptionLabel(c),
     })),
   },
+  {
+    key: 'idAlmacen',
+    label: 'Almacén',
+    type: 'select',
+    placeholder: 'Seleccionar',
+    disabled: almacenesQuery.isLoading.value,
+    options: (almacenesQuery.data.value?.data ?? []).map((a) => ({
+      value: a.id,
+      label: a.nombre,
+    })),
+  },
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar',
+    options: [
+      { value: 1, label: 'Activo' },
+      { value: 0, label: 'Anulado' },
+    ],
+  },
 ])
 
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
-  { key: 'fecha', label: 'Fecha' },
   { key: 'proveedor', label: 'Proveedor' },
-  { key: 'nombre_tipo_registro', label: 'Registro' },
   { key: 'total_importe', label: 'Total', align: 'right' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'tiene_movimientos_inventario', label: 'Inventario' },
 ]
-
-let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 function syncFilters() {
   const active = dynamicFilters.value
 
   filters.value = {
-    buscar: buscar.value.trim() || undefined,
+    buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
-    idTipoComprobante: active.idTipoComprobante != null ? Number(active.idTipoComprobante) : undefined,
-    idTipoRegistro: active.idTipoRegistro != null ? Number(active.idTipoRegistro) : undefined,
     idProveedor: active.idProveedor != null ? Number(active.idProveedor) : undefined,
+    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    estado: active.estado != null ? Number(active.estado) : undefined,
   }
 }
 
@@ -230,6 +261,7 @@ function onFiltersChange() {
   syncFilters()
 }
 
+let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
@@ -252,53 +284,81 @@ function openDetail(row: CompraListItem) {
 }
 
 function openCreate() {
-  compraToEdit.value = null
+  compraToEditId.value = null
+  compraReferenciaId.value = null
   formModalOpen.value = true
 }
 
 function openEdit(row: CompraListItem) {
-  compraToEdit.value = row
+  compraToEditId.value = row.id
+  compraReferenciaId.value = null
   formModalOpen.value = true
 }
 
-function openDelete(row: CompraListItem) {
-  compraToDelete.value = row
-  deleteModalOpen.value = true
+function openCorreccion(row: CompraListItem) {
+  compraToEditId.value = null
+  compraReferenciaId.value = row.id
+  formModalOpen.value = true
 }
 
-function actionItemsForRow(_row: CompraListItem): ActionMenuItem[] {
-  return [
-    {
+function onSaved() {
+  pagina.value = 1
+  syncFilters()
+}
+
+function openAnular(row: CompraListItem) {
+  compraToAnular.value = row
+  anularModalOpen.value = true
+}
+
+function actionItemsForRow(row: CompraListItem): ActionMenuItem[] {
+  const items: ActionMenuItem[] = []
+
+  if (canEdit.value && row.estado === 1) {
+    items.push({
       key: 'edit',
-      label: 'Editar',
+      label: row.tiene_movimientos_inventario ? 'Editar cabecera' : 'Editar',
       icon: ICONS.pencil,
-      hidden: !canEdit.value,
-    },
-    {
-      key: 'delete',
-      label: 'Eliminar',
-      icon: ICONS.trash,
+    })
+  }
+
+  if (canDelete.value && row.estado === 1) {
+    items.push({
+      key: 'anular',
+      label: 'Anular',
+      icon: ICONS.ban,
       danger: true,
-      hidden: !canDelete.value,
-    },
-  ]
+    })
+  }
+
+  if (canCreate.value && row.estado === 0) {
+    items.push({
+      key: 'correccion',
+      label: 'Crear corrección',
+      icon: ICONS.refreshCw,
+    })
+  }
+
+  return items
 }
 
 function onActionSelect(key: string, row: CompraListItem) {
   switch (key) {
     case 'edit':
       return openEdit(row)
-    case 'delete':
-      return openDelete(row)
+    case 'anular':
+      return openAnular(row)
+    case 'correccion':
+      return openCorreccion(row)
   }
 }
 
-async function confirmDelete() {
-  const row = compraToDelete.value
+async function confirmAnular() {
+  const row = compraToAnular.value
   const userId = authStore.user?.id
   if (!row || !userId) return
 
-  await deleteMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
-  deleteModalOpen.value = false
+  await anularMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
+  anularModalOpen.value = false
 }
 </script>

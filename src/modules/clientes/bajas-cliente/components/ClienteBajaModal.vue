@@ -69,6 +69,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useSolicitarBajaClienteMutation } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteMutations'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppModal, AppTextarea } from '@/shared/components'
@@ -102,12 +103,7 @@ const tipoSolicitudLabel = computed(() => tipoSolicitudBaja.value?.descripcion ?
 const listaMotivoBajaId = ref(ListaIds.MOTIVO_BAJA_CLIENTE)
 const motivoBajaQuery = useListaOpcionesQuery(listaMotivoBajaId)
 
-const motivoBajaOptions = computed(() =>
-  (motivoBajaQuery.data.value ?? []).map((item) => ({
-    label: item.nombre,
-    value: item.id,
-  })),
-)
+const motivoBajaOptions = computed(() => toSelectOptions(motivoBajaQuery.data.value))
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(

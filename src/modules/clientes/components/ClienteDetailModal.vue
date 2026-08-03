@@ -18,10 +18,10 @@
             Sistema
           </AppBadge>
           <AppBadge v-if="cliente.nombre_tipo_persona" color="primary">
-            {{ cliente.nombre_tipo_persona }}
+            {{ formatListaOpcionLabel(cliente.nombre_tipo_persona) }}
           </AppBadge>
           <AppBadge v-if="cliente.nombre_tipo_cliente" color="neutral">
-            {{ cliente.nombre_tipo_cliente }}
+            {{ formatListaOpcionLabel(cliente.nombre_tipo_cliente) }}
           </AppBadge>
         </div>
         <p
@@ -416,10 +416,10 @@
                       class="border-b border-gray-100 dark:border-gray-800"
                     >
                       <td class="py-2 pr-3 font-medium text-gray-800 dark:text-white/90">
-                        {{ item.nombre_tipo_solicitud ?? '—' }}
+                        {{ item.nombre_tipo_solicitud ? formatListaOpcionLabel(item.nombre_tipo_solicitud) : '—' }}
                       </td>
                       <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">
-                        {{ item.nombre_motivo_baja ?? item.motivo_detalle ?? '—' }}
+                        {{ item.nombre_motivo_baja ? formatListaOpcionLabel(item.nombre_motivo_baja) : (item.motivo_detalle ?? '—') }}
                       </td>
                       <td class="py-2 pr-3">
                         <AppBadge
@@ -432,7 +432,7 @@
                                 : 'warning'
                           "
                         >
-                          {{ item.nombre_estado_aprobacion }}
+                          {{ formatListaOpcionLabel(item.nombre_estado_aprobacion) }}
                         </AppBadge>
                       </td>
                       <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">
@@ -454,7 +454,7 @@
       <template #footer>
         <button
           type="button"
-          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/3 sm:w-auto"
           @click="open = false"
         >
           Cerrar
@@ -472,6 +472,7 @@
   import AppIcon from '@/shared/components/AppIcon.vue'
   import { ICONS, type IconName } from '@/shared/constants/icons'
   import { formatDate, formatDateTime } from '@/shared/utils/date'
+  import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
   import RelatedListState from '@/modules/clientes/components/RelatedListState.vue'
 
   import { useContactosQuery } from '@/modules/contactos/composables/useContactosQuery'

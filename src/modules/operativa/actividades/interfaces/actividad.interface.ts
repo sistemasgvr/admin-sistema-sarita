@@ -63,12 +63,6 @@ export interface DeleteActividadResponse {
 
 export type ActividadFormMode = 'create' | 'edit'
 
-/** Respuesta cruda del backend para GET /operativa/actividades (antes de normalizar). */
-export interface ActividadListRawData {
-  registros: Actividad[]
-  total: number
-}
-
 /** Respuesta cruda del backend para GET/POST/PATCH de un solo registro. */
 export interface ActividadRegistroRawData {
   registro: Actividad

@@ -48,7 +48,8 @@
           v-model="idUsuarioResponsable"
           label="Usuario responsable"
           placeholder="Busca por nombre..."
-          empty-option-label="Sin responsable asignado"
+          required
+          :clearable="false"
           :model-label="usuarioLabelActual"
           v-bind="idUsuarioResponsableAttrs"
           :disabled="isSubmitting"
@@ -103,9 +104,8 @@
           :error="errors.fechaProgramada"
         />
 
-        <AppInput
+        <AppTimePicker
           v-model="horaInicioEstimada"
-          type="time"
           label="Hora de inicio"
           required
           v-bind="horaInicioEstimadaAttrs"
@@ -113,9 +113,8 @@
           :error="errors.horaInicioEstimada"
         />
 
-        <AppInput
+        <AppTimePicker
           v-model="horaFinEstimada"
-          type="time"
           label="Hora de fin"
           required
           v-bind="horaFinEstimadaAttrs"
@@ -187,11 +186,11 @@ import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { usuariosService } from '@/modules/usuarios/services/usuarios.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { AppInput, AppModal, AppSelect, AppTextarea, AppTimePicker } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { optionalString, requiredString } from '@/shared/validation'
+import { optionalString, requiredSelect, requiredString } from '@/shared/validation'
 
 interface ActividadFormModalProps {
   mode: ActividadFormMode
@@ -279,19 +278,27 @@ const usuarioLabelActual = computed(
   () => actividadActual.value?.nombre_usuario_responsable ?? null,
 )
 
-const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateField } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       titulo: requiredString('El título'),
       descripcion: optionalString(),
       idCliente: yup.number().optional().nullable(),
-      idUsuarioResponsable: yup.number().optional().nullable(),
+      idUsuarioResponsable: requiredSelect('El usuario responsable'),
       idTipoActividad: yup.number().required('El tipo de actividad es obligatorio'),
       idPrioridad: yup.number().required('La prioridad es obligatoria'),
       idEstadoActividad: yup.number().required('El estado es obligatorio'),
       fechaProgramada: requiredString('La fecha programada'),
       horaInicioEstimada: requiredString('La hora de inicio'),
-      horaFinEstimada: requiredString('La hora de fin'),
+      horaFinEstimada: requiredString('La hora de fin').test(
+        'hora-fin-mayor-hora-inicio',
+        'La hora de fin debe ser posterior a la hora de inicio',
+        function (value) {
+          const horaInicio = (this.parent as { horaInicioEstimada?: string }).horaInicioEstimada
+          if (!value || !horaInicio) return true
+          return value > horaInicio
+        },
+      ),
       fechaHoraCierre: optionalString(),
       observaciones: optionalString(),
     }),
@@ -324,6 +331,12 @@ const [horaInicioEstimada, horaInicioEstimadaAttrs] = defineField('horaInicioEst
 const [horaFinEstimada, horaFinEstimadaAttrs] = defineField('horaFinEstimada')
 const [fechaHoraCierre, fechaHoraCierreAttrs] = defineField('fechaHoraCierre')
 const [observaciones, observacionesAttrs] = defineField('observaciones')
+
+watch(horaInicioEstimada, () => {
+  if (horaFinEstimada.value) {
+    validateField('horaFinEstimada')
+  }
+})
 
 const syncFormValues = () => {
   const a = actividadActual.value
@@ -360,9 +373,7 @@ const onSubmit = handleSubmit(async (values) => {
       titulo: values.titulo,
       descripcion: values.descripcion || undefined,
       idCliente: values.idCliente ? Number(values.idCliente) : undefined,
-      idUsuarioResponsable: values.idUsuarioResponsable
-        ? Number(values.idUsuarioResponsable)
-        : undefined,
+      idUsuarioResponsable: Number(values.idUsuarioResponsable),
       idTipoActividad: Number(values.idTipoActividad),
       idPrioridad: Number(values.idPrioridad),
       idEstadoActividad: Number(values.idEstadoActividad),

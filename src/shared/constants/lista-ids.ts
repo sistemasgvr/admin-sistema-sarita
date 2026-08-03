@@ -66,10 +66,24 @@ export const ListaIds = {
   PRIORIDAD_ACTIVIDAD: 50,
   /** gen_lista.nombre = EstadoActividad */
   ESTADO_ACTIVIDAD: 49,
-
   /** gen_lista.nombre = TipoSolicitud */
   TIPO_SOLICITUD: 51,
-
+  /** gen_lista.nombre = TipoComprobanteCompra (Factura, Boleta, etc.) */
+  TIPO_COMPROBANTE: 33, 
+  /** gen_lista.nombre = TipoRegistroCompra (COMPRA, GASTO, etc.) */
+  TIPO_REGISTRO: 54,
+  /** gen_lista.nombre = CategoriaGasto (Insumos, Servicios, etc.) */
+  CATEGORIA_GASTO: 55, 
+  /** gen_lista.nombre = Moneda (SOLES, DOLARES, etc.) */
+  MONEDA: 56,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds
+
+
+export const TipoClienteIds = {
+  /** gen_lista_opciones.nombre = Proveedor (lista TipoCliente) */
+  PROVEEDOR: 5,
+  /** gen_lista_opciones.nombre = Cliente / Proveedor (lista TipoCliente) */
+  CLIENTE_PROVEEDOR: 6,
+} as const
