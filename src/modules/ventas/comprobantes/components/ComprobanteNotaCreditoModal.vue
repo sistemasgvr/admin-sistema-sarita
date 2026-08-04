@@ -80,12 +80,10 @@
               >
                 <td class="px-3 py-2">{{ linea.descripcion }}</td>
                 <td class="px-3 py-2 text-right">
-                  <input
-                    v-model.number="linea.cantidad"
-                    type="number"
-                    min="0.001"
-                    step="0.001"
-                    class="w-24 rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-right tabular-nums dark:border-gray-700"
+                  <CantidadUnidadInput
+                    v-model="linea.cantidad"
+                    :name="`nc-cantidad-${linea.key}`"
+                    :nombre-unidad="linea.nombreUnidadMedida"
                     :disabled="saving"
                   />
                 </td>
@@ -153,6 +151,8 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { AppInput, AppModal, AppSelect, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
+import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { toastApiError, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 
@@ -160,6 +160,7 @@ interface LineaNc {
   key: string
   idProducto: number
   descripcion: string
+  nombreUnidadMedida?: string | null
   cantidad: number
   precioUnitario: number
   descuento: number
@@ -278,6 +279,7 @@ watch(
       idProducto: detalle.id_producto,
       descripcion:
         detalle.descripcion || detalle.nombre_producto || `Producto ${detalle.id_producto}`,
+      nombreUnidadMedida: detalle.nombre_unidad_medida ?? null,
       cantidad: Number(detalle.cantidad),
       precioUnitario: Number(detalle.precio_unitario),
       descuento: Number(detalle.descuento ?? 0),
@@ -303,6 +305,18 @@ async function confirm() {
   if (serieError) {
     toastWarning(serieError)
     return
+  }
+
+  for (const linea of lineas.value) {
+    const errorCantidad = validarCantidadSegunUnidad(
+      Number(linea.cantidad),
+      linea.nombreUnidadMedida,
+      linea.descripcion,
+    )
+    if (errorCantidad) {
+      toastWarning(errorCantidad)
+      return
+    }
   }
 
   try {

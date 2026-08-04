@@ -96,6 +96,7 @@ import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
+import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import { usePosComprobanteForm } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -304,6 +305,7 @@ async function confirmar() {
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       glosa: 'Cobro de garantía industrial',
+      origenPos: OrigenPos.INDUSTRIAL,
     })
 
     await createGarantiaMutation.mutateAsync({

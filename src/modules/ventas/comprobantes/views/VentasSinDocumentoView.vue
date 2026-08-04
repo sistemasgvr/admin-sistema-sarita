@@ -59,7 +59,7 @@
       </template>
 
       <template #cell-nombre_estado_sunat="{ value }">
-        <ListaOpcionBadge :value="String(value ?? 'NO_APLICA')" raw />
+        <ListaOpcionBadge :value="String(value ?? 'NO_APLICA')" />
       </template>
 
       <template #actions="{ row }">
@@ -214,6 +214,7 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
+const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
 
 const idTipoNotaVenta = computed(() => {
   const tipos = catalogosQuery.data.value?.tiposComprobante ?? []
@@ -368,14 +369,14 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       label: 'Emitir Boleta',
       icon: ICONS.ticket,
       disabled: busy || tieneDestino,
-      hidden: !canView.value || tieneDestino,
+      hidden: !canCreate.value || !canEmit.value || tieneDestino,
     },
     {
       key: 'emitir-factura',
       label: 'Emitir Factura',
       icon: ICONS.ticket,
       disabled: busy || tieneDestino,
-      hidden: !canView.value || tieneDestino,
+      hidden: !canCreate.value || !canEmit.value || tieneDestino,
     },
     {
       key: 'delete',

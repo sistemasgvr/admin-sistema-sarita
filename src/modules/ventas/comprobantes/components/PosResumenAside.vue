@@ -41,7 +41,7 @@
       <button
         type="button"
         class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-        :disabled="!puedeGuardar || guardando"
+        :disabled="!puedeGuardar || guardando || Boolean(comprobanteGuardadoId)"
         @click="emit('guardar')"
       >
         <AppIcon
@@ -49,7 +49,13 @@
           :size="16"
           :class="guardando ? 'animate-spin' : ''"
         />
-        {{ guardando ? guardandoLabel : guardarLabel }}
+        {{
+          guardando
+            ? guardandoLabel
+            : comprobanteGuardadoId
+              ? 'Ya guardado'
+              : guardarLabel
+        }}
       </button>
 
       <button

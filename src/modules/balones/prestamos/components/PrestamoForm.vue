@@ -683,7 +683,10 @@ const openEditDetalleModal = (row: PrestamoDetalle) => {
 }
 
 const openDevolverDetalleModal = (row: PrestamoDetalle) => {
-  detalleToDevolver.value = row
+  detalleToDevolver.value = {
+    ...row,
+    id_almacen: row.id_almacen ?? (idAlmacen.value ? Number(idAlmacen.value) : null),
+  }
   devolverDetalleModalOpen.value = true
 }
 

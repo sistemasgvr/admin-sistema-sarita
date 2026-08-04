@@ -78,7 +78,12 @@ watch(activeTab, (tab) => {
   const wantsAntiguedad = tab === 'antiguedad'
   const hasAntiguedadQuery = route.query.tab === 'antiguedad'
   if (wantsAntiguedad !== hasAntiguedadQuery) {
-    router.replace({ query: wantsAntiguedad ? { tab: 'antiguedad' } : {} })
+    if (wantsAntiguedad) {
+      router.replace({ query: { ...route.query, tab: 'antiguedad' } })
+    } else {
+      const { tab: _tab, ...rest } = route.query
+      router.replace({ query: rest })
+    }
   }
 })
 

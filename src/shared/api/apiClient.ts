@@ -43,6 +43,15 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+function normalizeApiMessage(message: unknown, fallback: string): string {
+  if (typeof message === 'string' && message.trim()) return message.trim()
+  if (Array.isArray(message)) {
+    const joined = message.map(String).filter(Boolean).join(' · ')
+    if (joined) return joined
+  }
+  return fallback
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: unknown) => {
@@ -60,7 +69,7 @@ apiClient.interceptors.response.use(
       }
 
       throw new ApiError(
-        payload?.message ?? error.message ?? 'Error de conexión',
+        normalizeApiMessage(payload?.message, error.message || 'Error de conexión'),
         statusCode,
         payload?.errors ?? null,
       )
@@ -71,7 +80,29 @@ apiClient.interceptors.response.use(
 )
 
 function unwrapResponse<T>(response: { data: ApiResponse<T> }): T {
-  return response.data.data
+  const payload = response.data
+
+  if (payload == null || typeof payload !== 'object') {
+    throw new ApiError('Respuesta inválida del servidor', 500)
+  }
+
+  if (payload.success === false) {
+    const failed = payload as ApiResponse<T> & { errors?: string[] | null }
+    throw new ApiError(
+      normalizeApiMessage(failed.message, 'La operación no se pudo completar'),
+      400,
+      failed.errors ?? null,
+    )
+  }
+
+  if (payload.data === undefined) {
+    throw new ApiError(
+      normalizeApiMessage(payload.message, 'El servidor no devolvió datos'),
+      500,
+    )
+  }
+
+  return payload.data
 }
 
 export async function apiGet<T>(url: string, config?: AxiosRequestConfig): Promise<T> {

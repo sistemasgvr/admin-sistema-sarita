@@ -44,6 +44,11 @@
               required
               @created="seleccionarCliente"
             />
+            <AppInput
+              v-model="observacion"
+              label="Observaciones"
+              placeholder="Opcional"
+            />
             <AlmacenSelectField
               v-model="idAlmacen"
               searchable
@@ -59,10 +64,11 @@
               mode="alquiler"
               :id-cliente="idCliente"
               :id-almacen="idAlmacen"
+              familia-gas="medicinal"
               label="Cilindro a entregar"
-              placeholder="Selecciona cilindro disponible"
+              placeholder="Selecciona cilindro medicinal disponible"
               register-label="Registrar cilindro en almacén"
-              empty-text="Sin cilindros disponibles."
+              empty-text="Sin cilindros medicinales disponibles."
               required
             />
           </div>
@@ -283,6 +289,7 @@ import {
   type KitMedicinalLinea,
   type KitMedicinalRol,
 } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
+import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import {
   calcularTotalesDesdeImporte,
@@ -570,6 +577,8 @@ async function registrarKit() {
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Kit medicinal',
+      observaciones: observacion.value || undefined,
+      origenPos: OrigenPos.MEDICINAL,
     })
 
     const alquiler = await alquileresService.crear({

@@ -43,8 +43,12 @@
         {{ formatListaOpcionLabel(row.nombre_motivo_traslado, row.codigo_motivo_traslado) }}
       </template>
 
-      <template #cell-nombre_estado_sunat="{ value }">
-        <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" raw />
+      <template #cell-nombre_estado_sunat="{ row }">
+        <GuiaSunatEstadoBadges
+          :estado-sunat="row.nombre_estado_sunat"
+          :fecha-traslado="row.fecha_traslado"
+          :ticket-sunat="row.ticket_sunat"
+        />
       </template>
 
       <template #actions="{ row }">
@@ -122,6 +126,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import GuiaRemisionDetailModal from '@/modules/ventas/guias-remision/components/GuiaRemisionDetailModal.vue'
+import GuiaSunatEstadoBadges from '@/modules/ventas/guias-remision/components/GuiaSunatEstadoBadges.vue'
 import {
   useConsultarEstadoGuiaRemisionMutation,
   useDeleteGuiaRemisionMutation,
@@ -138,14 +143,18 @@ import type {
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { downloadBlob } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/guias-remision.service'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import {
+  evaluarPlazoEmisionGre,
+  mensajePlazoEmisionGreVencido,
+} from '@/modules/ventas/guias-remision/utils/plazoEmisionGre'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import {
   AppActionMenu,
   AppListToolbar,
   AppModal,
   AppPagination,
   AppTable,
-  ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -239,6 +248,7 @@ const columns: TableColumn[] = [
   { key: 'documento', label: 'Guía', mobile: 'primary' },
   { key: 'nombre_destinatario', label: 'Destinatario' },
   { key: 'fecha', label: 'Fecha' },
+  { key: 'fecha_traslado', label: 'Traslado' },
   { key: 'motivo', label: 'Motivo' },
   { key: 'nombre_estado_sunat', label: 'SUNAT', mobile: 'badge' },
 ]
@@ -282,6 +292,18 @@ watch([pagina, limite], () => {
 })
 
 syncFilters()
+
+function plazoDe(row: GuiaRemisionListItem) {
+  return evaluarPlazoEmisionGre({
+    fechaTraslado: row.fecha_traslado,
+    estadoSunat: row.nombre_estado_sunat,
+    ticketSunat: row.ticket_sunat,
+  })
+}
+
+function plazoVencido(row: GuiaRemisionListItem) {
+  return plazoDe(row)?.vencido === true
+}
 
 function puedeEmitir(row: GuiaRemisionListItem) {
   // ACEPTADO: ya emitida. Con ticket + PENDIENTE: forzar consultar (evitar reenvío).
@@ -379,6 +401,13 @@ function openDetail(row: GuiaRemisionListItem) {
   detailModalOpen.value = true
 }
 
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    guiaToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
+
 async function descargarPdf(row: GuiaRemisionListItem) {
   if (pdfBusyId.value !== null) return
   pdfBusyId.value = row.id
@@ -397,6 +426,9 @@ async function descargarPdf(row: GuiaRemisionListItem) {
 async function emitir(row: GuiaRemisionListItem) {
   const userId = authStore.user?.id
   if (!userId) return
+  if (plazoVencido(row) && !(row.ticket_sunat ?? '').trim()) {
+    toastWarning(mensajePlazoEmisionGreVencido())
+  }
   await emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
 }
 

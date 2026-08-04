@@ -173,7 +173,9 @@ import {
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
+import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
@@ -271,6 +273,10 @@ onMounted(() => {
   if (idClienteQuery) {
     idClienteFiltro.value = Number(idClienteQuery)
   }
+  const buscarQuery = route.query.buscar
+  if (typeof buscarQuery === 'string' && buscarQuery.trim()) {
+    buscar.value = buscarQuery.trim()
+  }
 })
 
 watch(idClienteFiltro, (value) => {
@@ -327,6 +333,17 @@ const openDetailModal = (vehiculo: Vehiculo) => {
   vehiculoToView.value = vehiculo
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  onOpen: async (id) => {
+    try {
+      const vehiculo = await vehiculosService.obtenerPorId(id)
+      openDetailModal(vehiculo)
+    } catch {
+      // sin permiso o no existe
+    }
+  },
+})
 
 const openDeleteModal = (vehiculo: Vehiculo) => {
   vehiculoToDelete.value = vehiculo

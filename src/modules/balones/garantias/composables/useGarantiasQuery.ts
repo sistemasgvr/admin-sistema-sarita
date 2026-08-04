@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { computed, type Ref } from 'vue'
 import { garantiasQueryKeys } from '@/modules/balones/garantias/constants/garantiasQueryKeys'
 import type { GarantiaListFilters } from '@/modules/balones/garantias/interfaces/garantia.interface'
@@ -8,6 +8,7 @@ export function useGarantiasQuery(filters: Ref<GarantiaListFilters>) {
   return useQuery({
     queryKey: computed(() => garantiasQueryKeys.list(filters.value)),
     queryFn: () => garantiasService.listar(filters.value),
+    placeholderData: keepPreviousData,
   })
 }
 

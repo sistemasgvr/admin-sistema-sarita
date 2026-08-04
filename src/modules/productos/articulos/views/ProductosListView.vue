@@ -44,6 +44,20 @@
         </AppListToolbar>
       </template>
 
+      <template #cell-nombre="{ row }">
+        <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span class="font-medium text-gray-800 dark:text-white/90">{{ row.nombre }}</span>
+          <AppBadge
+            v-if="esProductoSistema(row)"
+            size="sm"
+            color="primary"
+            title="Producto de sistema para facturación del POS"
+          >
+            Sistema
+          </AppBadge>
+        </div>
+      </template>
+
       <template #cell-categoria="{ row }">
         <span class="text-sm text-gray-700 dark:text-gray-300">
           {{ row.nombre_categoria ?? '—' }}
@@ -60,10 +74,25 @@
         </span>
       </template>
 
-      <template #cell-precio="{ value }">
-        <span class="tabular-nums">
-          {{ formatPrecio(value) }}
-        </span>
+      <template #cell-precios="{ row }">
+        <div class="flex flex-col gap-1">
+          <div class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="primary" title="Precio de venta">
+              PV
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-800 dark:text-white/90">
+              {{ formatPrecio(row.precio) }}
+            </span>
+          </div>
+          <div v-if="!row.es_servicio" class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="neutral" title="Precio de compra">
+              PC
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-600 dark:text-gray-400">
+              {{ formatPrecio(row.precio_compra) }}
+            </span>
+          </div>
+        </div>
       </template>
 
       <template #cell-tipo="{ row }">
@@ -181,6 +210,7 @@ import type {
   ProductoEstadoFiltro,
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { esProductoSistema } from '@/modules/productos/articulos/utils/productosSistema'
 import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -248,6 +278,7 @@ const filters = ref<ProductoListFilters>({
   pagina: 1,
   limite: 10,
   soloActivos: 1,
+  incluirImagenes: true,
 })
 
 const productosQuery = useProductosQuery(filters)
@@ -315,7 +346,7 @@ const columns = computed<TableColumn<Producto>[]>(() => [
   { key: 'categoria', label: 'Categoría' },
   { key: 'tipo', label: 'Tipo' },
   { key: 'nombre_unidad_medida', label: 'U.M.' },
-  { key: 'precio', label: 'Precio' },
+  { key: 'precios', label: 'Precios' },
   { key: 'estado', label: 'Estado' },
 ])
 
@@ -378,6 +409,7 @@ const syncFilters = () => {
     esServicio:
       tipoFiltro.value === 'todos' ? undefined : tipoFiltro.value === 'servicio',
     soloActivos: buildSoloActivos(mostrarProductos.value),
+    incluirImagenes: true,
   }
 }
 
@@ -463,6 +495,7 @@ const restaurarProducto = async (producto: Producto) => {
 function actionItemsForRow(row: Producto): ActionMenuItem[] {
   const busy = restaurarMutation.isPending.value || deleteMutation.isPending.value
   const blockedByStock = Boolean(row.tiene_stock)
+  const esSistema = esProductoSistema(row)
 
   return [
     {
@@ -470,7 +503,7 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
       label: 'Editar',
       icon: ICONS.pencil,
       disabled: busy,
-      hidden: !(canEdit.value && row.estado === 1),
+      hidden: !(canEdit.value && row.estado === 1 && !esSistema),
     },
     {
       key: 'restore',
@@ -478,7 +511,7 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
       icon: ICONS.check,
       disabled: busy,
       loading: restaurarMutation.isPending.value,
-      hidden: !(canRestore.value && row.estado !== 1),
+      hidden: !(canRestore.value && row.estado !== 1 && !esSistema),
     },
     {
       key: 'delete',
@@ -486,7 +519,7 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
       icon: ICONS.trash,
       danger: !blockedByStock,
       disabled: busy || blockedByStock,
-      hidden: !(canDelete.value && row.estado === 1),
+      hidden: !(canDelete.value && row.estado === 1 && !esSistema),
     },
   ]
 }

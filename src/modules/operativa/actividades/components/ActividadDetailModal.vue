@@ -5,42 +5,22 @@
     :subtitle="actividad?.titulo"
     size="lg"
   >
-    <div v-if="actividad" class="space-y-4">
-      <div class="flex flex-wrap items-center gap-2">
-        <AppBadge v-if="actividad.nombre_estado_actividad" color="primary">
-          {{ actividad.nombre_estado_actividad }}
-        </AppBadge>
-        <AppBadge v-if="actividad.nombre_prioridad" color="warning">
-          {{ actividad.nombre_prioridad }}
-        </AppBadge>
-        <AppBadge v-if="actividad.nombre_tipo_actividad" color="neutral">
-          {{ actividad.nombre_tipo_actividad }}
-        </AppBadge>
-      </div>
-
-      <section
-        v-for="section in sections"
-        :key="section.title"
-        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-      >
-        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
-          {{ section.title }}
-        </h5>
-
-        <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-          <div
-            v-for="item in section.items"
-            :key="item.label"
-            :class="item.fullWidth ? 'sm:col-span-2' : ''"
-          >
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">{{ item.label }}</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ item.value ?? '—' }}
-            </dd>
-          </div>
-        </dl>
-      </section>
-    </div>
+    <DetailCardsLayout :loading="isLoading" :sections="sections">
+      <template #badges>
+        <ListaOpcionBadge
+          v-if="actividad?.nombre_estado_actividad"
+          :value="actividad.nombre_estado_actividad"
+        />
+        <ListaOpcionBadge
+          v-if="actividad?.nombre_prioridad"
+          :value="actividad.nombre_prioridad"
+        />
+        <ListaOpcionBadge
+          v-if="actividad?.nombre_tipo_actividad"
+          :value="actividad.nombre_tipo_actividad"
+        />
+      </template>
+    </DetailCardsLayout>
 
     <template #footer>
       <button
@@ -58,8 +38,15 @@
 import { computed } from 'vue'
 import type { Actividad } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { useActividadDetailQuery } from '@/modules/operativa/actividades/composables/useActividadDetailQuery'
-import { AppBadge, AppModal } from '@/shared/components'
-import { formatDateTime, formatListDate } from '@/shared/utils/date'
+import { AppModal, ListaOpcionBadge } from '@/shared/components'
+import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
+import {
+  formatDetailDateTime,
+  formatDetailListaOpcion,
+} from '@/shared/components/detail/detailFormatters'
+import type { DetailSection } from '@/shared/components/detail/detail.types'
+import { ICONS } from '@/shared/constants/icons'
+import { formatListDate } from '@/shared/utils/date'
 
 interface ActividadDetailModalProps {
   actividad?: Actividad | null
@@ -71,22 +58,12 @@ const open = defineModel<boolean>({ default: false })
 
 const idReferencia = computed(() => props.actividad?.id)
 const actividadDetailQuery = useActividadDetailQuery(idReferencia, open)
+const isLoading = computed(() => actividadDetailQuery.isFetching.value)
 const actividad = computed<Actividad | null>(
   () => actividadDetailQuery.data.value ?? props.actividad ?? null,
 )
 
-const formatHora = (value?: string | null) => (value ? value.slice(0, 5) : null)
-
-interface DetailItem {
-  label: string
-  value: string | null
-  fullWidth?: boolean
-}
-
-interface DetailSection {
-  title: string
-  items: DetailItem[]
-}
+const formatHora = (value?: string | null) => (value ? value.slice(0, 5) : undefined)
 
 const sections = computed<DetailSection[]>(() => {
   const a = actividad.value
@@ -95,9 +72,10 @@ const sections = computed<DetailSection[]>(() => {
   return [
     {
       title: 'Datos generales',
+      icon: ICONS.clipboardList,
       items: [
         { label: 'Título', value: a.titulo, fullWidth: true },
-        { label: 'Descripción', value: a.descripcion ?? null, fullWidth: true },
+        { label: 'Descripción', value: a.descripcion, fullWidth: true },
         { label: 'Cliente', value: a.razon_social_cliente ?? 'Sin cliente asignado' },
         {
           label: 'Usuario responsable',
@@ -107,29 +85,35 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Programación',
+      icon: ICONS.calendar,
       items: [
         { label: 'Fecha programada', value: formatListDate(a.fecha_programada) },
         { label: 'Hora de inicio', value: formatHora(a.hora_inicio_estimada) },
         { label: 'Hora de fin', value: formatHora(a.hora_fin_estimada) },
-        { label: 'Fecha y hora de cierre', value: formatDateTime(a.fecha_hora_cierre) },
+        { label: 'Fecha y hora de cierre', value: formatDetailDateTime(a.fecha_hora_cierre) },
       ],
     },
     {
       title: 'Clasificación',
+      icon: ICONS.tags,
       items: [
-        { label: 'Tipo de actividad', value: a.nombre_tipo_actividad ?? null },
-        { label: 'Prioridad', value: a.nombre_prioridad ?? null },
-        { label: 'Estado', value: a.nombre_estado_actividad ?? null },
-        { label: 'Observaciones', value: a.observaciones ?? null, fullWidth: true },
+        {
+          label: 'Tipo de actividad',
+          value: formatDetailListaOpcion(a.nombre_tipo_actividad),
+        },
+        { label: 'Prioridad', value: formatDetailListaOpcion(a.nombre_prioridad) },
+        { label: 'Estado', value: formatDetailListaOpcion(a.nombre_estado_actividad) },
+        { label: 'Observaciones', value: a.observaciones, fullWidth: true },
       ],
     },
     {
       title: 'Auditoría',
+      icon: ICONS.userCircle,
       items: [
-        { label: 'Creado por', value: a.nombre_usuario_creacion ?? null },
-        { label: 'Fecha de creación', value: formatDateTime(a.fecha_creacion) },
-        { label: 'Modificado por', value: a.nombre_usuario_modificacion ?? null },
-        { label: 'Última modificación', value: formatDateTime(a.fecha_modificacion) },
+        { label: 'Creado por', value: a.nombre_usuario_creacion },
+        { label: 'Fecha de creación', value: formatDetailDateTime(a.fecha_creacion) },
+        { label: 'Modificado por', value: a.nombre_usuario_modificacion },
+        { label: 'Última modificación', value: formatDetailDateTime(a.fecha_modificacion) },
       ],
     },
   ]

@@ -55,7 +55,7 @@
     >
       <button
         type="button"
-        class="flex h-8 min-w-8 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-9 sm:px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+        class="flex h-8 min-w-8 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-9 sm:px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/3"
         :disabled="disabled || paginaModel <= 1"
         aria-label="Página anterior"
         @click="goToPage(paginaModel - 1)"
@@ -79,7 +79,7 @@
           :class="
             item === paginaModel
               ? 'border-brand-500 bg-brand-500 text-white hover:bg-brand-600 dark:border-brand-500 dark:bg-brand-500'
-              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]'
+              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/3'
           "
           :disabled="disabled"
           :aria-current="item === paginaModel ? 'page' : undefined"
@@ -91,7 +91,7 @@
 
       <button
         type="button"
-        class="flex h-8 min-w-8 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-9 sm:px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+        class="flex h-8 min-w-8 items-center justify-center rounded-lg border border-gray-300 bg-white px-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:min-w-9 sm:px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-white/3"
         :disabled="disabled || paginaModel >= totalPages"
         aria-label="Página siguiente"
         @click="goToPage(paginaModel + 1)"
@@ -141,7 +141,7 @@ const pageSizeId = useId()
 
 const currentTotal = computed(() => props.meta?.total ?? props.total ?? 0)
 const currentLimite = computed(() => props.meta?.limite ?? limiteModel.value)
-const currentPagina = computed(() => props.meta?.pagina ?? paginaModel.value)
+const currentPagina = computed(() => paginaModel.value)
 
 const totalPages = computed(() => getTotalPages(currentTotal.value, currentLimite.value))
 
@@ -175,10 +175,10 @@ watch(limiteModel, (newLimit, oldLimit) => {
 })
 
 watch(currentTotal, (total) => {
-  if (total <= 0) {
-    paginaModel.value = 1
-    return
-  }
+  // No forzar página 1 si total=0: durante un fetch sin keepPreviousData
+  // meta queda vacía un instante y eso devolvía al usuario a la página 1.
+  // Las vistas ya reinician página al cambiar filtros reales.
+  if (total <= 0) return
 
   if (paginaModel.value > getTotalPages(total, limiteModel.value)) {
     paginaModel.value = Math.max(getTotalPages(total, limiteModel.value), 1)

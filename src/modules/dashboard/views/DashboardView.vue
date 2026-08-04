@@ -1,130 +1,36 @@
 <template>
   <div>
     <PageBreadcrumb page-title="Dashboard" />
-
-    <template v-if="visibleTabs.length">
-      <DashboardFilters v-model="filterValues" />
-
-      <AppTabs
-        v-model="activeTab"
-        :tabs="visibleTabs"
-        inline
-        full-width
-        aria-label="Dashboards"
-        class="mb-6"
-      />
-
-      <KeepAlive>
-        <ClientesDashboardTab v-if="activeTab === 'clientes'" />
-        <BalonesDashboardTab v-else-if="activeTab === 'balones'" />
-      </KeepAlive>
-    </template>
-
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div
+        v-for="card in summaryCards"
+        :key="card.label"
+        class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
+      >
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ card.label }}</p>
+        <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ card.value }}</p>
+      </div>
+    </div>
     <div
-      v-else
-      class="rounded-2xl border border-gray-200 bg-white px-5 py-12 text-center dark:border-gray-800 dark:bg-white/[0.03]"
+      class="mt-6 rounded-2xl border border-gray-200 bg-white px-5 py-8 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10"
     >
+      <h3 class="mb-2 text-lg font-semibold text-gray-800 dark:text-white/90">
+        Bienvenido al panel de administración
+      </h3>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        No tienes acceso a ningún panel del dashboard.
+        Desde aquí podrás gestionar clientes y más módulos del sistema Oxígeno Sarita.
       </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import { AppTabs } from '@/shared/components'
-import ClientesDashboardTab from '@/modules/dashboard/tabs/ClientesDashboardTab.vue'
-import BalonesDashboardTab from '@/modules/dashboard/tabs/BalonesDashboardTab.vue'
-import DashboardFilters from '@/modules/dashboard/components/DashboardFilters.vue'
-import {
-  provideDashboardFilters,
-  type DashboardGlobalFilters,
-} from '@/modules/dashboard/composables/useDashboardFilters'
-import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { ICONS } from '@/shared/constants/icons'
-import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
-import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
-import type { DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
-interface DashboardTab extends AppTabItem {
-  permission: PermissionBandera
-}
-
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-
-/* ---------- Filtros globales del dashboard ---------- */
-const filterValues = ref<DynamicFilterValues>({})
-
-const globalFilters = computed<DashboardGlobalFilters>(() => {
-  const idCliente = filterValues.value.idCliente
-  const fechaDesde = filterValues.value.fechaDesde
-  const fechaHasta = filterValues.value.fechaHasta
-  return {
-    fechaDesde: fechaDesde ? String(fechaDesde) : undefined,
-    fechaHasta: fechaHasta ? String(fechaHasta) : undefined,
-    idCliente: idCliente ? Number(idCliente) : undefined,
-  }
-})
-
-provideDashboardFilters(globalFilters)
-
-const dashboardTabs: DashboardTab[] = [
-  {
-    key: 'clientes',
-    label: 'Clientes',
-    icon: ICONS.users,
-    permission: PermisoBanderas.DASHBOARD_VER_CLIENTES,
-  },
-  {
-    key: 'balones',
-    label: 'Balones',
-    icon: ICONS.cylinder,
-    permission: PermisoBanderas.DASHBOARD_VER_BALONES,
-  },
+const summaryCards = [
+  { label: 'Clientes activos', value: '—' },
+  { label: 'Pedidos del mes', value: '—' },
+  { label: 'Cilindros en stock', value: '—' },
+  { label: 'Entregas pendientes', value: '—' },
 ]
-
-const visibleTabs = computed<AppTabItem[]>(() =>
-  dashboardTabs
-    .filter((tab) => authStore.hasPermission(tab.permission))
-    .map((tab) => ({ key: tab.key, label: tab.label, icon: tab.icon })),
-)
-
-const resolveTab = (value: LocationQueryValue | LocationQueryValue[]): string => {
-  const raw = Array.isArray(value) ? value[0] : value
-  const match = visibleTabs.value.find((tab) => tab.key === raw)
-  return match?.key ?? visibleTabs.value[0]?.key ?? ''
-}
-
-const activeTab = ref(resolveTab(route.query.tab))
-
-watch(activeTab, (tab) => {
-  const isFirst = tab === visibleTabs.value[0]?.key
-  const current = route.query.tab
-  if (isFirst && current) {
-    router.replace({ query: {} })
-  } else if (!isFirst && current !== tab) {
-    router.replace({ query: { tab } })
-  }
-})
-
-watch(
-  () => route.query.tab,
-  (tab) => {
-    const resolved = resolveTab(tab)
-    if (resolved && activeTab.value !== resolved) {
-      activeTab.value = resolved
-    }
-  },
-)
-
-watch(visibleTabs, (tabs) => {
-  if (!tabs.some((tab) => tab.key === activeTab.value)) {
-    activeTab.value = tabs[0]?.key ?? ''
-  }
-})
 </script>

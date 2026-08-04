@@ -49,6 +49,8 @@ export function usePosBalonSelect(options: {
   mode: PosBalonSelectMode
   idCliente: Ref<number | ''>
   idAlmacen?: Ref<number | ''>
+  /** Ej. `medicinal` para kit POS: solo cilindros de esa familia de gas. */
+  familiaGas?: Ref<string | undefined>
 }) {
   const balonBuscar = ref('')
   const balonesFilters = ref<BalonListFilters>({ pagina: 1, limite: 50 })
@@ -64,6 +66,10 @@ export function usePosBalonSelect(options: {
     propietarioQuery.data.value?.find((item) => item.nombre?.toUpperCase() === 'CLIENTE')?.id,
   )
 
+  const propietarioEmpresaId = computed(() =>
+    propietarioQuery.data.value?.find((item) => item.nombre?.toUpperCase() === 'EMPRESA')?.id,
+  )
+
   const balonesQuery = useBalonesQuery(balonesFilters)
 
   let balonBuscarTimeout: ReturnType<typeof setTimeout> | undefined
@@ -74,6 +80,8 @@ export function usePosBalonSelect(options: {
       pagina: 1,
       limite: 50,
       buscar: term || undefined,
+      // Nunca ofrecer dados de baja / robados en selects operativos.
+      soloBajas: false,
     }
 
     // Recarga / general: prestados (ubicación) + propios (propietario)
@@ -81,6 +89,7 @@ export function usePosBalonSelect(options: {
       filters.idClienteRelacionado = Number(options.idCliente.value)
     }
 
+    // Venta / entrega / alquiler: solo stock de la empresa en almacén (nunca "Propio de cliente")
     if (options.mode === 'alquiler') {
       if (estadoEnAlmacenId.value) {
         filters.idEstadoBalon = estadoEnAlmacenId.value
@@ -89,6 +98,15 @@ export function usePosBalonSelect(options: {
       if (options.idAlmacen?.value) {
         filters.idAlmacen = Number(options.idAlmacen.value)
       }
+
+      if (propietarioEmpresaId.value) {
+        filters.idPropietario = propietarioEmpresaId.value
+      }
+    }
+
+    const familia = options.familiaGas?.value?.trim()
+    if (familia) {
+      filters.familiaGas = familia
     }
 
     balonesFilters.value = filters
@@ -103,19 +121,35 @@ export function usePosBalonSelect(options: {
   })
 
   watch(
-    [() => options.idCliente.value, () => options.idAlmacen?.value, estadoEnAlmacenId],
+    [
+      () => options.idCliente.value,
+      () => options.idAlmacen?.value,
+      () => options.familiaGas?.value,
+      estadoEnAlmacenId,
+      propietarioEmpresaId,
+    ],
     () => {
       syncBalonFilters()
     },
     { immediate: true },
   )
 
-  const balonOptions = computed(() =>
-    (balonesQuery.data.value?.data ?? []).map((balon) => ({
+  const balonOptions = computed(() => {
+    let rows = balonesQuery.data.value?.data ?? []
+
+    // Red de seguridad: en stock de empresa no listar envases del cliente
+    if (options.mode === 'alquiler') {
+      rows = rows.filter((balon) => {
+        const propietario = (balon.nombre_propietario ?? '').trim().toUpperCase()
+        return propietario !== 'CLIENTE' && balon.id_cliente_propietario == null
+      })
+    }
+
+    return rows.map((balon) => ({
       value: balon.id,
       label: formatBalonLabel(balon),
-    })),
-  )
+    }))
+  })
 
   const balonPreset = computed<BalonFormPreset>(() => {
     const preset: BalonFormPreset = {
@@ -141,6 +175,10 @@ export function usePosBalonSelect(options: {
 
       if (estadoEnAlmacenId.value) {
         preset.idEstadoBalon = estadoEnAlmacenId.value
+      }
+
+      if (propietarioEmpresaId.value) {
+        preset.idPropietario = propietarioEmpresaId.value
       }
     }
 

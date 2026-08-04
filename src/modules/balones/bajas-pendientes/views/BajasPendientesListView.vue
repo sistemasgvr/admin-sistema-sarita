@@ -14,7 +14,7 @@
         >
           <template #actions>
             <AppHelpTip
-              text="Solicitudes de baja de cilindros pendientes de aprobación. Solo un administrador distinto al solicitante puede aprobar o rechazar."
+              text="Solicitudes de baja de cilindros pendientes. Solo un administrador con permiso de aprobar/rechazar bajas puede gestionarlas (incluido el solicitante)."
             />
           </template>
         </AppListToolbar>
@@ -236,8 +236,10 @@ import {
 } from '@/modules/balones/bajas-pendientes/composables/useBajaSolicitudMutations'
 import { useBajasPendientesQuery } from '@/modules/balones/bajas-pendientes/composables/useBajasPendientesQuery'
 import type { BajaSolicitud } from '@/modules/balones/bajas-pendientes/interfaces/baja-solicitud.interface'
+import { bajasPendientesService } from '@/modules/balones/bajas-pendientes/services/bajas-pendientes.service'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import {
   AppActionMenu,
   AppHelpTip,
@@ -293,7 +295,15 @@ const esAdministrador = computed(() =>
 
 const canAprobar = computed(
   () =>
-    esAdministrador.value && authStore.hasPermission(PermisoBanderas.BALONES_EDITAR),
+    esAdministrador.value &&
+    authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR),
+)
+
+const canRechazar = computed(
+  () =>
+    esAdministrador.value &&
+    (authStore.hasPermission(PermisoBanderas.BAJAS_BALON_RECHAZAR) ||
+      authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR)),
 )
 
 const isLoading = computed(
@@ -319,6 +329,24 @@ const openDetailModal = (row: BajaSolicitud) => {
   detailModalOpen.value = true
 }
 
+useOpenIdFromRouteQuery({
+  queryKey: 'idBaja',
+  onOpen: async (id) => {
+    const fromRows = rows.value.find((row) => row.id === id)
+    if (fromRows) {
+      openDetailModal(fromRows)
+      return
+    }
+    try {
+      const response = await bajasPendientesService.listar({ pagina: 1, limite: 100 })
+      const found = response.data.find((row) => row.id === id)
+      if (found) openDetailModal(found)
+    } catch {
+      // sin permiso o no pendiente
+    }
+  },
+})
+
 const openAprobarModal = (row: BajaSolicitud) => {
   solicitudSeleccionada.value = row
   aprobarModalOpen.value = true
@@ -343,7 +371,7 @@ function actionItemsForRow(_row: BajaSolicitud): ActionMenuItem[] {
       label: 'Rechazar',
       icon: ICONS.x,
       danger: true,
-      hidden: !canAprobar.value,
+      hidden: !canRechazar.value,
     },
   ]
 }

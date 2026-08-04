@@ -345,6 +345,9 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.BALONES
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_ELIMINAR))
+const canSolicitarBaja = computed(() =>
+  authStore.hasPermission(PermisoBanderas.BAJAS_BALON_SOLICITAR),
+)
 
 const isLoading = computed(() => balonesQuery.isFetching.value)
 const rows = computed(() => balonesQuery.data.value?.data ?? [])
@@ -561,7 +564,7 @@ function actionItemsForRow(row: Balon): ActionMenuItem[] {
       label: 'Solicitar baja',
       icon: ICONS.archive,
       disabled: busy,
-      hidden: !(canEdit.value && puedeDarDeBaja(row)),
+      hidden: !(canSolicitarBaja.value && puedeDarDeBaja(row)),
     },
     {
       key: 'restaurar',

@@ -23,7 +23,10 @@
           :min="min"
           :max="max"
           :step="step"
+          :maxlength="maxlength"
           :class="inputClasses"
+          @input="onSanitizeInput"
+          @blur="emit('blur', $event)"
         />
 
         <button
@@ -64,7 +67,10 @@ interface AppInputProps {
   min?: string | number
   max?: string | number
   step?: string | number
+  maxlength?: string | number
   state?: FormControlState
+  ///Filtra en tiempo real lo que el usuario escribe
+  sanitize?: (value: string) => string
 }
 
 const props = withDefaults(defineProps<AppInputProps>(), {
@@ -72,9 +78,26 @@ const props = withDefaults(defineProps<AppInputProps>(), {
   state: 'default',
 })
 
+const emit = defineEmits<{
+  blur: [event: FocusEvent]
+}>()
+
 const model = defineModel<string | number | null>({ default: '' })
 
 const showPassword = ref(false)
+
+function onSanitizeInput(event: Event) {
+  if (!props.sanitize) return
+
+  const target = event.target as HTMLInputElement
+  if (target.value === '' || (event as InputEvent).isComposing) return
+
+  const sanitized = props.sanitize(target.value)
+  if (sanitized !== target.value) {
+    target.value = sanitized
+    model.value = sanitized
+  }
+}
 
 const controlState = computed<FormControlState>(() =>
   props.error ? 'error' : props.state,

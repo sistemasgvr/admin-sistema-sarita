@@ -48,6 +48,11 @@
               required
               @created="seleccionarCliente"
             />
+            <AppInput
+              v-model="clienteDescripcion"
+              label="Observaciones"
+              placeholder="Opcional"
+            />
             <AlmacenSelectField
               v-model="idAlmacen"
               label="Almacén (stock gas)"

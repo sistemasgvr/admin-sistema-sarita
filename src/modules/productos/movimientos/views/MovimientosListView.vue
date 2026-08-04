@@ -17,15 +17,14 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <button
+            <RouterLink
               v-if="canCreate"
-              type="button"
+              :to="{ name: 'admin-productos-movimientos-nuevo' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
-            </button>
+            </RouterLink>
           </template>
         </AppListToolbar>
       </template>
@@ -49,19 +48,34 @@
         <ListaOpcionBadge :value="value as string" />
       </template>
 
-      <template #cell-cantidad="{ value }">
-        <span class="tabular-nums font-medium">{{ formatCantidad(value) }}</span>
+      <template #cell-cantidad="{ value, row }">
+        <span class="tabular-nums font-medium">
+          {{ formatCantidad(value, row.nombre_unidad_medida, row.es_gas) }}
+        </span>
       </template>
 
       <template #cell-stock="{ row }">
-        <span
+        <div
           v-if="row.stock_anterior != null && row.stock_nuevo != null"
-          class="tabular-nums text-sm text-gray-600 dark:text-gray-400"
+          class="flex flex-col gap-1"
         >
-          {{ formatCantidad(row.stock_anterior) }}
-          <span class="text-gray-400">/</span>
-          {{ formatCantidad(row.stock_nuevo) }}
-        </span>
+          <div class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="neutral" title="Stock anterior">
+              SA
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-600 dark:text-gray-400">
+              {{ formatCantidad(row.stock_anterior, row.nombre_unidad_medida, row.es_gas) }}
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <AppBadge size="sm" variant="light" color="primary" title="Stock nuevo">
+              SN
+            </AppBadge>
+            <span class="tabular-nums text-theme-xs text-gray-800 dark:text-white/90">
+              {{ formatCantidad(row.stock_nuevo, row.nombre_unidad_medida, row.es_gas) }}
+            </span>
+          </div>
+        </div>
         <span v-else class="text-gray-400">—</span>
       </template>
 
@@ -93,15 +107,6 @@
         />
       </template>
     </AppTable>
-
-    <MovimientoInventarioFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :movimiento="selectedMovimiento"
-      :almacenes="almacenes"
-      :productos="productos"
-      @saved="onMovimientoSaved"
-    />
 
     <MovimientoInventarioDetailModal
       v-model="detailModalOpen"
@@ -171,25 +176,24 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
-import { productosService } from '@/modules/productos/articulos/services/productos.service'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import MovimientoInventarioFormModal from '@/modules/productos/movimientos/components/MovimientoInventarioFormModal.vue'
 import MovimientoInventarioDetailModal from '@/modules/productos/movimientos/components/MovimientoInventarioDetailModal.vue'
 import { useDeleteMovimientoInventarioMutation } from '@/modules/productos/movimientos/composables/useMovimientoInventarioMutations'
 import { useMovimientosInventarioQuery } from '@/modules/productos/movimientos/composables/useMovimientosInventarioQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import type {
   MovimientoInventario,
-  MovimientoInventarioFormMode,
   MovimientoInventarioListFilters,
 } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
+  AppBadge,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -200,18 +204,19 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const breadcrumbItems = productosBreadcrumbItems('Movimientos')
 
 const listaTipoMovId = ref(ListaIds.TIPO_MOV_INV)
 const tiposMovimientoQuery = useListaOpcionesQuery(listaTipoMovId)
 
 const almacenes = ref<Almacen[]>([])
-const productos = ref<Producto[]>([])
 const isLoadingCatalogos = ref(false)
 
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -227,10 +232,6 @@ const filters = ref<MovimientoInventarioListFilters>({
 
 const movimientosQuery = useMovimientosInventarioQuery(filters)
 const deleteMutation = useDeleteMovimientoInventarioMutation()
-
-const formModalOpen = ref(false)
-const formMode = ref<MovimientoInventarioFormMode>('create')
-const selectedMovimiento = ref<MovimientoInventario | null>(null)
 
 const deleteModalOpen = ref(false)
 const movimientoToDelete = ref<MovimientoInventario | null>(null)
@@ -275,10 +276,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     type: 'select',
     placeholder: 'Seleccionar tipo',
     disabled: tiposMovimientoQuery.isFetching.value,
-    options: (tiposMovimientoQuery.data.value ?? []).map((opcion) => ({
-      value: opcion.id,
-      label: opcion.nombre,
-    })),
+    options: toSelectOptions(tiposMovimientoQuery.data.value),
   },
 ])
 
@@ -294,11 +292,11 @@ const columns = computed<TableColumn<MovimientoInventario>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-const formatCantidad = (value: unknown) =>
-  new Intl.NumberFormat('es-PE', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  }).format(Number(value ?? 0))
+const formatCantidad = (
+  value: unknown,
+  nombreUnidad?: string | null,
+  esGas?: boolean | null,
+) => formatCantidadPorUnidad(value, nombreUnidad, esGas)
 
 const formatFecha = (value?: string | null) => {
   if (!value) return '—'
@@ -310,15 +308,10 @@ const formatFecha = (value?: string | null) => {
 const loadCatalogos = async () => {
   isLoadingCatalogos.value = true
   try {
-    const [almacenesResponse, productosResponse] = await Promise.all([
-      almacenesService.listar({ pagina: 1, limite: 100 }),
-      productosService.listar({ pagina: 1, limite: 500, afectaStock: true }),
-    ])
+    const almacenesResponse = await almacenesService.listar({ pagina: 1, limite: 100 })
     almacenes.value = almacenesResponse.data
-    productos.value = productosResponse.data
   } catch {
     almacenes.value = []
-    productos.value = []
   } finally {
     isLoadingCatalogos.value = false
   }
@@ -360,16 +353,11 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedMovimiento.value = null
-  formModalOpen.value = true
-}
-
-const openEditModal = (movimiento: MovimientoInventario) => {
-  formMode.value = 'edit'
-  selectedMovimiento.value = movimiento
-  formModalOpen.value = true
+const openEdit = (movimiento: MovimientoInventario) => {
+  void router.push({
+    name: 'admin-productos-movimientos-editar',
+    params: { id: String(movimiento.id) },
+  })
 }
 
 const openDetailModal = (movimiento: MovimientoInventario) => {
@@ -429,15 +417,11 @@ function actionItemsForRow(row: MovimientoInventario): ActionMenuItem[] {
 function onActionSelect(key: string, row: MovimientoInventario) {
   switch (key) {
     case 'edit':
-      openEditModal(row)
+      openEdit(row)
       return
     case 'delete':
       openDeleteModal(row)
       return
   }
-}
-
-const onMovimientoSaved = () => {
-  selectedMovimiento.value = null
 }
 </script>

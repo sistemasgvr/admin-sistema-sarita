@@ -37,7 +37,7 @@ const props = defineProps<{
 const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
-  saved: [producto: Producto]
+  saved: [producto?: Producto]
 }>()
 
 const productoId = computed(() => props.producto?.id)
@@ -46,7 +46,7 @@ const handleClose = () => {
   open.value = false
 }
 
-const onSaved = (producto: Producto) => {
+const onSaved = (producto?: Producto) => {
   emit('saved', producto)
   open.value = false
 }

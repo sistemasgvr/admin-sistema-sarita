@@ -379,6 +379,8 @@ function openDevolver(row: AlquilerAntiguedadItem) {
     id_balon: row.id_balon ?? 0,
     codigo_balon: row.codigo_balon,
     numero_alquiler: row.numero_alquiler,
+    id_cliente: row.id_cliente,
+    id_almacen: row.id_almacen ?? null,
     fecha_devolucion: row.fecha_devolucion,
     estado: 1,
     fecha_creacion: '',

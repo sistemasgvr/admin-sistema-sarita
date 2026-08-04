@@ -28,6 +28,31 @@
         :search-fn="searchClientes"
       />
 
+      <div class="grid gap-3 sm:grid-cols-2">
+        <AppSelect
+          v-model="idTipoDocumento"
+          label="Tipo de documento"
+          :placeholder="tipoDocumentoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          required
+          v-bind="idTipoDocumentoAttrs"
+          :disabled="isSubmitting || tipoDocumentoQuery.isLoading.value"
+          :error="errors.idTipoDocumento"
+          :options="tipoDocumentoOptions"
+        />
+
+        <ConsultaDocumentoInput
+          v-model="numeroDocumento"
+          :tipo-documento="tipoDocumentoSeleccionado?.nombre"
+          label="Número de documento"
+          required
+          :input-attrs="numeroDocumentoAttrs"
+          :disabled="isSubmitting"
+          :error="errors.numeroDocumento"
+          @dni-encontrado="aplicarDatosDni"
+          @ruc-encontrado="aplicarDatosRuc"
+        />
+      </div>
+
       <div class="grid gap-3 sm:grid-cols-3">
         <AppInput
           v-model="nombres"
@@ -59,33 +84,11 @@
       </div>
 
       <div class="grid gap-3 sm:grid-cols-2">
-        <AppSelect
-          v-model="idTipoDocumento"
-          label="Tipo de documento"
-          :placeholder="tipoDocumentoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-          required
-          v-bind="idTipoDocumentoAttrs"
-          :disabled="isSubmitting || tipoDocumentoQuery.isLoading.value"
-          :error="errors.idTipoDocumento"
-          :options="tipoDocumentoOptions"
-        />
-
-        <AppInput
-          v-model="numeroDocumento"
-          label="Número de documento"
-          placeholder="45678912"
-          required
-          v-bind="numeroDocumentoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.numeroDocumento"
-        />
-      </div>
-
-      <div class="grid gap-3 sm:grid-cols-2">
         <AppInput
           v-model="codigoLicencia"
           label="N° de licencia (brevete)"
           placeholder="Q12345678"
+          required
           v-bind="codigoLicenciaAttrs"
           :disabled="isSubmitting"
           :error="errors.codigoLicencia"
@@ -95,6 +98,9 @@
           v-model="telefono"
           label="Teléfono"
           placeholder="987654321"
+          maxlength="9"
+          required
+          :sanitize="sanitizeSoloNumeros"
           v-bind="telefonoAttrs"
           :disabled="isSubmitting"
           :error="errors.telefono"
@@ -105,6 +111,7 @@
         <AppSelect
           v-model="idTipoLicencia"
           label="Tipo de licencia"
+          required
           :placeholder="tipoLicenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           v-bind="idTipoLicenciaAttrs"
           :disabled="isSubmitting || tipoLicenciaQuery.isLoading.value"
@@ -115,6 +122,7 @@
         <AppSelect
           v-model="idCategoriaLicencia"
           label="Categoría de licencia"
+          required
           :placeholder="categoriaLicenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           v-bind="idCategoriaLicenciaAttrs"
           :disabled="isSubmitting || categoriaLicenciaQuery.isLoading.value"
@@ -184,12 +192,17 @@ import type {
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteNombrePrincipal } from '@/modules/clientes/utils/clienteNombre'
+import ConsultaDocumentoInput from '@/modules/consultas/components/ConsultaDocumentoInput.vue'
+import type {
+  ConsultaDniData,
+  ConsultaRucData,
+} from '@/modules/consultas/interfaces/consulta.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { optionalString, requiredString } from '@/shared/validation'
+import { optionalString, requiredPhone, requiredString } from '@/shared/validation'
 
 interface ChoferFormModalProps {
   mode: ChoferFormMode
@@ -236,6 +249,25 @@ const listaTipoDocumentoId = computed(() => ListaIds.TIPO_DOCUMENTO)
 const tipoDocumentoQuery = useListaOpcionesQuery(listaTipoDocumentoId)
 const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
 
+const tipoDocumentoSeleccionado = computed(() => {
+  const opciones = tipoDocumentoQuery.data.value ?? []
+  return opciones.find((opcion) => opcion.id === Number(idTipoDocumento.value))
+})
+
+const sanitizeSoloNumeros = (raw: string) => raw.replace(/\D/g, '').slice(0, 9)
+
+const aplicarDatosDni = (data: ConsultaDniData) => {
+  if (data.dni) numeroDocumento.value = data.dni
+  if (data.nombres) nombres.value = data.nombres
+  if (data.apellidoPaterno) apellidoPaterno.value = data.apellidoPaterno
+  if (data.apellidoMaterno) apellidoMaterno.value = data.apellidoMaterno
+}
+
+const aplicarDatosRuc = (data: ConsultaRucData) => {
+  if (data.ruc) numeroDocumento.value = data.ruc
+  if (data.razonSocial) nombres.value = data.razonSocial
+}
+
 const listaTipoLicenciaId = computed(() => ListaIds.TIPO_LICENCIA)
 const tipoLicenciaQuery = useListaOpcionesQuery(listaTipoLicenciaId)
 const tipoLicenciaOptions = computed(() => toSelectOptions(tipoLicenciaQuery.data.value))
@@ -271,10 +303,10 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       apellidoMaterno: optionalString(),
       idTipoDocumento: yup.number().required('El tipo de documento es obligatorio'),
       numeroDocumento: requiredString('El número de documento'),
-      telefono: optionalString(),
-      codigoLicencia: optionalString(),
-      idTipoLicencia: yup.number().optional(),
-      idCategoriaLicencia: yup.number().optional(),
+      telefono: requiredPhone('El teléfono'),
+      codigoLicencia: requiredString('El número de licencia'),
+      idTipoLicencia: yup.number().required('El tipo de licencia es obligatorio'),
+      idCategoriaLicencia: yup.number().required('La categoría de licencia es obligatoria'),
       fechaEmision: optionalString(),
       fechaVencimiento: optionalString(),
     }),

@@ -10,8 +10,9 @@
       <div
         class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
       >
-        La solicitud quedará pendiente hasta que un administrador (distinto a ti) la apruebe en
-        <strong>Aprobar bajas</strong>. El cliente seguirá activo mientras tanto.
+        La solicitud quedará pendiente hasta que un administrador con permiso la apruebe en
+        <strong>Aprobar bajas</strong> (si eres admin con permiso, también puedes aprobarla tú).
+        El cliente seguirá activo mientras tanto.
       </div>
 
       <div class="flex items-center gap-2 text-sm">
@@ -68,6 +69,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useSolicitarBajaClienteMutation } from '@/modules/clientes/bajas-cliente/composables/useBajaClienteMutations'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppModal, AppTextarea } from '@/shared/components'
@@ -101,12 +103,7 @@ const tipoSolicitudLabel = computed(() => tipoSolicitudBaja.value?.descripcion ?
 const listaMotivoBajaId = ref(ListaIds.MOTIVO_BAJA_CLIENTE)
 const motivoBajaQuery = useListaOpcionesQuery(listaMotivoBajaId)
 
-const motivoBajaOptions = computed(() =>
-  (motivoBajaQuery.data.value ?? []).map((item) => ({
-    label: item.nombre,
-    value: item.id,
-  })),
-)
+const motivoBajaOptions = computed(() => toSelectOptions(motivoBajaQuery.data.value))
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(

@@ -19,7 +19,7 @@
         ref="tooltipRef"
         :id="tooltipId"
         role="tooltip"
-        class="pointer-events-none fixed z-[100] rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs leading-relaxed text-gray-600 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+        class="pointer-events-none fixed z-[100000] rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs leading-relaxed text-gray-600 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
         :style="tooltipStyle"
       >
         <slot>{{ text }}</slot>

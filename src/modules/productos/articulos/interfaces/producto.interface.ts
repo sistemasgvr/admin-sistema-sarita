@@ -43,6 +43,8 @@ export interface ProductoListFilters {
   afectaStock?: boolean
   soloActivos?: number | null
   idAlmacen?: number
+  /** true = firmar URLs de imagen (listados con miniatura). Default: false */
+  incluirImagenes?: boolean
 }
 
 export interface CreateProductoPayload {

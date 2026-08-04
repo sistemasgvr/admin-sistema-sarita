@@ -52,6 +52,8 @@ const props = withDefaults(
     mode: PosBalonSelectMode
     idCliente?: number | ''
     idAlmacen?: number | ''
+    /** Ej. medicinal: solo cilindros de esa familia de gas */
+    familiaGas?: string
     registerLabel?: string
     emptyText?: string
   }>(),
@@ -60,18 +62,22 @@ const props = withDefaults(
     placeholder: 'Selecciona cilindro',
     idCliente: '',
     idAlmacen: '',
+    familiaGas: undefined,
     registerLabel: 'Registrar cilindro',
     emptyText: 'Sin cilindros. Registra uno nuevo.',
   },
 )
 
 const model = defineModel<number | ''>({ default: '' })
+/** Etiqueta legible del cilindro seleccionado (código · tipo · …). */
+const etiqueta = defineModel<string>('etiqueta', { default: '' })
 
 const authStore = useAuthStore()
 const balonModalOpen = ref(false)
 
 const idClienteRef = toRef(() => props.idCliente)
 const idAlmacenRef = toRef(() => props.idAlmacen)
+const familiaGasRef = toRef(() => props.familiaGas)
 
 const canRegister = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_CREAR))
 
@@ -86,12 +92,23 @@ const {
   mode: props.mode,
   idCliente: idClienteRef,
   idAlmacen: idAlmacenRef,
+  familiaGas: familiaGasRef,
 })
+
+function syncEtiqueta() {
+  if (!model.value) {
+    etiqueta.value = ''
+    return
+  }
+  const opt = balonOptions.value.find((item) => item.value === model.value)
+  etiqueta.value = opt?.label ?? etiqueta.value
+}
 
 watch(
   () => props.idCliente,
   () => {
     model.value = ''
+    etiqueta.value = ''
     balonBuscar.value = ''
     syncBalonFilters()
   },
@@ -102,13 +119,45 @@ watch(
   () => {
     if (props.mode !== 'alquiler') return
     model.value = ''
+    etiqueta.value = ''
     syncBalonFilters()
   },
 )
 
+watch(
+  () => props.familiaGas,
+  () => {
+    model.value = ''
+    etiqueta.value = ''
+    syncBalonFilters()
+  },
+)
+
+// Si el valor ya no está en el listado filtrado (p. ej. era propio del cliente), limpiarlo.
+// No limpiar mientras carga: la lista puede venir vacía de forma temporal.
+watch(balonOptions, (options) => {
+  if (!model.value) {
+    etiqueta.value = ''
+    return
+  }
+  if (balonesQuery.isLoading.value || balonesQuery.isFetching.value) return
+  const stillValid = options.some((opt) => opt.value === model.value)
+  if (!stillValid) {
+    model.value = ''
+    etiqueta.value = ''
+    return
+  }
+  syncEtiqueta()
+})
+
+watch(model, () => {
+  syncEtiqueta()
+})
+
 function onBalonCreated(balon: Balon) {
   model.value = balon.id
   balonBuscar.value = balon.codigo_balon
+  etiqueta.value = balon.codigo_balon
   syncBalonFilters()
 }
 </script>

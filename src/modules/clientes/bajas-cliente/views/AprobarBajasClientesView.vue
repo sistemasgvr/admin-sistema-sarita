@@ -4,11 +4,14 @@
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
           search-placeholder="Cliente, motivo o solicitante..."
+          @filter-change="onFiltersChange"
         >
           <template #actions>
             <AppHelpTip
-              text="Solicitudes de baja de clientes pendientes de aprobación. Solo un administrador distinto al solicitante puede aprobar o rechazar."
+              text="Solicitudes de baja/reactivación pendientes. Solo un administrador con permiso de aprobar/rechazar bajas de cliente puede gestionarlas (incluido el solicitante)."
             />
           </template>
         </AppListToolbar>
@@ -39,13 +42,17 @@
           variant="light"
           size="sm"
         >
-          {{ value === 'REACTIVACION' ? value : value === 'BAJA' ? value : '-' }}
+          {{ value ? formatListaOpcionLabel(value as string) : '-' }}
         </AppBadge>
+      </template>
+
+      <template #cell-nombre_motivo_baja="{ value }">
+        <span>{{ value ? formatListaOpcionLabel(value as string) : '—' }}</span>
       </template>
 
       <template #cell-nombre_estado_aprobacion="{ value }">
         <AppBadge :color="getEstadoColor(value as string)" variant="light" size="sm">
-          {{ value }}
+          {{ formatListaOpcionLabel(value as string) }}
         </AppBadge>
       </template>
 
@@ -70,7 +77,7 @@
         </button>
 
         <button
-          v-if="canAprobar && row.nombre_estado_aprobacion === 'PENDIENTE'"
+          v-if="canRechazar && row.nombre_estado_aprobacion === 'PENDIENTE'"
           type="button"
           title="Rechazar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
@@ -101,10 +108,10 @@
       <DetailCardsLayout :loading="detailQuery.isLoading.value" :sections="detailSections">
         <template #badges>
           <AppBadge :color="getEstadoColor(detailQuery.data.value?.nombre_estado_aprobacion ?? '')">
-            {{ detailQuery.data.value?.nombre_estado_aprobacion }}
+            {{ formatListaOpcionLabel(detailQuery.data.value?.nombre_estado_aprobacion) }}
           </AppBadge>
           <AppBadge :color="getEstadoColor(detailQuery.data.value?.nombre_tipo_solicitud ?? '')">
-            {{ detailQuery.data.value?.nombre_tipo_solicitud }}
+            {{ formatListaOpcionLabel(detailQuery.data.value?.nombre_tipo_solicitud) }}
           </AppBadge>
         </template>
       </DetailCardsLayout>
@@ -151,7 +158,7 @@
           </span>
           por motivo
           <span class="font-medium text-gray-800 dark:text-white/90">
-            {{ solicitudSeleccionada?.nombre_motivo_baja }}
+            {{ formatListaOpcionLabel(solicitudSeleccionada?.nombre_motivo_baja) }}
           </span>
           ?
         </template>
@@ -236,18 +243,25 @@ import { useBajasClienteQuery } from '@/modules/clientes/bajas-cliente/composabl
 import type {
   BajaCliente,
   BajaClienteDetail,
+  BajaClienteListFilters,
 } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { clientesQueryKeys } from '@/modules/clientes/constants/clientesQueryKeys'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { AppBadge, AppHelpTip, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastSuccess } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate, formatDateTime } from '@/shared/utils/date'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 withDefaults(
@@ -265,12 +279,37 @@ const authStore = useAuthStore()
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
+const dynamicFilters = ref<DynamicFilterValues>({})
 
-const filters = ref({
+const filters = ref<BajaClienteListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
 })
+
+const tipoSolicitudQuery = useListaOpcionesQuery(ref(ListaIds.TIPO_SOLICITUD))
+const tipoSolicitudOptions = computed(() => toSelectOptions(tipoSolicitudQuery.data.value))
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idTipoSolicitud',
+    label: 'Tipo de solicitud',
+    type: 'select',
+    placeholder: 'Todas',
+    disabled: tipoSolicitudQuery.isLoading.value,
+    options: tipoSolicitudOptions.value,
+  },
+  {
+    key: 'isActivos',
+    label: 'Estado del registro',
+    type: 'select',
+    placeholder: 'Todos',
+    options: [
+      { value: 1, label: 'Activas' },
+      { value: 0, label: 'Inactivas' },
+    ],
+  },
+])
 
 const bajasQuery = useBajasClienteQuery(filters)
 const aprobarMutation = useAprobarBajaClienteMutation()
@@ -291,7 +330,16 @@ const esAdministrador = computed(() =>
 )
 
 const canAprobar = computed(
-  () => esAdministrador.value && authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR),
+  () =>
+    esAdministrador.value &&
+    authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_APROBAR),
+)
+
+const canRechazar = computed(
+  () =>
+    esAdministrador.value &&
+    (authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_RECHAZAR) ||
+      authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_APROBAR)),
 )
 
 const isLoading = computed(() => bajasQuery.isFetching.value || bajasQuery.isLoading.value)
@@ -350,13 +398,15 @@ const detailSections = computed<DetailSection[]>(() => {
       items: [
         {
           label: 'Tipo',
-          value:
-            d.nombre_tipo_solicitud === 'REACTIVACION'
-              ? 'Reactivación'
-              : (d.nombre_tipo_solicitud ?? 'Baja'),
+          value: d.nombre_tipo_solicitud ? formatListaOpcionLabel(d.nombre_tipo_solicitud) : 'Baja',
         },
         ...(d.nombre_tipo_solicitud !== 'REACTIVACION'
-          ? [{ label: 'Motivo de baja' as const, value: d.nombre_motivo_baja || '—' }]
+          ? [
+              {
+                label: 'Motivo de baja' as const,
+                value: d.nombre_motivo_baja ? formatListaOpcionLabel(d.nombre_motivo_baja) : '—',
+              },
+            ]
           : []),
         { label: 'Detalle', value: d.motivo_detalle || '—', fullWidth: true },
         {
@@ -370,7 +420,10 @@ const detailSections = computed<DetailSection[]>(() => {
       title: 'Estado',
       icon: ICONS.alertCircle,
       items: [
-        { label: 'Estado', value: d.nombre_estado_aprobacion || '—' },
+        {
+          label: 'Estado',
+          value: d.nombre_estado_aprobacion ? formatListaOpcionLabel(d.nombre_estado_aprobacion) : '—',
+        },
         {
           label: 'Autorizado por',
           value: d.nombre_usuario_autoriza || '—',
@@ -422,6 +475,17 @@ const openDetailModal = (row: BajaCliente) => {
   detailEnabled.value = true
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  queryKey: 'idBaja',
+  onOpen: (id) => {
+    const fromRows = rows.value.find((row) => row.id === id)
+    solicitudSeleccionada.value = fromRows ?? ({ id } as BajaCliente)
+    detailId.value = id
+    detailEnabled.value = true
+    detailModalOpen.value = true
+  },
+})
 
 const openAprobarModal = (row: BajaCliente) => {
   solicitudSeleccionada.value = row
@@ -490,11 +554,20 @@ const confirmarRechazo = async () => {
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const syncFilters = () => {
+  const active = dynamicFilters.value
+
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
+    idTipoSolicitud: active.idTipoSolicitud != null ? Number(active.idTipoSolicitud) : undefined,
+    isActivos: active.isActivos != null ? Number(active.isActivos) : undefined,
   }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
 }
 
 watch(buscar, () => {

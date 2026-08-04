@@ -127,15 +127,25 @@ export function useEnviarResumenDiarioMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (payload: EnviarResumenDiarioPayload) =>
-      comprobantesService.enviarResumenDiario(payload),
+    mutationFn: async (payload: EnviarResumenDiarioPayload) => {
+      const data = await comprobantesService.enviarResumenDiario(payload)
+      if (!data?.resumen?.id) {
+        throw new Error(
+          'El envío terminó sin registrar el resumen. Revisa la respuesta de SUNAT o inténtalo de nuevo.',
+        )
+      }
+      return data
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.resumenLists() })
+
+      const ticket = data.sunat?.ticket
+      const estado = data.sunat?.estado ?? 'PENDIENTE'
       toastSuccess(
-        data.sunat.ticket
-          ? `Resumen ${data.resumen.identificador ?? data.correlativo} enviado. Ticket: ${data.sunat.ticket}`
-          : `Resumen enviado: ${data.sunat.estado}`,
+        ticket
+          ? `Resumen ${data.resumen.identificador ?? data.correlativo} enviado. Ticket: ${ticket}`
+          : `Resumen enviado: ${estado}`,
       )
     },
     onError: (error) => {

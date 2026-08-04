@@ -25,7 +25,7 @@
                 {{ resumenDetalle }}
               </p>
             </div>
-            <ListaOpcionBadge :value="estadoNormalizado" raw />
+            <ListaOpcionBadge :value="estadoNormalizado" />
           </div>
         </div>
       </DetailSectionCard>
@@ -54,7 +54,7 @@
                 </td>
                 <td class="px-3 py-2">{{ detalle.nombre_cliente ?? '—' }}</td>
                 <td class="px-3 py-2">
-                  <ListaOpcionBadge :value="detalle.nombre_estado_sunat ?? 'PENDIENTE'" raw />
+                  <ListaOpcionBadge :value="detalle.nombre_estado_sunat ?? 'PENDIENTE'" />
                 </td>
                 <td class="px-3 py-2 text-right tabular-nums">
                   {{ formatMoney(Number(detalle.total_importe ?? 0)) }}

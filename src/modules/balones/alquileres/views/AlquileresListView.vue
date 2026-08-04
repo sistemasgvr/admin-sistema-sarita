@@ -101,6 +101,12 @@
 
     <AlquilerDetailModal v-model="detailModalOpen" :alquiler-id="alquilerToViewId" />
 
+    <AlquilerDevolverCilindrosModal
+      v-model="devolverCilindrosModalOpen"
+      :alquiler="alquilerToDevolver"
+      @saved="onDevolucionDesdeLista"
+    />
+
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar alquiler"
@@ -142,6 +148,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
+import AlquilerDevolverCilindrosModal from '@/modules/balones/alquileres/components/AlquilerDevolverCilindrosModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
 import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
@@ -167,6 +174,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
@@ -208,6 +216,9 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const detailModalOpen = ref(false)
 const alquilerToViewId = ref<number | null>(null)
 
+const devolverCilindrosModalOpen = ref(false)
+const alquilerToDevolver = ref<Alquiler | null>(null)
+
 const deleteModalOpen = ref(false)
 const alquilerToDelete = ref<Alquiler | null>(null)
 const deleteMutation = useDeleteAlquilerMutation()
@@ -218,6 +229,11 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILE
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_ELIMINAR))
+const canDevolver = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_EDITAR) ||
+    authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR),
+)
 
 const isLoading = computed(
   () => alquileresQuery.isFetching.value || alquileresQuery.isLoading.value,
@@ -319,9 +335,25 @@ const openDetailModal = (row: Alquiler) => {
   detailModalOpen.value = true
 }
 
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    alquilerToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
+
 const openDeleteModal = (row: Alquiler) => {
   alquilerToDelete.value = row
   deleteModalOpen.value = true
+}
+
+const openDevolverCilindros = (row: Alquiler) => {
+  alquilerToDevolver.value = row
+  devolverCilindrosModalOpen.value = true
+}
+
+function isAlquilerActivo(row: Alquiler): boolean {
+  return (row.nombre_estado ?? '').toUpperCase() === 'ACTIVO'
 }
 
 function deleteLabelForRow(row: Alquiler): string {
@@ -333,11 +365,20 @@ function deleteLabelForRow(row: Alquiler): string {
 function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
   const blockedDelete = row.puede_eliminar === false
+  const activo = isAlquilerActivo(row)
+  const tieneCilindros = Number(row.total_detalles ?? 0) > 0
 
   return [
     {
+      key: 'devolver',
+      label: 'Devolver cilindros',
+      icon: ICONS.clipboardCheck,
+      disabled: busy,
+      hidden: !canDevolver.value || !activo || !tieneCilindros,
+    },
+    {
       key: 'edit',
-      label: 'Editar / devolver cilindros',
+      label: 'Editar',
       icon: ICONS.pencil,
       disabled: busy,
       hidden: !canEdit.value,
@@ -354,8 +395,13 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Alquiler) {
+  if (key === 'devolver') openDevolverCilindros(row)
   if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
+}
+
+function onDevolucionDesdeLista() {
+  void alquileresQuery.refetch()
 }
 
 const confirmDelete = async () => {

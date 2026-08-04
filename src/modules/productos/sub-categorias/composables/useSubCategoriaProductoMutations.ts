@@ -57,3 +57,19 @@ export function useDeleteSubCategoriaProductoMutation() {
     },
   })
 }
+
+export function useRestaurarSubCategoriaProductoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => subCategoriasProductoService.restaurar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: subCategoriasProductoQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: categoriasProductoQueryKeys.lists() })
+      toastSuccess('Subcategoría restaurada correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo restaurar la subcategoría')
+    },
+  })
+}

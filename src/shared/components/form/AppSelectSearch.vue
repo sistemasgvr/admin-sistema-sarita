@@ -75,7 +75,7 @@
 
             <div class="min-h-0 flex-1 overflow-y-auto py-1">
               <div
-                v-if="loading"
+                v-if="loading && visibleOptions.length === 0"
                 class="flex items-center justify-center gap-2 px-4 py-6 text-sm text-gray-500 dark:text-gray-400"
               >
                 <AppIcon :name="ICONS.loader" :size="16" class="animate-spin" />
@@ -123,6 +123,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { useFormControlClasses } from '@/shared/composables/useFormControlClasses'
 import { ICONS } from '@/shared/constants/icons'
 import type { FormControlState, SelectOption } from '@/shared/interfaces/form.interface'
+import { normalizeSearchText } from '@/shared/utils/normalizeSearchText'
 
 defineOptions({
   inheritAttrs: false,
@@ -196,19 +197,18 @@ const displayLabel = computed(() => {
   return selected?.label ?? cachedSelectedLabel.value ?? props.placeholder
 })
 
-const normalizedSearch = computed(() => searchQuery.value.trim().toLowerCase())
+const normalizedSearch = computed(() => normalizeSearchText(searchQuery.value.trim()))
 
 const visibleOptions = computed(() => {
-  if (props.remote) {
-    return props.options
-  }
-
+  // Siempre filtrar por etiqueta en cliente. Con remote el padre puede
+  // acotar vía API; sin esto, si el refetch falla o tarda, el texto no tiene efecto.
+  // Comparación flexible: ignora mayúsculas y tildes (mano → Manómetro).
   if (!normalizedSearch.value) {
     return props.options
   }
 
   return props.options.filter((option) =>
-    option.label.toLowerCase().includes(normalizedSearch.value),
+    normalizeSearchText(option.label).includes(normalizedSearch.value),
   )
 })
 

@@ -27,7 +27,13 @@
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Estado SUNAT</p>
-          <ListaOpcionBadge :value="guia.nombre_estado_sunat ?? 'PENDIENTE'" raw />
+          <div class="mt-1">
+            <GuiaSunatEstadoBadges
+              :estado-sunat="guia.nombre_estado_sunat"
+              :fecha-traslado="guia.fecha_traslado"
+              :ticket-sunat="guia.ticket_sunat"
+            />
+          </div>
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Fecha emisión</p>
@@ -146,6 +152,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { downloadBlob } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
+import GuiaSunatEstadoBadges from '@/modules/ventas/guias-remision/components/GuiaSunatEstadoBadges.vue'
 import { useGuiaRemisionQuery } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
 import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/guias-remision.service'
 import { AppModal, ListaOpcionBadge } from '@/shared/components'

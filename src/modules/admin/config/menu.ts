@@ -82,6 +82,12 @@ export const adminMenuGroups: AdminMenuGroup[] = [
           PermisoBanderas.FINANZAS_CXP_VER,
         ],
       },
+      {
+        icon: ICONS.shoppingcard,
+        name: 'Compras',
+        path: '/admin/compras',
+        permission: PermisoBanderas.COMPRAS_LISTAR,
+      },
     ],
   },
   {

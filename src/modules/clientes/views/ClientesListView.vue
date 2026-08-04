@@ -4,37 +4,44 @@
 
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por razón social, nombres o documento..."
-              />
-            </div>
-
-            <div class="w-full sm:w-90">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Buscar por razón social, nombres o documento..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <div class="w-full sm:w-44">
               <AppSelect v-model="mostrarClientes" :options="estadoFiltroOptions" />
             </div>
-          </div>
-
-          <RouterLink
-            v-if="canCreate"
-            :to="{ name: 'admin-clientes-nuevo' }"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo
-          </RouterLink>
-        </div>
+            <RouterLink
+              v-if="canCreate"
+              :to="{ name: 'admin-clientes-nuevo' }"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo
+            </RouterLink>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-cliente="{ row }">
         <div class="flex flex-col gap-0.5">
-          <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
-            {{ row.razon_social }}
-          </p>
+          <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+            <p v-if="row.razon_social" class="truncate font-medium text-gray-800 dark:text-white/90">
+              {{ row.razon_social }}
+            </p>
+            <AppBadge
+              v-if="esClientesVarios(row)"
+              size="sm"
+              color="primary"
+              title="Cliente de sistema para ventas sin documento"
+            >
+              Sistema
+            </AppBadge>
+          </div>
           <p
             v-if="row.nombres || row.apellido_paterno || row.apellido_materno"
             class="truncate text-sm text-gray-500 dark:text-gray-400"
@@ -43,7 +50,7 @@
           </p>
         </div>
         <AppBadge v-if="row.nombre_tipo_persona" size="sm" color="neutral" class="mt-1">
-          {{ row.nombre_tipo_persona }}
+          {{ formatListaOpcionLabel(row.nombre_tipo_persona) }}
         </AppBadge>
       </template>
       <template #cell-contacto="{ row }">
@@ -76,7 +83,7 @@
         </button>
 
         <button
-          v-if="canEdit"
+          v-if="canEdit && !esClientesVarios(row)"
           type="button"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditView(row)"
@@ -85,7 +92,7 @@
         </button>
 
         <button
-          v-if="canEdit && row.estado === 1"
+          v-if="canEdit && row.estado === 1 && !esClientesVarios(row)"
           type="button"
           title="Solicitar baja"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
@@ -104,7 +111,7 @@
         </button> -->
 
         <button
-          v-if="canSolicitarBaja && row.estado !== 1"
+          v-if="canSolicitarBaja && row.estado !== 1 && !esClientesVarios(row)"
           type="button"
           title="Solicitar reactivación"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
@@ -200,10 +207,13 @@ import type {
   ClienteEstadoFiltro,
   ClienteListFilters,
 } from '@/modules/clientes/interfaces/cliente.interface'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
   AppSelect,
@@ -211,9 +221,12 @@ import {
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 withDefaults(
   defineProps<{
@@ -228,9 +241,23 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const buscar = ref('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const mostrarClientes = ref<ClienteEstadoFiltro>('activos')
 const pagina = ref(1)
 const limite = ref(10)
+
+const tipoClienteQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_CLIENTE))
+const tipoClienteOptions = computed(() => toSelectOptions(tipoClienteQuery.data.value))
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idTipoCliente',
+    label: 'Tipo de cliente',
+    type: 'select',
+    placeholder: 'Todos los tipos',
+    options: tipoClienteOptions.value,
+  },
+])
 
 const estadoFiltroOptions: SelectOption[] = [
   { label: 'Todos', value: 'todos' },
@@ -304,38 +331,45 @@ const columns = computed<TableColumn<Cliente>[]>(() => [
   { key: 'estado', label: 'Estado' },
 ])
 
+const syncFilters = () => {
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    soloActivos: buildSoloActivos(mostrarClientes.value),
+    idTipoCliente:
+      dynamicFilters.value.idTipoCliente != null
+        ? Number(dynamicFilters.value.idTipoCliente)
+        : undefined,
+  }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters()
+}
+
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      buscar: value.trim(),
-      pagina: 1,
-    }
+    syncFilters()
   }, 350)
 })
 
-watch(mostrarClientes, (value) => {
+watch(mostrarClientes, () => {
   pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    soloActivos: buildSoloActivos(value),
-    pagina: 1,
-  }
+  syncFilters()
 })
 
 watch([pagina, limite], () => {
-  filters.value = {
-    ...filters.value,
-    pagina: pagina.value,
-    limite: limite.value,
-  }
+  syncFilters()
 })
 
 const openEditView = (cliente: Cliente) => {
+  if (esClientesVarios(cliente)) return
   void router.push({
     name: 'admin-clientes-editar',
     params: { id: String(cliente.id) },

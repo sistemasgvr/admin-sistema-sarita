@@ -8,6 +8,7 @@ export const ICONS = {
   chevronDown: 'lucide:chevron-down',
   chevronLeft: 'lucide:chevron-left',
   chevronRight: 'lucide:chevron-right',
+  calendarRange: 'lucide:calendar-range',
   ellipsis: 'lucide:ellipsis',
   ellipsisVertical: 'lucide:ellipsis-vertical',
   userCircle: 'lucide:user-circle',
@@ -74,6 +75,7 @@ export const ICONS = {
   upload: 'lucide:upload',
   replace: 'lucide:replace',
   receipt: 'lucide:receipt',
+  shoppingcard: 'lucide:shopping-cart',
   /** Ticket / voucher (sin símbolo $) */
   ticket: 'lucide:ticket',
   refreshCw: 'lucide:refresh-cw',

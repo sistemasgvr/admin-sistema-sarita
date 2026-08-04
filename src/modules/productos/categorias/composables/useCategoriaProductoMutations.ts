@@ -53,3 +53,18 @@ export function useDeleteCategoriaProductoMutation() {
     },
   })
 }
+
+export function useRestaurarCategoriaProductoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => categoriasProductoService.restaurar(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: categoriasProductoQueryKeys.all })
+      toastSuccess('Categoría restaurada correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo restaurar la categoría')
+    },
+  })
+}

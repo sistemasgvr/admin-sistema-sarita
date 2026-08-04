@@ -20,6 +20,15 @@
         type="date"
         required
       />
+
+      <AlmacenSelectField
+        v-model="idAlmacenDestino"
+        label="Almacén de destino"
+        hint="Donde reingresa el cilindro"
+        searchable
+        required
+        :disabled="almacenesQuery.isLoading.value"
+      />
     </div>
 
     <template #footer>
@@ -34,7 +43,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="devolverMutation.isPending.value || !fechaDevolucion"
+        :disabled="devolverMutation.isPending.value || !fechaDevolucion || !idAlmacenDestino"
         @click="confirmDevolver"
       >
         {{ devolverMutation.isPending.value ? 'Registrando...' : 'Devolver' }}
@@ -51,12 +60,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import GarantiaDevolverModal from '@/modules/balones/garantias/components/GarantiaDevolverModal.vue'
 import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import { useDevolverPrestamoDetalleMutation } from '@/modules/balones/prestamos/composables/usePrestamoDetalleMutations'
 import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import { AppInput, AppModal } from '@/shared/components'
 import { toastInfo, toastWarning } from '@/shared/composables/useToast'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -74,14 +86,23 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const devolverMutation = useDevolverPrestamoDetalleMutation()
 const fechaDevolucion = ref(new Date().toISOString().slice(0, 10))
+const idAlmacenDestino = ref<number | ''>('')
 const garantiaModalOpen = ref(false)
 const garantiaPendienteId = ref<number | null>(null)
+
+const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+const almacenesData = computed(() => almacenesQuery.data.value?.data)
+const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacenDestino)
 
 watch(
   () => [open.value, props.detalle?.id] as const,
   ([isOpen]) => {
-    if (isOpen) {
-      fechaDevolucion.value = new Date().toISOString().slice(0, 10)
+    if (!isOpen) return
+    fechaDevolucion.value = new Date().toISOString().slice(0, 10)
+    idAlmacenDestino.value = props.detalle?.id_almacen ? Number(props.detalle.id_almacen) : ''
+    if (!idAlmacenDestino.value) {
+      aplicarAlmacenPorDefecto()
     }
   },
 )
@@ -119,6 +140,10 @@ async function confirmDevolver() {
     toastWarning('Indica la fecha de devolución')
     return
   }
+  if (!idAlmacenDestino.value) {
+    toastWarning('Selecciona el almacén de destino')
+    return
+  }
 
   try {
     await devolverMutation.mutateAsync({
@@ -126,6 +151,7 @@ async function confirmDevolver() {
       payload: {
         idUsuarioAuditoria: userId,
         fechaDevolucion: fechaDevolucion.value,
+        idAlmacenDestino: Number(idAlmacenDestino.value),
       },
     })
     open.value = false

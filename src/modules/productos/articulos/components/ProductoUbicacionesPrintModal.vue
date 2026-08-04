@@ -121,6 +121,7 @@ import { productosService } from '@/modules/productos/articulos/services/product
 import { downloadBlob, openPdfPrintWindow, printBlobInWindow } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import { AppCheckbox, AppInput, AppModal } from '@/shared/components'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import { matchesSearchText, normalizeSearchText } from '@/shared/utils/normalizeSearchText'
 
 const open = defineModel<boolean>({ default: false })
 
@@ -133,7 +134,7 @@ const selectedIds = ref<Set<number>>(new Set())
 const selectedCount = computed(() => selectedIds.value.size)
 
 const filteredProductos = computed(() => {
-  const term = buscar.value.trim().toLowerCase()
+  const term = normalizeSearchText(buscar.value.trim())
   if (!term) return productos.value
 
   return productos.value.filter((producto) => {
@@ -145,9 +146,8 @@ const filteredProductos = computed(() => {
     ]
       .filter(Boolean)
       .join(' ')
-      .toLowerCase()
 
-    return haystack.includes(term)
+    return matchesSearchText(haystack, term)
   })
 })
 

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { computed, type Ref } from 'vue'
 import { comprobantesQueryKeys } from '@/modules/ventas/comprobantes/constants/comprobantesQueryKeys'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
@@ -8,6 +8,7 @@ export function useComprobantesQuery(filters: Ref<ComprobanteListFilters>) {
   return useQuery({
     queryKey: computed(() => comprobantesQueryKeys.list(filters.value)),
     queryFn: () => comprobantesService.listar(filters.value),
+    placeholderData: keepPreviousData,
   })
 }
 
@@ -31,6 +32,7 @@ export function useResumenDiarioListQuery(filters: Ref<ResumenDiarioListFilters>
   return useQuery({
     queryKey: computed(() => comprobantesQueryKeys.resumenList(filters.value)),
     queryFn: () => comprobantesService.listarResumenDiario(filters.value),
+    placeholderData: keepPreviousData,
   })
 }
 

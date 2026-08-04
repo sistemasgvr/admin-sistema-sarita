@@ -24,6 +24,7 @@ export interface StockListFilters {
   idAlmacen?: number
   idProducto?: number
   soloBajoMinimo?: boolean
+  soloActivos?: number | null
 }
 
 export interface CreateStockPayload {

@@ -14,6 +14,9 @@
           search-placeholder="Nombre o descripción..."
         >
           <template #actions>
+            <div class="w-full sm:w-40">
+              <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
+            </div>
             <button
               v-if="canCreate"
               type="button"
@@ -142,7 +145,10 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import CategoriaSubcategoriasModal from '@/modules/productos/categorias/components/CategoriaSubcategoriasModal.vue'
 import CategoriaProductoFormModal from '@/modules/productos/categorias/components/CategoriaProductoFormModal.vue'
 import CategoriaProductoDetailModal from '@/modules/productos/categorias/components/CategoriaProductoDetailModal.vue'
-import { useDeleteCategoriaProductoMutation } from '@/modules/productos/categorias/composables/useCategoriaProductoMutations'
+import {
+  useDeleteCategoriaProductoMutation,
+  useRestaurarCategoriaProductoMutation,
+} from '@/modules/productos/categorias/composables/useCategoriaProductoMutations'
 import { useCategoriasProductoQuery } from '@/modules/productos/categorias/composables/useCategoriasProductoQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import type {
@@ -157,13 +163,17 @@ import {
   AppListToolbar,
   AppModal,
   AppPagination,
+  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+type EstadoFiltro = 'activos' | 'inactivos' | 'todos'
 
 const authStore = useAuthStore()
 const breadcrumbItems = productosBreadcrumbItems('Categorías')
@@ -171,15 +181,36 @@ const breadcrumbItems = productosBreadcrumbItems('Categorías')
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
+const mostrarEstado = ref<EstadoFiltro>('activos')
+
+const estadoFiltroOptions: SelectOption[] = [
+  { label: 'Activos', value: 'activos' },
+  { label: 'Inactivos', value: 'inactivos' },
+  { label: 'Todos', value: 'todos' },
+]
+
+const buildSoloActivos = (value: EstadoFiltro): number | null => {
+  switch (value) {
+    case 'activos':
+      return 1
+    case 'inactivos':
+      return 0
+    case 'todos':
+    default:
+      return null
+  }
+}
 
 const filters = ref<CategoriaProductoListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
+  soloActivos: 1,
 })
 
 const categoriasQuery = useCategoriasProductoQuery(filters)
 const deleteMutation = useDeleteCategoriaProductoMutation()
+const restaurarMutation = useRestaurarCategoriaProductoMutation()
 
 const formModalOpen = ref(false)
 const formMode = ref<CategoriaProductoFormMode>('create')
@@ -201,6 +232,7 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CATEGOR
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_ELIMINAR))
+const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_RESTAURAR))
 const canManageSubCategorias = computed(() =>
   authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_LISTAR),
 )
@@ -221,6 +253,7 @@ const syncFilters = () => {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
+    soloActivos: buildSoloActivos(mostrarEstado.value),
   }
 }
 
@@ -230,6 +263,11 @@ watch(buscar, () => {
     pagina.value = 1
     syncFilters()
   }, 350)
+})
+
+watch(mostrarEstado, () => {
+  pagina.value = 1
+  syncFilters()
 })
 
 watch([pagina, limite], () => {
@@ -275,9 +313,18 @@ const confirmDelete = async () => {
   }
 }
 
+const restaurarCategoria = async (categoria: CategoriaProducto) => {
+  try {
+    await restaurarMutation.mutateAsync(categoria.id)
+  } catch {
+    // toast en mutation
+  }
+}
+
 function actionItemsForRow(row: CategoriaProducto): ActionMenuItem[] {
-  const busy = deleteMutation.isPending.value
+  const busy = deleteMutation.isPending.value || restaurarMutation.isPending.value
   const blockedBySubcategorias = Number(row.total_sub_categorias ?? 0) > 0
+  const activo = row.estado === 1
 
   return [
     {
@@ -285,14 +332,22 @@ function actionItemsForRow(row: CategoriaProducto): ActionMenuItem[] {
       label: 'Subcategorías',
       icon: ICONS.listTree,
       disabled: busy,
-      hidden: !canManageSubCategorias.value,
+      hidden: !(canManageSubCategorias.value && activo),
     },
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
       disabled: busy,
-      hidden: !canEdit.value,
+      hidden: !(canEdit.value && activo),
+    },
+    {
+      key: 'restore',
+      label: 'Restaurar',
+      icon: ICONS.check,
+      disabled: busy,
+      loading: restaurarMutation.isPending.value,
+      hidden: !(canRestore.value && !activo),
     },
     {
       key: 'delete',
@@ -300,7 +355,7 @@ function actionItemsForRow(row: CategoriaProducto): ActionMenuItem[] {
       icon: ICONS.trash,
       danger: !blockedBySubcategorias,
       disabled: busy || blockedBySubcategorias,
-      hidden: !canDelete.value,
+      hidden: !(canDelete.value && activo),
     },
   ]
 }
@@ -313,6 +368,8 @@ function onActionSelect(key: string, row: CategoriaProducto) {
     case 'edit':
       openEditModal(row)
       return
+    case 'restore':
+      return restaurarCategoria(row)
     case 'delete':
       openDeleteModal(row)
       return

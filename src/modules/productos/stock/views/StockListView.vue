@@ -17,6 +17,9 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <div class="w-full sm:w-40">
+              <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
+            </div>
             <button
               v-if="canCreate"
               type="button"
@@ -61,13 +64,13 @@
               : 'text-gray-800 dark:text-white/90'
           "
         >
-          {{ formatCantidad(value) }}
+          {{ formatCantidad(value, row.nombre_unidad_medida) }}
         </span>
       </template>
 
-      <template #cell-stock_minimo="{ value }">
+      <template #cell-stock_minimo="{ value, row }">
         <span class="tabular-nums text-gray-600 dark:text-gray-400">
-          {{ formatCantidad(value) }}
+          {{ formatCantidad(value, row.nombre_unidad_medida) }}
         </span>
       </template>
 
@@ -118,7 +121,6 @@
       :mode="formMode"
       :stock="selectedStock"
       :almacenes="almacenes"
-      :productos="productos"
       @saved="onStockSaved"
     />
 
@@ -185,11 +187,12 @@ import { computed, onMounted, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
-import { productosService } from '@/modules/productos/articulos/services/productos.service'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
 import StockDetailModal from '@/modules/productos/stock/components/StockDetailModal.vue'
-import { useDeleteStockMutation } from '@/modules/productos/stock/composables/useStockMutations'
+import {
+  useDeleteStockMutation,
+  useRestaurarStockMutation,
+} from '@/modules/productos/stock/composables/useStockMutations'
 import { useStockQuery } from '@/modules/productos/stock/composables/useStockQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import type {
@@ -197,6 +200,7 @@ import type {
   StockFormMode,
   StockListFilters,
 } from '@/modules/productos/stock/interfaces/stock.interface'
+import { stockService } from '@/modules/productos/stock/services/stock.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
@@ -204,35 +208,66 @@ import {
   AppListToolbar,
   AppModal,
   AppPagination,
+  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import {
+  parsePositiveIntQuery,
+  useOpenIdFromRouteQuery,
+} from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { useRoute } from 'vue-router'
+
+type EstadoFiltro = 'activos' | 'inactivos' | 'todos'
 
 const authStore = useAuthStore()
+const route = useRoute()
 const breadcrumbItems = productosBreadcrumbItems('Stock')
 
 const almacenes = ref<Almacen[]>([])
-const productos = ref<Producto[]>([])
 const isLoadingAlmacenes = ref(false)
 
 const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
+const mostrarEstado = ref<EstadoFiltro>('activos')
+
+const estadoFiltroOptions: SelectOption[] = [
+  { label: 'Activos', value: 'activos' },
+  { label: 'Inactivos', value: 'inactivos' },
+  { label: 'Todos', value: 'todos' },
+]
+
+const buildSoloActivos = (value: EstadoFiltro): number | null => {
+  switch (value) {
+    case 'activos':
+      return 1
+    case 'inactivos':
+      return 0
+    case 'todos':
+    default:
+      return null
+  }
+}
 
 const filters = ref<StockListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
+  soloActivos: 1,
 })
 
 const stockQuery = useStockQuery(filters)
 const deleteMutation = useDeleteStockMutation()
+const restaurarMutation = useRestaurarStockMutation()
 
 const formModalOpen = ref(false)
 const formMode = ref<StockFormMode>('create')
@@ -251,6 +286,7 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_C
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_ELIMINAR))
+const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_RESTAURAR))
 
 const isLoading = computed(() => stockQuery.isFetching.value)
 const rows = computed(() => stockQuery.data.value?.data ?? [])
@@ -288,26 +324,16 @@ const columns = computed<TableColumn<Stock>[]>(() => [
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-const formatCantidad = (value: unknown) => {
-  const amount = Number(value ?? 0)
-  return new Intl.NumberFormat('es-PE', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 4,
-  }).format(amount)
-}
+const formatCantidad = (value: unknown, nombreUnidad?: string | null) =>
+  formatCantidadPorUnidad(value, nombreUnidad)
 
 const loadCatalogos = async () => {
   isLoadingAlmacenes.value = true
   try {
-    const [almacenesResponse, productosResponse] = await Promise.all([
-      almacenesService.listar({ pagina: 1, limite: 100 }),
-      productosService.listar({ pagina: 1, limite: 500, afectaStock: true }),
-    ])
+    const almacenesResponse = await almacenesService.listar({ pagina: 1, limite: 100 })
     almacenes.value = almacenesResponse.data
-    productos.value = productosResponse.data
   } catch {
     almacenes.value = []
-    productos.value = []
   } finally {
     isLoadingAlmacenes.value = false
   }
@@ -315,6 +341,11 @@ const loadCatalogos = async () => {
 
 onMounted(() => {
   loadCatalogos()
+  const idAlmacenQuery = parsePositiveIntQuery(route.query.idAlmacen)
+  if (idAlmacenQuery) {
+    dynamicFilters.value = { ...dynamicFilters.value, idAlmacen: idAlmacenQuery }
+    syncFilters()
+  }
 })
 
 const syncFilters = () => {
@@ -326,6 +357,7 @@ const syncFilters = () => {
     limite: limite.value,
     idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
     soloBajoMinimo: active.soloBajoMinimo === true ? true : undefined,
+    soloActivos: buildSoloActivos(mostrarEstado.value),
   }
 }
 
@@ -340,6 +372,11 @@ watch(buscar, () => {
     pagina.value = 1
     syncFilters()
   }, 350)
+})
+
+watch(mostrarEstado, () => {
+  pagina.value = 1
+  syncFilters()
 })
 
 watch([pagina, limite], () => {
@@ -363,6 +400,17 @@ const openDetailModal = (stock: Stock) => {
   detailModalOpen.value = true
 }
 
+useOpenIdFromRouteQuery({
+  onOpen: async (id) => {
+    try {
+      const stock = await stockService.obtenerPorId(id)
+      openDetailModal(stock)
+    } catch {
+      // si no existe o sin permiso, se queda en el listado
+    }
+  },
+})
+
 const openDeleteModal = (stock: Stock) => {
   stockToDelete.value = stock
   deleteModalOpen.value = true
@@ -380,9 +428,18 @@ const confirmDelete = async () => {
   }
 }
 
+const restaurarStock = async (stock: Stock) => {
+  try {
+    await restaurarMutation.mutateAsync(stock.id)
+  } catch {
+    // toast en mutation
+  }
+}
+
 function actionItemsForRow(row: Stock): ActionMenuItem[] {
-  const busy = deleteMutation.isPending.value
+  const busy = deleteMutation.isPending.value || restaurarMutation.isPending.value
   const blockedByCantidad = Number(row.stock) !== 0
+  const activo = row.estado === 1
 
   return [
     {
@@ -390,7 +447,15 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
       label: 'Ajustar',
       icon: ICONS.pencil,
       disabled: busy,
-      hidden: !canEdit.value,
+      hidden: !(canEdit.value && activo),
+    },
+    {
+      key: 'restore',
+      label: 'Restaurar',
+      icon: ICONS.check,
+      disabled: busy,
+      loading: restaurarMutation.isPending.value,
+      hidden: !(canRestore.value && !activo),
     },
     {
       key: 'delete',
@@ -398,7 +463,7 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
       icon: ICONS.trash,
       danger: !blockedByCantidad,
       disabled: busy || blockedByCantidad,
-      hidden: !canDelete.value,
+      hidden: !(canDelete.value && activo),
     },
   ]
 }
@@ -408,6 +473,8 @@ function onActionSelect(key: string, row: Stock) {
     case 'edit':
       openEditModal(row)
       return
+    case 'restore':
+      return restaurarStock(row)
     case 'delete':
       openDeleteModal(row)
       return

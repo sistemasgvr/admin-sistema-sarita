@@ -60,7 +60,6 @@
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Editar -->
         </button>
 
         <button
@@ -71,7 +70,6 @@
           @click="openDeactivateModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Desactivar -->
         </button>
 
         <button
@@ -82,26 +80,6 @@
           @click="openActivateModal(row)"
         >
           <AppIcon :name="ICONS.check" :size="16" />
-        </button>
-
-        <button
-          v-if="canEdit && row.estado && row.id !== currentUserId"
-          type="button"
-          title="Solicitar desactivación"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
-          @click="openSolicitarDesactivacionModal(row)"
-        >
-          <AppIcon :name="ICONS.clock" :size="16" />
-        </button>
-
-        <button
-          v-if="canEdit && !row.estado"
-          type="button"
-          title="Solicitar activación"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-success-600 hover:bg-success-500/10"
-          @click="openSolicitarActivacionModal(row)"
-        >
-          <AppIcon :name="ICONS.clock" :size="16" />
         </button>
       </template>
 
@@ -189,13 +167,6 @@
         </button>
       </template>
     </AppModal>
-
-    <SolicitarActivacionModal
-      v-model="solicitudModalOpen"
-      :usuario="usuarioToSolicitud"
-      :tipo-solicitud="solicitudTipo"
-      @saved="onSolicitudSaved"
-    />
   </div>
 </template>
 
@@ -203,8 +174,6 @@
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import UsuarioFormModal from '@/modules/usuarios/components/UsuarioFormModal.vue'
-import SolicitarActivacionModal from '@/modules/usuarios/solicitudes/components/SolicitarActivacionModal.vue'
-import type { TipoSolicitudUsuario } from '@/modules/usuarios/solicitudes/interfaces/solicitud-usuario.interface'
 import {
   useActivarUsuarioMutation,
   useDesactivarUsuarioMutation,
@@ -273,10 +242,6 @@ const usuarioToDeactivate = ref<Usuario | null>(null)
 
 const activateModalOpen = ref(false)
 const usuarioToActivate = ref<Usuario | null>(null)
-
-const solicitudModalOpen = ref(false)
-const usuarioToSolicitud = ref<Usuario | null>(null)
-const solicitudTipo = ref<TipoSolicitudUsuario>('ACTIVACION')
 
 const currentUserId = computed(() => authStore.user?.id ?? null)
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_CREAR))
@@ -350,22 +315,6 @@ const openDeactivateModal = (usuario: Usuario) => {
 const openActivateModal = (usuario: Usuario) => {
   usuarioToActivate.value = usuario
   activateModalOpen.value = true
-}
-
-const openSolicitarActivacionModal = (usuario: Usuario) => {
-  usuarioToSolicitud.value = usuario
-  solicitudTipo.value = 'ACTIVACION'
-  solicitudModalOpen.value = true
-}
-
-const openSolicitarDesactivacionModal = (usuario: Usuario) => {
-  usuarioToSolicitud.value = usuario
-  solicitudTipo.value = 'DESACTIVACION'
-  solicitudModalOpen.value = true
-}
-
-const onSolicitudSaved = () => {
-  usuarioToSolicitud.value = null
 }
 
 const confirmDeactivate = async () => {

@@ -28,4 +28,10 @@ export const categoriasProductoService = {
   eliminar(id: number) {
     return apiDelete<DeleteCategoriaProductoResponse>(`/productos/categorias/${id}`, { data: {} })
   },
+
+  restaurar(id: number, idUsuarioAuditoria?: number) {
+    return apiPatch<DeleteCategoriaProductoResponse>(`/productos/categorias/${id}/restaurar`, {
+      idUsuarioAuditoria,
+    })
+  },
 }

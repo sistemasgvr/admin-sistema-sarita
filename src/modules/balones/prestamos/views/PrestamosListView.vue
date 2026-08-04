@@ -93,6 +93,12 @@
 
     <PrestamoDetailModal v-model="detailModalOpen" :prestamo-id="prestamoToViewId" />
 
+    <PrestamoDevolverCilindrosModal
+      v-model="devolverCilindrosModalOpen"
+      :prestamo="prestamoToDevolver"
+      @saved="onDevolucionDesdeLista"
+    />
+
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar préstamo"
@@ -134,6 +140,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
+import PrestamoDevolverCilindrosModal from '@/modules/balones/prestamos/components/PrestamoDevolverCilindrosModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeletePrestamoMutation } from '@/modules/balones/prestamos/composables/usePrestamoMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
@@ -158,6 +165,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
@@ -189,6 +197,9 @@ const clientesQuery = useClientesQuery(clientesFilters)
 const detailModalOpen = ref(false)
 const prestamoToViewId = ref<number | null>(null)
 
+const devolverCilindrosModalOpen = ref(false)
+const prestamoToDevolver = ref<Prestamo | null>(null)
+
 const deleteModalOpen = ref(false)
 const prestamoToDelete = ref<Prestamo | null>(null)
 const deleteMutation = useDeletePrestamoMutation()
@@ -208,6 +219,11 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAM
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_ELIMINAR))
+const canDevolver = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
+)
 
 const isLoading = computed(
   () => prestamosQuery.isFetching.value || prestamosQuery.isLoading.value,
@@ -301,9 +317,25 @@ const openDetailModal = (row: Prestamo) => {
   detailModalOpen.value = true
 }
 
+useOpenIdFromRouteQuery({
+  onOpen: (id) => {
+    prestamoToViewId.value = id
+    detailModalOpen.value = true
+  },
+})
+
 const openDeleteModal = (row: Prestamo) => {
   prestamoToDelete.value = row
   deleteModalOpen.value = true
+}
+
+const openDevolverCilindros = (row: Prestamo) => {
+  prestamoToDevolver.value = row
+  devolverCilindrosModalOpen.value = true
+}
+
+function isPrestamoActivo(row: Prestamo): boolean {
+  return (row.nombre_estado ?? '').toUpperCase() === 'ACTIVO'
 }
 
 function deleteLabelForRow(row: Prestamo): string {
@@ -320,8 +352,17 @@ function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
   const blockedDelete = row.puede_eliminar === false
   const deleteLabel = deleteLabelForRow(row)
+  const activo = isPrestamoActivo(row)
+  const tieneCilindros = Number(row.total_detalles ?? 0) > 0
 
   return [
+    {
+      key: 'devolver',
+      label: 'Devolver cilindros',
+      icon: ICONS.clipboardCheck,
+      disabled: busy,
+      hidden: !canDevolver.value || !activo || !tieneCilindros,
+    },
     {
       key: 'edit',
       label: 'Editar',
@@ -341,8 +382,13 @@ function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Prestamo) {
+  if (key === 'devolver') openDevolverCilindros(row)
   if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
+}
+
+function onDevolucionDesdeLista() {
+  void prestamosQuery.refetch()
 }
 
 const confirmDelete = async () => {

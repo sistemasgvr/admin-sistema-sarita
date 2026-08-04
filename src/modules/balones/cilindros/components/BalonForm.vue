@@ -83,6 +83,7 @@
               v-model="idTipoBalon"
               label="Tipo de balón"
               placeholder="Selecciona..."
+              required
               :disabled="isSubmitting"
               v-bind="idTipoBalonAttrs"
               :error="errors.idTipoBalon"
@@ -94,6 +95,7 @@
               placeholder="Selecciona..."
               :es-gas="true"
               :searchable="false"
+              required
               :disabled="isSubmitting"
               v-bind="idProductoGasAttrs"
               :error="errors.idProductoGas"
@@ -312,7 +314,12 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
-import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
+import {
+  optionalNumber,
+  optionalString,
+  requiredSelect,
+  requiredString,
+} from '@/shared/validation'
 
 interface BalonFormProps {
   mode: BalonFormMode
@@ -391,8 +398,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idReferencia: optionalNumber(),
       idPlanta: optionalNumber(),
       idMarcaCilindro: optionalNumber(),
-      idTipoBalon: optionalNumber(),
-      idProductoGas: optionalNumber(),
+      idTipoBalon: requiredSelect('El tipo de balón'),
+      idProductoGas: requiredSelect('El gas'),
       idEstadoBalon: optionalNumber(),
       idOrganoInspector: optionalNumber(),
       organoInspectorNoAplica: yup.boolean().optional(),
@@ -520,8 +527,8 @@ const buildPayload = (
     idReferencia?: number
     idPlanta?: number
     idMarcaCilindro?: number
-    idTipoBalon?: number
-    idProductoGas?: number
+    idTipoBalon: number | string
+    idProductoGas: number | string
     idEstadoBalon?: number
     idOrganoInspector?: number
     organoInspectorNoAplica?: boolean
@@ -550,8 +557,8 @@ const buildPayload = (
     idReferencia: values.idReferencia,
     idPlanta: values.idPlanta,
     idMarcaCilindro: values.idMarcaCilindro,
-    idTipoBalon: values.idTipoBalon,
-    idProductoGas: values.idProductoGas,
+    idTipoBalon: Number(values.idTipoBalon),
+    idProductoGas: Number(values.idProductoGas),
     idEstadoBalon: values.idEstadoBalon,
     idOrganoInspector: values.organoInspectorNoAplica ? undefined : values.idOrganoInspector,
     organoInspectorNoAplica: values.organoInspectorNoAplica ?? false,
@@ -631,9 +638,14 @@ const onSubmit = handleSubmit(async (values) => {
   const currentUserId = authStore.user?.id
   if (!currentUserId) return
 
+  if (values.idTipoBalon == null || values.idTipoBalon === '') return
+  if (values.idProductoGas == null || values.idProductoGas === '') return
+
   const payload = buildPayload(
     {
       ...values,
+      idTipoBalon: values.idTipoBalon,
+      idProductoGas: values.idProductoGas,
       numeroSerie: values.numeroSerie ?? '',
       libroCilindro: values.libroCilindro ?? '',
       fechaRegistro: values.fechaRegistro ?? '',

@@ -164,6 +164,7 @@ import type {
   ChoferListFilters,
 } from '@/modules/choferes/interfaces/chofer.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { choferesService } from '@/modules/choferes/services/choferes.service'
 import {
   AppBadge,
   AppInput,
@@ -173,6 +174,7 @@ import {
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
@@ -334,6 +336,17 @@ const openDetailModal = (chofer: Chofer) => {
   choferToView.value = chofer
   detailModalOpen.value = true
 }
+
+useOpenIdFromRouteQuery({
+  onOpen: async (id) => {
+    try {
+      const chofer = await choferesService.obtenerPorId(id)
+      openDetailModal(chofer)
+    } catch {
+      // sin permiso o no existe
+    }
+  },
+})
 
 const openDeleteModal = (chofer: Chofer) => {
   choferToDelete.value = chofer

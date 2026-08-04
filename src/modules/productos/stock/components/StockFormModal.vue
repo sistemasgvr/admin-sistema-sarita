@@ -21,28 +21,27 @@
           title="Ubicación y producto"
           :icon="ICONS.warehouse"
           :full-width="true"
+          help="Usa + para registrar un producto nuevo que afecte stock."
         >
           <div class="space-y-4">
-            <AppSelect
+            <AlmacenSelectField
               v-model="idAlmacen"
-              label="Almacén"
-              placeholder="Selecciona un almacén"
               required
-              v-bind="idAlmacenAttrs"
               :disabled="isSubmitting"
               :error="errors.idAlmacen"
               :options="almacenOptions"
             />
 
-            <AppSelect
+            <ProductoSelectField
               v-model="idProducto"
+              v-model:search="productoBuscar"
               label="Producto"
               placeholder="Selecciona un producto"
+              :afecta-stock="true"
+              :es-servicio="false"
               required
-              v-bind="idProductoAttrs"
               :disabled="isSubmitting"
               :error="errors.idProducto"
-              :options="productoOptions"
             />
           </div>
         </DetailSectionCard>
@@ -60,6 +59,13 @@
             <p class="mt-1 text-gray-600 dark:text-gray-400">
               {{ stock.codigo_producto }} — {{ stock.nombre_producto }}
             </p>
+            <p
+              v-if="nombreUnidadMedida"
+              class="mt-1 text-theme-xs text-gray-500 dark:text-gray-400"
+            >
+              U.M.: {{ nombreUnidadMedida }}
+              <span v-if="requiereEnteros"> · solo enteros</span>
+            </p>
           </div>
         </DetailSectionCard>
 
@@ -70,12 +76,13 @@
               label="Cantidad en stock"
               type="number"
               :min="NUMBER_MIN.unitZero"
-              :step="NUMBER_STEP.unit"
+              :step="stepCantidad"
               placeholder="0"
               required
               v-bind="stockCantidadAttrs"
               :disabled="isSubmitting"
               :error="errors.stock"
+              :hint="hintCantidad"
             />
 
             <AppInput
@@ -83,7 +90,7 @@
               label="Stock mínimo"
               type="number"
               :min="NUMBER_MIN.unitZero"
-              :step="NUMBER_STEP.unit"
+              :step="stepCantidad"
               placeholder="0"
               required
               v-bind="stockMinimoAttrs"
@@ -117,28 +124,35 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import {
   useCreateStockMutation,
   useUpdateStockMutation,
 } from '@/modules/productos/stock/composables/useStockMutations'
 import type { Stock, StockFormMode } from '@/modules/productos/stock/interfaces/stock.interface'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppInput, AppModal } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { NUMBER_MIN } from '@/shared/constants/number-input'
+import {
+  MSG_STOCK_UNID_ENTERO,
+  stepInputCantidadPorUnidad,
+  unidadRequiereCantidadEntera,
+} from '@/shared/utils/unidadMedidaCantidad'
+import { requiredSelect } from '@/shared/validation'
 
 interface StockFormModalProps {
   mode: StockFormMode
   stock?: Stock | null
   almacenes: Almacen[]
-  productos: Producto[]
 }
 
 const props = defineProps<StockFormModalProps>()
@@ -151,6 +165,19 @@ const emit = defineEmits<{
 
 const createMutation = useCreateStockMutation()
 const updateMutation = useUpdateStockMutation()
+const productoBuscar = ref('')
+const nombreUnidadMedida = ref<string | null>(null)
+const esGasProducto = ref(false)
+
+const requiereEnteros = computed(() =>
+  unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value),
+)
+const stepCantidad = computed(() =>
+  stepInputCantidadPorUnidad(nombreUnidadMedida.value, esGasProducto.value),
+)
+const hintCantidad = computed(() =>
+  requiereEnteros.value ? 'UNID / piezas: solo números enteros' : undefined,
+)
 
 const almacenOptions = computed(() =>
   props.almacenes.map((almacen) => ({
@@ -161,54 +188,65 @@ const almacenOptions = computed(() =>
   })),
 )
 
-const productoOptions = computed(() =>
-  props.productos.map((producto) => ({
-    value: producto.id,
-    label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-)
+const cantidadSegunUnidad = (etiquetaCampo: string) =>
+  yup
+    .number()
+    .transform((_value, originalValue) => {
+      if (originalValue === '' || originalValue == null) return undefined
+      const n = typeof originalValue === 'number' ? originalValue : Number(originalValue)
+      return Number.isFinite(n) ? n : undefined
+    })
+    .typeError('Ingresa una cantidad válida')
+    .min(0, `${etiquetaCampo} no puede ser negativa`)
+    .required(`${etiquetaCampo} es obligatoria`)
+    .test('unidad-entera', `${etiquetaCampo}: ${MSG_STOCK_UNID_ENTERO}`, function (value) {
+      if (value == null || !Number.isFinite(value)) return true
+      if (!unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)) {
+        return true
+      }
+      return Math.abs(value - Math.round(value)) < 1e-9
+        ? true
+        : this.createError({ message: `${etiquetaCampo}: ${MSG_STOCK_UNID_ENTERO}` })
+    })
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      idAlmacen: yup.number().optional(),
-      idProducto: yup.number().optional(),
-      stock: yup
-        .number()
-        .typeError('Ingresa una cantidad válida')
-        .integer('La cantidad debe ser un número entero')
-        .min(0, 'La cantidad no puede ser negativa')
-        .required('La cantidad es obligatoria'),
-      stockMinimo: yup
-        .number()
-        .typeError('Ingresa un valor válido')
-        .integer('El stock mínimo debe ser un número entero')
-        .min(0, 'El stock mínimo no puede ser negativo')
-        .required('El stock mínimo es obligatorio'),
+      idAlmacen: requiredSelect('El almacén'),
+      idProducto: requiredSelect('El producto'),
+      stock: cantidadSegunUnidad('La cantidad'),
+      stockMinimo: cantidadSegunUnidad('El stock mínimo'),
     }),
   ),
   initialValues: {
-    idAlmacen: undefined as number | undefined,
-    idProducto: undefined as number | undefined,
+    idAlmacen: '' as string | number,
+    idProducto: '' as string | number,
     stock: 0,
     stockMinimo: 0,
   },
 })
 
-const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
-const [idProducto, idProductoAttrs] = defineField('idProducto')
+const [idAlmacen] = defineField('idAlmacen')
+const [idProducto] = defineField('idProducto')
 const [stockCantidad, stockCantidadAttrs] = defineField('stock')
 const [stockMinimo, stockMinimoAttrs] = defineField('stockMinimo')
 
 const syncFormValues = () => {
   resetForm({
     values: {
-      idAlmacen: undefined,
-      idProducto: undefined,
+      idAlmacen: props.stock?.id_almacen ?? '',
+      idProducto: props.stock?.id_producto ?? '',
       stock: props.stock?.stock ?? 0,
       stockMinimo: props.stock?.stock_minimo ?? 0,
     },
   })
+  productoBuscar.value = ''
+  if (props.mode === 'edit' && props.stock) {
+    nombreUnidadMedida.value = props.stock.nombre_unidad_medida ?? null
+  } else {
+    nombreUnidadMedida.value = null
+    esGasProducto.value = false
+  }
 }
 
 const handleClose = () => {
@@ -218,10 +256,6 @@ const handleClose = () => {
 const onSubmit = handleSubmit(async (values) => {
   try {
     if (props.mode === 'create') {
-      if (!values.idAlmacen || !values.idProducto) {
-        return
-      }
-
       await createMutation.mutateAsync({
         idAlmacen: Number(values.idAlmacen),
         idProducto: Number(values.idProducto),
@@ -261,6 +295,42 @@ watch(
   () => {
     if (open.value) {
       syncFormValues()
+    }
+  },
+)
+
+watch(
+  () => [open.value, props.mode, idProducto.value] as const,
+  async ([isOpen, mode, productoId]) => {
+    if (!isOpen || mode !== 'create') return
+    const id = Number(productoId)
+    if (!Number.isFinite(id) || id <= 0) {
+      nombreUnidadMedida.value = null
+      esGasProducto.value = false
+      return
+    }
+    try {
+      const producto = await productosService.obtenerPorId(id)
+      nombreUnidadMedida.value = producto.nombre_unidad_medida ?? null
+      esGasProducto.value = Boolean(producto.es_gas)
+    } catch {
+      nombreUnidadMedida.value = null
+      esGasProducto.value = false
+    }
+  },
+)
+
+watch(
+  () => [open.value, props.mode, props.stock?.id_producto] as const,
+  async ([isOpen, mode, productoId]) => {
+    if (!isOpen || mode !== 'edit' || !productoId) return
+    try {
+      const producto = await productosService.obtenerPorId(Number(productoId))
+      nombreUnidadMedida.value =
+        producto.nombre_unidad_medida ?? props.stock?.nombre_unidad_medida ?? null
+      esGasProducto.value = Boolean(producto.es_gas)
+    } catch {
+      esGasProducto.value = false
     }
   },
 )

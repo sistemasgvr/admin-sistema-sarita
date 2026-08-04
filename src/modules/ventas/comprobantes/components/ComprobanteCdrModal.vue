@@ -25,7 +25,7 @@
 
     <DetailCardsLayout v-else-if="resultado" :loading="false" :sections="sections">
       <template #badges>
-        <ListaOpcionBadge :value="resultado.sunat.estado" raw />
+        <ListaOpcionBadge :value="resultado.sunat.estado" />
       </template>
 
       <template #extra>

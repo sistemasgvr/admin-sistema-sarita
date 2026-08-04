@@ -26,6 +26,7 @@ import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import ClientesListView from '@/modules/clientes/views/ClientesListView.vue'
 import AprobarBajasClientesView from '@/modules/clientes/bajas-cliente/views/AprobarBajasClientesView.vue'
 import { useBajasClienteQuery } from '@/modules/clientes/bajas-cliente/composables/useBajasClienteQuery'
+import type { BajaClienteListFilters } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppTabs } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
@@ -40,7 +41,10 @@ const canVerAprobaciones = computed(() =>
   authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR),
 )
 
-const bajasCountFilters = ref({ pagina: 1, limite: 1 })
+// El endpoint de bajas-cliente no permite filtrar por estado de aprobación,
+// así que se trae un lote amplio y se recorre para contar solo las PENDIENTE
+// (el meta.total del endpoint incluye también APROBADA y RECHAZADA).
+const bajasCountFilters = ref<BajaClienteListFilters>({ pagina: 1, limite: 500 })
 const bajasCountQuery = useBajasClienteQuery(bajasCountFilters, {
   enabled: canVerAprobaciones,
 })
@@ -52,7 +56,10 @@ const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]) => {
 
 const activeTab = ref(resolveTab(route.query.tab))
 
-const pendientesCount = computed(() => bajasCountQuery.data.value?.meta?.total ?? 0)
+const pendientesCount = computed(() => {
+  const solicitudes = bajasCountQuery.data.value?.data ?? []
+  return solicitudes.filter((solicitud) => solicitud.nombre_estado_aprobacion === 'PENDIENTE').length
+})
 
 const visibleTabs = computed<AppTabItem[]>(() => {
   const tabs: AppTabItem[] = [
@@ -75,7 +82,12 @@ watch(activeTab, (tab) => {
   const wantsAprobaciones = tab === 'aprobaciones'
   const hasAprobacionesQuery = route.query.tab === 'aprobaciones'
   if (wantsAprobaciones !== hasAprobacionesQuery) {
-    router.replace({ query: wantsAprobaciones ? { tab: 'aprobaciones' } : {} })
+    if (wantsAprobaciones) {
+      router.replace({ query: { ...route.query, tab: 'aprobaciones' } })
+    } else {
+      const { tab: _tab, idBaja: _idBaja, ...rest } = route.query
+      router.replace({ query: rest })
+    }
   }
 })
 

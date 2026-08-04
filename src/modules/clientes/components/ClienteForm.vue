@@ -13,6 +13,25 @@
     No se encontró el cliente solicitado.
   </div>
 
+  <div
+    v-else-if="isEdit && esClienteSistema"
+    class="space-y-4 rounded-2xl border border-brand-200 bg-brand-50/60 p-5 dark:border-brand-500/30 dark:bg-brand-500/10"
+  >
+    <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+      Cliente de sistema: Clientes Varios (CVARIOS)
+    </p>
+    <p class="text-sm text-gray-600 dark:text-gray-400">
+      Se usa en ventas sin documento / mostrador. No se puede editar ni dar de baja desde aquí.
+    </p>
+    <button
+      type="button"
+      class="inline-flex rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+      @click="emit('cancel')"
+    >
+      Volver
+    </button>
+  </div>
+
   <form
     v-else
     id="cliente-form"
@@ -112,7 +131,8 @@
         <AppSelect
           v-model="idTipoCliente"
           label="Tipo de cliente"
-          required
+          :required="!esDocumentoVSD"
+          :optional="esDocumentoVSD"
           :placeholder="tipoClienteQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           :options="tipoClienteOptions"
           :disabled="isSubmitting || tipoClienteQuery.isLoading.value"
@@ -127,7 +147,8 @@
         <AppSelect
           v-model="idTipoPersona"
           label="Tipo de Contribuyente"
-          required
+          :required="!esDocumentoVSD"
+          :optional="esDocumentoVSD"
           :placeholder="tipoPersonaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           :options="tipoPersonaOptions"
           :disabled="isSubmitting || tipoPersonaQuery.isLoading.value"
@@ -400,6 +421,7 @@ import {
 } from '@/modules/clientes/composables/useClienteMutations'
 import { documentoYaRegistrado } from '@/modules/clientes/composables/useValidarDocumentoCliente'
 import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
+import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import { toClienteFormSchema } from '@/modules/clientes/validation/clienteFormSchema'
 import type {
   Cliente,
@@ -419,6 +441,8 @@ const props = withDefaults(
     mode: ClienteFormMode
     clienteId?: number
     active?: boolean
+    /** Prefill al crear (ej. Proveedor desde compras). */
+    defaultIdTipoCliente?: number
   }>(),
   {
     active: true,
@@ -439,6 +463,7 @@ const idParaEditar = computed(() => (props.mode === 'edit' ? props.clienteId : u
 const activeRef = toRef(props, 'active')
 const detailQuery = useClienteDetailQuery(idParaEditar, activeRef)
 const clienteData = computed(() => detailQuery.data.value ?? null)
+const esClienteSistema = computed(() => esClientesVarios(clienteData.value))
 
 const isCheckingDocumento = ref(false)
 const documentoDuplicado = ref(false)
@@ -686,7 +711,9 @@ const syncFormValues = async () => {
       idTipoDocumento: cliente?.id_tipo_documento ?? '',
       numeroDocumento: cliente?.numero_documento ?? '',
       codigoInterno: cliente?.codigo_interno ?? '',
-      idTipoCliente: cliente?.id_tipo_cliente ?? '',
+      idTipoCliente:
+        cliente?.id_tipo_cliente ??
+        (props.mode === 'create' ? (props.defaultIdTipoCliente ?? '') : ''),
       idTipoPersona: cliente?.id_tipo_persona ?? '',
       razonSocial: cliente?.razon_social ?? '',
       nombreComercial: cliente?.nombre_comercial ?? '',
@@ -742,18 +769,34 @@ const onSubmit = handleSubmit(async (values) => {
   const currentUserId = authStore.user?.id
   if (!currentUserId) return
 
+  if (esClienteSistema.value) {
+    toastWarning('El cliente de sistema Clientes Varios no se puede modificar')
+    return
+  }
+
+  if ((values.codigoInterno ?? '').trim().toUpperCase() === 'CVARIOS') {
+    setFieldError('codigoInterno', 'El código CVARIOS está reservado para el cliente de sistema')
+    return
+  }
+
   if (documentoDuplicado.value) {
     setFieldError('numeroDocumento', 'Este número de documento ya está registrado')
     return
   }
 
+  const toOptionalId = (value: unknown) => {
+    if (value === '' || value == null) return undefined
+    const n = Number(value)
+    return Number.isFinite(n) && n > 0 ? n : undefined
+  }
+
   const payload: ClientePayload = {
     idUsuarioAuditoria: currentUserId,
     idTipoDocumento: Number(values.idTipoDocumento),
-    numeroDocumento: values.numeroDocumento,
+    numeroDocumento: values.numeroDocumento?.trim() ? values.numeroDocumento.trim() : null,
     codigoInterno: values.codigoInterno || undefined,
-    idTipoCliente: Number(values.idTipoCliente),
-    idTipoPersona: Number(values.idTipoPersona),
+    idTipoCliente: toOptionalId(values.idTipoCliente),
+    idTipoPersona: toOptionalId(values.idTipoPersona),
     razonSocial: values.razonSocial || undefined,
     nombres: values.nombres || undefined,
     apellidoPaterno: values.apellidoPaterno || undefined,

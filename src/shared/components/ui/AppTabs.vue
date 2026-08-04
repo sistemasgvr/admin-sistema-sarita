@@ -91,11 +91,11 @@ const selectTab = (key: string) => {
 :global(.dark) .app-tabs {
   --tabs-border: #374151;
   --tabs-inactive-bg: transparent;
-  --tabs-inactive-hover: rgba(255, 255, 255, 0.08);
-  --tabs-inactive-text: #e2e8f0;
-  --tabs-active-text: #ffffff;
+  --tabs-inactive-hover: rgba(255, 255, 255, 0.05);
+  --tabs-inactive-text: #9ca3af;
+  --tabs-active-text: #60a5fa;
   --tabs-indicator: #60a5fa;
-  --tabs-divider: rgba(255, 255, 255, 0.14);
+  --tabs-divider: rgba(255, 255, 255, 0.1);
 }
 
 .app-tabs--full .app-tabs__bar {
@@ -169,11 +169,7 @@ const selectTab = (key: string) => {
 }
 
 .app-tabs__icon {
-  opacity: 0.8;
-}
-
-:global(.dark) .app-tabs__icon {
-  opacity: 0.95;
+  opacity: 0.75;
 }
 
 .app-tabs__tab--active .app-tabs__icon {
