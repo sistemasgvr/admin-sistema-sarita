@@ -44,14 +44,12 @@
         </AppFormField>
 
         <AppFormField label="Monto" required :error="errores.monto">
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoNegativo" @focusout="normalizarMonto">
+          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
             <AppInput
               v-model="form.monto"
-              type="number"
+              type="text"
               inputmode="decimal"
               placeholder="0.00"
-              :min="0"
-              :step="0.01"
               :state="errores.monto ? 'error' : 'default'"
             />
           </div>
@@ -240,11 +238,17 @@ watch(
   },
 )
 
-/* Handlers monto */
+/* Handlers monto (input text para no perder comas de miles) */
 const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault()
+  if (e.key.length > 1) return
+  if (e.ctrlKey || e.metaKey) return
+  if (['-', '+', 'e', 'E'].includes(e.key)) {
+    e.preventDefault()
+    return
+  }
+  if (!/[\d.,]/.test(e.key)) e.preventDefault()
 }
-const bloquearPegadoNegativo = (e: ClipboardEvent) => {
+const bloquearPegadoInvalido = (e: ClipboardEvent) => {
   const texto = e.clipboardData?.getData('text') ?? ''
   if (/[-+eE]/.test(texto)) e.preventDefault()
 }

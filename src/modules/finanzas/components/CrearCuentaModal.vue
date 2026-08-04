@@ -149,14 +149,12 @@
           :error="errores.monto"
           class="sm:col-span-2"
         >
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoNegativo" @focusout="normalizarMonto">
+          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
             <AppInput
               v-model="form.monto"
-              type="number"
+              type="text"
               inputmode="decimal"
               placeholder="0.00"
-              :min="0"
-              :step="0.01"
               :state="errores.monto ? 'error' : 'default'"
             />
           </div>
@@ -205,8 +203,11 @@
         </AppFormField>
 
         <p class="text-theme-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
-          Se generarán <strong>{{ form.numeroCuotas || 0 }}</strong> cuotas de aprox.
-          <strong>{{ formatCurrency(cuotaAproximada) }}</strong> cada una, mensualmente el
+          Se generará{{ Number(form.numeroCuotas) === 1 ? '' : 'n' }}
+          <strong>{{ form.numeroCuotas || 0 }}</strong>
+          {{ Number(form.numeroCuotas) === 1 ? 'cuota' : 'cuotas' }} de aprox.
+          <strong>{{ formatCurrency(cuotaAproximada) }}</strong>
+          {{ Number(form.numeroCuotas) === 1 ? '' : 'cada una' }}, mensualmente el
           <strong>día {{ form.diaMesPago || '—' }}</strong> de cada mes
           (la primera el <strong>{{ form.fechaPrimeraCuota || '—' }}</strong>).
         </p>
@@ -529,11 +530,23 @@ watch(
   },
 )
 
-/* ---------- Handlers de monto ---------- */
+/* ---------- Handlers de monto (input tipo texto para no perder comas) ---------- */
 const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault()
+  // Permite teclas de control (flechas, backspace, delete, tab, home, end, enter, esc, F1-F12)
+  if (e.key.length > 1) return
+  // Permite atajos con Ctrl/Meta (copiar, pegar, seleccionar todo)
+  if (e.ctrlKey || e.metaKey) return
+  // Bloquea signo negativo/positivo y notación científica
+  if (['-', '+', 'e', 'E'].includes(e.key)) {
+    e.preventDefault()
+    return
+  }
+  // Solo permite dígitos, punto y coma
+  if (!/[\d.,]/.test(e.key)) {
+    e.preventDefault()
+  }
 }
-const bloquearPegadoNegativo = (e: ClipboardEvent) => {
+const bloquearPegadoInvalido = (e: ClipboardEvent) => {
   const texto = e.clipboardData?.getData('text') ?? ''
   if (/[-+eE]/.test(texto)) e.preventDefault()
 }

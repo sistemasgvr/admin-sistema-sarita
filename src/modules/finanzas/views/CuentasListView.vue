@@ -67,7 +67,8 @@
           <div class="flex items-center gap-2">
             <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ row.tercero }}</p>
             <AppBadge v-if="row.es_plan" color="dark" size="sm">
-              {{ row.numero_cuotas_total }} cuotas
+              {{ row.numero_cuotas_total }}
+              {{ (row.numero_cuotas_total ?? 0) === 1 ? 'cuota' : 'cuotas' }}
             </AppBadge>
           </div>
           <p class="text-theme-xs text-gray-400 dark:text-gray-500">
@@ -406,10 +407,13 @@ const confirmarEliminar = async () => {
       id: c.id,
       idUsuarioAuditoria: authStore.user?.id ?? undefined,
     })
+  } catch {
+    // El toast con el mensaje del backend lo dispara la mutación.
+  } finally {
+    // Cerramos siempre para que el toast (éxito o error, ej. "tiene pagos aplicados")
+    // quede totalmente visible. El usuario puede reintentar si aplica.
     eliminarModalOpen.value = false
     cuentaAEliminar.value = null
-  } catch {
-    // Toast lo maneja la mutación (ej.: si tiene pagos activos)
   }
 }
 </script>

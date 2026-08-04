@@ -11,7 +11,8 @@
           {{ cuenta.tipo === 'COBRAR' ? 'Por cobrar' : 'Por pagar' }}
         </AppBadge>
         <AppBadge v-if="esPlan" color="dark" size="sm">
-          Plan de {{ cuenta.numero_cuotas_total }} cuotas
+          Plan de {{ cuenta.numero_cuotas_total }}
+          {{ (cuenta.numero_cuotas_total ?? 0) === 1 ? 'cuota' : 'cuotas' }}
         </AppBadge>
         <AppBadge v-else-if="esCuotaHija" color="neutral" size="sm">
           Cuota #{{ cuenta.numero_cuota }}
@@ -356,11 +357,13 @@ const ejecutarAnular = async () => {
       idPago: p.id,
       idUsuarioAuditoria: authStore.user?.id ?? undefined,
     })
-    confirmAnularOpen.value = false
-    pagoAAnular.value = null
     await query.refetch()
   } catch {
-    // El toast de error ya lo maneja la mutación.
+    // El toast con el mensaje del backend lo dispara la mutación.
+  } finally {
+    // Cerramos siempre para que el toast quede visible sin ser tapado por el diálogo.
+    confirmAnularOpen.value = false
+    pagoAAnular.value = null
   }
 }
 
