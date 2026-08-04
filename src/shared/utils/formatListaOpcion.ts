@@ -17,6 +17,8 @@ const SPANISH_TOKEN_FIXES: Record<string, string> = {
   valvula: 'válvula',
   almacen: 'almacén',
   almacenes: 'almacenes',
+  vacio: 'vacío',
+  vacia: 'vacía',
   transito: 'tránsito',
   numero: 'número',
   codigo: 'código',

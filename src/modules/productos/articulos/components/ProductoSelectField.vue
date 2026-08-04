@@ -71,6 +71,11 @@ const props = withDefaults(
     searchPlaceholder?: string
     error?: string
     hint?: string
+    /**
+     * Filtros tri-estado. Default `undefined` (no `false`): en Vue un boolean
+     * opcional sin default se castea a false y rompía listados (ej. gases con
+     * afecta_stock=true al pedir afectaStock=false).
+     */
     esGas?: boolean
     esServicio?: boolean
     esAlquilable?: boolean
@@ -89,6 +94,10 @@ const props = withDefaults(
     label: 'Producto',
     placeholder: 'Selecciona producto',
     searchPlaceholder: 'Código o nombre...',
+    esGas: undefined,
+    esServicio: undefined,
+    esAlquilable: undefined,
+    afectaStock: undefined,
     soloActivos: 1,
     idAlmacen: undefined,
   },

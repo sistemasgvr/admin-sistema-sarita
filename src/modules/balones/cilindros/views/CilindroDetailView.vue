@@ -22,6 +22,7 @@
     <DetailCardsLayout v-else :loading="isLoading" :sections="sections">
       <template #badges>
         <BalonEstadoBadge v-if="balon" :balon="balon" size="md" />
+        <BalonContenidoBadge v-if="balon" :balon="balon" size="md" />
         <AppBadge v-if="balon?.estado_ph" :color="phBadgeColor">
           PH {{ phBadgeLabel }}
         </AppBadge>
@@ -346,6 +347,7 @@
 import { computed, toRef } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import { BALONES_HUB_PATH } from '@/modules/balones/config/balones-breadcrumb'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
@@ -462,6 +464,10 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Marca', value: data.nombre_marca_cilindro },
         { label: 'Tipo de balón', value: data.nombre_tipo_balon },
         { label: 'Gas', value: data.nombre_producto_gas },
+        {
+          label: 'Contenido',
+          value: formatDetailListaOpcion(data.nombre_estado_contenido),
+        },
         {
           label: 'Capacidad',
           value:

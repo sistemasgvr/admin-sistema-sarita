@@ -34,6 +34,8 @@ export const ListaIds = {
   PROPIETARIO_BALON: 14,
   /** gen_lista.nombre = EstadoBalon */
   ESTADO_BALON: 15,
+  /** gen_lista.nombre = EstadoContenidoBalon (LLENO / VACIO / DESCONOCIDO) */
+  ESTADO_CONTENIDO_BALON: 59,
   /** gen_lista.nombre = TipoMantenimiento */
   TIPO_MANTENIMIENTO: 16,
   /** gen_lista.nombre = TipoMovBalon */

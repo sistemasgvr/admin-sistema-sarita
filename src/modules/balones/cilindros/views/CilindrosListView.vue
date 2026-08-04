@@ -65,18 +65,26 @@
         <p class="truncate font-medium text-gray-800 dark:text-white/90">
           {{ row.codigo_balon }}
         </p>
-        <p v-if="row.libro_cilindro" class="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
-          {{ row.libro_cilindro }}<span v-if="row.pagina_libro"> — pág. {{ row.pagina_libro }}</span>
-        </p>
+        <div v-if="row.libro_cilindro || row.pagina_libro != null" class="mt-1 flex flex-wrap gap-1">
+          <AppBadge v-if="row.libro_cilindro" size="sm" color="neutral">
+            {{ row.libro_cilindro }}
+          </AppBadge>
+          <AppBadge v-if="row.pagina_libro != null" size="sm" color="primary">
+            pág. {{ row.pagina_libro }}
+          </AppBadge>
+        </div>
       </template>
 
       <template #cell-tipo_gas="{ row }">
         <p class="truncate font-medium text-gray-800 dark:text-white/90">
           {{ row.nombre_tipo_balon || '—' }}
         </p>
-        <p class="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
-          {{ row.nombre_producto_gas || '—' }}
-        </p>
+        <div class="mt-1">
+          <AppBadge v-if="row.nombre_producto_gas" size="sm" color="primary">
+            {{ row.nombre_producto_gas }}
+          </AppBadge>
+          <span v-else class="text-theme-xs text-gray-400">—</span>
+        </div>
       </template>
 
       <template #cell-capacidad_marca="{ row }">
@@ -86,13 +94,20 @@
           </template>
           <span v-else class="font-normal text-gray-400">—</span>
         </p>
-        <p class="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
-          {{ row.nombre_marca_cilindro || '—' }}
-        </p>
+        <div class="mt-1">
+          <AppBadge v-if="row.nombre_marca_cilindro" size="sm" color="neutral">
+            {{ row.nombre_marca_cilindro }}
+          </AppBadge>
+          <span v-else class="text-theme-xs text-gray-400">—</span>
+        </div>
       </template>
 
       <template #cell-nombre_estado_balon="{ row }">
         <BalonEstadoBadge :balon="row" />
+      </template>
+
+      <template #cell-nombre_estado_contenido="{ row }">
+        <BalonContenidoBadge :balon="row" />
       </template>
 
       <template #cell-fecha_proxima_prueba_hidrostatica="{ row, value }">
@@ -270,6 +285,7 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 
@@ -324,8 +340,10 @@ const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
+const listaEstadoContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
+const estadoContenidoQuery = useListaOpcionesQuery(listaEstadoContenidoId)
 const marcaQuery = useListaOpcionesQuery(listaMarcaId)
 
 const deleteModalOpen = ref(false)
@@ -423,6 +441,14 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     options: toSelectOptions(estadoBalonQuery.data.value),
   },
   {
+    key: 'idEstadoContenido',
+    label: 'Contenido',
+    type: 'select',
+    placeholder: 'Lleno / vacío...',
+    disabled: estadoContenidoQuery.isLoading.value,
+    options: toSelectOptions(estadoContenidoQuery.data.value),
+  },
+  {
     key: 'phPorVencerDias',
     label: 'PH por vencer',
     type: 'select',
@@ -448,6 +474,7 @@ const columns = computed<TableColumn<Balon>[]>(() => [
   { key: 'tipo_gas', label: 'Tipo / Gas' },
   { key: 'capacidad_marca', label: 'Capacidad / Marca', cellClass: 'whitespace-nowrap' },
   { key: 'nombre_estado_balon', label: 'Estado', cellClass: 'whitespace-nowrap' },
+  { key: 'nombre_estado_contenido', label: 'Contenido', cellClass: 'whitespace-nowrap' },
   { key: 'nombre_almacen', label: 'Almacén' },
   {
     key: 'fecha_proxima_prueba_hidrostatica',
@@ -470,6 +497,8 @@ const syncFilters = () => {
       active.idMarcaCilindro != null ? Number(active.idMarcaCilindro) : undefined,
     idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
     idEstadoBalon: active.idEstadoBalon != null ? Number(active.idEstadoBalon) : undefined,
+    idEstadoContenido:
+      active.idEstadoContenido != null ? Number(active.idEstadoContenido) : undefined,
     phVencida: active.phVencida === true ? true : undefined,
     phPorVencerDias:
       active.phPorVencerDias != null ? Number(active.phPorVencerDias) : undefined,

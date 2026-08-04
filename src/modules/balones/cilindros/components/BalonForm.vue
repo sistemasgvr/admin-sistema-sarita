@@ -110,6 +110,17 @@
               :error="errors.idEstadoBalon"
             />
             <AppSelect
+              v-model="idEstadoContenido"
+              label="Contenido"
+              :placeholder="
+                estadoContenidoQuery.isLoading.value ? 'Cargando...' : 'Lleno / vacío...'
+              "
+              :options="estadoContenidoOptions"
+              :disabled="isSubmitting || estadoContenidoQuery.isLoading.value"
+              v-bind="idEstadoContenidoAttrs"
+              :error="errors.idEstadoContenido"
+            />
+            <AppSelect
               v-model="idReferencia"
               label="Referencia"
               :placeholder="referenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
@@ -356,12 +367,14 @@ const tiposBalonQuery = useTiposBalonQuery(tiposBalonFilters)
 const createdTipoBalon = ref<TipoBalon | null>(null)
 
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
+const listaEstadoContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const listaReferenciaId = ref(ListaIds.REFERENCIA_CILINDRO)
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
 const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
 const listaOrganoInspectorId = ref(ListaIds.ORGANO_INSPECTOR_CILINDRO)
 
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
+const estadoContenidoQuery = useListaOpcionesQuery(listaEstadoContenidoId)
 const referenciaQuery = useListaOpcionesQuery(listaReferenciaId)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
 const marcaQuery = useListaOpcionesQuery(listaMarcaId)
@@ -369,6 +382,7 @@ const organoInspectorQuery = useListaOpcionesQuery(listaOrganoInspectorId)
 const mesOptions = MES_FABRICACION_OPTIONS
 
 const estadoBalonOptions = computed(() => toSelectOptions(estadoBalonQuery.data.value))
+const estadoContenidoOptions = computed(() => toSelectOptions(estadoContenidoQuery.data.value))
 const referenciaOptions = computed(() => toSelectOptions(referenciaQuery.data.value))
 const propietarioOptions = computed(() => toSelectOptions(propietarioQuery.data.value))
 const marcaOptions = computed(() => toSelectOptions(marcaQuery.data.value))
@@ -401,6 +415,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idTipoBalon: requiredSelect('El tipo de balón'),
       idProductoGas: requiredSelect('El gas'),
       idEstadoBalon: optionalNumber(),
+      idEstadoContenido: optionalNumber(),
       idOrganoInspector: optionalNumber(),
       organoInspectorNoAplica: yup.boolean().optional(),
       mesFabricacion: optionalNumber(),
@@ -426,6 +441,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idTipoBalon: undefined as number | undefined,
     idProductoGas: undefined as number | undefined,
     idEstadoBalon: undefined as number | undefined,
+    idEstadoContenido: undefined as number | undefined,
     idOrganoInspector: undefined as number | undefined,
     organoInspectorNoAplica: false,
     mesFabricacion: undefined as number | undefined,
@@ -451,6 +467,7 @@ const [idMarcaCilindro, idMarcaCilindroAttrs] = defineField('idMarcaCilindro')
 const [idTipoBalon, idTipoBalonAttrs] = defineField('idTipoBalon')
 const [idProductoGas, idProductoGasAttrs] = defineField('idProductoGas')
 const [idEstadoBalon, idEstadoBalonAttrs] = defineField('idEstadoBalon')
+const [idEstadoContenido, idEstadoContenidoAttrs] = defineField('idEstadoContenido')
 const [idOrganoInspector, idOrganoInspectorAttrs] = defineField('idOrganoInspector')
 const [organoInspectorNoAplica] = defineField('organoInspectorNoAplica')
 const [mesFabricacion, mesFabricacionAttrs] = defineField('mesFabricacion')
@@ -480,6 +497,13 @@ function onTipoBalonCreated(tipo: TipoBalon) {
   }
   void tiposBalonQuery.refetch()
 }
+
+watch(idTipoBalon, (id) => {
+  const tipo = (tiposBalonQuery.data.value?.data ?? []).find((t) => t.id === Number(id))
+  if (tipo?.id_gas) {
+    idProductoGas.value = tipo.id_gas
+  }
+})
 
 const vigenciaTipoAnios = computed(
   () => tipoSeleccionado.value?.vigencia_ph_anios ?? undefined,
@@ -530,6 +554,7 @@ const buildPayload = (
     idTipoBalon: number | string
     idProductoGas: number | string
     idEstadoBalon?: number
+    idEstadoContenido?: number
     idOrganoInspector?: number
     organoInspectorNoAplica?: boolean
     mesFabricacion?: number
@@ -560,6 +585,7 @@ const buildPayload = (
     idTipoBalon: Number(values.idTipoBalon),
     idProductoGas: Number(values.idProductoGas),
     idEstadoBalon: values.idEstadoBalon,
+    idEstadoContenido: values.idEstadoContenido,
     idOrganoInspector: values.organoInspectorNoAplica ? undefined : values.idOrganoInspector,
     organoInspectorNoAplica: values.organoInspectorNoAplica ?? false,
     fechaFabricacion: toFirstOfMonthIso(mes, anio),
@@ -595,6 +621,7 @@ const syncFormValues = () => {
       idTipoBalon: data?.id_tipo_balon ?? undefined,
       idProductoGas: data?.id_producto_gas ?? undefined,
       idEstadoBalon: data?.id_estado_balon ?? undefined,
+      idEstadoContenido: data?.id_estado_contenido ?? undefined,
       idOrganoInspector: data?.id_organo_inspector ?? undefined,
       organoInspectorNoAplica: data?.organo_inspector_no_aplica ?? false,
       mesFabricacion: mesFromDate,
@@ -624,6 +651,7 @@ const applyCreateForm = () => {
       idTipoBalon: undefined,
       idProductoGas: undefined,
       idEstadoBalon: props.preset?.idEstadoBalon,
+      idEstadoContenido: undefined,
       idOrganoInspector: undefined,
       organoInspectorNoAplica: false,
       mesFabricacion: undefined,

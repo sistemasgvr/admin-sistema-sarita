@@ -58,6 +58,11 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   ROBO: 'error',
   DADO_DE_BAJA: 'error',
 
+  // EstadoContenidoBalon
+  LLENO: 'success',
+  VACIO: 'neutral',
+  DESCONOCIDO: 'warning',
+
   // TipoPrestamo
   ENVASE_EMPRESA_A_CLIENTE: 'primary',
   CILINDRO_CLIENTE_A_EMPRESA: 'warning',
