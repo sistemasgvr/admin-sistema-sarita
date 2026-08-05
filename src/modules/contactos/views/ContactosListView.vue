@@ -2,6 +2,8 @@
   <div>
     <PageBreadcrumb page-title="Contactos" :items="breadcrumbItems" />
 
+    <AppSummaryChips :chips="summaryChips" />
+
     <AppTable
       :columns="columns"
       :rows="rows"
@@ -9,39 +11,25 @@
       :loading="isLoading"
     >
       <template #toolbar>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
-            <!-- <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="idClienteFiltro"
-                label="Cliente / Proveedor"
-                placeholder="Todos los clientes"
-                :options="clienteFilterOptions"
-              />
-            </div> -->
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por nombre, apellido o correo..."
-              />
-            </div>
-
-            <div class="w-full sm:w-60">
-              <AppSelect v-model="mostrarContactos" :options="estadoFiltroOptions" />
-            </div>
-          </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo
-          </button>
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Buscar por nombre, apellido o correo..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo
+            </button>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-cliente="{ row }">
@@ -134,7 +122,7 @@
       <template #footer>
         <button
           type="button"
-          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/3 sm:w-auto"
           :disabled="deleteMutation.isPending.value"
           @click="deleteModalOpen = false"
         >
@@ -172,17 +160,19 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
+  AppSummaryChips,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -195,7 +185,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
 const idClienteFiltro = ref<string | number>('')
 const buscar = ref('')
-const mostrarContactos = ref<ContactoEstadoFiltro>('activos')
+const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -204,6 +194,21 @@ const estadoFiltroOptions: SelectOption[] = [
   { label: 'Activos', value: 'activos' },
   { label: 'Inactivos', value: 'inactivos' },
 ]
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos',
+    options: estadoFiltroOptions,
+  },
+])
+
+const estadoFiltroActual = computed<ContactoEstadoFiltro>(() => {
+  const v = dynamicFilters.value.estado
+  return v === 'activos' || v === 'inactivos' ? v : 'todos'
+})
 
 const buildSoloActivos = (value: ContactoEstadoFiltro): number | undefined => {
   switch (value) {
@@ -226,6 +231,23 @@ const filters = ref<ContactoListFilters>({
 
 const contactosQuery = useContactosQuery(filters)
 const deleteMutation = useDeleteContactoMutation()
+
+const breakdownFiltersBase = computed<ContactoListFilters>(() => ({
+  buscar: buscar.value.trim(),
+  idCliente: idClienteFiltro.value ? Number(idClienteFiltro.value) : undefined,
+  pagina: 1,
+  limite: 1,
+}))
+const activosFilters = computed<ContactoListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 1 }))
+const inactivosFilters = computed<ContactoListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 0 }))
+const activosQuery = useContactosQuery(activosFilters)
+const inactivosQuery = useContactosQuery(inactivosFilters)
+
+const summaryChips = computed<SummaryChip[]>(() => [
+  { label: 'Total contactos', value: contactosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
+  { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
+  { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
+])
 
 const formModalOpen = ref(false)
 const formMode = ref<ContactoFormMode>('create')
@@ -306,14 +328,14 @@ watch(buscar, (value) => {
   }, 350)
 })
 
-watch(mostrarContactos, (value) => {
+const onFiltersChange = () => {
   pagina.value = 1
   filters.value = {
     ...filters.value,
-    soloActivos: buildSoloActivos(value),
+    soloActivos: buildSoloActivos(estadoFiltroActual.value),
     pagina: 1,
   }
-})
+}
 
 watch([pagina, limite], () => {
   filters.value = {

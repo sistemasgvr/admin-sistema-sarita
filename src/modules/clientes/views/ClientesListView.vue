@@ -2,6 +2,8 @@
   <div>
     <PageBreadcrumb v-if="!embedded" page-title="Clientes" />
 
+    <AppSummaryChips :chips="summaryChips" />
+
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
@@ -12,9 +14,7 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <div class="w-full sm:w-44">
-              <AppSelect v-model="mostrarClientes" :options="estadoFiltroOptions" />
-            </div>
+            <AppExportExcelButton :on-export="exportarExcel" />
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-clientes-nuevo' }"
@@ -80,6 +80,20 @@
           @click="openDetailModal(row)"
         >
           <AppIcon :name="ICONS.eye" :size="16" />
+        </button>
+
+        <button
+          type="button"
+          title="Reporte general (Excel)"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          :disabled="exportandoReporteId === row.id"
+          @click="exportarReporte(row)"
+        >
+          <AppIcon
+            :name="exportandoReporteId === row.id ? ICONS.loader : ICONS.fileText"
+            :size="16"
+            :class="{ 'animate-spin': exportandoReporteId === row.id }"
+          />
         </button>
 
         <button
@@ -210,13 +224,17 @@ import type {
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
+import { exportarClientesExcel } from '@/modules/clientes/utils/exportarClientesExcel'
+import { exportarReporteClienteExcel } from '@/modules/clientes/utils/exportarReporteClienteExcel'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { toastApiError } from '@/shared/composables/useToast'
 import {
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
+  AppSummaryChips,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -225,6 +243,7 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
@@ -241,13 +260,18 @@ const authStore = useAuthStore()
 const router = useRouter()
 
 const buscar = ref('')
-const dynamicFilters = ref<DynamicFilterValues>({})
-const mostrarClientes = ref<ClienteEstadoFiltro>('activos')
+const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
 const pagina = ref(1)
 const limite = ref(10)
 
 const tipoClienteQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_CLIENTE))
 const tipoClienteOptions = computed(() => toSelectOptions(tipoClienteQuery.data.value))
+
+const estadoFiltroOptions: SelectOption[] = [
+  { label: 'Todos', value: 'todos' },
+  { label: 'Activos', value: 'activos' },
+  { label: 'Inactivos', value: 'inactivos' },
+]
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
@@ -257,13 +281,14 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     placeholder: 'Todos los tipos',
     options: tipoClienteOptions.value,
   },
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos',
+    options: estadoFiltroOptions,
+  },
 ])
-
-const estadoFiltroOptions: SelectOption[] = [
-  { label: 'Todos', value: 'todos' },
-  { label: 'Activos', value: 'activos' },
-  { label: 'Inactivos', value: 'inactivos' },
-]
 
 const buildSoloActivos = (value: ClienteEstadoFiltro): number | undefined => {
   switch (value) {
@@ -286,6 +311,25 @@ const filters = ref<ClienteListFilters>({
 
 const clientesQuery = useClientesQuery(filters)
 const deleteMutation = useDeleteClienteMutation()
+
+// --- Chips de resumen (total / activos / inactivos, respetando búsqueda y tipo de cliente) ---
+const breakdownFiltersBase = computed<ClienteListFilters>(() => ({
+  buscar: buscar.value.trim(),
+  pagina: 1,
+  limite: 1,
+  idTipoCliente:
+    dynamicFilters.value.idTipoCliente != null ? Number(dynamicFilters.value.idTipoCliente) : undefined,
+}))
+const activosFilters = computed<ClienteListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 1 }))
+const inactivosFilters = computed<ClienteListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 0 }))
+const activosQuery = useClientesQuery(activosFilters)
+const inactivosQuery = useClientesQuery(inactivosFilters)
+
+const summaryChips = computed<SummaryChip[]>(() => [
+  { label: 'Total clientes', value: clientesQuery.data.value?.meta?.total ?? 0, color: 'primary' },
+  { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
+  { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
+])
 
 const detailModalOpen = ref(false)
 const clienteToView = ref<Cliente | null>(null)
@@ -331,12 +375,17 @@ const columns = computed<TableColumn<Cliente>[]>(() => [
   { key: 'estado', label: 'Estado' },
 ])
 
+const estadoFiltroActual = computed<ClienteEstadoFiltro>(() => {
+  const v = dynamicFilters.value.estado
+  return v === 'activos' || v === 'inactivos' ? v : 'todos'
+})
+
 const syncFilters = () => {
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
-    soloActivos: buildSoloActivos(mostrarClientes.value),
+    soloActivos: buildSoloActivos(estadoFiltroActual.value),
     idTipoCliente:
       dynamicFilters.value.idTipoCliente != null
         ? Number(dynamicFilters.value.idTipoCliente)
@@ -349,6 +398,22 @@ const onFiltersChange = () => {
   syncFilters()
 }
 
+const exportarExcel = () => exportarClientesExcel(filters.value)
+
+const exportandoReporteId = ref<number | null>(null)
+
+const exportarReporte = async (cliente: Cliente) => {
+  if (exportandoReporteId.value) return
+  exportandoReporteId.value = cliente.id
+  try {
+    await exportarReporteClienteExcel(cliente.id)
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el reporte')
+  } finally {
+    exportandoReporteId.value = null
+  }
+}
+
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 watch(buscar, () => {
@@ -357,11 +422,6 @@ watch(buscar, () => {
     pagina.value = 1
     syncFilters()
   }, 350)
-})
-
-watch(mostrarClientes, () => {
-  pagina.value = 1
-  syncFilters()
 })
 
 watch([pagina, limite], () => {

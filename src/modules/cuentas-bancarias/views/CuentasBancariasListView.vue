@@ -2,33 +2,29 @@
   <div>
     <PageBreadcrumb page-title="Cuentas Bancarias" />
 
+    <AppSummaryChips :chips="summaryChips" />
+
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por titular, número de cuenta o CCI..."
-              />
-            </div>
-
-            <div class="w-full sm:w-48">
-              <AppSelect v-model="mostrarCuentas" :options="estadoFiltroOptions" />
-            </div>
-          </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nuevo
-          </button>
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Buscar por titular, número de cuenta o CCI..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nuevo
+            </button>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-cuenta="{ row }">
@@ -160,22 +156,24 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
+  AppSummaryChips,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
-const mostrarCuentas = ref<CuentaBancariaEstadoFiltro>('activos')
+const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -184,6 +182,21 @@ const estadoFiltroOptions: SelectOption[] = [
   { label: 'Activos', value: 'activos' },
   { label: 'Inactivos', value: 'inactivos' },
 ]
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos',
+    options: estadoFiltroOptions,
+  },
+])
+
+const estadoFiltroActual = computed<CuentaBancariaEstadoFiltro>(() => {
+  const v = dynamicFilters.value.estado
+  return v === 'activos' || v === 'inactivos' ? v : 'todos'
+})
 
 const buildIsActivos = (value: CuentaBancariaEstadoFiltro): number | undefined => {
   switch (value) {
@@ -206,6 +219,23 @@ const filters = ref<CuentaBancariaListFilters>({
 
 const query = useCuentasBancariasQuery(filters)
 const deleteMutation = useDeleteCuentaBancariaMutation()
+
+// --- Chips de resumen (total / activos / inactivos, respetando la búsqueda) ---
+const breakdownFiltersBase = computed<CuentaBancariaListFilters>(() => ({
+  buscar: buscar.value.trim(),
+  pagina: 1,
+  limite: 1,
+}))
+const activosFilters = computed<CuentaBancariaListFilters>(() => ({ ...breakdownFiltersBase.value, isActivos: 1 }))
+const inactivosFilters = computed<CuentaBancariaListFilters>(() => ({ ...breakdownFiltersBase.value, isActivos: 0 }))
+const activosQuery = useCuentasBancariasQuery(activosFilters)
+const inactivosQuery = useCuentasBancariasQuery(inactivosFilters)
+
+const summaryChips = computed<SummaryChip[]>(() => [
+  { label: 'Total cuentas', value: query.data.value?.meta?.total ?? 0, color: 'primary' },
+  { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
+  { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
+])
 
 const formModalOpen = ref(false)
 const formMode = ref<CuentaBancariaFormMode>('create')
@@ -257,14 +287,14 @@ watch(buscar, (value) => {
   }, 350)
 })
 
-watch(mostrarCuentas, (value) => {
+const onFiltersChange = () => {
   pagina.value = 1
   filters.value = {
     ...filters.value,
-    isActivos: buildIsActivos(value),
+    isActivos: buildIsActivos(estadoFiltroActual.value),
     pagina: 1,
   }
-})
+}
 
 watch([pagina, limite], () => {
   filters.value = {
