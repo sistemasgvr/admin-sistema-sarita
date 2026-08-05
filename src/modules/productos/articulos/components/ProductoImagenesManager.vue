@@ -44,10 +44,27 @@
     </div>
 
     <div
+      v-else-if="isError"
+      class="rounded-xl border border-error-200 bg-error-50 px-4 py-6 text-center text-sm text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+    >
+      No se pudieron cargar las imágenes.
+      <button
+        type="button"
+        class="mt-2 block w-full font-medium underline"
+        @click="imagenesQuery.refetch()"
+      >
+        Reintentar
+      </button>
+    </div>
+
+    <div
       v-else-if="!imagenes.length"
-      class="rounded-xl border border-gray-200 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400"
+      class="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400"
     >
       Este producto aún no tiene imágenes.
+      <span v-if="editable" class="mt-1 block text-theme-xs">
+        Usa el área de arriba y pulsa Subir.
+      </span>
     </div>
 
     <div
@@ -196,6 +213,7 @@
       v-model="previewOpen"
       :title="previewImage?.nombre_original || 'Vista previa'"
       size="xl"
+      :z-index="100050"
     >
       <div
         class="flex min-h-[240px] items-center justify-center rounded-xl bg-gray-50 dark:bg-gray-800/60"
@@ -242,6 +260,7 @@
       title="Eliminar imagen"
       subtitle="También se borrará del almacenamiento."
       size="sm"
+      :z-index="100050"
     >
       <p class="text-sm text-gray-600 dark:text-gray-300">
         ¿Eliminar
@@ -283,6 +302,7 @@ import {
 } from '@/modules/productos/articulos/composables/useProductoImagenMutations'
 import { useProductoImagenesQuery } from '@/modules/productos/articulos/composables/useProductoImagenesQuery'
 import { productoImagenesQueryKeys } from '@/modules/productos/articulos/constants/productoImagenesQueryKeys'
+import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import type { ProductoImagen } from '@/modules/productos/articulos/interfaces/producto-imagen.interface'
 import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -317,6 +337,7 @@ const deleteMutation = useDeleteProductoImagenMutation()
 
 const imagenes = computed(() => imagenesQuery.data.value?.data ?? [])
 const isLoading = computed(() => imagenesQuery.isLoading.value)
+const isError = computed(() => imagenesQuery.isError.value)
 const isBusy = computed(
   () =>
     isUploading.value ||
@@ -391,6 +412,7 @@ const uploadSelected = async () => {
     await queryClient.invalidateQueries({
       queryKey: productoImagenesQueryKeys.list(props.idProducto),
     })
+    await queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
     toastSuccess(
       files.length === 1
         ? 'Imagen subida correctamente'

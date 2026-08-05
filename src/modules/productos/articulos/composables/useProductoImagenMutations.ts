@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { productoImagenesQueryKeys } from '@/modules/productos/articulos/constants/productoImagenesQueryKeys'
+import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
 import type {
   CreateProductoImagenMeta,
@@ -15,6 +16,8 @@ function invalidateImagenes(queryClient: ReturnType<typeof useQueryClient>, idPr
   } else {
     queryClient.invalidateQueries({ queryKey: productoImagenesQueryKeys.all })
   }
+  // Miniatura principal del listado / POS
+  queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
 }
 
 export function useUploadProductoImagenMutation() {

@@ -48,6 +48,43 @@
         </AppListToolbar>
       </template>
 
+      <template #cell-imagen="{ row }">
+        <button
+          v-if="canView"
+          type="button"
+          class="group relative h-11 w-11 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+          title="Ver detalle"
+          @click="openDetail(row)"
+        >
+          <img
+            v-if="row.url_imagen_principal"
+            :src="row.url_imagen_principal"
+            :alt="row.nombre"
+            class="h-full w-full object-cover transition group-hover:opacity-90"
+            loading="lazy"
+          />
+          <span
+            v-else
+            class="flex h-full w-full items-center justify-center text-gray-400"
+          >
+            <AppIcon :name="ICONS.image" :size="16" />
+          </span>
+        </button>
+        <div
+          v-else
+          class="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+        >
+          <img
+            v-if="row.url_imagen_principal"
+            :src="row.url_imagen_principal"
+            :alt="row.nombre"
+            class="h-full w-full object-cover"
+            loading="lazy"
+          />
+          <AppIcon v-else :name="ICONS.image" :size="16" class="text-gray-400" />
+        </div>
+      </template>
+
       <template #cell-nombre="{ row }">
         <div class="flex min-w-0 flex-wrap items-center gap-1.5">
           <span class="font-medium text-gray-800 dark:text-white/90">{{ row.nombre }}</span>
@@ -144,7 +181,7 @@
             type="button"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openDetailModal(row)"
+            @click="openDetail(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
@@ -165,8 +202,6 @@
         />
       </template>
     </AppTable>
-
-    <ProductoDetailModal v-model="detailModalOpen" :producto="productoToView" />
 
     <ProductoUbicacionesPrintModal v-model="printModalOpen" />
 
@@ -224,7 +259,6 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import ProductoDetailModal from '@/modules/productos/articulos/components/ProductoDetailModal.vue'
 import ProductoUbicacionesPrintModal from '@/modules/productos/articulos/components/ProductoUbicacionesPrintModal.vue'
 import {
   useDeleteProductoMutation,
@@ -329,8 +363,6 @@ const deleteModalOpen = ref(false)
 const productoToDelete = ref<Producto | null>(null)
 const deleteBlockedByStock = computed(() => Boolean(productoToDelete.value?.tiene_stock))
 
-const detailModalOpen = ref(false)
-const productoToView = ref<Producto | null>(null)
 const printModalOpen = ref(false)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_CREAR))
@@ -380,6 +412,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => {
 })
 
 const columns = computed<TableColumn<Producto>[]>(() => [
+  { key: 'imagen', label: '' },
   { key: 'codigo', label: 'Código' },
   { key: 'codigo_ubicacion', label: 'Ubicación' },
   { key: 'nombre', label: 'Nombre' },
@@ -520,9 +553,11 @@ const openEditView = (producto: Producto) => {
   })
 }
 
-const openDetailModal = (producto: Producto) => {
-  productoToView.value = producto
-  detailModalOpen.value = true
+const openDetail = (producto: Producto) => {
+  void router.push({
+    name: 'admin-productos-articulos-detalle',
+    params: { id: String(producto.id) },
+  })
 }
 
 const openDeleteModal = (producto: Producto) => {
@@ -557,6 +592,13 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
 
   return [
     {
+      key: 'detalle',
+      label: 'Ver detalle',
+      icon: ICONS.eye,
+      disabled: busy,
+      hidden: !canView.value,
+    },
+    {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
@@ -584,6 +626,9 @@ function actionItemsForRow(row: Producto): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: Producto) {
   switch (key) {
+    case 'detalle':
+      openDetail(row)
+      return
     case 'edit':
       openEditView(row)
       return

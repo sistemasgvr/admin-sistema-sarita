@@ -345,6 +345,7 @@ import {
   useUpdateProductoMutation,
 } from '@/modules/productos/articulos/composables/useProductoMutations'
 import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
+import { productoImagenesQueryKeys } from '@/modules/productos/articulos/constants/productoImagenesQueryKeys'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import type {
   Producto,
@@ -643,6 +644,10 @@ const uploadPendingImages = async (idProducto: number) => {
         esPrincipal: index === 0,
       })
     }
+    await queryClient.invalidateQueries({
+      queryKey: productoImagenesQueryKeys.list(idProducto),
+    })
+    await queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
     toastSuccess(
       files.length === 1
         ? 'Imagen del producto subida'

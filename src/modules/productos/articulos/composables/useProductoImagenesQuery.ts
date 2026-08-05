@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 import { computed, unref, type MaybeRef } from 'vue'
 import { productoImagenesQueryKeys } from '@/modules/productos/articulos/constants/productoImagenesQueryKeys'
 import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
@@ -13,6 +13,6 @@ export function useProductoImagenesQuery(idProducto: MaybeRef<number | null | un
     queryFn: () =>
       productoImagenesService.listar(productId.value as number, { limite: 50 }),
     enabled: computed(() => Number(productId.value) > 0),
-    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
   })
 }

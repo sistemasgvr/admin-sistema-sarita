@@ -17,7 +17,7 @@
       :mode="isEdit ? 'edit' : 'create'"
       :producto-id="productoId"
       :active="true"
-      @saved="goToList"
+      @saved="onSaved"
       @cancel="goToList"
     />
   </div>
@@ -28,6 +28,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ProductoForm from '@/modules/productos/articulos/components/ProductoForm.vue'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productosArticulosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
@@ -45,12 +46,23 @@ const productoId = computed(() => {
 const pageTitle = computed(() => (isEdit.value ? 'Editar producto' : 'Nuevo producto'))
 const pageHelpText = computed(() =>
   isEdit.value
-    ? 'Producto = físico/gas; servicio = flete, mantenimiento o regulador alquilable. El tipo define filtros en POS y alquileres.'
-    : 'Si el producto afecta stock, al guardar se crea saldo 0 en cada almacén. Luego usa Movimientos para ingresar o ajustar cantidad.',
+    ? 'Producto = físico/gas; servicio = flete, mantenimiento o regulador alquilable. El tipo define filtros en POS y alquileres. Las imágenes se gestionan en la sección Imágenes.'
+    : 'Puedes adjuntar imágenes al crear. Si afecta stock, se crea saldo 0 en cada almacén; luego usa Movimientos para ingresar cantidad.',
 )
 const breadcrumbItems = computed(() => productosArticulosBreadcrumbItems(pageTitle.value))
 
 const goToList = () => {
   void router.push({ name: 'admin-productos-articulos' })
+}
+
+const onSaved = (producto: Producto) => {
+  if (producto?.id) {
+    void router.push({
+      name: 'admin-productos-articulos-detalle',
+      params: { id: String(producto.id) },
+    })
+    return
+  }
+  goToList()
 }
 </script>
