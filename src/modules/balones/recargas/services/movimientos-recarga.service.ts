@@ -1,10 +1,12 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type {
+  BalonOrigenRecarga,
   CreateMovimientoRecargaPayload,
   CreateRecargaClientePayload,
   DeleteMovimientoRecargaResponse,
   MovimientoRecarga,
   MovimientoRecargaListFilters,
+  OrigenRecargaFilters,
   RecargaClienteResult,
   UpdateMovimientoRecargaPayload,
   VincularRecargaClienteComprobantePayload,
@@ -13,6 +15,18 @@ import type {
 export const movimientosRecargaService = {
   listar(filters: MovimientoRecargaListFilters = {}) {
     return apiGetPaginated<MovimientoRecarga>('/balones/movimientos-recarga', { params: filters })
+  },
+
+  listarOrigenes(filters: OrigenRecargaFilters) {
+    return apiGetPaginated<BalonOrigenRecarga>('/balones/movimientos-recarga/origenes-recarga', {
+      params: filters,
+    })
+  },
+
+  sugerirOrigen(filters: OrigenRecargaFilters) {
+    return apiGet<BalonOrigenRecarga>('/balones/movimientos-recarga/sugerir-origen', {
+      params: filters,
+    })
   },
 
   obtenerPorId(id: number) {

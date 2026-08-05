@@ -294,6 +294,10 @@ export interface PosLineItem {
   tipoPos?: 'accesorio' | 'gas' | 'alquiler' | 'mantenimiento'
   /** Balón vinculado (recarga, entrega de cilindro o mantenimiento). */
   idBalon?: number
+  /** Balón EMPRESA origen que surte la recarga cliente. */
+  idBalonOrigen?: number
+  /** Etiqueta legible del cilindro origen. */
+  etiquetaBalonOrigen?: string
   /** Etiqueta legible del cilindro (código · tipo · …). */
   etiquetaBalon?: string
   capacidad?: number
@@ -302,9 +306,15 @@ export interface PosLineItem {
   observacionLinea?: string
   /**
    * Escenario al vender gas:
-   * solo_gas | balon_cliente | entregar_alquiler | comprar_balon.
+   * balon_cliente (recarga) | entregar_prestamo | comprar_balon.
+   * Legacy: solo_gas / entregar_alquiler se normalizan en el POS.
    */
-  escenarioGas?: 'solo_gas' | 'balon_cliente' | 'entregar_alquiler' | 'comprar_balon'
+  escenarioGas?:
+    | 'balon_cliente'
+    | 'entregar_prestamo'
+    | 'comprar_balon'
+    | 'solo_gas'
+    | 'entregar_alquiler'
   /** Precio del envase cuando se vende el cilindro junto con el gas. */
   precioBalon?: number
   /** Producto con el que se factura el envase (venta de cilindro). */

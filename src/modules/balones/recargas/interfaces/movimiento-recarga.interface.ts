@@ -3,6 +3,9 @@ export interface MovimientoRecarga {
   fecha_salida_almacen: string
   id_balon: number
   codigo_balon?: string | null
+  id_balon_origen?: number | null
+  codigo_balon_origen?: string | null
+  id_comprobante_compra?: number | null
   id_cliente?: number | null
   nombre_cliente?: string | null
   documento_cliente?: string | null
@@ -36,6 +39,29 @@ export interface MovimientoRecarga {
   fecha_modificacion?: string
 }
 
+export interface BalonOrigenRecarga {
+  id: number
+  codigo_balon: string
+  numero_serie?: string | null
+  id_almacen?: number | null
+  nombre_almacen?: string | null
+  id_producto_gas: number
+  nombre_producto?: string | null
+  id_tipo_balon?: number | null
+  nombre_tipo_balon?: string | null
+  capacidad_tipo?: number | null
+  capacidad_disponible: number
+  capacidad_restante?: number | null
+  fecha_creacion?: string | null
+}
+
+export interface OrigenRecargaFilters {
+  idProductoGas: number
+  capacidad?: number
+  idAlmacen?: number
+  limite?: number
+}
+
 export interface MovimientoRecargaListFilters {
   buscar?: string
   pagina?: number
@@ -60,6 +86,7 @@ export interface CreateMovimientoRecargaPayload {
   serieFactura?: string
   numeroFactura?: string
   idComprobante?: number
+  idComprobanteCompra?: number
   fechaLlegadaAlmacen?: string
   lote?: string
   fechaVencimientoLote?: string
@@ -78,6 +105,7 @@ export interface VincularRecargaClienteComprobantePayload {
   capacidad?: number
   idAlmacen?: number
   observacion?: string
+  idBalonOrigen: number
 }
 
 export interface CreateRecargaClientePayload {
@@ -93,6 +121,7 @@ export interface CreateRecargaClientePayload {
   idMedioPago?: number
   idAlmacen?: number
   observacion?: string
+  idBalonOrigen: number
 }
 
 export interface RecargaClienteResult {
@@ -118,6 +147,7 @@ export interface UpdateMovimientoRecargaPayload {
   serieFactura?: string
   numeroFactura?: string
   idComprobante?: number
+  idComprobanteCompra?: number
   fechaLlegadaAlmacen?: string
   lote?: string
   fechaVencimientoLote?: string

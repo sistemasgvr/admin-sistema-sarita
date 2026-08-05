@@ -117,7 +117,22 @@
               :min="NUMBER_MIN.money"
               :step="NUMBER_STEP.money"
             />
+            <AppSelect
+              v-model="idBalonOrigen"
+              label="Balón empresa origen"
+              placeholder="Selecciona origen"
+              required
+              :options="origenOptions"
+              :disabled="cargandoOrigenes || !idProducto"
+            />
           </div>
+
+          <p
+            v-if="errorOrigenes"
+            class="mt-3 rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
+          >
+            {{ errorOrigenes }}
+          </p>
 
           <div class="mt-5">
             <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
@@ -149,8 +164,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useCreateRecargaClienteMutation } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
+import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
+import type { BalonOrigenRecarga } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
@@ -215,12 +232,65 @@ const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
 const productosQuery = useProductosQuery(productosFilters)
 
 const idBalon = ref<number | ''>('')
+const idBalonOrigen = ref<number | ''>('')
+const origenes = ref<BalonOrigenRecarga[]>([])
+const cargandoOrigenes = ref(false)
+const errorOrigenes = ref('')
 const idProducto = ref<number | ''>('')
 const gasBuscar = ref('')
 const cantidad = ref(1)
 const capacidad = ref<number | ''>('')
 const precioUnitario = ref(0)
 const observacion = ref('')
+
+const origenOptions = computed(() =>
+  origenes.value.map((origen) => ({
+    value: origen.id,
+    label: `${origen.codigo_balon} · disp. ${origen.capacidad_disponible}`,
+  })),
+)
+
+async function refrescarOrigenes() {
+  if (!idProducto.value) {
+    origenes.value = []
+    idBalonOrigen.value = ''
+    errorOrigenes.value = ''
+    return
+  }
+  cargandoOrigenes.value = true
+  errorOrigenes.value = ''
+  try {
+    const filters = {
+      idProductoGas: Number(idProducto.value),
+      capacidad: capacidad.value !== '' ? Number(capacidad.value) : undefined,
+      idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
+      limite: 50,
+    }
+    const listado = await movimientosRecargaService.listarOrigenes(filters)
+    origenes.value = listado.data ?? []
+    if (!origenes.value.length) {
+      idBalonOrigen.value = ''
+      errorOrigenes.value =
+        'No hay balón empresa LLENO del mismo gas con capacidad suficiente. No se puede recargar.'
+      return
+    }
+    if (!origenes.value.some((o) => o.id === Number(idBalonOrigen.value))) {
+      const sugerido = await movimientosRecargaService.sugerirOrigen(filters).catch(() => null)
+      idBalonOrigen.value = sugerido?.id ?? origenes.value[0]?.id ?? ''
+    }
+  } catch {
+    origenes.value = []
+    idBalonOrigen.value = ''
+    errorOrigenes.value =
+      'No hay balón empresa LLENO del mismo gas con capacidad suficiente. No se puede recargar.'
+  } finally {
+    cargandoOrigenes.value = false
+  }
+}
+
+watch([idProducto, capacidad, idAlmacen], () => {
+  void refrescarOrigenes()
+})
 
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
@@ -242,6 +312,8 @@ const puedeGuardar = computed(() => {
     Boolean(idCliente.value) &&
     Boolean(idAlmacen.value) &&
     Boolean(idBalon.value) &&
+    Boolean(idBalonOrigen.value) &&
+    !errorOrigenes.value &&
     Boolean(idProducto.value) &&
     Boolean(idTipoComprobante.value) &&
     Boolean(serie.value.trim()) &&
@@ -278,6 +350,14 @@ async function registrarRecarga() {
     return
   }
 
+  if (!idBalonOrigen.value) {
+    toastWarning(
+      errorOrigenes.value ||
+        'Selecciona el balón empresa origen. Sin stock físico no se puede recargar.',
+    )
+    return
+  }
+
   const result = await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     idCliente: Number(idCliente.value),
@@ -290,6 +370,7 @@ async function registrarRecarga() {
     capacidad: capacidad.value !== '' ? Number(capacidad.value) : undefined,
     idAlmacen: Number(idAlmacen.value),
     observacion: [observacion.value, clienteDescripcion.value].filter(Boolean).join(' - ') || undefined,
+    idBalonOrigen: Number(idBalonOrigen.value),
   })
 
   comprobanteGuardadoId.value = result.comprobante.id
@@ -299,6 +380,9 @@ async function registrarRecarga() {
 
 async function limpiarFormulario() {
   idBalon.value = ''
+  idBalonOrigen.value = ''
+  origenes.value = []
+  errorOrigenes.value = ''
   idProducto.value = ''
   idAlmacen.value = ''
   gasBuscar.value = ''

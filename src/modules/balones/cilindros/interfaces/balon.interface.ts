@@ -111,6 +111,7 @@ export interface Balon {
   mes_fabricacion?: number | null
   numero_recepcion?: string | null
   presion_actual?: number | null
+  capacidad_restante?: number | null
   observacion?: string | null
   tiene_solicitud_baja_pendiente?: boolean
   tiene_baja_aprobada?: boolean

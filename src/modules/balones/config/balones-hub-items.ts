@@ -31,6 +31,16 @@ export const balonesHubItems: BalonesHubItem[] = [
     implemented: true,
   },
   {
+    key: 'stock-gas',
+    title: 'Stock de gas',
+    description:
+      'Gas disponible según cilindros empresa llenos en almacén (base para futuras recargas).',
+    path: '/admin/balones/stock-gas',
+    icon: ICONS.gauge,
+    permission: PermisoBanderas.BALONES_LISTAR,
+    implemented: true,
+  },
+  {
     key: 'movimientos',
     title: 'Movimientos',
     description: 'Traslados, entregas y otros movimientos de cilindros.',

@@ -133,18 +133,38 @@
             :step="NUMBER_STEP.money"
             placeholder="Opcional"
           />
+          <AppSelect
+            v-model="idBalonOrigen"
+            label="Balón empresa origen"
+            placeholder="Selecciona origen"
+            required
+            :options="origenOptions"
+            :disabled="cargandoOrigenes || !producto"
+          />
+          <p
+            v-if="errorOrigenes"
+            class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
+          >
+            {{ errorOrigenes }}
+          </p>
+          <p
+            v-else-if="sugerenciaOrigenLabel"
+            class="text-xs text-gray-500 dark:text-gray-400"
+          >
+            Sugerido (FIFO): {{ sugerenciaOrigenLabel }}
+          </p>
         </template>
 
-        <template v-else-if="escenarioGas === 'entregar_alquiler'">
+        <template v-else-if="escenarioGas === 'entregar_prestamo'">
           <div
             class="rounded-xl border border-violet-200 bg-violet-50/50 px-3 py-2.5 dark:border-violet-500/30 dark:bg-violet-500/10"
           >
             <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
-              Gas + alquiler del cilindro
+              Gas + préstamo del cilindro
             </p>
             <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
-              Cobras el gas y el periodo de alquiler. El cilindro se entrega al cliente del
-              comprobante.
+              Cobras solo el gas. El cilindro de la empresa se entrega en préstamo (no se alquila
+              el balón). El alquiler de accesorios se registra aparte.
             </p>
             <p class="mt-1.5 text-xs font-medium text-violet-700 dark:text-violet-300">
               Cliente:
@@ -157,66 +177,29 @@
               v-if="esClientesVarios"
               class="mt-1 text-xs font-medium text-error-600 dark:text-error-400"
             >
-              No se puede alquilar a Clientes Varios. Elige un cliente identificado en el
+              No se puede prestar a Clientes Varios. Elige un cliente identificado en el
               comprobante.
             </p>
           </div>
 
-          <ProductoSelectField
-            v-model="idProductoAlquiler"
-            v-model:search="productoAlquilerBuscar"
-            label="Producto de alquiler a facturar"
-            placeholder="Producto o servicio alquilable del catálogo"
-            search-placeholder="Código o nombre..."
-            :es-alquilable="true"
-            hint="Usa productos marcados como Alquilable en el catálogo (puedes crear uno aquí)."
-            required
-            @created="onProductoAlquilerCreated"
-          />
           <PosBalonSelectField
             v-model="idBalon"
             v-model:etiqueta="etiquetaBalon"
             mode="alquiler"
             :id-almacen="idAlmacen"
-            label="Cilindro a entregar"
+            label="Cilindro empresa a prestar"
             placeholder="Cilindro en almacén"
             empty-text="Sin cilindros disponibles en almacén."
             required
           />
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" required />
-            <AppInput v-model="fechaFin" label="Fin pactado" type="date" required />
-          </div>
-          <AppInput
-            v-model="precioAlquiler"
-            label="Precio del alquiler"
-            type="number"
-            :min="NUMBER_MIN.money"
-            :step="NUMBER_STEP.money"
-            required
-          />
-
-          <div
-            class="grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-700 dark:bg-white/[0.03]"
-          >
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Gas</p>
-              <p class="font-medium tabular-nums text-gray-800 dark:text-white/90">
-                {{ formatMoney(importeGas) }}
-              </p>
-            </div>
-            <div>
-              <p class="text-gray-500 dark:text-gray-400">Alquiler</p>
-              <p class="font-medium tabular-nums text-gray-800 dark:text-white/90">
-                {{ formatMoney(Number(precioAlquiler || 0)) }}
-              </p>
-            </div>
-            <div class="text-right">
-              <p class="text-gray-500 dark:text-gray-400">Total ítem</p>
-              <p class="font-semibold tabular-nums text-brand-600 dark:text-brand-400">
-                {{ formatMoney(importe) }}
-              </p>
-            </div>
+            <AppInput v-model="fechaInicio" label="Fecha entrega" type="date" required />
+            <AppInput
+              v-model="fechaFin"
+              label="Retorno pactado"
+              type="date"
+              hint="Opcional"
+            />
           </div>
         </template>
 
@@ -284,12 +267,6 @@
           </div>
         </template>
 
-        <p
-          v-else-if="escenarioGas === 'solo_gas'"
-          class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-white/[0.03] dark:text-gray-400"
-        >
-          Solo se cobra el gas. No se vincula ni entrega cilindro en este ítem.
-        </p>
       </template>
 
       <template v-else-if="tipo === 'alquiler'">
@@ -297,13 +274,17 @@
           <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" required />
           <AppInput v-model="fechaFin" label="Fin pactado" type="date" required />
         </div>
+        <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
+          Este flujo es para <strong>accesorios alquilables</strong> del catálogo. El cilindro
+          no se alquila: se presta desde Gas → Entregar / préstamo.
+        </p>
         <PosBalonSelectField
           v-model="idBalon"
           v-model:etiqueta="etiquetaBalon"
           mode="alquiler"
           :id-almacen="idAlmacen"
           label="Cilindro (opcional)"
-          placeholder="Solo si entregas un cilindro"
+          placeholder="Solo si también entregas un cilindro"
           empty-text="Sin cilindros en almacén."
         />
         <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -352,7 +333,7 @@
         v-if="
           !(
             tipo === 'gas' &&
-            (escenarioGas === 'comprar_balon' || escenarioGas === 'entregar_alquiler')
+            (escenarioGas === 'comprar_balon' || escenarioGas === 'entregar_prestamo')
           )
         "
         class="text-right text-sm font-medium tabular-nums text-gray-700 dark:text-gray-300"
@@ -393,9 +374,10 @@ import { subCategoriasProductoService } from '@/modules/productos/sub-categorias
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
-import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
+import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
+import type { BalonOrigenRecarga } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
@@ -412,7 +394,7 @@ import {
 } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelectSearch } from '@/shared/components'
+import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
@@ -423,9 +405,8 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 
 export type PosAnadirTipo = 'accesorio' | 'gas' | 'alquiler' | 'mantenimiento'
 export type EscenarioGas =
-  | 'solo_gas'
   | 'balon_cliente'
-  | 'entregar_alquiler'
+  | 'entregar_prestamo'
   | 'comprar_balon'
 type Paso = 'tipo' | 'catalogo' | 'config'
 
@@ -435,6 +416,8 @@ export interface PosLineaConfirmada {
   cantidad: number
   precioUnitario: number
   idBalon?: number
+  idBalonOrigen?: number
+  etiquetaBalonOrigen?: string
   capacidad?: number
   fechaInicioAlquiler?: string
   fechaFinAlquiler?: string
@@ -496,6 +479,11 @@ const cantidad = ref(1)
 const precioUnitario = ref<number | string>(0)
 const idBalon = ref<number | ''>('')
 const etiquetaBalon = ref('')
+const idBalonOrigen = ref<number | ''>('')
+const origenes = ref<BalonOrigenRecarga[]>([])
+const cargandoOrigenes = ref(false)
+const errorOrigenes = ref('')
+const sugerenciaOrigenLabel = ref('')
 const capacidad = ref<number | string>('')
 const fechaInicio = ref('')
 const fechaFin = ref('')
@@ -512,8 +500,77 @@ const resolviendoProductoEnvase = ref(false)
 const precioAlquiler = ref<number | string>(0)
 const idProductoAlquiler = ref<number | ''>('')
 const nombreProductoAlquiler = ref('')
-const productoAlquilerBuscar = ref('')
-const cargandoProductoAlquiler = ref(false)
+
+const origenOptions = computed(() =>
+  origenes.value.map((origen) => ({
+    value: origen.id,
+    label: `${origen.codigo_balon} · disp. ${origen.capacidad_disponible}${
+      origen.nombre_almacen ? ` · ${origen.nombre_almacen}` : ''
+    }`,
+  })),
+)
+
+async function refrescarOrigenesRecarga() {
+  if (escenarioGas.value !== 'balon_cliente' || !producto.value) {
+    origenes.value = []
+    errorOrigenes.value = ''
+    sugerenciaOrigenLabel.value = ''
+    return
+  }
+
+  cargandoOrigenes.value = true
+  errorOrigenes.value = ''
+  sugerenciaOrigenLabel.value = ''
+
+  const filters = {
+    idProductoGas: producto.value.id,
+    capacidad:
+      capacidad.value !== '' && capacidad.value != null
+        ? Number(capacidad.value)
+        : undefined,
+    idAlmacen: props.idAlmacen ? Number(props.idAlmacen) : undefined,
+    limite: 50,
+  }
+
+  try {
+    const listado = await movimientosRecargaService.listarOrigenes(filters)
+    origenes.value = listado.data ?? []
+
+    if (!origenes.value.length) {
+      idBalonOrigen.value = ''
+      errorOrigenes.value =
+        'No hay balón empresa LLENO del mismo gas con capacidad suficiente en almacén. No se puede recargar.'
+      return
+    }
+
+    const sigueSeleccionado = origenes.value.some((o) => o.id === Number(idBalonOrigen.value))
+    if (!sigueSeleccionado) {
+      try {
+        const sugerido = await movimientosRecargaService.sugerirOrigen(filters)
+        idBalonOrigen.value = sugerido.id
+        sugerenciaOrigenLabel.value = `${sugerido.codigo_balon} (disp. ${sugerido.capacidad_disponible})`
+      } catch {
+        idBalonOrigen.value = origenes.value[0]?.id ?? ''
+        const primero = origenes.value[0]
+        if (primero) {
+          sugerenciaOrigenLabel.value = `${primero.codigo_balon} (disp. ${primero.capacidad_disponible})`
+        }
+      }
+    } else {
+      const actual = origenes.value.find((o) => o.id === Number(idBalonOrigen.value))
+      if (actual) {
+        sugerenciaOrigenLabel.value = `${actual.codigo_balon} (disp. ${actual.capacidad_disponible})`
+      }
+    }
+  } catch {
+    origenes.value = []
+    idBalonOrigen.value = ''
+    errorOrigenes.value =
+      'No hay balón empresa LLENO del mismo gas con capacidad suficiente en almacén. No se puede recargar.'
+  } finally {
+    cargandoOrigenes.value = false
+  }
+}
 
 const importeGas = computed(() => {
   if (tipo.value === 'mantenimiento') return Number(precioUnitario.value || 0)
@@ -523,9 +580,6 @@ const importeGas = computed(() => {
 const importe = computed(() => {
   if (tipo.value === 'gas' && escenarioGas.value === 'comprar_balon') {
     return importeGas.value + Number(precioBalon.value || 0)
-  }
-  if (tipo.value === 'gas' && escenarioGas.value === 'entregar_alquiler') {
-    return importeGas.value + Number(precioAlquiler.value || 0)
   }
   return importeGas.value
 })
@@ -563,49 +617,15 @@ async function resolverProductoVentaEnvase(): Promise<boolean> {
   }
 }
 
-async function sincronizarProductoAlquiler(id: number | '', opts?: { forzarPrecio?: boolean }) {
-  if (!id) {
-    nombreProductoAlquiler.value = ''
-    return
+function normalizarEscenarioGas(value?: string | null): EscenarioGas | null {
+  if (!value) return null
+  if (value === 'solo_gas' || value === 'balon_cliente') return 'balon_cliente'
+  if (value === 'entregar_alquiler' || value === 'entregar_prestamo') {
+    return 'entregar_prestamo'
   }
-  cargandoProductoAlquiler.value = true
-  try {
-    const match = await productosService.obtenerPorId(Number(id))
-    if (!match.es_alquilable) {
-      toastWarning('El producto seleccionado no está marcado como alquilable')
-      idProductoAlquiler.value = ''
-      nombreProductoAlquiler.value = ''
-      return
-    }
-    nombreProductoAlquiler.value = match.nombre
-    if (opts?.forzarPrecio || !Number(precioAlquiler.value)) {
-      precioAlquiler.value = Number(match.precio ?? 0)
-    }
-  } catch {
-    toastWarning('No se pudo cargar el producto de alquiler')
-  } finally {
-    cargandoProductoAlquiler.value = false
-  }
+  if (value === 'comprar_balon') return 'comprar_balon'
+  return null
 }
-
-function onProductoAlquilerCreated(creado: Producto) {
-  if (!creado.es_alquilable) {
-    toastWarning('Marca el producto como Alquilable para usarlo en este flujo')
-    return
-  }
-  idProductoAlquiler.value = creado.id
-  nombreProductoAlquiler.value = creado.nombre
-  productoAlquilerBuscar.value = ''
-  if (!Number(precioAlquiler.value)) {
-    precioAlquiler.value = Number(creado.precio ?? 0)
-  }
-}
-
-watch(idProductoAlquiler, (id, prev) => {
-  void sincronizarProductoAlquiler(id, {
-    forzarPrecio: Boolean(prev) && Boolean(id) && prev !== id,
-  })
-})
 
 const escenariosGas = computed(() => {
   const opciones: {
@@ -615,25 +635,19 @@ const escenariosGas = computed(() => {
     icon: string
   }[] = [
     {
-      key: 'solo_gas',
-      label: 'Solo gas',
-      help: 'Ya tiene cilindro; solo cobras el contenido.',
-      icon: ICONS.package,
-    },
-    {
       key: 'balon_cliente',
-      label: 'Balón del cliente',
-      help: 'Recarga sobre cilindro propio o prestado.',
+      label: 'Recarga (balón cliente)',
+      help: 'El cliente trae su cilindro (propio o prestado) y se recarga.',
       icon: ICONS.users,
     },
   ]
 
-  if (authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR)) {
+  if (authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR)) {
     opciones.push({
-      key: 'entregar_alquiler',
-      label: 'Entregar / alquilar',
-      help: 'Cilindro del almacén + producto alquilable del catálogo.',
-      icon: ICONS.calendar,
+      key: 'entregar_prestamo',
+      label: 'Entregar / préstamo',
+      help: 'Entregas un cilindro empresa lleno en préstamo. Cobras solo el gas.',
+      icon: ICONS.cylinder,
     })
   }
 
@@ -651,7 +665,7 @@ const escenariosGas = computed(() => {
 
 function setEscenarioGas(key: EscenarioGas) {
   if (
-    (key === 'entregar_alquiler' || key === 'comprar_balon') &&
+    (key === 'entregar_prestamo' || key === 'comprar_balon') &&
     !props.idAlmacen
   ) {
     toastWarning('Selecciona un almacén en el comprobante para elegir el cilindro')
@@ -665,23 +679,25 @@ function setEscenarioGas(key: EscenarioGas) {
     toastWarning('Selecciona un cliente comprador del cilindro')
     return
   }
-  if (key === 'entregar_alquiler' && !props.idCliente) {
-    toastWarning('Selecciona el cliente al que se alquila el cilindro')
+  if (key === 'entregar_prestamo' && !props.idCliente) {
+    toastWarning('Selecciona el cliente al que se presta el cilindro')
     return
   }
-  if (key === 'entregar_alquiler' && !authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR)) {
-    toastWarning('No tienes permiso para registrar alquileres de cilindro')
+  if (
+    key === 'entregar_prestamo' &&
+    !authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR)
+  ) {
+    toastWarning('No tienes permiso para registrar préstamos de cilindro')
     return
   }
   if (key === 'comprar_balon' && !authStore.hasPermission(PermisoBanderas.BAJAS_BALON_SOLICITAR)) {
     toastWarning('No tienes permiso para registrar la baja por venta del cilindro')
     return
   }
-  // Operaciones con seguimiento del cilindro exigen cliente identificado.
-  if ((key === 'entregar_alquiler' || key === 'balon_cliente') && props.esClientesVarios) {
+  if ((key === 'entregar_prestamo' || key === 'balon_cliente') && props.esClientesVarios) {
     toastWarning(
-      key === 'entregar_alquiler'
-        ? 'No se puede alquilar un cilindro a Clientes Varios. Selecciona un cliente identificado.'
+      key === 'entregar_prestamo'
+        ? 'No se puede prestar un cilindro a Clientes Varios. Selecciona un cliente identificado.'
         : 'La recarga con balón del cliente requiere un cliente identificado.',
     )
     return
@@ -690,6 +706,10 @@ function setEscenarioGas(key: EscenarioGas) {
   escenarioGas.value = key
   idBalon.value = ''
   etiquetaBalon.value = ''
+  idBalonOrigen.value = ''
+  origenes.value = []
+  errorOrigenes.value = ''
+  sugerenciaOrigenLabel.value = ''
   capacidad.value = ''
   precioBalon.value = 0
   idProductoEnvase.value = ''
@@ -697,13 +717,15 @@ function setEscenarioGas(key: EscenarioGas) {
   precioAlquiler.value = 0
   idProductoAlquiler.value = ''
   nombreProductoAlquiler.value = ''
-  productoAlquilerBuscar.value = ''
-  if (key === 'entregar_alquiler') {
+  if (key === 'entregar_prestamo') {
     fechaInicio.value = new Date().toISOString().slice(0, 10)
-    fechaFin.value = addDaysIso(fechaInicio.value, 14)
+    fechaFin.value = ''
   }
   if (key === 'comprar_balon') {
     void resolverProductoVentaEnvase()
+  }
+  if (key === 'balon_cliente') {
+    void refrescarOrigenesRecarga()
   }
 }
 
@@ -905,10 +927,10 @@ const subtitulo = computed(() => {
 
 const ayudaConfig = computed(() => {
   if (tipo.value === 'gas') {
-    return 'Precio del gas primero. Luego indica si solo cobras gas, recargas, alquilas (elige producto alquilable) o vendes el envase.'
+    return 'Precio del gas primero. Luego: recarga (balón del cliente), préstamo de cilindro empresa, o venta del envase.'
   }
   if (tipo.value === 'alquiler') {
-    return 'Define el periodo. Si entregas un cilindro, selecciónalo; si no, déjalo vacío.'
+    return 'Alquiler de accesorio alquilable. El cilindro no se alquila: se presta desde Gas → Entregar / préstamo.'
   }
   if (tipo.value === 'mantenimiento') {
     return 'Queda pendiente en taller hasta finalizarlo en Balones → Mantenimientos.'
@@ -940,19 +962,19 @@ const puedeConfirmar = computed(() => {
       return (
         Boolean(props.idCliente) &&
         !props.esClientesVarios &&
-        Boolean(idBalon.value)
+        Boolean(idBalon.value) &&
+        Boolean(idBalonOrigen.value) &&
+        !cargandoOrigenes.value &&
+        !errorOrigenes.value
       )
     }
-    if (escenarioGas.value === 'entregar_alquiler') {
+    if (escenarioGas.value === 'entregar_prestamo') {
       return (
         Boolean(props.idCliente) &&
         !props.esClientesVarios &&
         Boolean(idBalon.value) &&
-        Boolean(fechaInicio.value && fechaFin.value) &&
-        fechaFin.value >= fechaInicio.value &&
-        Number(precioAlquiler.value) >= 0 &&
-        Boolean(idProductoAlquiler.value) &&
-        !cargandoProductoAlquiler.value
+        Boolean(fechaInicio.value) &&
+        (!fechaFin.value || fechaFin.value >= fechaInicio.value)
       )
     }
     if (escenarioGas.value === 'comprar_balon') {
@@ -1022,6 +1044,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     precioUnitario.value = Number(fromLinea.precioUnitario || 0)
     idBalon.value = fromLinea.idBalon ?? ''
     etiquetaBalon.value = fromLinea.etiquetaBalon ?? ''
+    idBalonOrigen.value = fromLinea.idBalonOrigen ?? ''
     capacidad.value = fromLinea.capacidad ?? ''
     fechaInicio.value =
       fromLinea.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
@@ -1034,16 +1057,19 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     descripcionMantenimiento.value =
       fromLinea.descripcionMantenimiento || fromLinea.nombre || ''
     escenarioGas.value =
-      fromLinea.escenarioGas ||
+      normalizarEscenarioGas(fromLinea.escenarioGas) ||
       (fromLinea.esGas
-        ? fromLinea.fechaInicioAlquiler
-          ? 'entregar_alquiler'
-          : fromLinea.precioBalon != null
-            ? 'comprar_balon'
+        ? fromLinea.precioBalon != null
+          ? 'comprar_balon'
+          : fromLinea.idBalon && fromLinea.fechaInicioAlquiler
+            ? 'entregar_prestamo'
             : fromLinea.idBalon
               ? 'balon_cliente'
-              : 'solo_gas'
+              : null
         : null)
+    if (escenarioGas.value === 'entregar_prestamo' && !fromLinea.fechaFinAlquiler) {
+      fechaFin.value = ''
+    }
     precioBalon.value = fromLinea.precioBalon ?? 0
     idProductoEnvase.value = fromLinea.idProductoEnvase ?? ''
     nombreProductoEnvase.value =
@@ -1051,12 +1077,8 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     precioAlquiler.value = fromLinea.precioAlquiler ?? 0
     idProductoAlquiler.value = fromLinea.idProductoAlquiler ?? ''
     nombreProductoAlquiler.value = fromLinea.nombreProductoAlquiler || ''
-    productoAlquilerBuscar.value = ''
     if (fromLinea.escenarioGas === 'comprar_balon' || fromLinea.precioBalon != null) {
       void resolverProductoVentaEnvase()
-    }
-    if (idProductoAlquiler.value) {
-      void sincronizarProductoAlquiler(idProductoAlquiler.value)
     }
     return
   }
@@ -1065,6 +1087,10 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   precioUnitario.value = Number(fromProducto?.precio ?? 0)
   idBalon.value = ''
   etiquetaBalon.value = ''
+  idBalonOrigen.value = ''
+  origenes.value = []
+  errorOrigenes.value = ''
+  sugerenciaOrigenLabel.value = ''
   capacidad.value = ''
   fechaInicio.value = new Date().toISOString().slice(0, 10)
   fechaFin.value = addDaysIso(fechaInicio.value, 14)
@@ -1079,7 +1105,6 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   precioAlquiler.value = 0
   idProductoAlquiler.value = ''
   nombreProductoAlquiler.value = ''
-  productoAlquilerBuscar.value = ''
 }
 
 function elegirTipo(t: PosAnadirTipo) {
@@ -1171,6 +1196,13 @@ async function confirmar() {
       toastWarning('La recarga con balón del cliente requiere un cliente identificado.')
       return
     }
+    if (!idBalonOrigen.value) {
+      toastWarning(
+        errorOrigenes.value ||
+          'Selecciona el balón empresa origen. Sin stock físico no se puede recargar.',
+      )
+      return
+    }
   }
   if (tipo.value === 'gas' && escenarioGas.value === 'comprar_balon') {
     if (!authStore.hasPermission(PermisoBanderas.BAJAS_BALON_SOLICITAR)) {
@@ -1180,23 +1212,23 @@ async function confirmar() {
     const ok = await resolverProductoVentaEnvase()
     if (!ok || !idProductoEnvase.value) return
   }
-  if (tipo.value === 'gas' && escenarioGas.value === 'entregar_alquiler') {
+  if (tipo.value === 'gas' && escenarioGas.value === 'entregar_prestamo') {
     if (!props.idCliente) {
-      toastWarning('Selecciona el cliente al que se alquila el cilindro')
+      toastWarning('Selecciona el cliente al que se presta el cilindro')
       return
     }
     if (props.esClientesVarios) {
       toastWarning(
-        'No se puede alquilar un cilindro a Clientes Varios. Selecciona un cliente identificado.',
+        'No se puede prestar un cilindro a Clientes Varios. Selecciona un cliente identificado.',
       )
       return
     }
-    if (!authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR)) {
-      toastWarning('No tienes permiso para registrar alquileres de cilindro')
+    if (!authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR)) {
+      toastWarning('No tienes permiso para registrar préstamos de cilindro')
       return
     }
-    if (!idProductoAlquiler.value) {
-      toastWarning('Selecciona el producto de alquiler del catálogo')
+    if (!idBalon.value) {
+      toastWarning('Selecciona el cilindro empresa a prestar')
       return
     }
   }
@@ -1232,13 +1264,17 @@ async function confirmar() {
       if (capacidad.value !== '' && capacidad.value != null) {
         payload.capacidad = Number(capacidad.value)
       }
+      if (idBalonOrigen.value) {
+        payload.idBalonOrigen = Number(idBalonOrigen.value)
+        const origen = origenes.value.find((o) => o.id === Number(idBalonOrigen.value))
+        payload.etiquetaBalonOrigen = origen
+          ? `${origen.codigo_balon} · disp. ${origen.capacidad_disponible}`
+          : undefined
+      }
     }
-    if (escenarioGas.value === 'entregar_alquiler') {
+    if (escenarioGas.value === 'entregar_prestamo') {
       payload.fechaInicioAlquiler = fechaInicio.value
-      payload.fechaFinAlquiler = fechaFin.value
-      payload.precioAlquiler = Number(precioAlquiler.value || 0)
-      payload.idProductoAlquiler = Number(idProductoAlquiler.value)
-      payload.nombreProductoAlquiler = nombreProductoAlquiler.value
+      payload.fechaFinAlquiler = fechaFin.value || undefined
     }
     if (escenarioGas.value === 'comprar_balon') {
       payload.precioBalon = Number(precioBalon.value || 0)
@@ -1314,6 +1350,17 @@ watch(
   () => props.idAlmacen,
   () => {
     if (tipo.value) syncFilters()
+  },
+)
+
+let origenTimeout: ReturnType<typeof setTimeout> | undefined
+watch(
+  [escenarioGas, producto, capacidad, () => props.idAlmacen, () => props.linea?.idBalonOrigen],
+  () => {
+    if (origenTimeout) clearTimeout(origenTimeout)
+    origenTimeout = setTimeout(() => {
+      void refrescarOrigenesRecarga()
+    }, 250)
   },
 )
 </script>

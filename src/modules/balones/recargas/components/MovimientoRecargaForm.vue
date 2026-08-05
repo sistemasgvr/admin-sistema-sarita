@@ -29,7 +29,7 @@
         <DetailSectionCard
           title="Salida de almacén"
           :icon="ICONS.warehouse"
-          help="Envío del cilindro propio a planta externa. Completa GRE, factura de compra, lote y P.H. al retorno."
+          help="Envía cilindros EMPRESA vacíos a planta externa. Al registrar la salida quedan VACÍO; al indicar fecha de llegada quedan LLENO con residual completo. La compra es solo vínculo documental."
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppInput
@@ -150,13 +150,25 @@
             />
             <AppInput
               v-model="idComprobante"
-              label="ID comprobante"
+              label="ID comprobante venta"
               type="number"
               min="1"
               step="1"
               placeholder="Opcional"
               v-bind="idComprobanteAttrs"
               :disabled="isSubmitting"
+            />
+            <AppInput
+              v-model="idComprobanteCompra"
+              label="ID comprobante compra"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="Opcional (retorno planta)"
+              v-bind="idComprobanteCompraAttrs"
+              :disabled="isSubmitting"
+              :error="errors.idComprobanteCompra"
+              hint="Vínculo a la compra del proveedor al retorno. No crea la compra."
             />
           </div>
         </DetailSectionCard>
@@ -300,7 +312,38 @@ const isLoadingRecarga = computed(
 )
 const recargaDetalle = computed(() => recargaQuery.data.value ?? null)
 
-const balonesFilters = ref({ pagina: 1, limite: 200 })
+const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
+const listaContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
+const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
+const contenidoQuery = useListaOpcionesQuery(listaContenidoId)
+
+const idPropietarioEmpresa = computed(
+  () => propietarioQuery.data.value?.find((op) => op.nombre === 'EMPRESA')?.id,
+)
+const idContenidoVacio = computed(
+  () => contenidoQuery.data.value?.find((op) => op.nombre === 'VACIO')?.id,
+)
+
+const balonesFilters = ref<{
+  pagina: number
+  limite: number
+  idPropietario?: number
+  idEstadoContenido?: number
+}>({ pagina: 1, limite: 200 })
+
+watch(
+  [idPropietarioEmpresa, idContenidoVacio],
+  ([propietario, vacio]) => {
+    balonesFilters.value = {
+      pagina: 1,
+      limite: 200,
+      idPropietario: propietario,
+      idEstadoContenido: vacio,
+    }
+  },
+  { immediate: true },
+)
+
 const balonesQuery = useBalonesQuery(balonesFilters)
 
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
@@ -309,7 +352,7 @@ const unidadMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
 const balonOptions = computed(() =>
   (balonesQuery.data.value?.data ?? []).map((balon) => ({
     value: balon.id,
-    label: balon.codigo_balon,
+    label: `${balon.codigo_balon}${balon.nombre_tipo_balon ? ` · ${balon.nombre_tipo_balon}` : ''}`,
   })),
 )
 
@@ -343,6 +386,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       serieFactura: optionalString().max(10, 'Máximo 10 caracteres'),
       numeroFactura: optionalString().max(15, 'Máximo 15 caracteres'),
       idComprobante: optionalNumber().min(1, 'ID inválido'),
+      idComprobanteCompra: optionalNumber().min(1, 'ID inválido'),
       fechaLlegadaAlmacen: optionalString(),
       lote: optionalString().max(50, 'Máximo 50 caracteres'),
       fechaVencimientoLote: optionalString(),
@@ -365,6 +409,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     serieFactura: '',
     numeroFactura: '',
     idComprobante: undefined as number | undefined,
+    idComprobanteCompra: undefined as number | undefined,
     fechaLlegadaAlmacen: '',
     lote: '',
     fechaVencimientoLote: '',
@@ -387,6 +432,7 @@ const [numeroGuiaIngreso, numeroGuiaIngresoAttrs] = defineField('numeroGuiaIngre
 const [serieFactura, serieFacturaAttrs] = defineField('serieFactura')
 const [numeroFactura, numeroFacturaAttrs] = defineField('numeroFactura')
 const [idComprobante, idComprobanteAttrs] = defineField('idComprobante')
+const [idComprobanteCompra, idComprobanteCompraAttrs] = defineField('idComprobanteCompra')
 const [fechaLlegadaAlmacen, fechaLlegadaAlmacenAttrs] = defineField('fechaLlegadaAlmacen')
 const [lote, loteAttrs] = defineField('lote')
 const [fechaVencimientoLote, fechaVencimientoLoteAttrs] = defineField('fechaVencimientoLote')
@@ -411,6 +457,7 @@ const buildPayloadFields = (values: {
   serieFactura: string
   numeroFactura: string
   idComprobante?: number
+  idComprobanteCompra?: number
   fechaLlegadaAlmacen: string
   lote: string
   fechaVencimientoLote: string
@@ -430,6 +477,9 @@ const buildPayloadFields = (values: {
   serieFactura: values.serieFactura || undefined,
   numeroFactura: values.numeroFactura || undefined,
   idComprobante: values.idComprobante ? Number(values.idComprobante) : undefined,
+  idComprobanteCompra: values.idComprobanteCompra
+    ? Number(values.idComprobanteCompra)
+    : undefined,
   fechaLlegadaAlmacen: values.fechaLlegadaAlmacen || undefined,
   lote: values.lote || undefined,
   fechaVencimientoLote: values.fechaVencimientoLote || undefined,
@@ -455,6 +505,7 @@ const syncFormValues = () => {
       serieFactura: data?.serie_factura ?? '',
       numeroFactura: data?.numero_factura ?? '',
       idComprobante: data?.id_comprobante ?? undefined,
+      idComprobanteCompra: data?.id_comprobante_compra ?? undefined,
       fechaLlegadaAlmacen: toDateInput(data?.fecha_llegada_almacen),
       lote: data?.lote ?? '',
       fechaVencimientoLote: toDateInput(data?.fecha_vencimiento_lote),
@@ -481,6 +532,7 @@ const resetCreateForm = () => {
       serieFactura: '',
       numeroFactura: '',
       idComprobante: undefined,
+      idComprobanteCompra: undefined,
       fechaLlegadaAlmacen: '',
       lote: '',
       fechaVencimientoLote: '',
