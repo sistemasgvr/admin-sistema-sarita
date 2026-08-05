@@ -9,6 +9,34 @@
     <AppSummaryCards :cards="resumenCards" />
 
     <div
+      v-if="activeFilterChips.length"
+      class="mb-4 flex flex-wrap items-center gap-2"
+    >
+      <span class="text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+        Filtros activos
+      </span>
+      <button
+        v-for="chip in activeFilterChips"
+        :key="chip.key"
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200 dark:hover:bg-brand-500/20"
+        :title="`Quitar filtro ${chip.label}`"
+        @click="clearFilterChip(chip.key)"
+      >
+        <span>{{ chip.label }}: {{ chip.value }}</span>
+        <AppIcon :name="ICONS.x" :size="12" />
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+        @click="clearScopedFilters"
+      >
+        <AppIcon :name="ICONS.brushCleaning" :size="14" />
+        Limpiar filtros
+      </button>
+    </div>
+
+    <div
       v-if="phAlertCount > 0 || phVencidaCount > 0"
       class="mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between"
     >
@@ -251,8 +279,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import BalonBajaModal from '@/modules/balones/cilindros/components/BalonBajaModal.vue'
 import {
@@ -282,6 +310,7 @@ import {
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
+import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -303,12 +332,18 @@ withDefaults(
 )
 
 const authStore = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
+const idProductoGasFiltro = ref<number | null>(null)
+const nombreGasFiltro = ref<string | null>(null)
+const soloLlenosFueraFiltro = ref(false)
+
+type ScopedFilterChipKey = 'gas' | 'almacen' | 'llenosFuera'
 
 const filters = ref<BalonListFilters>({
   buscar: '',
@@ -342,6 +377,40 @@ const tiposBalonQuery = useTiposBalonQuery(tiposBalonFilters)
 
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+
+const activeFilterChips = computed(() => {
+  const chips: { key: ScopedFilterChipKey; label: string; value: string }[] = []
+
+  if (idProductoGasFiltro.value) {
+    chips.push({
+      key: 'gas',
+      label: 'Gas',
+      value: nombreGasFiltro.value || `#${idProductoGasFiltro.value}`,
+    })
+  }
+
+  const idAlmacen = dynamicFilters.value.idAlmacen
+  if (idAlmacen != null && idAlmacen !== '') {
+    const almacen = (almacenesQuery.data.value?.data ?? []).find(
+      (a) => a.id === Number(idAlmacen),
+    )
+    chips.push({
+      key: 'almacen',
+      label: 'Almacén',
+      value: almacen?.nombre || `#${idAlmacen}`,
+    })
+  }
+
+  if (soloLlenosFueraFiltro.value) {
+    chips.push({
+      key: 'llenosFuera',
+      label: 'Vista',
+      value: 'Llenos fuera de almacén',
+    })
+  }
+
+  return chips
+})
 
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
 const listaEstadoContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
@@ -538,11 +607,100 @@ const syncFilters = () => {
     idEstadoBalon: active.idEstadoBalon != null ? Number(active.idEstadoBalon) : undefined,
     idEstadoContenido:
       active.idEstadoContenido != null ? Number(active.idEstadoContenido) : undefined,
+    idProductoGas: idProductoGasFiltro.value ?? undefined,
+    soloLlenosFuera: soloLlenosFueraFiltro.value ? true : undefined,
     phVencida: active.phVencida === true ? true : undefined,
     phPorVencerDias:
       active.phPorVencerDias != null ? Number(active.phPorVencerDias) : undefined,
     soloBajas: active.soloBajas === true ? true : undefined,
   }
+}
+
+const syncScopedQuery = () => {
+  const nextQuery: Record<string, string> = {}
+  if (typeof route.query.tab === 'string' && route.query.tab) {
+    nextQuery.tab = route.query.tab
+  }
+  if (idProductoGasFiltro.value) nextQuery.idProductoGas = String(idProductoGasFiltro.value)
+  if (nombreGasFiltro.value) nextQuery.gas = nombreGasFiltro.value
+  const idAlmacen = dynamicFilters.value.idAlmacen
+  if (idAlmacen != null && idAlmacen !== '') nextQuery.idAlmacen = String(idAlmacen)
+  if (soloLlenosFueraFiltro.value) nextQuery.soloLlenosFuera = '1'
+
+  const currGas =
+    typeof route.query.idProductoGas === 'string' ? route.query.idProductoGas : undefined
+  const currAlmacen =
+    typeof route.query.idAlmacen === 'string' ? route.query.idAlmacen : undefined
+  const currFuera =
+    typeof route.query.soloLlenosFuera === 'string' ? route.query.soloLlenosFuera : undefined
+  const currNombre = typeof route.query.gas === 'string' ? route.query.gas : undefined
+  const currTab = typeof route.query.tab === 'string' ? route.query.tab : undefined
+
+  if (
+    currGas === nextQuery.idProductoGas &&
+    currAlmacen === nextQuery.idAlmacen &&
+    currFuera === nextQuery.soloLlenosFuera &&
+    currNombre === nextQuery.gas &&
+    currTab === nextQuery.tab
+  ) {
+    return
+  }
+
+  void router.replace({ query: nextQuery })
+}
+
+const applyScopedFiltersFromRoute = () => {
+  const idGas = parsePositiveIntQuery(route.query.idProductoGas)
+  const idAlmacen = parsePositiveIntQuery(route.query.idAlmacen)
+  const soloFuera =
+    route.query.soloLlenosFuera === '1' ||
+    route.query.soloLlenosFuera === 'true'
+  const gasLabel =
+    typeof route.query.gas === 'string' && route.query.gas.trim()
+      ? route.query.gas.trim()
+      : null
+
+  idProductoGasFiltro.value = idGas
+  nombreGasFiltro.value = gasLabel
+  soloLlenosFueraFiltro.value = soloFuera
+
+  if (idAlmacen) {
+    dynamicFilters.value = { ...dynamicFilters.value, idAlmacen }
+  } else if (dynamicFilters.value.idAlmacen != null && !idAlmacen) {
+    const { idAlmacen: _omit, ...rest } = dynamicFilters.value
+    dynamicFilters.value = rest
+  }
+
+  pagina.value = 1
+  syncFilters()
+}
+
+const clearFilterChip = (key: ScopedFilterChipKey) => {
+  if (key === 'gas') {
+    idProductoGasFiltro.value = null
+    nombreGasFiltro.value = null
+  }
+  if (key === 'almacen') {
+    const { idAlmacen: _omit, ...rest } = dynamicFilters.value
+    dynamicFilters.value = rest
+  }
+  if (key === 'llenosFuera') {
+    soloLlenosFueraFiltro.value = false
+  }
+  pagina.value = 1
+  syncFilters()
+  syncScopedQuery()
+}
+
+const clearScopedFilters = () => {
+  idProductoGasFiltro.value = null
+  nombreGasFiltro.value = null
+  soloLlenosFueraFiltro.value = false
+  const { idAlmacen: _omit, ...rest } = dynamicFilters.value
+  dynamicFilters.value = rest
+  pagina.value = 1
+  syncFilters()
+  syncScopedQuery()
 }
 
 const aplicarAlertaPh = (dias: number) => {
@@ -570,6 +728,7 @@ const aplicarPhVencida = () => {
 const onFiltersChange = () => {
   pagina.value = 1
   syncFilters()
+  syncScopedQuery()
 }
 
 watch(buscar, () => {
@@ -582,6 +741,23 @@ watch(buscar, () => {
 
 watch([pagina, limite], () => {
   syncFilters()
+})
+
+watch(
+  () =>
+    [
+      route.query.idProductoGas,
+      route.query.idAlmacen,
+      route.query.soloLlenosFuera,
+      route.query.gas,
+    ] as const,
+  () => {
+    applyScopedFiltersFromRoute()
+  },
+)
+
+onMounted(() => {
+  applyScopedFiltersFromRoute()
 })
 
 const goToCreate = () => {

@@ -1,17 +1,31 @@
 import { computed, ref, watch, type Ref } from 'vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
-import type { BalonFormPreset, BalonListFilters } from '@/modules/balones/cilindros/interfaces/balon.interface'
+import type {
+  Balon,
+  BalonFormPreset,
+  BalonListFilters,
+} from '@/modules/balones/cilindros/interfaces/balon.interface'
+import { getBalonEstadoBadge } from '@/modules/balones/utils/balonEstadoBadge'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import type { SelectOption, SelectOptionBadge } from '@/shared/interfaces/form.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import {
+  listaOpcionBadgeColor,
+  normalizeListaOpcionCode,
+} from '@/shared/utils/listaOpcionBadge'
 
 export type PosBalonSelectMode = 'cliente' | 'alquiler' | 'general'
 
-function formatBalonLabel(balon: {
+export function formatBalonLabel(balon: {
   codigo_balon: string
   nombre_tipo_balon?: string | null
   nombre_estado_balon?: string | null
+  nombre_estado_contenido?: string | null
   nombre_producto_gas?: string | null
+  nombre_almacen?: string | null
+  capacidad?: number | null
+  nombre_unidad_medida?: string | null
   nombre_propietario?: string | null
   nombre_cliente_propietario?: string | null
   nombre_cliente_ubicacion?: string | null
@@ -24,6 +38,19 @@ function formatBalonLabel(balon: {
 
   if (balon.nombre_producto_gas) {
     parts.push(balon.nombre_producto_gas)
+  }
+
+  if (balon.capacidad != null) {
+    const um = balon.nombre_unidad_medida ? ` ${balon.nombre_unidad_medida}` : ''
+    parts.push(`${balon.capacidad}${um}`)
+  }
+
+  if (balon.nombre_estado_contenido) {
+    parts.push(formatListaOpcionLabel(balon.nombre_estado_contenido))
+  }
+
+  if (balon.nombre_almacen) {
+    parts.push(balon.nombre_almacen)
   }
 
   const propietario = (balon.nombre_propietario ?? '').trim().toUpperCase()
@@ -45,12 +72,74 @@ function formatBalonLabel(balon: {
   return parts.join(' · ')
 }
 
+export function balonToSelectOption(balon: Balon): SelectOption {
+  const badges: SelectOptionBadge[] = []
+
+  if (balon.nombre_producto_gas) {
+    badges.push({ label: balon.nombre_producto_gas, color: 'primary' })
+  }
+
+  if (balon.capacidad != null) {
+    const um = balon.nombre_unidad_medida ? ` ${balon.nombre_unidad_medida}` : ''
+    badges.push({ label: `${balon.capacidad}${um}`, color: 'neutral' })
+  }
+
+  const contenidoCode = normalizeListaOpcionCode(balon.nombre_estado_contenido)
+  if (contenidoCode) {
+    badges.push({
+      label: formatListaOpcionLabel(balon.nombre_estado_contenido),
+      color: listaOpcionBadgeColor(contenidoCode),
+    })
+  }
+
+  const estadoBadge = getBalonEstadoBadge(balon)
+  if (estadoBadge) {
+    badges.push(estadoBadge)
+  }
+
+  if (balon.nombre_almacen) {
+    badges.push({ label: balon.nombre_almacen, color: 'neutral' })
+  }
+
+  const propietario = (balon.nombre_propietario ?? '').trim().toUpperCase()
+  const estado = (balon.nombre_estado_balon ?? '').trim().toUpperCase()
+  if (propietario === 'CLIENTE') {
+    const cliente =
+      balon.nombre_cliente_propietario?.trim() ||
+      balon.nombre_cliente_ubicacion?.trim() ||
+      'cliente'
+    badges.push({ label: `Propio de ${cliente}`, color: 'warning' })
+  } else if (estado === 'PRESTADO_CLIENTE' && balon.nombre_cliente_ubicacion) {
+    badges.push({
+      label: `Prestado a ${balon.nombre_cliente_ubicacion}`,
+      color: 'warning',
+    })
+  }
+
+  const title = balon.nombre_tipo_balon
+    ? `${balon.codigo_balon} · ${balon.nombre_tipo_balon}`
+    : balon.codigo_balon
+
+  return {
+    value: balon.id,
+    title,
+    label: formatBalonLabel(balon),
+    badges,
+  }
+}
+
 export function usePosBalonSelect(options: {
   mode: PosBalonSelectMode
   idCliente: Ref<number | ''>
   idAlmacen?: Ref<number | ''>
   /** Ej. `medicinal` para kit POS: solo cilindros de esa familia de gas. */
   familiaGas?: Ref<string | undefined>
+  /** Filtros API adicionales (p. ej. estado según tipo de movimiento). */
+  extraFilters?: Ref<Partial<BalonListFilters> | undefined>
+  /** Filtro local post-API (p. ej. varios estados). */
+  clientFilter?: Ref<((balon: Balon) => boolean) | undefined>
+  /** Deshabilita el select hasta que el padre esté listo (tipo de movimiento, etc.). */
+  selectionLocked?: Ref<boolean>
 }) {
   const balonBuscar = ref('')
   const balonesFilters = ref<BalonListFilters>({ pagina: 1, limite: 50 })
@@ -82,6 +171,7 @@ export function usePosBalonSelect(options: {
       buscar: term || undefined,
       // Nunca ofrecer dados de baja / robados en selects operativos.
       soloBajas: false,
+      ...options.extraFilters?.value,
     }
 
     // Recarga / general: prestados (ubicación) + propios (propietario)
@@ -125,13 +215,14 @@ export function usePosBalonSelect(options: {
       () => options.idCliente.value,
       () => options.idAlmacen?.value,
       () => options.familiaGas?.value,
+      () => options.extraFilters?.value,
       estadoEnAlmacenId,
       propietarioEmpresaId,
     ],
     () => {
       syncBalonFilters()
     },
-    { immediate: true },
+    { immediate: true, deep: true },
   )
 
   const balonOptions = computed(() => {
@@ -145,10 +236,12 @@ export function usePosBalonSelect(options: {
       })
     }
 
-    return rows.map((balon) => ({
-      value: balon.id,
-      label: formatBalonLabel(balon),
-    }))
+    const clientFilter = options.clientFilter?.value
+    if (clientFilter) {
+      rows = rows.filter(clientFilter)
+    }
+
+    return rows.map((balon) => balonToSelectOption(balon))
   })
 
   const balonPreset = computed<BalonFormPreset>(() => {
@@ -182,13 +275,20 @@ export function usePosBalonSelect(options: {
       }
     }
 
+    const extra = options.extraFilters?.value
+    if (extra?.idAlmacen) preset.idAlmacen = extra.idAlmacen
+    if (extra?.idEstadoBalon) preset.idEstadoBalon = extra.idEstadoBalon
+    if (extra?.idPropietario) preset.idPropietario = extra.idPropietario
+
     return preset
   })
 
   const requiresCliente = computed(() => options.mode === 'cliente')
 
   const balonSelectDisabled = computed(
-    () => requiresCliente.value && !options.idCliente.value,
+    () =>
+      Boolean(options.selectionLocked?.value) ||
+      (requiresCliente.value && !options.idCliente.value),
   )
 
   return {
@@ -199,5 +299,6 @@ export function usePosBalonSelect(options: {
     requiresCliente,
     balonSelectDisabled,
     syncBalonFilters,
+    propietarioEmpresaId,
   }
 }

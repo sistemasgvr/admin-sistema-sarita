@@ -13,11 +13,12 @@
       :placeholder="placeholder"
       :required="required"
       :error="error"
+      :hint="hint"
       search-placeholder="Código, serie o tipo..."
       :options="balonOptions"
       :loading="balonesQuery.isFetching.value"
       :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
-      :empty-text="emptyText"
+      :empty-text="resolvedEmptyText"
     />
   </AppSelectWithCreate>
 
@@ -31,9 +32,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from 'vue'
+import { computed, ref, toRef, watch, type Ref } from 'vue'
 import BalonFormModal from '@/modules/balones/cilindros/components/BalonFormModal.vue'
-import type { Balon } from '@/modules/balones/cilindros/interfaces/balon.interface'
+import type {
+  Balon,
+  BalonListFilters,
+} from '@/modules/balones/cilindros/interfaces/balon.interface'
 import {
   usePosBalonSelect,
   type PosBalonSelectMode,
@@ -49,6 +53,7 @@ const props = withDefaults(
     required?: boolean
     disabled?: boolean
     error?: string
+    hint?: string
     mode: PosBalonSelectMode
     idCliente?: number | ''
     idAlmacen?: number | ''
@@ -56,6 +61,10 @@ const props = withDefaults(
     familiaGas?: string
     registerLabel?: string
     emptyText?: string
+    extraFilters?: Partial<BalonListFilters>
+    clientFilter?: (balon: Balon) => boolean
+    /** Bloquea selección hasta que el padre habilite (ej. tipo de movimiento). */
+    selectionLocked?: boolean
   }>(),
   {
     label: 'Cilindro',
@@ -65,6 +74,10 @@ const props = withDefaults(
     familiaGas: undefined,
     registerLabel: 'Registrar cilindro',
     emptyText: 'Sin cilindros. Registra uno nuevo.',
+    hint: undefined,
+    extraFilters: undefined,
+    clientFilter: undefined,
+    selectionLocked: false,
   },
 )
 
@@ -78,6 +91,13 @@ const balonModalOpen = ref(false)
 const idClienteRef = toRef(() => props.idCliente)
 const idAlmacenRef = toRef(() => props.idAlmacen)
 const familiaGasRef = toRef(() => props.familiaGas)
+const extraFiltersRef = toRef(() => props.extraFilters) as Ref<
+  Partial<BalonListFilters> | undefined
+>
+const clientFilterRef = toRef(() => props.clientFilter) as Ref<
+  ((balon: Balon) => boolean) | undefined
+>
+const selectionLockedRef = toRef(() => props.selectionLocked)
 
 const canRegister = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_CREAR))
 
@@ -93,6 +113,16 @@ const {
   idCliente: idClienteRef,
   idAlmacen: idAlmacenRef,
   familiaGas: familiaGasRef,
+  extraFilters: extraFiltersRef,
+  clientFilter: clientFilterRef,
+  selectionLocked: selectionLockedRef,
+})
+
+const resolvedEmptyText = computed(() => {
+  if (props.selectionLocked) {
+    return 'Primero selecciona el tipo de movimiento.'
+  }
+  return props.emptyText
 })
 
 function syncEtiqueta() {
@@ -101,7 +131,7 @@ function syncEtiqueta() {
     return
   }
   const opt = balonOptions.value.find((item) => item.value === model.value)
-  etiqueta.value = opt?.label ?? etiqueta.value
+  etiqueta.value = opt?.title || opt?.label || etiqueta.value
 }
 
 watch(

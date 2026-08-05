@@ -145,6 +145,9 @@ export interface BalonListFilters {
   familiaGas?: string
   /** Lista PROPIETARIO_BALON (EMPRESA, CLIENTE, …) */
   idPropietario?: number
+  idProductoGas?: number
+  /** Solo cilindros LLENO fuera de almacén */
+  soloLlenosFuera?: boolean
 }
 
 export interface BalonPayload {

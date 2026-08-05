@@ -97,7 +97,7 @@
                 :aria-selected="isOptionSelected(option)"
                 :disabled="option.disabled"
                 :class="[
-                  'flex w-full items-center px-4 py-2.5 text-left text-sm transition-colors',
+                  'flex w-full flex-col items-start gap-1.5 px-4 py-2.5 text-left text-sm transition-colors',
                   option.disabled
                     ? 'cursor-not-allowed text-gray-400 dark:text-gray-600'
                     : isOptionSelected(option)
@@ -106,7 +106,29 @@
                 ]"
                 @click="selectOption(option)"
               >
-                {{ option.label }}
+                <span class="font-medium text-gray-800 dark:text-white/90">
+                  {{ optionTitle(option) }}
+                </span>
+                <div
+                  v-if="option.badges?.length"
+                  class="flex flex-wrap items-center gap-1"
+                >
+                  <AppBadge
+                    v-for="(badge, badgeIndex) in option.badges"
+                    :key="`${option.value}-${badgeIndex}-${badge.label}`"
+                    size="sm"
+                    variant="light"
+                    :color="badge.color ?? 'neutral'"
+                  >
+                    {{ badge.label }}
+                  </AppBadge>
+                </div>
+                <span
+                  v-else-if="option.title && option.title !== option.label"
+                  class="text-theme-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ option.label }}
+                </span>
               </button>
             </div>
           </div>
@@ -118,6 +140,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useAttrs, watch } from 'vue'
+import AppBadge from '@/shared/components/ui/AppBadge.vue'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { useFormControlClasses } from '@/shared/composables/useFormControlClasses'
@@ -185,6 +208,8 @@ const selectClasses = useFormControlClasses(controlState, () => ({
 
 const hasValue = computed(() => model.value !== '' && model.value !== null)
 
+const optionTitle = (option: SelectOption) => option.title?.trim() || option.label
+
 const displayLabel = computed(() => {
   if (!hasValue.value) {
     return props.placeholder
@@ -194,7 +219,11 @@ const displayLabel = computed(() => {
     (option) => String(option.value) === String(model.value),
   )
 
-  return selected?.label ?? cachedSelectedLabel.value ?? props.placeholder
+  if (selected) {
+    return optionTitle(selected)
+  }
+
+  return cachedSelectedLabel.value || props.placeholder
 })
 
 const normalizedSearch = computed(() => normalizeSearchText(searchQuery.value.trim()))
@@ -207,9 +236,16 @@ const visibleOptions = computed(() => {
     return props.options
   }
 
-  return props.options.filter((option) =>
-    normalizeSearchText(option.label).includes(normalizedSearch.value),
-  )
+  return props.options.filter((option) => {
+    const haystack = [
+      option.label,
+      option.title,
+      ...(option.badges?.map((badge) => badge.label) ?? []),
+    ]
+      .filter(Boolean)
+      .join(' ')
+    return normalizeSearchText(haystack).includes(normalizedSearch.value)
+  })
 })
 
 const buttonAttrs = computed(() => {
@@ -231,7 +267,7 @@ const syncCachedLabelFromOptions = () => {
   )
 
   if (selected) {
-    cachedSelectedLabel.value = selected.label
+    cachedSelectedLabel.value = optionTitle(selected)
   }
 }
 
@@ -310,7 +346,7 @@ const selectOption = (option: SelectOption) => {
   if (option.disabled) return
 
   model.value = option.value
-  cachedSelectedLabel.value = option.label
+  cachedSelectedLabel.value = optionTitle(option)
   closeDropdown()
 }
 

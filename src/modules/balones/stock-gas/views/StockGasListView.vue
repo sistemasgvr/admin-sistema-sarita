@@ -16,7 +16,26 @@
           :filter-fields="filterFields"
           search-placeholder="Gas o almacén..."
           @filter-change="onFiltersChange"
-        />
+        >
+          <template #actions>
+            <RouterLink
+              v-if="canListCilindros"
+              :to="{ name: 'admin-balones-cilindros' }"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+            >
+              <AppIcon :name="ICONS.cylinder" :size="18" />
+              Libro
+            </RouterLink>
+            <RouterLink
+              v-if="canListMovimientos"
+              :to="{ name: 'admin-balones-movimientos' }"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+            >
+              <AppIcon :name="ICONS.history" :size="18" />
+              Movimientos
+            </RouterLink>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-producto="{ row }">
@@ -57,6 +76,25 @@
         <span v-else class="text-gray-400">—</span>
       </template>
 
+      <template #actions="{ row }">
+        <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            v-if="canListCilindros"
+            type="button"
+            title="Ver cilindros"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="goToCilindros(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
+
+          <AppActionMenu
+            :items="actionItemsForRow(row)"
+            :execute="(key) => onActionSelect(key, row)"
+          />
+        </div>
+      </template>
+
       <template #footer>
         <AppPagination
           v-model:pagina="pagina"
@@ -71,6 +109,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useStockGasQuery } from '@/modules/balones/stock-gas/composables/useStockGasQuery'
@@ -80,17 +119,27 @@ import type {
   StockGasResumen,
 } from '@/modules/balones/stock-gas/interfaces/stock-gas.interface'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
+  AppActionMenu,
   AppBadge,
   AppListToolbar,
   AppPagination,
   AppSummaryCards,
   AppTable,
 } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+type StockGasRow = StockGas & { rowKey: string }
+
+const authStore = useAuthStore()
+const router = useRouter()
 
 const breadcrumbItems = computed(() => balonesBreadcrumbItems('Stock de gas'))
 
@@ -107,6 +156,19 @@ const filters = ref<StockGasListFilters>({
 const stockGasQuery = useStockGasQuery(filters)
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+
+const canListCilindros = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_LISTAR))
+const canListMovimientos = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_BALON_LISTAR),
+)
+const canCreateMovimiento = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_BALON_CREAR),
+)
+const canCreateRecarga = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR),
+)
+const canEditProducto = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_EDITAR))
+const canViewProducto = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_VER))
 
 const isLoading = computed(() => stockGasQuery.isFetching.value)
 const rows = computed(() =>
@@ -165,7 +227,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   },
 ])
 
-const columns = computed<TableColumn<StockGas & { rowKey: string }>[]>(() => [
+const columns = computed<TableColumn<StockGasRow>[]>(() => [
   { key: 'producto', label: 'Gas' },
   { key: 'nombre_almacen', label: 'Almacén' },
   { key: 'capacidad_disponible', label: 'Stock disponible', cellClass: 'whitespace-nowrap' },
@@ -180,6 +242,99 @@ function formatCapacidad(value?: number | null, unidad?: string | null) {
     ? n.toLocaleString('es-PE', { maximumFractionDigits: 2 })
     : '0'
   return unidad ? `${formatted} ${unidad}` : formatted
+}
+
+function cilindrosQuery(row: StockGas, opts?: { soloLlenosFuera?: boolean }) {
+  const query: Record<string, string> = {
+    idProductoGas: String(row.id_producto_gas),
+  }
+  const gasLabel = row.nombre_producto || row.codigo_producto
+  if (gasLabel) query.gas = gasLabel
+  if (!opts?.soloLlenosFuera && row.id_almacen != null) {
+    query.idAlmacen = String(row.id_almacen)
+  }
+  if (opts?.soloLlenosFuera) {
+    query.soloLlenosFuera = '1'
+  }
+  return query
+}
+
+function goToCilindros(row: StockGas, opts?: { soloLlenosFuera?: boolean }) {
+  void router.push({
+    name: 'admin-balones-cilindros',
+    query: cilindrosQuery(row, opts),
+  })
+}
+
+function actionItemsForRow(row: StockGasRow): ActionMenuItem[] {
+  const hasFuera = Number(row.balones_llenos_fuera) > 0
+
+  return [
+    {
+      key: 'cilindros',
+      label: 'Ver cilindros',
+      icon: ICONS.cylinder,
+      hidden: !canListCilindros.value,
+    },
+    {
+      key: 'llenosFuera',
+      label: 'Ver llenos fuera',
+      icon: ICONS.alertTriangle,
+      hidden: !(canListCilindros.value && hasFuera),
+    },
+    {
+      key: 'movimientos',
+      label: 'Ver movimientos',
+      icon: ICONS.history,
+      hidden: !canListMovimientos.value,
+    },
+    {
+      key: 'registrarMovimiento',
+      label: 'Registrar movimiento',
+      icon: ICONS.arrowLeftRight,
+      hidden: !canCreateMovimiento.value,
+    },
+    {
+      key: 'recarga',
+      label: 'Recargar balón',
+      icon: ICONS.droplet,
+      hidden: !canCreateRecarga.value,
+    },
+    {
+      key: 'precio',
+      label: 'Editar precio / catálogo',
+      icon: ICONS.pencil,
+      hidden: !(canEditProducto.value || canViewProducto.value),
+    },
+  ]
+}
+
+function onActionSelect(key: string, row: StockGasRow) {
+  switch (key) {
+    case 'cilindros':
+      goToCilindros(row)
+      return
+    case 'llenosFuera':
+      goToCilindros(row, { soloLlenosFuera: true })
+      return
+    case 'movimientos':
+      void router.push({ name: 'admin-balones-movimientos' })
+      return
+    case 'registrarMovimiento':
+      void router.push({ name: 'admin-balones-movimientos' })
+      return
+    case 'recarga':
+      void router.push({ name: 'admin-ventas-pos', query: { tab: 'recarga' } })
+      return
+    case 'precio':
+      void router.push({
+        name: canEditProducto.value
+          ? 'admin-productos-articulos-editar'
+          : 'admin-productos-articulos-detalle',
+        params: { id: String(row.id_producto_gas) },
+      })
+      return
+  }
 }
 
 const syncFilters = () => {
