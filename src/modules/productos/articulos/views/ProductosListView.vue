@@ -1,6 +1,10 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Productos" :items="breadcrumbItems" />
+    <PageBreadcrumb
+      page-title="Catálogo"
+      :items="breadcrumbItems"
+      :help="pageHelpText"
+    />
 
     <AppTable
       :columns="columns"
@@ -97,11 +101,33 @@
 
       <template #cell-tipo="{ row }">
         <div class="flex flex-wrap items-center gap-1.5">
-          <AppBadge :color="row.es_servicio ? 'warning' : 'primary'" variant="light">
-            {{ row.es_servicio ? 'Servicio' : 'Producto' }}
+          <AppBadge
+            v-if="row.es_servicio"
+            color="warning"
+            variant="light"
+            title="Servicio (flete, mantenimiento, alquiler de regulador…)"
+          >
+            Servicio
           </AppBadge>
-          <AppBadge v-if="row.es_gas" variant="light" color="success">Gas</AppBadge>
-          <AppBadge v-if="row.es_alquilable" variant="light" color="neutral">Alquilable</AppBadge>
+          <AppBadge
+            v-else-if="row.es_gas"
+            color="success"
+            variant="light"
+            title="Solo precio para vender. La cantidad está en Balones / Stock de gas"
+          >
+            Gas · catálogo
+          </AppBadge>
+          <AppBadge
+            v-else
+            color="primary"
+            variant="light"
+            title="Accesorio u artículo con stock en almacén"
+          >
+            Accesorio
+          </AppBadge>
+          <AppBadge v-if="row.es_alquilable" variant="light" color="neutral">
+            Alquilable
+          </AppBadge>
         </div>
       </template>
 
@@ -237,7 +263,7 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
-const breadcrumbItems = productosBreadcrumbItems('Productos')
+const breadcrumbItems = productosBreadcrumbItems('Catálogo')
 
 const categorias = ref<CategoriaProducto[]>([])
 const subCategorias = ref<SubCategoriaProducto[]>([])
@@ -247,7 +273,7 @@ const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
 const mostrarProductos = ref<ProductoEstadoFiltro>('activos')
-const tipoFiltro = ref<'todos' | 'producto' | 'servicio'>('todos')
+const tipoFiltro = ref<'todos' | 'accesorio' | 'gas' | 'servicio'>('todos')
 
 const estadoFiltroOptions: SelectOption[] = [
   { label: 'Activos', value: 'activos' },
@@ -257,9 +283,23 @@ const estadoFiltroOptions: SelectOption[] = [
 
 const tipoFiltroOptions: SelectOption[] = [
   { label: 'Tipo: todos', value: 'todos' },
-  { label: 'Solo productos', value: 'producto' },
-  { label: 'Solo servicios', value: 'servicio' },
+  { label: 'Accesorios', value: 'accesorio' },
+  { label: 'Gases (catálogo)', value: 'gas' },
+  { label: 'Servicios', value: 'servicio' },
 ]
+
+const pageHelpText = computed(() => {
+  switch (tipoFiltro.value) {
+    case 'gas':
+      return 'Aquí solo defines el precio del gas para vender. La cantidad disponible se ve en Balones / Stock de gas.'
+    case 'accesorio':
+      return 'Estos productos sí tienen stock físico. Las cantidades se controlan en Productos / Stock accesorios.'
+    case 'servicio':
+      return 'Servicios como flete, mantenimiento o alquiler de regulador. No manejan stock.'
+    default:
+      return 'Accesorio: tiene stock en almacén. Gas: solo precio (cantidad en Balones / Stock de gas). Servicio: no usa stock.'
+  }
+})
 
 const buildSoloActivos = (value: ProductoEstadoFiltro): number | null | undefined => {
   switch (value) {
@@ -399,6 +439,24 @@ onMounted(async () => {
 const syncFilters = () => {
   const active = dynamicFilters.value
 
+  let esGas: boolean | undefined
+  let esServicio: boolean | undefined
+  switch (tipoFiltro.value) {
+    case 'gas':
+      esGas = true
+      esServicio = false
+      break
+    case 'accesorio':
+      esGas = false
+      esServicio = false
+      break
+    case 'servicio':
+      esServicio = true
+      break
+    default:
+      break
+  }
+
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
@@ -406,8 +464,8 @@ const syncFilters = () => {
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
       active.idSubCategoria != null ? Number(active.idSubCategoria) : undefined,
-    esServicio:
-      tipoFiltro.value === 'todos' ? undefined : tipoFiltro.value === 'servicio',
+    esGas,
+    esServicio,
     soloActivos: buildSoloActivos(mostrarProductos.value),
     incluirImagenes: true,
   }

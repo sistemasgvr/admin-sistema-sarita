@@ -275,20 +275,20 @@
           <AppInput v-model="fechaFin" label="Fin pactado" type="date" required />
         </div>
         <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
-          Este flujo es para <strong>accesorios alquilables</strong> del catálogo. El cilindro
-          no se alquila: se presta desde Gas → Entregar / préstamo.
+          Se alquila el <strong>regulador/accesorio</strong>. El cilindro <strong>no se alquila</strong>:
+          si también entregas uno, queda en <strong>préstamo</strong> (mismo comprobante).
         </p>
         <PosBalonSelectField
           v-model="idBalon"
           v-model:etiqueta="etiquetaBalon"
           mode="alquiler"
           :id-almacen="idAlmacen"
-          label="Cilindro (opcional)"
-          placeholder="Solo si también entregas un cilindro"
+          label="Cilindro a prestar (opcional)"
+          placeholder="Solo si también entregas un cilindro en préstamo"
           empty-text="Sin cilindros en almacén."
         />
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          Reguladores u otros ítems alquilables no requieren cilindro. Déjalo vacío si no aplica.
+          Reguladores no requieren cilindro. Si eliges uno, se crea préstamo (no alquiler del balón).
         </p>
       </template>
 
@@ -770,7 +770,7 @@ const tiposDisponibles = computed(() => {
     opciones.push({
       key: 'alquiler',
       label: 'Alquiler',
-      help: 'Producto o servicio alquilable (cilindro opcional) con fechas.',
+      help: 'Regulador u accesorio alquilable. Cilindro opcional = préstamo.',
       icon: ICONS.calendar,
     })
   }
@@ -930,10 +930,10 @@ const ayudaConfig = computed(() => {
     return 'Precio del gas primero. Luego: recarga (balón del cliente), préstamo de cilindro empresa, o venta del envase.'
   }
   if (tipo.value === 'alquiler') {
-    return 'Alquiler de accesorio alquilable. El cilindro no se alquila: se presta desde Gas → Entregar / préstamo.'
+    return 'Alquiler de regulador/accesorio. El cilindro no se alquila: si lo eliges, se presta.'
   }
   if (tipo.value === 'mantenimiento') {
-    return 'Queda pendiente en taller hasta finalizarlo en Balones → Mantenimientos.'
+    return 'Queda pendiente en taller hasta finalizarlo en Balones / Mantenimientos.'
   }
   return 'Ajusta cantidad y precio.'
 })

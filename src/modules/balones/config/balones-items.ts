@@ -28,6 +28,14 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
+    key: 'stock-gas',
+    title: 'Stock de gas',
+    path: '/admin/balones/stock-gas',
+    permission: PermisoBanderas.BALONES_LISTAR,
+    phase: 2,
+    implemented: true,
+  },
+  {
     key: 'movimientos',
     title: 'Movimientos',
     path: '/admin/balones/movimientos',

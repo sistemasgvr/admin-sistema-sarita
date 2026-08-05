@@ -311,7 +311,6 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { alquileresDetalleService } from '@/modules/balones/alquileres/services/alquileres-detalle.service'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import { bajasPendientesService } from '@/modules/balones/bajas-pendientes/services/bajas-pendientes.service'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
@@ -576,7 +575,7 @@ function resumenLinea(linea: PosLineItem): string {
   ) {
     parts.push(
       linea.fechaFinAlquiler
-        ? `${linea.fechaInicioAlquiler} → ${linea.fechaFinAlquiler}`
+        ? `${linea.fechaInicioAlquiler} / ${linea.fechaFinAlquiler}`
         : `Entrega ${linea.fechaInicioAlquiler}`,
     )
   }
@@ -859,8 +858,12 @@ async function guardarComprobante() {
       !esEntregarPrestamo(linea) &&
       linea.fechaInicioAlquiler,
   )
+  // Cilindro siempre es préstamo (nunca alquiler_detalle / estado ALQUILADO).
   const lineasPrestamo = lineasActivas.value.filter(
-    (linea) => esEntregarPrestamo(linea) && linea.idBalon,
+    (linea) =>
+      Boolean(linea.idBalon) &&
+      (esEntregarPrestamo(linea) ||
+        ((linea.tipoPos === 'alquiler' || linea.esAlquilable) && linea.fechaInicioAlquiler)),
   )
   const lineasGasConBalon = lineasActivas.value.filter(
     (linea) =>
@@ -979,6 +982,9 @@ try {
               lineaPrestamo.fechaInicioAlquiler ||
               fecha.value ||
               new Date().toISOString().slice(0, 10)
+            const conAlquilerRegulador =
+              (lineaPrestamo.tipoPos === 'alquiler' || lineaPrestamo.esAlquilable) &&
+              !esEntregarPrestamo(lineaPrestamo)
             const prestamo = await prestamosService.crear({
               idUsuarioAuditoria: userId,
               idTipoPrestamo: idTipoPrestamoEmpresaCliente.value,
@@ -991,18 +997,24 @@ try {
               observacion:
                 lineaPrestamo.observacionLinea ||
                 glosa.value ||
-                `Préstamo de cilindro con venta de gas desde POS`,
+                (conAlquilerRegulador
+                  ? `Préstamo de cilindro junto a alquiler de regulador (${lineaPrestamo.nombre})`
+                  : `Préstamo de cilindro con venta de gas desde POS`),
             })
 
             await prestamosDetalleService.crear({
               idUsuarioAuditoria: userId,
               idPrestamo: prestamo.id,
               idBalon: Number(lineaPrestamo.idBalon),
-              idProducto: Number(lineaPrestamo.idProducto),
+              idProducto: conAlquilerRegulador
+                ? undefined
+                : Number(lineaPrestamo.idProducto),
               fechaEntregado: salida,
               fechaPrestamo: salida,
               fechaVencimiento: lineaPrestamo.fechaFinAlquiler || undefined,
-              observacion: 'Entrega desde POS unificado',
+              observacion: conAlquilerRegulador
+                ? 'Cilindro en préstamo (kit/regulador en alquiler aparte)'
+                : 'Entrega desde POS unificado',
             })
           } catch (error) {
             advertencias += 1
@@ -1042,16 +1054,10 @@ try {
             observacion:
               lineaAlquilable.observacionLinea ||
               glosa.value ||
-              `Alquiler accesorio ${lineaAlquilable.nombre} desde POS`,
+              `Alquiler de regulador/accesorio ${lineaAlquilable.nombre} desde POS`,
           })
 
-          if (lineaAlquilable.idBalon) {
-            await alquileresDetalleService.crear({
-              idUsuarioAuditoria: userId,
-              idAlquiler: alquiler.id,
-              idBalon: Number(lineaAlquilable.idBalon),
-            })
-          }
+          // El cilindro opcional se registra como préstamo (arriba), no como detalle de alquiler.
 
           await alquileresService.registrarPeriodo(alquiler.id, {
             idUsuarioAuditoria: userId,

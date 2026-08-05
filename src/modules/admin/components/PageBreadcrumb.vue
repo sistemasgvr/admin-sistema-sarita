@@ -1,8 +1,11 @@
 <template>
   <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
-      {{ pageTitle }}
-    </h2>
+    <div class="flex items-center gap-2">
+      <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">
+        {{ pageTitle }}
+      </h2>
+      <AppHelpTip v-if="help" :text="help" />
+    </div>
     <nav>
       <ol class="flex items-center gap-1.5">
         <template v-for="(item, index) in resolvedItems" :key="`${item.label}-${index}`">
@@ -41,11 +44,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { AppHelpTip } from '@/shared/components'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 
 const props = defineProps<{
   pageTitle: string
   items?: BreadcrumbItem[]
+  /** Texto del tooltip de ayuda junto al título */
+  help?: string
 }>()
 
 const resolvedItems = computed(() => {

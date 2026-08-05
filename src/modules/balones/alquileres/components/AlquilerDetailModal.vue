@@ -58,7 +58,7 @@
 
         <DetailSectionCard
           v-if="detalleRows.length"
-          title="Cilindros en alquiler"
+          title="Cilindros vinculados"
           :icon="ICONS.boxes"
           :full-width="true"
         >

@@ -34,7 +34,7 @@ export const balonesHubItems: BalonesHubItem[] = [
     key: 'stock-gas',
     title: 'Stock de gas',
     description:
-      'Gas disponible según cilindros empresa llenos en almacén (base para futuras recargas).',
+      'Cantidad de gas según cilindros de la empresa llenos y en almacén. No usa Productos / Stock accesorios.',
     path: '/admin/balones/stock-gas',
     icon: ICONS.gauge,
     permission: PermisoBanderas.BALONES_LISTAR,
@@ -70,7 +70,8 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'alquileres',
     title: 'Alquileres',
-    description: 'Flujo medicinal: alquiler con tarifa, devoluciones y días de atraso.',
+    description:
+      'Alquiler de regulador (kit medicinal). El cilindro se presta; no se alquila el envase.',
     path: '/admin/balones/alquileres',
     icon: ICONS.boxes,
     permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,

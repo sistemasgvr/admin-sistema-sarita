@@ -39,7 +39,7 @@
         <DetailSectionCard
           title="Datos del movimiento"
           :icon="ICONS.arrowLeftRight"
-          help="Ingresos, salidas o ajustes que actualizan el stock del producto en el almacén elegido."
+          help="Ingresos, salidas o ajustes de accesorios en almacén. No aplica a gases."
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppInput
@@ -64,14 +64,15 @@
                 v-model="idProducto"
                 v-model:search="productoBuscar"
                 label="Producto"
-                placeholder="Selecciona producto con stock"
+                placeholder="Selecciona un accesorio con stock"
                 :afecta-stock="true"
                 :es-servicio="false"
+                :es-gas="false"
                 required
                 class="sm:col-span-2"
                 :disabled="isSubmitting"
                 :error="errors.idProducto"
-                hint="Solo productos que afectan inventario. Usa + para registrar uno nuevo."
+                hint="Solo accesorios. El gas se controla en Balones / Stock de gas."
               />
 
               <AppSelect

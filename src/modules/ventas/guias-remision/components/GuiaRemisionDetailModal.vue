@@ -77,10 +77,10 @@
           </p>
         </div>
         <div class="sm:col-span-2">
-          <p class="text-xs text-gray-500 dark:text-gray-400">Origen → Destino</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Origen / Destino</p>
           <p class="text-gray-700 dark:text-gray-300">
             {{ guia.direccion_origen ?? '—' }} ({{ guia.ubigeo_origen ?? '—' }})
-            →
+            /
             {{ guia.direccion_llegada ?? '—' }} ({{ guia.ubigeo_llegada ?? '—' }})
           </p>
         </div>

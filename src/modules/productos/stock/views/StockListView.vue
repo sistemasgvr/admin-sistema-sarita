@@ -1,6 +1,10 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Stock" :items="breadcrumbItems" />
+    <PageBreadcrumb
+      page-title="Stock accesorios"
+      :items="breadcrumbItems"
+      help="Aquí solo entran accesorios (válvulas, mangueras, etc.). El stock de gas se consulta en Balones / Stock de gas."
+    />
 
     <AppTable
       :columns="columns"
@@ -229,7 +233,7 @@ type EstadoFiltro = 'activos' | 'inactivos' | 'todos'
 
 const authStore = useAuthStore()
 const route = useRoute()
-const breadcrumbItems = productosBreadcrumbItems('Stock')
+const breadcrumbItems = productosBreadcrumbItems('Stock accesorios')
 
 const almacenes = ref<Almacen[]>([])
 const isLoadingAlmacenes = ref(false)

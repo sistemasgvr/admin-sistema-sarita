@@ -32,7 +32,7 @@ export const productosRoutes: RouteRecordRaw[] = [
         name: 'admin-productos-articulos',
         component: () => import('@/modules/productos/articulos/views/ProductosListView.vue'),
         meta: {
-          title: 'Productos',
+          title: 'Catálogo',
           module: 'productos',
           permission: PermisoBanderas.PRODUCTOS_LISTAR,
         },
@@ -42,7 +42,7 @@ export const productosRoutes: RouteRecordRaw[] = [
         name: 'admin-productos-articulos-nuevo',
         component: () => import('@/modules/productos/articulos/views/ProductoFormView.vue'),
         meta: {
-          title: 'Nuevo producto',
+          title: 'Nuevo ítem de catálogo',
           module: 'productos',
           permission: PermisoBanderas.PRODUCTOS_CREAR,
         },
@@ -52,7 +52,7 @@ export const productosRoutes: RouteRecordRaw[] = [
         name: 'admin-productos-articulos-editar',
         component: () => import('@/modules/productos/articulos/views/ProductoFormView.vue'),
         meta: {
-          title: 'Editar producto',
+          title: 'Editar ítem de catálogo',
           module: 'productos',
           permission: PermisoBanderas.PRODUCTOS_EDITAR,
         },
@@ -62,7 +62,7 @@ export const productosRoutes: RouteRecordRaw[] = [
         name: 'admin-productos-stock',
         component: () => import('@/modules/productos/stock/views/StockListView.vue'),
         meta: {
-          title: 'Stock',
+          title: 'Stock accesorios',
           module: 'productos',
           permission: PermisoBanderas.STOCK_LISTAR,
         },
@@ -73,7 +73,7 @@ export const productosRoutes: RouteRecordRaw[] = [
         component: () =>
           import('@/modules/productos/movimientos/views/MovimientosListView.vue'),
         meta: {
-          title: 'Movimientos',
+          title: 'Movimientos (accesorios)',
           module: 'productos',
           permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
         },

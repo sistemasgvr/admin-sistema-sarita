@@ -1,15 +1,16 @@
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 
 /**
- * Gas y accesorios físicos descontan inventario.
- * Servicios / alquilables no (el cilindro se gestiona en balones).
+ * Accesorios físicos descontan pro_stock.
+ * Gas: inventario físico en balones (no pro_stock).
+ * Servicios / alquilables no afectan stock de almacén.
  */
 export function productoAfectaStock(
   producto: Pick<Producto, 'afecta_stock' | 'es_servicio' | 'es_alquilable' | 'es_gas'>,
 ): boolean {
+  if (producto.es_gas) return false
   if (producto.afecta_stock === false) return false
   if (producto.afecta_stock === true) return true
-  if (producto.es_gas) return true
   if (producto.es_servicio || producto.es_alquilable) return false
   return true
 }
@@ -61,8 +62,5 @@ export function etiquetaStockPos(producto: Producto): string | null {
   if (producto.stock_actual == null) return null
   const um = producto.nombre_unidad_medida?.trim()
   const qty = formatStockPos(Number(producto.stock_actual))
-  if (producto.es_gas) {
-    return um ? `Stock gas: ${qty} ${um}` : `Stock gas: ${qty}`
-  }
   return um ? `Stock: ${qty} ${um}` : `Stock: ${qty}`
 }

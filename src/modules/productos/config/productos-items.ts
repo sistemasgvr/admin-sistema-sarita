@@ -28,7 +28,7 @@ export const productosMenuItems: ProductosMenuItem[] = [
   },
   {
     key: 'productos',
-    title: 'Productos',
+    title: 'Catálogo',
     path: '/admin/productos/articulos',
     permission: PermisoBanderas.PRODUCTOS_LISTAR,
     phase: 3,
@@ -36,7 +36,7 @@ export const productosMenuItems: ProductosMenuItem[] = [
   },
   {
     key: 'stock',
-    title: 'Stock',
+    title: 'Stock accesorios',
     path: '/admin/productos/stock',
     permission: PermisoBanderas.STOCK_LISTAR,
     phase: 4,

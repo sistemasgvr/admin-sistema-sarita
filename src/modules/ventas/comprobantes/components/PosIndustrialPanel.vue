@@ -3,12 +3,12 @@
     <DetailSectionCard
       title="Operación industrial"
       :icon="ICONS.building2"
-      help="En industrial no se cobra alquiler: el cilindro sale en préstamo/comodato, se cobra el contenido (gas) y se registra una garantía reembolsable."
+      help="En industrial el cilindro sale en préstamo/comodato (nunca alquiler). Se cobra el gas y, si aplica, una garantía reembolsable. El alquiler es solo del regulador (kit medicinal)."
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        Usa este flujo para obras y clientes que rotan en días o semanas. No mezcles con
-        <strong class="font-medium text-gray-800 dark:text-white/90">Medicinal</strong>,
-        donde sí se registra un alquiler con tarifa.
+        Usa este flujo para obras y clientes que rotan en días o semanas. En
+        <strong class="font-medium text-gray-800 dark:text-white/90">Medicinal</strong>
+        el cilindro también se presta; lo que se alquila es el regulador.
       </p>
 
       <ol class="mt-5 space-y-3 text-sm text-gray-700 dark:text-gray-300">

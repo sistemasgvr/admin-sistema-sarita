@@ -51,14 +51,16 @@
       </template>
 
       <template v-else-if="esAlquilable">
+        <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
+          Alquiler de regulador/accesorio. El cilindro, si se entrega, queda en préstamo.
+        </p>
         <PosBalonSelectField
           v-model="idBalon"
           mode="alquiler"
           :id-almacen="idAlmacen"
-          label="Cilindro a entregar"
-          placeholder="Cilindro en almacén"
+          label="Cilindro a prestar (opcional)"
+          placeholder="Solo si también entregas un cilindro"
           empty-text="Sin cilindros disponibles en almacén."
-          required
         />
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" required />
@@ -167,7 +169,7 @@ const ayuda = computed(() => {
     return 'Configura cantidad de gas y, si aplica, el balón a recargar.'
   }
   if (esAlquilable.value) {
-    return 'Configura el alquiler: cilindro a entregar y periodo.'
+    return 'Alquiler de regulador/accesorio y periodo. Cilindro opcional = préstamo.'
   }
   if (props.producto?.es_servicio) {
     return 'Servicio sin stock de almacén. Ajusta cantidad y precio.'
@@ -183,7 +185,6 @@ const puedeConfirmar = computed(() => {
   if (!props.producto) return false
   if (Number(cantidad.value) <= 0) return false
   if (Number(precioUnitario.value) < 0) return false
-  if (esAlquilable.value && !idBalon.value) return false
   if (esAlquilable.value && (!fechaInicio.value || !fechaFin.value)) return false
   return true
 })
@@ -266,7 +267,7 @@ function confirmar() {
   }
 
   if (esAlquilable.value) {
-    payload.idBalon = Number(idBalon.value)
+    if (idBalon.value) payload.idBalon = Number(idBalon.value)
     payload.fechaInicioAlquiler = fechaInicio.value
     payload.fechaFinAlquiler = fechaFin.value
   }

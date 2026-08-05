@@ -5,7 +5,7 @@
         <DetailSectionCard
           title="Kit medicinal"
           :icon="ICONS.receipt"
-          help="Una sola operación: cilindro físico + líneas del kit (contenido, regulador en alquiler, descartables y flete) en un comprobante. Para industrial usa la pestaña Industrial."
+          help="Kit comercial: cilindro en préstamo + regulador en alquiler + descartables/flete en venta. El cilindro no se alquila."
         >
           <template #actions>
             <button
@@ -65,19 +65,22 @@
               :id-cliente="idCliente"
               :id-almacen="idAlmacen"
               familia-gas="medicinal"
-              label="Cilindro a entregar"
+              label="Cilindro a prestar"
               placeholder="Selecciona cilindro medicinal disponible"
               register-label="Registrar cilindro en almacén"
               empty-text="Sin cilindros medicinales disponibles."
               required
             />
+            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Custodia del envase = <strong>préstamo</strong>. Lo que se alquila es el regulador del kit.
+            </p>
           </div>
         </DetailSectionCard>
 
         <DetailSectionCard
           title="Líneas del kit"
           :icon="ICONS.boxes"
-          help="Ejemplo oficina: contenido ~165 + regulador ~70 (2 semanas) + descartables ~50 + flete ~15 ≈ 285. Los descartables se venden (quedan con el cliente)."
+          help="Ejemplo: gas ~165 + alquiler regulador ~70 (2 semanas) + descartables ~50 + flete ~15 ≈ 285. Descartables = venta."
         >
           <div class="space-y-4">
             <div
@@ -265,8 +268,10 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { alquileresDetalleService } from '@/modules/balones/alquileres/services/alquileres-detalle.service'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
+import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
+import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
@@ -305,8 +310,9 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
-import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
 const {
   authStore,
@@ -376,6 +382,15 @@ const idBalon = ref<number | ''>('')
 const idAlmacen = ref<number | ''>('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+
+const listaTipoPrestamoId = ref(ListaIds.TIPO_PRESTAMO)
+const tiposPrestamoQuery = useListaOpcionesQuery(listaTipoPrestamoId)
+const idTipoPrestamoEmpresaCliente = computed(
+  () =>
+    tiposPrestamoQuery.data.value?.find(
+      (item) => (item.nombre ?? '').toUpperCase() === 'ENVASE_EMPRESA_A_CLIENTE',
+    )?.id ?? null,
+)
 
 async function onAlmacenCreated() {
   await almacenesQuery.refetch()
@@ -592,14 +607,41 @@ async function registrarKit() {
       totalCobrado: totalKit.value,
       idComprobanteVenta: comprobante.id,
       idProductoRegulador: Number(lineaRegulador.value.idProducto),
-      observacion: observacion.value || 'Kit medicinal',
+      observacion: observacion.value || 'Kit medicinal (alquiler regulador)',
     })
 
-    await alquileresDetalleService.crear({
-      idUsuarioAuditoria: userId,
-      idAlquiler: alquiler.id,
-      idBalon: Number(idBalon.value),
-    })
+    if (!idTipoPrestamoEmpresaCliente.value) {
+      toastWarning(
+        'Kit creado, pero no se encontró tipo ENVASE_EMPRESA_A_CLIENTE para prestar el cilindro',
+      )
+    } else {
+      try {
+        const prestamo = await prestamosService.crear({
+          idUsuarioAuditoria: userId,
+          idTipoPrestamo: idTipoPrestamoEmpresaCliente.value,
+          idCliente: Number(idCliente.value),
+          idAlmacen: Number(idAlmacen.value),
+          fechaSalida: fechaInicio.value,
+          fechaRetornoPactada: fechaFinPactada.value || undefined,
+          idComprobanteVenta: comprobante.id,
+          titulo: `Préstamo kit medicinal · balón #${idBalon.value}`,
+          observacion:
+            observacion.value ||
+            'Cilindro en préstamo junto a alquiler de regulador (kit medicinal)',
+        })
+        await prestamosDetalleService.crear({
+          idUsuarioAuditoria: userId,
+          idPrestamo: prestamo.id,
+          idBalon: Number(idBalon.value),
+          fechaEntregado: fechaInicio.value,
+          fechaPrestamo: fechaInicio.value,
+          fechaVencimiento: fechaFinPactada.value || undefined,
+          observacion: 'Entrega kit medicinal — cilindro en préstamo',
+        })
+      } catch (error) {
+        toastApiError(error, 'Kit creado, pero falló el préstamo del cilindro')
+      }
+    }
 
     const montoRegulador = importeLineaKit(lineaRegulador.value)
     await alquileresService.registrarPeriodo(alquiler.id, {
@@ -615,7 +657,7 @@ async function registrarKit() {
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
-    toastSuccess('Kit medicinal registrado con periodo 1 del regulador')
+    toastSuccess('Kit medicinal: alquiler de regulador + préstamo de cilindro')
   } finally {
     guardando.value = false
   }

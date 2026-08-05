@@ -32,7 +32,7 @@
       <DetailSectionCard
         title="Tipo de ítem"
         :icon="ICONS.layers"
-        help="Producto = físico/gas (stock, ventas, garantías). Servicio = flete, mantenimiento o regulador; marca Alquilable solo si se alquila."
+        help="Producto: accesorio con stock, o gas solo con precio (cantidad en Balones / Stock de gas). Servicio: flete, mantenimiento o alquiler de regulador."
       >
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
@@ -214,11 +214,17 @@
                 "
               />
               <AppCheckbox
-                v-if="tipoItem === 'producto'"
+                v-if="tipoItem === 'producto' && !esGas"
                 v-model="afectaStock"
                 :disabled="isSubmitting"
                 label="Afecta stock"
               />
+              <p
+                v-else-if="tipoItem === 'producto' && esGas"
+                class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2"
+              >
+                Los gases no usan Productos / Stock accesorios; la cantidad sale de los cilindros.
+              </p>
             </div>
             <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
               {{ ayudaCaracteristicas }}
@@ -441,7 +447,7 @@ const ayudaCaracteristicas = computed(() => {
       : 'Servicio no alquilable: útil para flete o mantenimiento. No aparece en selectores de alquiler.'
   }
   if (esGas.value) {
-    return 'Producto gas: se lista en POS Recarga e Industrial (contenido).'
+    return 'Gas: solo precio para vender. La cantidad disponible está en Balones / Stock de gas.'
   }
   return 'Producto: se lista en Accesorios / ventas. Si es alquilable o tiene garantía, también en flujos industriales.'
 })
@@ -555,7 +561,8 @@ function syncFormFromProducto() {
       esGas: data.es_gas ?? false,
       esServicio: data.es_servicio ?? false,
       esAlquilable: data.es_alquilable ?? false,
-      afectaStock: data.es_servicio ? false : (data.afecta_stock ?? true),
+      afectaStock:
+        data.es_servicio || data.es_gas ? false : (data.afecta_stock ?? true),
       precio: data.precio ?? undefined,
       precioCompra: data.precio_compra ?? undefined,
       precioGarantia: data.precio_garantia ?? undefined,
@@ -680,7 +687,10 @@ const onSubmit = handleSubmit(async (formValues) => {
       esGas: esServicioValue ? false : Boolean(formValues.esGas),
       esServicio: esServicioValue,
       esAlquilable: Boolean(formValues.esAlquilable),
-      afectaStock: esServicioValue ? false : Boolean(formValues.afectaStock),
+      afectaStock:
+        esServicioValue || Boolean(formValues.esGas)
+          ? false
+          : Boolean(formValues.afectaStock),
       precio: formValues.precio ?? 0,
       precioCompra: esServicioValue ? 0 : (formValues.precioCompra ?? 0),
       precioGarantia: formValues.precioGarantia ?? 0,
@@ -735,6 +745,10 @@ watch(
   },
   { immediate: true },
 )
+
+watch(esGas, (esGasValue) => {
+  if (esGasValue) setFieldValue('afectaStock', false)
+})
 
 watch(idCategoria, (categoriaId, previousCategoriaId) => {
   if (!formHydrated.value || categoriaId === previousCategoriaId) return

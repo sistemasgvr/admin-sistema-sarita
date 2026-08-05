@@ -184,10 +184,10 @@
 
       <DetailSectionCard
         v-if="activeAlquilerId"
-        title="Cilindros en alquiler"
+        title="Cilindros vinculados (préstamo)"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="Agrega los cilindros del contrato. Cada línea puede devolverse por separado."
+        help="El alquiler cobra el regulador. Si entregas envase, regístralo aquí solo como vínculo físico; la custodia correcta es préstamo (preferible desde POS / módulo Préstamos)."
       >
         <template #actions>
           <button
@@ -197,12 +197,12 @@
             @click="openCreateDetalleModal"
           >
             <AppIcon :name="ICONS.plus" :size="16" />
-            Agregar cilindro
+            Vincular cilindro
           </button>
         </template>
 
         <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-          {{ detalleRows.length }} cilindro(s) registrado(s)
+          {{ detalleRows.length }} cilindro(s) vinculado(s). Preferible usar Préstamos para la custodia del envase.
         </p>
 
         <AppTable
@@ -238,12 +238,12 @@
 
       <DetailSectionCard
         v-else-if="isCreateMode"
-        title="Cilindros en alquiler"
+        title="Cilindros vinculados (préstamo)"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="Paso 1: completa la cabecera y pulsa Crear alquiler. Luego podrás agregar los cilindros en esta misma pantalla."
+        help="Paso 1: crea el alquiler del regulador. El cilindro se presta (módulo Préstamos o POS); aquí solo puedes vincularlo después si hace falta."
       >
-        <p class="text-center text-sm text-gray-400 dark:text-gray-500">Sin cilindros aún</p>
+        <p class="text-center text-sm text-gray-400 dark:text-gray-500">Sin cilindros vinculados</p>
       </DetailSectionCard>
     </div>
 

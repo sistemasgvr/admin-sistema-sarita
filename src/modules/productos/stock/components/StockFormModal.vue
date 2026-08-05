@@ -4,7 +4,7 @@
     :title="mode === 'create' ? 'Registrar stock' : 'Ajustar stock'"
     :subtitle="
       mode === 'create'
-        ? 'Asocia un producto a un almacén con cantidad inicial.'
+        ? 'Asocia un accesorio/artículo a un almacén. Los gases no se registran aquí.'
         : 'Actualiza la cantidad o el stock mínimo del registro seleccionado.'
     "
     size="md"
@@ -21,7 +21,7 @@
           title="Ubicación y producto"
           :icon="ICONS.warehouse"
           :full-width="true"
-          help="Usa + para registrar un producto nuevo que afecte stock."
+          help="Solo accesorios con stock. El gas se gestiona en Balones / Stock de gas."
         >
           <div class="space-y-4">
             <AlmacenSelectField
@@ -36,12 +36,14 @@
               v-model="idProducto"
               v-model:search="productoBuscar"
               label="Producto"
-              placeholder="Selecciona un producto"
+              placeholder="Selecciona un accesorio o artículo"
               :afecta-stock="true"
               :es-servicio="false"
+              :es-gas="false"
               required
               :disabled="isSubmitting"
               :error="errors.idProducto"
+              hint="No incluye gases (inventario por cilindros)."
             />
           </div>
         </DetailSectionCard>

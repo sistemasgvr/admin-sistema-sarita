@@ -7,9 +7,21 @@
   >
     <DetailCardsLayout :loading="false" :sections="sections">
       <template #badges>
-        <AppBadge :color="producto?.es_servicio ? 'warning' : 'primary'">
-          {{ producto?.es_servicio ? 'Servicio' : 'Producto' }}
+        <AppBadge
+          v-if="producto?.es_servicio"
+          color="warning"
+          title="Servicio"
+        >
+          Servicio
         </AppBadge>
+        <AppBadge
+          v-else-if="producto?.es_gas"
+          color="success"
+          title="Catálogo/precio POS · inventario en Balones"
+        >
+          Gas · catálogo
+        </AppBadge>
+        <AppBadge v-else color="primary">Accesorio</AppBadge>
         <AppBadge
           v-if="producto && esProductoSistema(producto)"
           color="primary"
@@ -17,13 +29,16 @@
         >
           Sistema
         </AppBadge>
-        <AppBadge v-if="producto?.es_gas" color="primary" variant="light">Gas</AppBadge>
         <AppBadge v-if="producto?.es_alquilable" color="neutral" variant="light">
           Alquilable
         </AppBadge>
         <AppBadge v-if="producto?.afecta_stock" color="success" variant="light">
-          Afecta stock
+          Stock almacén
         </AppBadge>
+        <AppHelpTip
+          v-if="producto?.es_gas"
+          text="Solo sirve para el precio de venta. La cantidad disponible está en Balones / Stock de gas."
+        />
       </template>
 
       <template #extra>
@@ -63,7 +78,7 @@ import {
   formatDetailYesNo,
 } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
-import { AppBadge, AppModal } from '@/shared/components'
+import { AppBadge, AppHelpTip, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 
 const props = defineProps<{
@@ -112,10 +127,25 @@ const sections = computed<DetailSection[]>(() => {
               },
             ]
           : []),
-        { label: 'Es gas', value: formatDetailYesNo(data.es_gas) },
-        { label: 'Es servicio', value: formatDetailYesNo(data.es_servicio) },
+        {
+          label: 'Tipo',
+          value: data.es_servicio
+            ? 'Servicio'
+            : data.es_gas
+              ? 'Gas (solo precio)'
+              : 'Accesorio',
+        },
         { label: 'Es alquilable', value: formatDetailYesNo(data.es_alquilable) },
-        { label: 'Afecta stock', value: formatDetailYesNo(data.afecta_stock) },
+        {
+          label: 'Inventario',
+          value: data.es_gas
+            ? 'Balones / Stock de gas'
+            : data.es_servicio
+              ? 'No aplica'
+              : data.afecta_stock
+                ? 'Productos / Stock accesorios'
+                : 'Sin stock',
+        },
       ],
     },
     {

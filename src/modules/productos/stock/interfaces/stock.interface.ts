@@ -7,6 +7,8 @@ export interface Stock {
   id_producto: number
   codigo_producto: string
   nombre_producto: string
+  /** true = stock alineado a balones empresa LLENO en almacén */
+  es_gas?: boolean
   id_unidad_medida?: number
   nombre_unidad_medida?: string
   stock: number

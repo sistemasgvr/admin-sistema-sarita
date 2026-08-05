@@ -32,8 +32,9 @@ export const productosHubItems: ProductosHubItem[] = [
   },
   {
     key: 'productos',
-    title: 'Productos',
-    description: 'Artículos, gases y servicios del inventario comercial.',
+    title: 'Catálogo',
+    description:
+      'Accesorios, gases (precio de venta) y servicios. El stock de gas está en Balones / Stock de gas.',
     path: '/admin/productos/articulos',
     icon: ICONS.package,
     permission: PermisoBanderas.PRODUCTOS_LISTAR,
@@ -41,8 +42,9 @@ export const productosHubItems: ProductosHubItem[] = [
   },
   {
     key: 'stock',
-    title: 'Stock',
-    description: 'Existencias por almacén y producto.',
+    title: 'Stock accesorios',
+    description:
+      'Existencias físicas de accesorios por almacén. No incluye gases.',
     path: '/admin/productos/stock',
     icon: ICONS.boxes,
     permission: PermisoBanderas.STOCK_LISTAR,
@@ -51,7 +53,7 @@ export const productosHubItems: ProductosHubItem[] = [
   {
     key: 'movimientos',
     title: 'Movimientos',
-    description: 'Ingresos, salidas y ajustes de inventario.',
+    description: 'Ingresos, salidas y ajustes de stock de accesorios.',
     path: '/admin/productos/movimientos',
     icon: ICONS.arrowLeftRight,
     permission: PermisoBanderas.MOVIMIENTOS_LISTAR,

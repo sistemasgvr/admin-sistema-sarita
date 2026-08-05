@@ -149,7 +149,7 @@
           :full-width="true"
         >
           <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-            Alquiler de cilindro de la empresa con tarifa diaria y facturación.
+            Contratos de alquiler de regulador asociados a este cilindro (el envase se presta; no se alquila).
           </p>
           <div v-if="alquilerHistorialRows.length" class="overflow-x-auto">
             <table class="min-w-full text-sm">

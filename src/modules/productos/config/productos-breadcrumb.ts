@@ -14,7 +14,7 @@ export function productosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
 export function productosArticulosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return [
     { label: 'Productos', to: PRODUCTOS_HUB_PATH },
-    { label: 'Artículos', to: PRODUCTOS_ARTICULOS_PATH },
+    { label: 'Catálogo', to: PRODUCTOS_ARTICULOS_PATH },
     { label: pageTitle },
   ]
 }

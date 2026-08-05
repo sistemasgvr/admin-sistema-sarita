@@ -1,6 +1,9 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Productos" />
+    <PageBreadcrumb
+      page-title="Productos"
+      help="Catálogo: precios de accesorios, gases y servicios. Stock accesorios: cantidades físicas. Gas: cantidades en Balones / Stock de gas."
+    />
 
     <div class="grid gap-4 sm:grid-cols-1 xl:grid-cols-2">
       <router-link

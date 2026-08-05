@@ -1,6 +1,10 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Movimientos" :items="breadcrumbItems" />
+    <PageBreadcrumb
+      page-title="Movimientos (accesorios)"
+      :items="breadcrumbItems"
+      help="Ingresos, salidas y ajustes de accesorios. El gas no se mueve desde aquí; se controla en Balones / Stock de gas."
+    />
 
     <AppTable
       :columns="columns"
@@ -211,7 +215,7 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
 const router = useRouter()
-const breadcrumbItems = productosBreadcrumbItems('Movimientos')
+const breadcrumbItems = productosBreadcrumbItems('Movimientos (accesorios)')
 
 const listaTipoMovId = ref(ListaIds.TIPO_MOV_INV)
 const tiposMovimientoQuery = useListaOpcionesQuery(listaTipoMovId)

@@ -1,14 +1,10 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Stock de gas" :items="breadcrumbItems" />
-
-    <div
-      class="mb-4 rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3 text-sm text-brand-900 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200"
-    >
-      El stock disponible es la suma del residual de los cilindros
-      <strong>empresa</strong> <strong>Llenos</strong> en almacén. Las recargas cliente descuentan
-      ese residual del balón origen.
-    </div>
+    <PageBreadcrumb
+      page-title="Stock de gas"
+      :items="breadcrumbItems"
+      help="Cantidad de gas disponible según cilindros de la empresa que estén llenos y en almacén. El precio del gas se edita en Productos / Catálogo."
+    />
 
     <div class="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div
@@ -41,6 +37,11 @@
         <p class="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
           {{ row.codigo_producto || '—' }}
         </p>
+      </template>
+
+      <template #cell-nombre_almacen="{ value }">
+        <span v-if="value">{{ value }}</span>
+        <span v-else class="text-theme-xs text-gray-400">Sin cilindros en almacén</span>
       </template>
 
       <template #cell-capacidad_disponible="{ row }">

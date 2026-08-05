@@ -56,7 +56,7 @@ const sections = computed<DetailSection[]>(() => {
 
   const stockCambio =
     data.stock_anterior != null && data.stock_nuevo != null
-      ? `${formatCantidad(data.stock_anterior)} → ${formatCantidad(data.stock_nuevo)}`
+      ? `${formatCantidad(data.stock_anterior)} / ${formatCantidad(data.stock_nuevo)}`
       : undefined
 
   return [
