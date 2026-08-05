@@ -2,42 +2,29 @@
   <div>
     <PageBreadcrumb page-title="Direcciones" :items="breadcrumbItems" />
 
+    <AppSummaryChips :chips="summaryChips" />
+
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div class="flex w-full flex-col gap-3 sm:flex-row sm:items-end">
-            <!-- <div class="w-full sm:max-w-xs">
-              <AppSelect
-                v-model="idClienteFiltro"
-                label="Cliente / Proveedor"
-                placeholder="Todos los clientes"
-                :options="clienteFilterOptions"
-              />
-            </div> -->
-
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por dirección o descripción..."
-              />
-            </div>
-
-            <div class="w-full sm:w-60">
-              <AppSelect v-model="mostrarDirecciones" :options="estadoFiltroOptions" />
-            </div>
-          </div>
-
-          <button
-            v-if="canCreate"
-            type="button"
-            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            Nueva
-          </button>
-        </div>
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Buscar por dirección o descripción..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
+            <button
+              v-if="canCreate"
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="openCreateModal"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              Nueva
+            </button>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-cliente="{ row }">
@@ -175,17 +162,19 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppBadge,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
+  AppSummaryChips,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
@@ -198,7 +187,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 
 const idClienteFiltro = ref<string | number>('')
 const buscar = ref('')
-const mostrarDirecciones = ref<DireccionEstadoFiltro>('activos')
+const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
 const pagina = ref(1)
 const limite = ref(10)
 
@@ -207,6 +196,21 @@ const estadoFiltroOptions: SelectOption[] = [
   { label: 'Activos', value: 'activos' },
   { label: 'Inactivos', value: 'inactivos' },
 ]
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos',
+    options: estadoFiltroOptions,
+  },
+])
+
+const estadoFiltroActual = computed<DireccionEstadoFiltro>(() => {
+  const v = dynamicFilters.value.estado
+  return v === 'activos' || v === 'inactivos' ? v : 'todos'
+})
 
 const buildSoloActivos = (value: DireccionEstadoFiltro): number | undefined => {
   switch (value) {
@@ -229,6 +233,24 @@ const filters = ref<DireccionListFilters>({
 
 const direccionesQuery = useDireccionesQuery(filters)
 const deleteMutation = useDeleteDireccionMutation()
+
+// --- Chips de resumen (total / activos / inactivos, respetando búsqueda y cliente) ---
+const breakdownFiltersBase = computed<DireccionListFilters>(() => ({
+  buscar: buscar.value.trim(),
+  idCliente: idClienteFiltro.value ? Number(idClienteFiltro.value) : undefined,
+  pagina: 1,
+  limite: 1,
+}))
+const activosFilters = computed<DireccionListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 1 }))
+const inactivosFilters = computed<DireccionListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 0 }))
+const activosQuery = useDireccionesQuery(activosFilters)
+const inactivosQuery = useDireccionesQuery(inactivosFilters)
+
+const summaryChips = computed<SummaryChip[]>(() => [
+  { label: 'Total direcciones', value: direccionesQuery.data.value?.meta?.total ?? 0, color: 'primary' },
+  { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
+  { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
+])
 
 const formModalOpen = ref(false)
 const formMode = ref<DireccionFormMode>('create')
@@ -314,14 +336,14 @@ watch(buscar, (value) => {
   }, 350)
 })
 
-watch(mostrarDirecciones, (value) => {
+const onFiltersChange = () => {
   pagina.value = 1
   filters.value = {
     ...filters.value,
-    soloActivos: buildSoloActivos(value),
+    soloActivos: buildSoloActivos(estadoFiltroActual.value),
     pagina: 1,
   }
-})
+}
 
 watch([pagina, limite], () => {
   filters.value = {
