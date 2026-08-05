@@ -6,6 +6,8 @@
       :items="breadcrumbItems"
     />
 
+    <AppSummaryCards :cards="resumenCards" />
+
     <div
       v-if="phAlertCount > 0 || phVencidaCount > 0"
       class="mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between"
@@ -275,9 +277,11 @@ import {
   AppListToolbar,
   AppModal,
   AppPagination,
+  AppSummaryCards,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -369,6 +373,41 @@ const canSolicitarBaja = computed(() =>
 
 const isLoading = computed(() => balonesQuery.isFetching.value)
 const rows = computed(() => balonesQuery.data.value?.data ?? [])
+
+const resumen = computed(
+  () => (balonesQuery.data.value?.meta?.resumen ?? {}) as Record<string, number>,
+)
+
+const resumenCards = computed<SummaryCardItem[]>(() => [
+  {
+    key: 'total',
+    label: 'Total cilindros',
+    value: String(resumen.value.total ?? 0),
+    icon: ICONS.cylinder,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
+  },
+  {
+    key: 'almacen',
+    label: 'En almacén',
+    value: String(resumen.value.en_almacen ?? 0),
+    icon: ICONS.warehouse,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
+  },
+  {
+    key: 'llenos',
+    label: 'Llenos',
+    value: String(resumen.value.llenos ?? 0),
+    icon: ICONS.droplet,
+    iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
+  },
+  {
+    key: 'vacios',
+    label: 'Vacíos',
+    value: String(resumen.value.vacios ?? 0),
+    icon: ICONS.archive,
+    iconClass: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
+  },
+])
 
 const phBadgeLabel = (estado: EstadoPh) => {
   if (estado === 'VENCIDA') return 'vencida'

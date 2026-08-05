@@ -6,6 +6,8 @@
       help="Saldo actual por almacén. Al crear un accesorio el stock inicia en 0. Para subir o bajar cantidad usa Movimientos (ingreso, salida o ajuste)."
     />
 
+    <AppSummaryCards :cards="resumenCards" />
+
     <AppTable
       :columns="columns"
       :rows="rows"
@@ -236,9 +238,11 @@ import {
   AppModal,
   AppPagination,
   AppSelect,
+  AppSummaryCards,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -315,6 +319,43 @@ const canListMovimientos = computed(() =>
 
 const isLoading = computed(() => stockQuery.isFetching.value)
 const rows = computed(() => stockQuery.data.value?.data ?? [])
+
+const resumen = computed(
+  () => (stockQuery.data.value?.meta?.resumen ?? {}) as Record<string, number>,
+)
+
+const resumenCards = computed<SummaryCardItem[]>(() => [
+  {
+    key: 'total',
+    label: 'Ítems en stock',
+    value: String(resumen.value.total_items ?? 0),
+    icon: ICONS.boxes,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
+  },
+  {
+    key: 'bajo',
+    label: 'Bajo mínimo',
+    value: String(resumen.value.bajo_minimo ?? 0),
+    icon: ICONS.alertTriangle,
+    iconClass: 'bg-error-100 text-error-600 dark:bg-error-500/20 dark:text-error-300',
+  },
+  {
+    key: 'ok',
+    label: 'Stock OK',
+    value: String(resumen.value.ok ?? 0),
+    icon: ICONS.check,
+    iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
+  },
+  {
+    key: 'unidades',
+    label: 'Unidades totales',
+    value: Number(resumen.value.stock_total ?? 0).toLocaleString('es-PE', {
+      maximumFractionDigits: 2,
+    }),
+    icon: ICONS.package,
+    iconClass: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
+  },
+])
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {

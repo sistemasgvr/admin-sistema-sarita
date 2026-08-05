@@ -6,6 +6,8 @@
       :help="pageHelpText"
     />
 
+    <AppSummaryCards :cards="resumenCards" />
+
     <AppTable
       :columns="columns"
       :rows="rows"
@@ -284,9 +286,11 @@ import {
   AppModal,
   AppPagination,
   AppSelect,
+  AppSummaryCards,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
@@ -375,6 +379,41 @@ const canRestore = computed(() =>
 
 const isLoading = computed(() => productosQuery.isFetching.value)
 const rows = computed(() => productosQuery.data.value?.data ?? [])
+
+const resumen = computed(
+  () => (productosQuery.data.value?.meta?.resumen ?? {}) as Record<string, number>,
+)
+
+const resumenCards = computed<SummaryCardItem[]>(() => [
+  {
+    key: 'total',
+    label: 'Total ítems',
+    value: String(resumen.value.total ?? 0),
+    icon: ICONS.clipboardList,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
+  },
+  {
+    key: 'accesorios',
+    label: 'Accesorios',
+    value: String(resumen.value.accesorios ?? 0),
+    icon: ICONS.package,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
+  },
+  {
+    key: 'gases',
+    label: 'Gases (catálogo)',
+    value: String(resumen.value.gases ?? 0),
+    icon: ICONS.flame,
+    iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
+  },
+  {
+    key: 'servicios',
+    label: 'Servicios',
+    value: String(resumen.value.servicios ?? 0),
+    icon: ICONS.wrench,
+    iconClass: 'bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300',
+  },
+])
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => {
   const categoriaId =

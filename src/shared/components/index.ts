@@ -11,6 +11,7 @@ export { default as AppTextarea } from '@/shared/components/form/AppTextarea.vue
 export { default as AppTimePicker } from '@/shared/components/form/AppTimePicker.vue'
 export { default as AppBadge } from '@/shared/components/ui/AppBadge.vue'
 export { default as AppBadgeList } from '@/shared/components/ui/AppBadgeList.vue'
+export { default as AppSummaryCards } from '@/shared/components/ui/AppSummaryCards.vue'
 export { default as AppHelpTip } from '@/shared/components/ui/AppHelpTip.vue'
 export { default as ListaOpcionBadge } from '@/shared/components/ui/ListaOpcionBadge.vue'
 export { default as AppConfirmDialog } from '@/shared/components/ui/AppConfirmDialog.vue'

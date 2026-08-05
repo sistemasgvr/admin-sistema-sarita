@@ -6,18 +6,7 @@
       help="Cantidad de gas disponible según cilindros de la empresa que estén llenos y en almacén. El precio del gas se edita en Productos / Catálogo."
     />
 
-    <div class="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <div
-        v-for="card in resumenCards"
-        :key="card.label"
-        class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
-      >
-        <p class="text-theme-xs text-gray-500 dark:text-gray-400">{{ card.label }}</p>
-        <p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">
-          {{ card.value }}
-        </p>
-      </div>
-    </div>
+    <AppSummaryCards :cards="resumenCards" />
 
     <AppTable :columns="columns" :rows="rows" row-key="rowKey" :loading="isLoading">
       <template #toolbar>
@@ -95,8 +84,11 @@ import {
   AppBadge,
   AppListToolbar,
   AppPagination,
+  AppSummaryCards,
   AppTable,
 } from '@/shared/components'
+import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
+import { ICONS } from '@/shared/constants/icons'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -128,22 +120,34 @@ const resumen = computed(
   () => (stockGasQuery.data.value?.meta?.resumen ?? {}) as StockGasResumen,
 )
 
-const resumenCards = computed(() => [
+const resumenCards = computed<SummaryCardItem[]>(() => [
   {
+    key: 'capacidad',
     label: 'Capacidad disponible',
     value: formatCapacidad(resumen.value.capacidad_disponible, null),
+    icon: ICONS.gauge,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
   },
   {
+    key: 'llenos',
     label: 'Cilindros llenos (almacén)',
     value: String(resumen.value.balones_llenos ?? 0),
+    icon: ICONS.cylinder,
+    iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
   },
   {
+    key: 'vacios',
     label: 'Cilindros vacíos (almacén)',
     value: String(resumen.value.balones_vacios ?? 0),
+    icon: ICONS.archive,
+    iconClass: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
   },
   {
+    key: 'fuera',
     label: 'Llenos fuera de almacén',
     value: String(resumen.value.balones_llenos_fuera ?? 0),
+    icon: ICONS.alertTriangle,
+    iconClass: 'bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300',
   },
 ])
 

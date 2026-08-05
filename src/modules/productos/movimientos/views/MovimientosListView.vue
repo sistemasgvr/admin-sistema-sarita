@@ -6,6 +6,8 @@
       help="Aquí cambias la cantidad de stock: ingresos, salidas o ajustes. El gas se controla en Balones / Stock de gas."
     />
 
+    <AppSummaryCards :cards="resumenCards" />
+
     <div
       v-if="activeFilterChips.length"
       class="mb-4 flex flex-wrap items-center gap-2"
@@ -230,10 +232,12 @@ import {
   AppListToolbar,
   AppModal,
   AppPagination,
+  AppSummaryCards,
   AppTable,
   ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
@@ -337,6 +341,42 @@ const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.MOVIMIE
 
 const isLoading = computed(() => movimientosQuery.isFetching.value)
 const rows = computed(() => movimientosQuery.data.value?.data ?? [])
+
+const resumen = computed(
+  () =>
+    (movimientosQuery.data.value?.meta?.resumen ?? {}) as Record<string, number>,
+)
+
+const resumenCards = computed<SummaryCardItem[]>(() => [
+  {
+    key: 'total',
+    label: 'Total movimientos',
+    value: String(resumen.value.total ?? 0),
+    icon: ICONS.arrowLeftRight,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
+  },
+  {
+    key: 'ingresos',
+    label: 'Ingresos',
+    value: String(resumen.value.ingresos ?? 0),
+    icon: ICONS.arrowDownToLine,
+    iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
+  },
+  {
+    key: 'salidas',
+    label: 'Salidas',
+    value: String(resumen.value.salidas ?? 0),
+    icon: ICONS.arrowUpFromLine,
+    iconClass: 'bg-error-100 text-error-600 dark:bg-error-500/20 dark:text-error-300',
+  },
+  {
+    key: 'ajustes',
+    label: 'Ajustes',
+    value: String(resumen.value.ajustes ?? 0),
+    icon: ICONS.refreshCw,
+    iconClass: 'bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300',
+  },
+])
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
