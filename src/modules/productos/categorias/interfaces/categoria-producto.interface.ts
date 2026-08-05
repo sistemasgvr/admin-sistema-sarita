@@ -4,6 +4,8 @@ export interface CategoriaProducto {
   descripcion?: string
   estado: number
   total_sub_categorias?: number
+  /** Nombres de subcategorías activas (orden alfabético) */
+  nombres_sub_categorias?: string[]
   fecha_creacion: string
   fecha_modificacion: string
 }

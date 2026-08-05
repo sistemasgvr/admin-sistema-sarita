@@ -16,6 +16,8 @@
     <MovimientoInventarioForm
       :mode="mode"
       :movimiento-id="movimientoId"
+      :initial-id-producto="initialIdProducto"
+      :initial-id-almacen="initialIdAlmacen"
       :active="true"
       @saved="goToList"
       @cancel="goToList"
@@ -32,6 +34,7 @@ import type { MovimientoInventarioFormMode } from '@/modules/productos/movimient
 import { productosMovimientosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
+import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 
 const route = useRoute()
@@ -46,6 +49,9 @@ const movimientoId = computed(() => {
   return Number.isFinite(raw) && raw > 0 ? raw : null
 })
 
+const initialIdProducto = computed(() => parsePositiveIntQuery(route.query.idProducto))
+const initialIdAlmacen = computed(() => parsePositiveIntQuery(route.query.idAlmacen))
+
 const pageTitle = computed(() =>
   mode.value === 'edit' ? 'Editar movimiento' : 'Nuevo movimiento',
 )
@@ -53,7 +59,7 @@ const pageTitle = computed(() =>
 const pageHelpText = computed(() =>
   mode.value === 'edit'
     ? 'Solo puedes modificar fecha, documento de referencia y glosa.'
-    : 'Registra ingresos, salidas o ajustes. El producto y el almacén definen dónde se actualiza el stock.',
+    : 'Registra ingresos, salidas o ajustes. Así se actualiza la cantidad de stock del accesorio.',
 )
 
 const breadcrumbItems = computed(() => productosMovimientosBreadcrumbItems(pageTitle.value))

@@ -11,3 +11,11 @@ export function useStockQuery(filters: Ref<StockListFilters>) {
     placeholderData: keepPreviousData,
   })
 }
+
+export function useStockByIdQuery(id: Ref<number | null | undefined>, enabled = true) {
+  return useQuery({
+    queryKey: computed(() => stockQueryKeys.detail(Number(id.value ?? 0))),
+    queryFn: () => stockService.obtenerPorId(Number(id.value)),
+    enabled: computed(() => enabled && Number(id.value) > 0),
+  })
+}

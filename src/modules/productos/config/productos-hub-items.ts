@@ -44,7 +44,7 @@ export const productosHubItems: ProductosHubItem[] = [
     key: 'stock',
     title: 'Stock accesorios',
     description:
-      'Existencias físicas de accesorios por almacén. No incluye gases.',
+      'Saldo actual por almacén (inicia en 0 al crear el producto). Historial y cambios vía Movimientos.',
     path: '/admin/productos/stock',
     icon: ICONS.boxes,
     permission: PermisoBanderas.STOCK_LISTAR,
@@ -53,7 +53,7 @@ export const productosHubItems: ProductosHubItem[] = [
   {
     key: 'movimientos',
     title: 'Movimientos',
-    description: 'Ingresos, salidas y ajustes de stock de accesorios.',
+    description: 'Ingresos, salidas y ajustes. Aquí se cambia la cantidad de stock.',
     path: '/admin/productos/movimientos',
     icon: ICONS.arrowLeftRight,
     permission: PermisoBanderas.MOVIMIENTOS_LISTAR,

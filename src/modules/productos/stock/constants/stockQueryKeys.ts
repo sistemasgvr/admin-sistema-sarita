@@ -4,4 +4,6 @@ export const stockQueryKeys = {
   all: ['stock'] as const,
   lists: () => [...stockQueryKeys.all, 'list'] as const,
   list: (filters: StockListFilters) => [...stockQueryKeys.lists(), filters] as const,
+  details: () => [...stockQueryKeys.all, 'detail'] as const,
+  detail: (id: number) => [...stockQueryKeys.details(), id] as const,
 }

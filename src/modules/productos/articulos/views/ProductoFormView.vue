@@ -46,7 +46,7 @@ const pageTitle = computed(() => (isEdit.value ? 'Editar producto' : 'Nuevo prod
 const pageHelpText = computed(() =>
   isEdit.value
     ? 'Producto = físico/gas; servicio = flete, mantenimiento o regulador alquilable. El tipo define filtros en POS y alquileres.'
-    : 'Elige primero producto o servicio. Así el catálogo se filtra bien en POS, alquileres y garantías.',
+    : 'Si el producto afecta stock, al guardar se crea saldo 0 en cada almacén. Luego usa Movimientos para ingresar o ajustar cantidad.',
 )
 const breadcrumbItems = computed(() => productosArticulosBreadcrumbItems(pageTitle.value))
 

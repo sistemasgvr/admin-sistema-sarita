@@ -6,6 +6,8 @@ export interface SubCategoriaProducto {
   descripcion?: string
   estado: number
   total_productos?: number
+  /** Nombres de productos activos (orden alfabético) */
+  nombres_productos?: string[]
   fecha_creacion: string
   fecha_modificacion: string
 }

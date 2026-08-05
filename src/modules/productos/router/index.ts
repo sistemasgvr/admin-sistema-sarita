@@ -68,6 +68,16 @@ export const productosRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'stock/:id(\\d+)',
+        name: 'admin-productos-stock-detalle',
+        component: () => import('@/modules/productos/stock/views/StockDetailView.vue'),
+        meta: {
+          title: 'Detalle de stock',
+          module: 'productos',
+          permission: PermisoBanderas.STOCK_VER,
+        },
+      },
+      {
         path: 'movimientos',
         name: 'admin-productos-movimientos',
         component: () =>

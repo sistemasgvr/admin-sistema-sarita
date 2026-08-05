@@ -3,7 +3,7 @@
     <PageBreadcrumb
       page-title="Stock accesorios"
       :items="breadcrumbItems"
-      help="Aquí solo entran accesorios (válvulas, mangueras, etc.). El stock de gas se consulta en Balones / Stock de gas."
+      help="Saldo actual por almacén. Al crear un accesorio el stock inicia en 0. Para subir o bajar cantidad usa Movimientos (ingreso, salida o ajuste)."
     />
 
     <AppTable
@@ -24,15 +24,22 @@
             <div class="w-full sm:w-40">
               <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
             </div>
-            <button
-              v-if="canCreate"
-              type="button"
+            <RouterLink
+              v-if="canCreateMovimiento"
+              :to="{ name: 'admin-productos-movimientos-nuevo' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo
-            </button>
+              Movimiento
+            </RouterLink>
+            <RouterLink
+              v-if="canListMovimientos"
+              :to="{ name: 'admin-productos-movimientos' }"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+            >
+              <AppIcon :name="ICONS.history" :size="18" />
+              Historial
+            </RouterLink>
           </template>
         </AppListToolbar>
       </template>
@@ -49,13 +56,34 @@
       </template>
 
       <template #cell-producto="{ row }">
-        <div>
+        <div class="min-w-0">
           <p class="font-medium text-gray-800 dark:text-white/90">
             {{ row.nombre_producto }}
           </p>
           <p class="text-theme-xs text-gray-500 dark:text-gray-400">
             {{ row.codigo_producto }}
           </p>
+          <div
+            v-if="row.nombre_categoria || row.nombre_sub_categoria"
+            class="mt-1.5 flex flex-wrap items-center gap-1"
+          >
+            <AppBadge
+              v-if="row.nombre_categoria"
+              size="sm"
+              variant="light"
+              color="neutral"
+            >
+              {{ row.nombre_categoria }}
+            </AppBadge>
+            <AppBadge
+              v-if="row.nombre_sub_categoria"
+              size="sm"
+              variant="light"
+              color="primary"
+            >
+              {{ row.nombre_sub_categoria }}
+            </AppBadge>
+          </div>
         </div>
       </template>
 
@@ -98,7 +126,7 @@
             type="button"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openDetailModal(row)"
+            @click="openDetail(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
@@ -122,13 +150,9 @@
 
     <StockFormModal
       v-model="formModalOpen"
-      :mode="formMode"
       :stock="selectedStock"
-      :almacenes="almacenes"
       @saved="onStockSaved"
     />
-
-    <StockDetailModal v-model="detailModalOpen" :stock="stockToView" />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -148,7 +172,8 @@
         <span class="font-medium">{{ stockToDelete?.nombre_producto }}</span>
         en
         <span class="font-medium">{{ stockToDelete?.nombre_almacen }}</span>
-        porque la cantidad debe ser cero. Ajusta el stock a cero e inténtalo de nuevo.
+        porque la cantidad debe ser cero. Registra un movimiento hasta dejarlo en cero e
+        inténtalo de nuevo.
       </div>
 
       <p v-else class="text-sm text-gray-600 dark:text-gray-400">
@@ -188,11 +213,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
-import StockDetailModal from '@/modules/productos/stock/components/StockDetailModal.vue'
 import {
   useDeleteStockMutation,
   useRestaurarStockMutation,
@@ -201,10 +226,8 @@ import { useStockQuery } from '@/modules/productos/stock/composables/useStockQue
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import type {
   Stock,
-  StockFormMode,
   StockListFilters,
 } from '@/modules/productos/stock/interfaces/stock.interface'
-import { stockService } from '@/modules/productos/stock/services/stock.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
@@ -216,10 +239,7 @@ import {
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import {
-  parsePositiveIntQuery,
-  useOpenIdFromRouteQuery,
-} from '@/shared/composables/useOpenIdFromRouteQuery'
+import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
@@ -227,12 +247,12 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
-import { useRoute } from 'vue-router'
 
 type EstadoFiltro = 'activos' | 'inactivos' | 'todos'
 
 const authStore = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 const breadcrumbItems = productosBreadcrumbItems('Stock accesorios')
 
 const almacenes = ref<Almacen[]>([])
@@ -274,7 +294,6 @@ const deleteMutation = useDeleteStockMutation()
 const restaurarMutation = useRestaurarStockMutation()
 
 const formModalOpen = ref(false)
-const formMode = ref<StockFormMode>('create')
 const selectedStock = ref<Stock | null>(null)
 
 const deleteModalOpen = ref(false)
@@ -283,14 +302,16 @@ const deleteBlockedByCantidad = computed(
   () => Number(stockToDelete.value?.stock) !== 0,
 )
 
-const detailModalOpen = ref(false)
-const stockToView = ref<Stock | null>(null)
-
-const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_ELIMINAR))
 const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_RESTAURAR))
+const canCreateMovimiento = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_CREAR),
+)
+const canListMovimientos = computed(() =>
+  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_LISTAR),
+)
 
 const isLoading = computed(() => stockQuery.isFetching.value)
 const rows = computed(() => stockQuery.data.value?.data ?? [])
@@ -321,7 +342,7 @@ const columns = computed<TableColumn<Stock>[]>(() => [
   { key: 'almacen', label: 'Almacén' },
   { key: 'producto', label: 'Producto' },
   { key: 'nombre_unidad_medida', label: 'U.M.' },
-  { key: 'stock', label: 'Stock' },
+  { key: 'stock', label: 'Saldo' },
   { key: 'stock_minimo', label: 'Mínimo' },
   { key: 'bajo_minimo', label: 'Estado' },
 ])
@@ -387,33 +408,17 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedStock.value = null
-  formModalOpen.value = true
-}
-
-const openEditModal = (stock: Stock) => {
-  formMode.value = 'edit'
+const openMinimoModal = (stock: Stock) => {
   selectedStock.value = stock
   formModalOpen.value = true
 }
 
-const openDetailModal = (stock: Stock) => {
-  stockToView.value = stock
-  detailModalOpen.value = true
+const openDetail = (stock: Stock) => {
+  void router.push({
+    name: 'admin-productos-stock-detalle',
+    params: { id: String(stock.id) },
+  })
 }
-
-useOpenIdFromRouteQuery({
-  onOpen: async (id) => {
-    try {
-      const stock = await stockService.obtenerPorId(id)
-      openDetailModal(stock)
-    } catch {
-      // si no existe o sin permiso, se queda en el listado
-    }
-  },
-})
 
 const openDeleteModal = (stock: Stock) => {
   stockToDelete.value = stock
@@ -447,8 +452,29 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
 
   return [
     {
-      key: 'edit',
-      label: 'Ajustar',
+      key: 'detalle',
+      label: 'Ver detalle',
+      icon: ICONS.eye,
+      disabled: busy,
+      hidden: !(canView.value && activo),
+    },
+    {
+      key: 'historial',
+      label: 'Ver en movimientos',
+      icon: ICONS.history,
+      disabled: busy,
+      hidden: !(canListMovimientos.value && activo),
+    },
+    {
+      key: 'movimiento',
+      label: 'Registrar movimiento',
+      icon: ICONS.arrowLeftRight,
+      disabled: busy,
+      hidden: !(canCreateMovimiento.value && activo),
+    },
+    {
+      key: 'minimo',
+      label: 'Stock mínimo',
       icon: ICONS.pencil,
       disabled: busy,
       hidden: !(canEdit.value && activo),
@@ -474,8 +500,29 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: Stock) {
   switch (key) {
-    case 'edit':
-      openEditModal(row)
+    case 'detalle':
+      openDetail(row)
+      return
+    case 'historial':
+      void router.push({
+        name: 'admin-productos-movimientos',
+        query: {
+          idProducto: String(row.id_producto),
+          idAlmacen: String(row.id_almacen),
+        },
+      })
+      return
+    case 'movimiento':
+      void router.push({
+        name: 'admin-productos-movimientos-nuevo',
+        query: {
+          idProducto: String(row.id_producto),
+          idAlmacen: String(row.id_almacen),
+        },
+      })
+      return
+    case 'minimo':
+      openMinimoModal(row)
       return
     case 'restore':
       return restaurarStock(row)

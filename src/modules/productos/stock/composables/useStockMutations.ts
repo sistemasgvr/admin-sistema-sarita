@@ -30,10 +30,10 @@ export function useUpdateStockMutation() {
       stockService.actualizar(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
-      toastSuccess('Stock actualizado correctamente')
+      toastSuccess('Stock mínimo actualizado correctamente')
     },
     onError: (error) => {
-      toastApiError(error, 'No se pudo actualizar el stock')
+      toastApiError(error, 'No se pudo actualizar el stock mínimo')
     },
   })
 }

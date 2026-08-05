@@ -11,6 +11,10 @@ export interface Stock {
   es_gas?: boolean
   id_unidad_medida?: number
   nombre_unidad_medida?: string
+  id_sub_categoria?: number | null
+  nombre_sub_categoria?: string | null
+  id_categoria?: number | null
+  nombre_categoria?: string | null
   stock: number
   stock_minimo: number
   bajo_minimo: boolean
@@ -37,7 +41,7 @@ export interface CreateStockPayload {
 }
 
 export interface UpdateStockPayload {
-  stock?: number
+  /** Solo stock mínimo. La cantidad cambia por movimientos. */
   stockMinimo?: number
 }
 
@@ -46,5 +50,3 @@ export interface DeleteStockResponse {
   id: number
   error?: string
 }
-
-export type StockFormMode = 'create' | 'edit'

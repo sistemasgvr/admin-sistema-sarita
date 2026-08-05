@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb
       page-title="Productos"
-      help="Catálogo: precios de accesorios, gases y servicios. Stock accesorios: cantidades físicas. Gas: cantidades en Balones / Stock de gas."
+      help="Catálogo: precios. Stock accesorios: saldo actual (inicia en 0). Movimientos: subir o bajar cantidades. Gas: Balones / Stock de gas."
     />
 
     <div class="grid gap-4 sm:grid-cols-1 xl:grid-cols-2">

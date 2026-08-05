@@ -33,8 +33,48 @@
         </AppListToolbar>
       </template>
 
-      <template #cell-total_productos="{ value }">
-        <AppBadge variant="light">{{ value ?? 0 }}</AppBadge>
+      <template #cell-clasificacion="{ row }">
+        <div class="inline-flex max-w-full flex-wrap items-center gap-1">
+          <AppBadge size="sm" variant="light" color="neutral">
+            {{ row.nombre_categoria || 'Sin categoría' }}
+          </AppBadge>
+          <AppBadge size="sm" variant="light" color="primary">
+            {{ row.nombre }}
+          </AppBadge>
+        </div>
+      </template>
+
+      <template #cell-total_productos="{ row }">
+        <div
+          class="inline-flex max-w-full flex-wrap items-center gap-1"
+          :title="productosTitle(row)"
+        >
+          <AppBadge
+            v-for="nombre in nombresProductosVisibles(row)"
+            :key="`${row.id}-${nombre}`"
+            size="sm"
+            variant="light"
+            color="primary"
+          >
+            {{ nombre }}
+          </AppBadge>
+          <AppBadge
+            v-if="nombresProductosExtra(row) > 0"
+            size="sm"
+            variant="light"
+            color="neutral"
+          >
+            +{{ nombresProductosExtra(row) }}
+          </AppBadge>
+          <AppBadge
+            v-if="!nombresProductos(row).length"
+            size="sm"
+            variant="light"
+            color="neutral"
+          >
+            Sin productos
+          </AppBadge>
+        </div>
       </template>
 
       <template #actions="{ row }">
@@ -247,11 +287,32 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 ])
 
 const columns = computed<TableColumn<SubCategoriaProducto>[]>(() => [
-  { key: 'nombre_categoria', label: 'Categoría' },
-  { key: 'nombre', label: 'Subcategoría' },
+  { key: 'clasificacion', label: 'Categoría / Subcategoría' },
   { key: 'descripcion', label: 'Descripción' },
   { key: 'total_productos', label: 'Productos' },
 ])
+
+const PRODUCTOS_VISIBLE_MAX = 3
+
+const nombresProductos = (row: SubCategoriaProducto): string[] => {
+  const names = row.nombres_productos
+  if (Array.isArray(names) && names.length) {
+    return names.map((n) => String(n)).filter(Boolean)
+  }
+  return []
+}
+
+const nombresProductosVisibles = (row: SubCategoriaProducto) =>
+  nombresProductos(row).slice(0, PRODUCTOS_VISIBLE_MAX)
+
+const nombresProductosExtra = (row: SubCategoriaProducto) =>
+  Math.max(0, nombresProductos(row).length - PRODUCTOS_VISIBLE_MAX)
+
+const productosTitle = (row: SubCategoriaProducto) => {
+  const names = nombresProductos(row)
+  if (!names.length) return 'Sin productos'
+  return names.join(', ')
+}
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 

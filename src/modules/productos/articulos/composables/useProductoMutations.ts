@@ -5,6 +5,7 @@ import type {
   CreateProductoPayload,
   UpdateProductoPayload,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
 export function useCreateProductoMutation() {
@@ -14,6 +15,7 @@ export function useCreateProductoMutation() {
     mutationFn: (payload: CreateProductoPayload) => productosService.crear(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
       toastSuccess('Producto creado correctamente')
     },
     onError: (error) => {
@@ -30,6 +32,7 @@ export function useUpdateProductoMutation() {
       productosService.actualizar(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
       toastSuccess('Producto actualizado correctamente')
     },
     onError: (error) => {

@@ -3,8 +3,36 @@
     <PageBreadcrumb
       page-title="Movimientos (accesorios)"
       :items="breadcrumbItems"
-      help="Ingresos, salidas y ajustes de accesorios. El gas no se mueve desde aquí; se controla en Balones / Stock de gas."
+      help="Aquí cambias la cantidad de stock: ingresos, salidas o ajustes. El gas se controla en Balones / Stock de gas."
     />
+
+    <div
+      v-if="activeFilterChips.length"
+      class="mb-4 flex flex-wrap items-center gap-2"
+    >
+      <span class="text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+        Filtros activos
+      </span>
+      <button
+        v-for="chip in activeFilterChips"
+        :key="chip.key"
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200 dark:hover:bg-brand-500/20"
+        :title="`Quitar filtro ${chip.label}`"
+        @click="clearFilterChip(chip.key)"
+      >
+        <span>{{ chip.label }}: {{ chip.value }}</span>
+        <AppIcon :name="ICONS.x" :size="12" />
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+        @click="clearAllScopedFilters"
+      >
+        <AppIcon :name="ICONS.brushCleaning" :size="14" />
+        Limpiar filtros
+      </button>
+    </div>
 
     <AppTable
       :columns="columns"
@@ -180,12 +208,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import MovimientoInventarioDetailModal from '@/modules/productos/movimientos/components/MovimientoInventarioDetailModal.vue'
 import { useDeleteMovimientoInventarioMutation } from '@/modules/productos/movimientos/composables/useMovimientoInventarioMutations'
 import { useMovimientosInventarioQuery } from '@/modules/productos/movimientos/composables/useMovimientosInventarioQuery'
@@ -205,8 +234,10 @@ import {
   ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
@@ -214,8 +245,11 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const authStore = useAuthStore()
+const route = useRoute()
 const router = useRouter()
 const breadcrumbItems = productosBreadcrumbItems('Movimientos (accesorios)')
+const idProductoFiltro = ref<number | null>(null)
+const nombreProductoFiltro = ref<string | null>(null)
 
 const listaTipoMovId = ref(ListaIds.TIPO_MOV_INV)
 const tiposMovimientoQuery = useListaOpcionesQuery(listaTipoMovId)
@@ -227,6 +261,58 @@ const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
+
+type FilterChipKey = 'producto' | 'almacen' | 'tipo' | 'fechaDesde' | 'fechaHasta'
+
+const activeFilterChips = computed(() => {
+  const chips: { key: FilterChipKey; label: string; value: string }[] = []
+
+  if (idProductoFiltro.value) {
+    chips.push({
+      key: 'producto',
+      label: 'Producto',
+      value: nombreProductoFiltro.value || `#${idProductoFiltro.value}`,
+    })
+  }
+
+  const idAlmacen = dynamicFilters.value.idAlmacen
+  if (idAlmacen != null && idAlmacen !== '') {
+    const almacen = almacenes.value.find((a) => a.id === Number(idAlmacen))
+    chips.push({
+      key: 'almacen',
+      label: 'Almacén',
+      value: almacen?.nombre || `#${idAlmacen}`,
+    })
+  }
+
+  const idTipo = dynamicFilters.value.idTipoMovimiento
+  if (idTipo != null && idTipo !== '') {
+    const tipo = tiposMovimientoQuery.data.value?.find((t) => t.id === Number(idTipo))
+    chips.push({
+      key: 'tipo',
+      label: 'Tipo',
+      value: formatListaOpcionLabel(tipo?.nombre) || `#${idTipo}`,
+    })
+  }
+
+  if (dynamicFilters.value.fechaDesde) {
+    chips.push({
+      key: 'fechaDesde',
+      label: 'Desde',
+      value: String(dynamicFilters.value.fechaDesde),
+    })
+  }
+
+  if (dynamicFilters.value.fechaHasta) {
+    chips.push({
+      key: 'fechaHasta',
+      label: 'Hasta',
+      value: String(dynamicFilters.value.fechaHasta),
+    })
+  }
+
+  return chips
+})
 
 const filters = ref<MovimientoInventarioListFilters>({
   buscar: '',
@@ -321,9 +407,72 @@ const loadCatalogos = async () => {
   }
 }
 
+const loadProductoFiltroLabel = async (idProducto: number | null) => {
+  if (!idProducto) {
+    nombreProductoFiltro.value = null
+    return
+  }
+  try {
+    const producto = await productosService.obtenerPorId(idProducto)
+    nombreProductoFiltro.value = producto.nombre || producto.codigo || `#${idProducto}`
+  } catch {
+    nombreProductoFiltro.value = `#${idProducto}`
+  }
+}
+
+const syncRouteQuery = () => {
+  const nextQuery: Record<string, string> = {}
+  if (idProductoFiltro.value) nextQuery.idProducto = String(idProductoFiltro.value)
+  const idAlmacen = dynamicFilters.value.idAlmacen
+  if (idAlmacen != null && idAlmacen !== '') {
+    nextQuery.idAlmacen = String(idAlmacen)
+  }
+
+  const currProducto = typeof route.query.idProducto === 'string' ? route.query.idProducto : undefined
+  const currAlmacen = typeof route.query.idAlmacen === 'string' ? route.query.idAlmacen : undefined
+  if (currProducto === nextQuery.idProducto && currAlmacen === nextQuery.idAlmacen) {
+    return
+  }
+
+  void router.replace({ query: nextQuery })
+}
+
+const applyQueryFilters = async () => {
+  const idProductoQuery = parsePositiveIntQuery(route.query.idProducto)
+  const idAlmacenQuery = parsePositiveIntQuery(route.query.idAlmacen)
+
+  if (idProductoFiltro.value !== idProductoQuery) {
+    idProductoFiltro.value = idProductoQuery
+    await loadProductoFiltroLabel(idProductoQuery)
+  }
+
+  const currentAlmacen =
+    dynamicFilters.value.idAlmacen != null && dynamicFilters.value.idAlmacen !== ''
+      ? Number(dynamicFilters.value.idAlmacen)
+      : null
+
+  if (idAlmacenQuery && currentAlmacen !== idAlmacenQuery) {
+    dynamicFilters.value = { ...dynamicFilters.value, idAlmacen: idAlmacenQuery }
+  } else if (!idAlmacenQuery && currentAlmacen != null) {
+    const { idAlmacen: _removed, ...rest } = dynamicFilters.value
+    dynamicFilters.value = rest
+  }
+
+  pagina.value = 1
+  syncFilters()
+}
+
 onMounted(() => {
   loadCatalogos()
+  void applyQueryFilters()
 })
+
+watch(
+  () => [route.query.idProducto, route.query.idAlmacen] as const,
+  () => {
+    void applyQueryFilters()
+  },
+)
 
 const syncFilters = () => {
   const active = dynamicFilters.value
@@ -332,17 +481,65 @@ const syncFilters = () => {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
+    idProducto: idProductoFiltro.value ?? undefined,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
-    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    idAlmacen:
+      active.idAlmacen != null && active.idAlmacen !== ''
+        ? Number(active.idAlmacen)
+        : undefined,
     idTipoMovimiento:
-      active.idTipoMovimiento != null ? Number(active.idTipoMovimiento) : undefined,
+      active.idTipoMovimiento != null && active.idTipoMovimiento !== ''
+        ? Number(active.idTipoMovimiento)
+        : undefined,
   }
 }
 
 const onFiltersChange = () => {
   pagina.value = 1
   syncFilters()
+  syncRouteQuery()
+}
+
+const clearFilterChip = (key: FilterChipKey) => {
+  switch (key) {
+    case 'producto':
+      idProductoFiltro.value = null
+      nombreProductoFiltro.value = null
+      break
+    case 'almacen': {
+      const { idAlmacen: _removed, ...rest } = dynamicFilters.value
+      dynamicFilters.value = rest
+      break
+    }
+    case 'tipo': {
+      const { idTipoMovimiento: _removed, ...rest } = dynamicFilters.value
+      dynamicFilters.value = rest
+      break
+    }
+    case 'fechaDesde': {
+      const { fechaDesde: _removed, ...rest } = dynamicFilters.value
+      dynamicFilters.value = rest
+      break
+    }
+    case 'fechaHasta': {
+      const { fechaHasta: _removed, ...rest } = dynamicFilters.value
+      dynamicFilters.value = rest
+      break
+    }
+  }
+  pagina.value = 1
+  syncFilters()
+  syncRouteQuery()
+}
+
+const clearAllScopedFilters = () => {
+  idProductoFiltro.value = null
+  nombreProductoFiltro.value = null
+  dynamicFilters.value = {}
+  pagina.value = 1
+  syncFilters()
+  syncRouteQuery()
 }
 
 watch(buscar, () => {

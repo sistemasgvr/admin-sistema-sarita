@@ -7,11 +7,16 @@
   >
     <DetailCardsLayout :loading="false" :sections="sections">
       <template #badges>
-        <AppBadge v-if="subCategoria?.nombre_categoria" color="primary">
+        <AppBadge
+          v-if="subCategoria?.nombre_categoria"
+          size="sm"
+          variant="light"
+          color="neutral"
+        >
           {{ subCategoria.nombre_categoria }}
         </AppBadge>
-        <AppBadge variant="light" color="neutral">
-          {{ subCategoria?.total_productos ?? 0 }} productos
+        <AppBadge size="sm" variant="light" color="primary">
+          {{ subCategoria?.nombre }}
         </AppBadge>
       </template>
     </DetailCardsLayout>
@@ -43,6 +48,14 @@ const props = defineProps<{
 
 const open = defineModel<boolean>({ default: false })
 
+const nombresProductos = computed(() => {
+  const names = props.subCategoria?.nombres_productos
+  if (Array.isArray(names) && names.length) {
+    return names.map((n) => String(n)).filter(Boolean)
+  }
+  return []
+})
+
 const sections = computed<DetailSection[]>(() => {
   const data = props.subCategoria
   if (!data) return []
@@ -55,7 +68,12 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Categoría', value: data.nombre_categoria },
         { label: 'Nombre', value: data.nombre },
         { label: 'Descripción', value: data.descripcion },
-        { label: 'Productos', value: data.total_productos?.toString() },
+        {
+          label: 'Productos',
+          value: nombresProductos.value.length
+            ? nombresProductos.value.join(', ')
+            : 'Ninguno',
+        },
       ],
     },
     {

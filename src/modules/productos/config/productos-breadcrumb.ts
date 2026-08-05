@@ -2,11 +2,20 @@ import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 
 export const PRODUCTOS_HUB_PATH = '/admin/productos'
 export const PRODUCTOS_ARTICULOS_PATH = '/admin/productos/articulos'
+export const PRODUCTOS_STOCK_PATH = '/admin/productos/stock'
 export const PRODUCTOS_MOVIMIENTOS_PATH = '/admin/productos/movimientos'
 
 export function productosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return [
     { label: 'Productos', to: PRODUCTOS_HUB_PATH },
+    { label: pageTitle },
+  ]
+}
+
+export function productosStockBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
+  return [
+    { label: 'Productos', to: PRODUCTOS_HUB_PATH },
+    { label: 'Stock accesorios', to: PRODUCTOS_STOCK_PATH },
     { label: pageTitle },
   ]
 }

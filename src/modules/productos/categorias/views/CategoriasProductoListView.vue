@@ -30,18 +30,71 @@
         </AppListToolbar>
       </template>
 
-      <template #cell-total_sub_categorias="{ row, value }">
+      <template #cell-total_sub_categorias="{ row }">
         <button
           v-if="canManageSubCategorias"
           type="button"
-          class="inline-flex"
+          class="inline-flex max-w-full flex-wrap items-center gap-1 text-left"
+          :title="subcategoriasTitle(row)"
           @click="openSubcategoriasModal(row)"
         >
-          <AppBadge variant="light" :color="Number(value ?? 0) > 0 ? 'primary' : undefined">
-            {{ value ?? 0 }}
+          <AppBadge
+            v-for="nombre in nombresSubcategoriasVisibles(row)"
+            :key="`${row.id}-${nombre}`"
+            size="sm"
+            variant="light"
+            color="primary"
+          >
+            {{ nombre }}
+          </AppBadge>
+          <AppBadge
+            v-if="nombresSubcategoriasExtra(row) > 0"
+            size="sm"
+            variant="light"
+            color="neutral"
+          >
+            +{{ nombresSubcategoriasExtra(row) }}
+          </AppBadge>
+          <AppBadge
+            v-if="!nombresSubcategorias(row).length"
+            size="sm"
+            variant="light"
+            color="neutral"
+          >
+            Sin subcategorías
           </AppBadge>
         </button>
-        <AppBadge v-else variant="light">{{ value ?? 0 }}</AppBadge>
+        <div
+          v-else
+          class="inline-flex max-w-full flex-wrap items-center gap-1"
+          :title="subcategoriasTitle(row)"
+        >
+          <AppBadge
+            v-for="nombre in nombresSubcategoriasVisibles(row)"
+            :key="`${row.id}-${nombre}`"
+            size="sm"
+            variant="light"
+            color="primary"
+          >
+            {{ nombre }}
+          </AppBadge>
+          <AppBadge
+            v-if="nombresSubcategoriasExtra(row) > 0"
+            size="sm"
+            variant="light"
+            color="neutral"
+          >
+            +{{ nombresSubcategoriasExtra(row) }}
+          </AppBadge>
+          <AppBadge
+            v-if="!nombresSubcategorias(row).length"
+            size="sm"
+            variant="light"
+            color="neutral"
+          >
+            Sin subcategorías
+          </AppBadge>
+        </div>
       </template>
 
       <template #actions="{ row }">
@@ -245,6 +298,28 @@ const columns = computed<TableColumn<CategoriaProducto>[]>(() => [
   { key: 'descripcion', label: 'Descripción' },
   { key: 'total_sub_categorias', label: 'Subcategorías' },
 ])
+
+const SUBCATEGORIAS_VISIBLE_MAX = 3
+
+const nombresSubcategorias = (row: CategoriaProducto): string[] => {
+  const names = row.nombres_sub_categorias
+  if (Array.isArray(names) && names.length) {
+    return names.map((n) => String(n)).filter(Boolean)
+  }
+  return []
+}
+
+const nombresSubcategoriasVisibles = (row: CategoriaProducto) =>
+  nombresSubcategorias(row).slice(0, SUBCATEGORIAS_VISIBLE_MAX)
+
+const nombresSubcategoriasExtra = (row: CategoriaProducto) =>
+  Math.max(0, nombresSubcategorias(row).length - SUBCATEGORIAS_VISIBLE_MAX)
+
+const subcategoriasTitle = (row: CategoriaProducto) => {
+  const names = nombresSubcategorias(row)
+  if (!names.length) return 'Sin subcategorías'
+  return names.join(', ')
+}
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 

@@ -449,7 +449,7 @@ const ayudaCaracteristicas = computed(() => {
   if (esGas.value) {
     return 'Gas: solo precio para vender. La cantidad disponible está en Balones / Stock de gas.'
   }
-  return 'Producto: se lista en Accesorios / ventas. Si es alquilable o tiene garantía, también en flujos industriales.'
+  return 'Producto: al guardar se crea stock en 0 en cada almacén activo. Las cantidades se cambian con Movimientos.'
 })
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setFieldValue } =

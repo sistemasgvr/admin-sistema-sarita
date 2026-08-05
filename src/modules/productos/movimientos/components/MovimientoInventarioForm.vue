@@ -211,11 +211,16 @@ interface MovimientoInventarioFormProps {
   mode: MovimientoInventarioFormMode
   movimientoId?: number | null
   active?: boolean
+  /** Prefill desde query (ej. Stock / Registrar movimiento) */
+  initialIdProducto?: number | null
+  initialIdAlmacen?: number | null
 }
 
 const props = withDefaults(defineProps<MovimientoInventarioFormProps>(), {
   movimientoId: null,
   active: true,
+  initialIdProducto: null,
+  initialIdAlmacen: null,
 })
 
 const emit = defineEmits<{
@@ -375,8 +380,8 @@ watch(
       resetForm({
         values: {
           fecha: today(),
-          idAlmacen: '',
-          idProducto: '',
+          idAlmacen: props.initialIdAlmacen ?? '',
+          idProducto: props.initialIdProducto ?? '',
           idTipoMovimiento: '',
           cantidad: undefined,
           idTipoDocumentoRef: '',
