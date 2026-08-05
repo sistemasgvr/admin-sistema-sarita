@@ -159,6 +159,7 @@ import { optionalString, requiredSelect, requiredString } from '@/shared/validat
 interface CuentaBancariaFormModalProps {
   mode: CuentaBancariaFormMode
   cuenta?: CuentaBancaria | null
+  defaultClienteId?: number | null
 }
 
 const props = defineProps<CuentaBancariaFormModalProps>()
@@ -284,7 +285,7 @@ const syncFormValues = () => {
       numeroCuenta: d?.numero_cuenta ?? '',
       numeroCuentaInterbancaria: d?.numero_cuenta_interbancaria ?? '',
       telefonoBilletera: d?.telefono_billetera ?? '',
-      idCliente: d?.id_cliente ?? undefined,
+      idCliente: d?.id_cliente ?? props.defaultClienteId ?? undefined,
       esPrincipal: d?.es_principal ?? false,
     },
   })

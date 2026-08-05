@@ -396,6 +396,13 @@
       </button>
     </div>
   </form>
+
+  <div v-if="mostrarRelacionados" class="mt-5">
+    <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+      Direcciones, vehículos, choferes y cuentas bancarias
+    </h5>
+    <ClienteRelatedTabs :id-cliente="props.clienteId!" />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -422,6 +429,7 @@ import {
 import { documentoYaRegistrado } from '@/modules/clientes/composables/useValidarDocumentoCliente'
 import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
 import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
+import ClienteRelatedTabs from '@/modules/clientes/components/ClienteRelatedTabs.vue'
 import { toClienteFormSchema } from '@/modules/clientes/validation/clienteFormSchema'
 import type {
   Cliente,
@@ -441,11 +449,12 @@ const props = withDefaults(
     mode: ClienteFormMode
     clienteId?: number
     active?: boolean
-    /** Prefill al crear (ej. Proveedor desde compras). */
     defaultIdTipoCliente?: number
+    showRelatedTabs?: boolean
   }>(),
   {
     active: true,
+    showRelatedTabs: false,
   },
 )
 
@@ -464,6 +473,10 @@ const activeRef = toRef(props, 'active')
 const detailQuery = useClienteDetailQuery(idParaEditar, activeRef)
 const clienteData = computed(() => detailQuery.data.value ?? null)
 const esClienteSistema = computed(() => esClientesVarios(clienteData.value))
+
+const mostrarRelacionados = computed(
+  () => props.showRelatedTabs && isEdit.value && !!props.clienteId && !esClienteSistema.value,
+)
 
 const isCheckingDocumento = ref(false)
 const documentoDuplicado = ref(false)

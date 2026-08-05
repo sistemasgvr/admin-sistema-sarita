@@ -18,7 +18,7 @@ import { direccionesService } from '@/modules/direcciones/services/direcciones.s
 import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import { choferesService } from '@/modules/choferes/services/choferes.service'
 import { cuentasBancariasService } from '@/modules/cuentas-bancarias/services/cuentas-bancarias.service'
-
+  
 function conNivelDeGrupo<T>(registros: T[]): (T & { outlineLevel: number })[] {
   return registros.map((registro, index) => ({ ...registro, outlineLevel: index === 0 ? 0 : 1 }))
 }

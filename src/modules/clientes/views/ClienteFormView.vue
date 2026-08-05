@@ -17,7 +17,8 @@
       :mode="isEdit ? 'edit' : 'create'"
       :cliente-id="clienteId"
       :active="true"
-      @saved="goToList"
+      :show-related-tabs="true"
+      @saved="onSaved"
       @cancel="goToList"
     />
   </div>
@@ -29,6 +30,7 @@ import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteForm from '@/modules/clientes/components/ClienteForm.vue'
 import { clientesBreadcrumbItems } from '@/modules/clientes/config/clientes-breadcrumb'
+import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
@@ -49,5 +51,15 @@ const breadcrumbItems = computed(() => clientesBreadcrumbItems(pageTitle.value))
 
 const goToList = () => {
   void router.push({ name: 'admin-clientes' })
+}
+
+const onSaved = (cliente: Cliente) => {
+  if (!isEdit.value) {
+    // Al crear, se pasa a la vista de edición del cliente recién creado para
+    // poder asignarle de una vez direcciones, vehículos, choferes y cuentas.
+    void router.replace({ name: 'admin-clientes-editar', params: { id: String(cliente.id) } })
+    return
+  }
+  goToList()
 }
 </script>
