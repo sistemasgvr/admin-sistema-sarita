@@ -79,11 +79,11 @@
         </div>
 
         <AppSelectSearch
-          v-if="modoTercero === 'registrado'"
+          v-if="modoTercero !== 'libre'"
           v-model="form.idTercero"
           :options="terceroOptions"
           v-model:search="terceroSearch"
-          :placeholder="`Selecciona un ${terceroSingular.toLowerCase()}`"
+          :placeholder="`Selecciona un ${singularModo}`"
           search-placeholder="Buscar por nombre o documento..."
           remote
           :loading="clientesQuery.isFetching.value"
@@ -149,14 +149,12 @@
           :error="errores.monto"
           class="sm:col-span-2"
         >
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoNegativo" @focusout="normalizarMonto">
+          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
             <AppInput
               v-model="form.monto"
-              type="number"
+              type="text"
               inputmode="decimal"
               placeholder="0.00"
-              :min="0"
-              :step="0.01"
               :state="errores.monto ? 'error' : 'default'"
             />
           </div>
@@ -205,8 +203,11 @@
         </AppFormField>
 
         <p class="text-theme-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
-          Se generarán <strong>{{ form.numeroCuotas || 0 }}</strong> cuotas de aprox.
-          <strong>{{ formatCurrency(cuotaAproximada) }}</strong> cada una, mensualmente el
+          Se generará{{ Number(form.numeroCuotas) === 1 ? '' : 'n' }}
+          <strong>{{ form.numeroCuotas || 0 }}</strong>
+          {{ Number(form.numeroCuotas) === 1 ? 'cuota' : 'cuotas' }} de aprox.
+          <strong>{{ formatCurrency(cuotaAproximada) }}</strong>
+          {{ Number(form.numeroCuotas) === 1 ? '' : 'cada una' }}, mensualmente el
           <strong>día {{ form.diaMesPago || '—' }}</strong> de cada mes
           (la primera el <strong>{{ form.fechaPrimeraCuota || '—' }}</strong>).
         </p>
@@ -268,7 +269,7 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
-type ModoTercero = 'registrado' | 'libre'
+type ModoTercero = 'cliente' | 'proveedor' | 'libre'
 
 const props = defineProps<{ tipo: TipoCuenta }>()
 const emit = defineEmits<{ saved: [] }>()
@@ -294,8 +295,9 @@ const ctaLabel = computed(() => {
   if (esPlan.value) return esCobrar.value ? 'Crear plan de cobro' : 'Crear plan de pago'
   return esCobrar.value ? 'Crear cuenta por cobrar' : 'Crear cuenta por pagar'
 })
-const terceroLabel = computed(() => (esCobrar.value ? 'Cliente / Tercero' : 'Proveedor / Tercero'))
-const terceroSingular = computed(() => (esCobrar.value ? 'Cliente' : 'Proveedor'))
+const terceroLabel = computed(() =>
+  esCobrar.value ? 'Cliente / Proveedor' : 'Proveedor / Cliente',
+)
 const ejemploDescripcion = computed(() =>
   esCobrar.value
     ? 'Ej.: Devolución de anticipo, aporte pendiente, alquiler no facturado...'
@@ -330,12 +332,14 @@ const alternarPlan = () => {
 }
 
 /* ---------- Selector de modo tercero ---------- */
-const modoTercero = ref<ModoTercero>('registrado')
+// Por defecto: cliente (CxC) o proveedor (CxP)
+const modoTercero = ref<ModoTercero>(esCobrar.value ? 'cliente' : 'proveedor')
 
-const modoOptions: { value: ModoTercero; label: string; icon: string }[] = [
-  { value: 'registrado', label: 'Registrado', icon: ICONS.users },
+const modoOptions = computed<{ value: ModoTercero; label: string; icon: string }[]>(() => [
+  { value: 'cliente', label: 'Cliente', icon: ICONS.users },
+  { value: 'proveedor', label: 'Proveedor', icon: ICONS.building2 },
   { value: 'libre', label: 'Nombre libre', icon: ICONS.pencil },
-]
+])
 
 const cambiarModo = (modo: ModoTercero) => {
   if (modoTercero.value === modo) return
@@ -347,14 +351,41 @@ const cambiarModo = (modo: ModoTercero) => {
   errores.terceroNombre = undefined
 }
 
+const singularModo = computed(() =>
+  modoTercero.value === 'proveedor' ? 'proveedor' : 'cliente',
+)
+
 /* ---------- Búsqueda remota de terceros ---------- */
 const terceroSearch = ref('')
+
+// Carga opciones de TipoCliente para saber el id de CLIENTE y PROVEEDOR
+const tipoClienteListaId = ref(ListaIds.TIPO_CLIENTE)
+const tiposClienteQuery = useListaOpcionesQuery(tipoClienteListaId)
+
+const idTipoCliente = computed(
+  () => tiposClienteQuery.data.value?.find((o) => o.nombre?.toUpperCase() === 'CLIENTE')?.id,
+)
+const idTipoProveedor = computed(
+  () => tiposClienteQuery.data.value?.find((o) => o.nombre?.toUpperCase() === 'PROVEEDOR')?.id,
+)
+
+const idTipoActual = computed(() => {
+  if (modoTercero.value === 'cliente') return idTipoCliente.value
+  if (modoTercero.value === 'proveedor') return idTipoProveedor.value
+  return undefined
+})
+
 const clientesFilters = ref<ClienteListFilters>({
   buscar: '',
   pagina: 1,
   limite: 50,
   soloActivos: 1,
 })
+
+// Cuando cambie el idTipoActual, re-filtra la lista
+watch(idTipoActual, (tipo) => {
+  clientesFilters.value = { ...clientesFilters.value, idTipoCliente: tipo, pagina: 1 }
+}, { immediate: true })
 
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
 watch(terceroSearch, (value) => {
@@ -424,7 +455,7 @@ const errores = reactive<Record<string, string | undefined>>({})
 
 const resetForm = () => {
   esPlan.value = false
-  modoTercero.value = 'registrado'
+  modoTercero.value = esCobrar.value ? 'cliente' : 'proveedor'
   form.idTercero = null
   form.terceroNombre = ''
   form.fechaEmision = hoy()
@@ -529,11 +560,23 @@ watch(
   },
 )
 
-/* ---------- Handlers de monto ---------- */
+/* ---------- Handlers de monto (input tipo texto para no perder comas) ---------- */
 const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  if (['-', '+', 'e', 'E'].includes(e.key)) e.preventDefault()
+  // Permite teclas de control (flechas, backspace, delete, tab, home, end, enter, esc, F1-F12)
+  if (e.key.length > 1) return
+  // Permite atajos con Ctrl/Meta (copiar, pegar, seleccionar todo)
+  if (e.ctrlKey || e.metaKey) return
+  // Bloquea signo negativo/positivo y notación científica
+  if (['-', '+', 'e', 'E'].includes(e.key)) {
+    e.preventDefault()
+    return
+  }
+  // Solo permite dígitos, punto y coma
+  if (!/[\d.,]/.test(e.key)) {
+    e.preventDefault()
+  }
 }
-const bloquearPegadoNegativo = (e: ClipboardEvent) => {
+const bloquearPegadoInvalido = (e: ClipboardEvent) => {
   const texto = e.clipboardData?.getData('text') ?? ''
   if (/[-+eE]/.test(texto)) e.preventDefault()
 }
@@ -550,9 +593,9 @@ const validar = (): boolean => {
   let ok = true
 
   // Tercero
-  if (modoTercero.value === 'registrado') {
+  if (modoTercero.value !== 'libre') {
     if (!form.idTercero) {
-      errores.idTercero = `Selecciona un ${terceroSingular.value.toLowerCase()}`
+      errores.idTercero = `Selecciona un ${singularModo.value}`
       ok = false
     }
   } else {
@@ -643,7 +686,7 @@ const submit = async () => {
   normalizarMonto()
   if (!validar()) return
 
-  const esRegistrado = modoTercero.value === 'registrado'
+  const esRegistrado = modoTercero.value !== 'libre'
   const montoParsed = parseMoneyInput(form.monto)
   if (montoParsed == null || montoParsed <= 0) {
     errores.monto = 'Ingresa un monto válido mayor a cero'

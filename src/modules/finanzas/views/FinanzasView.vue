@@ -15,6 +15,7 @@
       <KeepAlive>
         <CuentasListView v-if="activeTab === 'cobrar'" tipo="COBRAR" />
         <CuentasListView v-else-if="activeTab === 'pagar'" tipo="PAGAR" />
+        <GarantiasListView v-else-if="activeTab === 'garantias'" />
       </KeepAlive>
     </template>
 
@@ -35,6 +36,7 @@ import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { AppTabs } from '@/shared/components'
 import CuentasListView from '@/modules/finanzas/views/CuentasListView.vue'
+import GarantiasListView from '@/modules/finanzas/views/GarantiasListView.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
@@ -60,6 +62,12 @@ const finanzasTabs: FinanzasTab[] = [
     label: 'Cuentas por Pagar',
     icon: ICONS.wallet,
     permission: PermisoBanderas.FINANZAS_CXP_VER,
+  },
+  {
+    key: 'garantias',
+    label: 'Garantías',
+    icon: ICONS.shield,
+    permission: PermisoBanderas.FINANZAS_GARANTIAS_VER,
   },
 ]
 
