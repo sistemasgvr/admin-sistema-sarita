@@ -69,6 +69,16 @@ export const balonesHubItems: BalonesHubItem[] = [
     implemented: true,
   },
   {
+    key: 'recojos',
+    title: 'Recojos',
+    description:
+      'Visitas para recoger cilindros en préstamo: programar, registrar intento, extender fecha o devolver.',
+    path: '/admin/balones/recojos',
+    icon: ICONS.truck,
+    permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
+    implemented: true,
+  },
+  {
     key: 'alquileres',
     title: 'Alquileres',
     description:

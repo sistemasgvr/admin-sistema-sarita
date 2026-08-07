@@ -60,6 +60,14 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
+    key: 'recojos',
+    title: 'Recojos',
+    path: '/admin/balones/recojos',
+    permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
+    phase: 5,
+    implemented: true,
+  },
+  {
     key: 'alquileres',
     title: 'Alquileres',
     path: '/admin/balones/alquileres',

@@ -132,6 +132,15 @@
       :detalle="detalleToDevolver"
       @saved="onDevolucionSaved"
     />
+
+    <RecojoProgramarModal
+      v-model="programarRecojoOpen"
+      :id-cliente="prestamoToRecojo?.id_cliente"
+      :id-prestamo="prestamoToRecojo?.id_prestamo"
+      :numero-origen="prestamoToRecojo?.numero_prestamo"
+      tipo-origen="PRESTAMO"
+      @saved="onDevolucionSaved"
+    />
   </div>
 </template>
 
@@ -142,6 +151,7 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
 import PrestamoDevolverModal from '@/modules/balones/prestamos/components/PrestamoDevolverModal.vue'
+import RecojoProgramarModal from '@/modules/balones/recojos/components/RecojoProgramarModal.vue'
 import { usePrestamosAntiguedadQuery } from '@/modules/balones/prestamos/composables/usePrestamosAntiguedadQuery'
 import type {
   PrestamoAntiguedadFilters,
@@ -210,11 +220,20 @@ const prestamoToViewId = ref<number | null>(null)
 
 const devolverModalOpen = ref(false)
 const detalleToDevolver = ref<PrestamoDetalle | null>(null)
+const programarRecojoOpen = ref(false)
+const prestamoToRecojo = ref<{
+  id_cliente?: number | null
+  id_prestamo: number
+  numero_prestamo?: string | null
+} | null>(null)
 
 const canDevolver = computed(
   () =>
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
+)
+const canProgramarRecojo = computed(() =>
+  authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR),
 )
 
 const breadcrumbItems = computed(() => [
@@ -348,6 +367,12 @@ function actionItemsForRow(row: PrestamoAntiguedadItem): ActionMenuItem[] {
       hidden: !canDevolver.value || !pendiente,
     },
     {
+      key: 'programar_recojo',
+      label: 'Programar recojo',
+      icon: ICONS.truck,
+      hidden: !canProgramarRecojo.value || !pendiente || !row.id_cliente,
+    },
+    {
       key: 'detalle-prestamo',
       label: 'Ver detalle del préstamo',
       icon: ICONS.eye,
@@ -388,6 +413,15 @@ function openDevolver(row: PrestamoAntiguedadItem) {
   devolverModalOpen.value = true
 }
 
+function openProgramarRecojo(row: PrestamoAntiguedadItem) {
+  prestamoToRecojo.value = {
+    id_cliente: row.id_cliente,
+    id_prestamo: row.id_prestamo,
+    numero_prestamo: row.numero_prestamo,
+  }
+  programarRecojoOpen.value = true
+}
+
 function openBalonDetail(row: PrestamoAntiguedadItem) {
   if (!row.id_balon) return
   router.push({
@@ -411,6 +445,9 @@ function onActionSelect(key: string, row: PrestamoAntiguedadItem) {
   switch (key) {
     case 'devolver':
       openDevolver(row)
+      return
+    case 'programar_recojo':
+      openProgramarRecojo(row)
       return
     case 'detalle-prestamo':
       openPrestamoDetail(row)

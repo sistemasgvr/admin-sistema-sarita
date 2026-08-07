@@ -79,6 +79,16 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   CLIENTE: 'primary',
   PLANTA_EXTERNA: 'warning',
 
+  // EstadoRecojo / ResultadoRecojoDetalle
+  PROGRAMADO: 'primary',
+  EN_RUTA: 'warning',
+  EXITOSO: 'success',
+  FALLIDO: 'error',
+  REPROGRAMADO: 'warning',
+  RECOGIDO: 'success',
+  NO_RECOGIDO: 'error',
+  EXTENDIDO: 'warning',
+
   // Estados genéricos de operaciones
   ACTIVO: 'success',
   CERRADO: 'neutral',

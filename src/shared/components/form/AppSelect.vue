@@ -51,6 +51,12 @@
             :style="dropdownStyle"
             class="app-select-dropdown fixed z-[100001] max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
           >
+            <p
+              v-if="options.length === 0"
+              class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400"
+            >
+              {{ emptyText }}
+            </p>
             <button
               v-for="option in options"
               :key="String(option.value)"
@@ -94,6 +100,8 @@ interface AppSelectProps {
   hint?: string
   error?: string
   placeholder?: string
+  /** Texto cuando el listado no tiene opciones */
+  emptyText?: string
   name?: string
   id?: string
   disabled?: boolean
@@ -105,6 +113,7 @@ interface AppSelectProps {
 
 const props = withDefaults(defineProps<AppSelectProps>(), {
   state: 'default',
+  emptyText: 'No hay registros',
 })
 
 const model = defineModel<string | number | null>({ default: '' })
@@ -138,7 +147,8 @@ const displayLabel = computed(() => {
     (option) => String(option.value) === String(model.value),
   )
 
-  return selected?.label ?? props.placeholder ?? 'Seleccionar'
+  // Evita mostrar el placeholder si hay valor pero aún no está en options
+  return selected?.label ?? String(model.value)
 })
 
 const buttonAttrs = computed(() => {

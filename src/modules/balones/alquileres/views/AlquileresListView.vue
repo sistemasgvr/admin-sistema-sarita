@@ -106,6 +106,14 @@
       :alquiler="alquilerToDevolver"
       @saved="onDevolucionDesdeLista"
     />
+    <RecojoProgramarModal
+      v-model="programarRecojoOpen"
+      :id-cliente="alquilerToRecojo?.id_cliente"
+      :id-alquiler="alquilerToRecojo?.id"
+      :numero-origen="alquilerToRecojo?.numero_alquiler"
+      tipo-origen="ALQUILER"
+      @saved="onDevolucionDesdeLista"
+    />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -149,6 +157,7 @@ import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
 import AlquilerDevolverCilindrosModal from '@/modules/balones/alquileres/components/AlquilerDevolverCilindrosModal.vue'
+import RecojoProgramarModal from '@/modules/balones/recojos/components/RecojoProgramarModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
 import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
@@ -218,6 +227,8 @@ const alquilerToViewId = ref<number | null>(null)
 
 const devolverCilindrosModalOpen = ref(false)
 const alquilerToDevolver = ref<Alquiler | null>(null)
+const programarRecojoOpen = ref(false)
+const alquilerToRecojo = ref<Alquiler | null>(null)
 
 const deleteModalOpen = ref(false)
 const alquilerToDelete = ref<Alquiler | null>(null)
@@ -377,6 +388,13 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
       hidden: !canDevolver.value || !activo || !tieneCilindros,
     },
     {
+      key: 'programar_recojo',
+      label: 'Programar recojo',
+      icon: ICONS.truck,
+      disabled: busy,
+      hidden: !authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR) || !activo || !tieneCilindros,
+    },
+    {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
@@ -396,6 +414,10 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: Alquiler) {
   if (key === 'devolver') openDevolverCilindros(row)
+  if (key === 'programar_recojo') {
+    alquilerToRecojo.value = row
+    programarRecojoOpen.value = true
+  }
   if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
 }

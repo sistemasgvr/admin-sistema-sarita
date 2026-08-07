@@ -29,6 +29,19 @@
         required
         :disabled="almacenesQuery.isLoading.value"
       />
+
+      <AppSelect
+        v-model="nombreEstadoContenido"
+        label="Contenido al devolver"
+        :options="contenidoOptions"
+        hint="Si el gas no se usó, marca Lleno."
+      />
+
+      <AppInput
+        v-model="observacion"
+        label="Observación"
+        placeholder="Opcional"
+      />
     </div>
 
     <template #footer>
@@ -69,7 +82,7 @@ import { useDevolverPrestamoDetalleMutation } from '@/modules/balones/prestamos/
 import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
-import { AppInput, AppModal } from '@/shared/components'
+import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import { toastInfo, toastWarning } from '@/shared/composables/useToast'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
@@ -87,8 +100,16 @@ const authStore = useAuthStore()
 const devolverMutation = useDevolverPrestamoDetalleMutation()
 const fechaDevolucion = ref(new Date().toISOString().slice(0, 10))
 const idAlmacenDestino = ref<number | ''>('')
+const nombreEstadoContenido = ref('VACIO')
+const observacion = ref('')
 const garantiaModalOpen = ref(false)
 const garantiaPendienteId = ref<number | null>(null)
+
+const contenidoOptions = [
+  { value: 'VACIO', label: 'Vacío' },
+  { value: 'LLENO', label: 'Lleno (gas no usado)' },
+  { value: 'DESCONOCIDO', label: 'Desconocido' },
+]
 
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
@@ -101,6 +122,8 @@ watch(
     if (!isOpen) return
     fechaDevolucion.value = new Date().toISOString().slice(0, 10)
     idAlmacenDestino.value = props.detalle?.id_almacen ? Number(props.detalle.id_almacen) : ''
+    nombreEstadoContenido.value = 'VACIO'
+    observacion.value = ''
     if (!idAlmacenDestino.value) {
       aplicarAlmacenPorDefecto()
     }
@@ -152,6 +175,8 @@ async function confirmDevolver() {
         idUsuarioAuditoria: userId,
         fechaDevolucion: fechaDevolucion.value,
         idAlmacenDestino: Number(idAlmacenDestino.value),
+        nombreEstadoContenido: nombreEstadoContenido.value || 'VACIO',
+        observacion: observacion.value.trim() || undefined,
       },
     })
     open.value = false

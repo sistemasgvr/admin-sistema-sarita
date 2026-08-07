@@ -157,6 +157,16 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'recojos',
+        name: 'admin-balones-recojos',
+        component: () => import('@/modules/balones/recojos/views/RecojosTabsView.vue'),
+        meta: {
+          title: 'Recojos',
+          module: 'balones',
+          permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
+        },
+      },
+      {
         path: 'alquileres/antiguedad',
         redirect: { name: 'admin-balones-alquileres', query: { tab: 'antiguedad' } },
       },
