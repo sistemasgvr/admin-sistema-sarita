@@ -11,6 +11,15 @@ import type {
   ResumenCuentas,
   TipoCuenta,
 } from '@/modules/finanzas/interfaces/cuenta.interface'
+import type {
+  ActualizarGarantiaPayload,
+  CrearGarantiaPayload,
+  DuplicadoPagoInfo,
+  Garantia,
+  GarantiaListFilters,
+  ReembolsarGarantiaPayload,
+  VerificarDuplicadoPagoPayload,
+} from '@/modules/finanzas/interfaces/garantia.interface'
 
 const basePath = (tipo: TipoCuenta) =>
   tipo === 'COBRAR' ? '/finanzas/cuentas-por-cobrar' : '/finanzas/cuentas-por-pagar'
@@ -56,5 +65,29 @@ export const finanzasService = {
 
   mediosPago() {
     return apiGet<MedioPago[]>('/finanzas/medios-pago')
+  },
+
+  verificarDuplicadoPago(payload: VerificarDuplicadoPagoPayload) {
+    return apiPost<DuplicadoPagoInfo>('/finanzas/verificar-duplicado-pago', payload)
+  },
+
+  /* -------- Garantías -------- */
+  listarGarantias(filters: GarantiaListFilters = {}) {
+    return apiGetPaginated<Garantia>('/finanzas/garantias', { params: filters })
+  },
+  crearGarantia(payload: CrearGarantiaPayload) {
+    return apiPost<Garantia>('/finanzas/garantias', payload)
+  },
+  actualizarGarantia(id: number, payload: ActualizarGarantiaPayload) {
+    return apiPatch<Garantia>(`/finanzas/garantias/${id}`, payload)
+  },
+  eliminarGarantia(id: number, idUsuarioAuditoria?: number) {
+    return apiDelete(`/finanzas/garantias/${id}`, { data: { idUsuarioAuditoria } })
+  },
+  reembolsarGarantia(id: number, payload: ReembolsarGarantiaPayload) {
+    return apiPost<Garantia>(`/finanzas/garantias/${id}/reembolsar`, payload)
+  },
+  anularReembolsoGarantia(id: number, idUsuarioAuditoria?: number) {
+    return apiPatch<Garantia>(`/finanzas/garantias/${id}/anular-reembolso`, { idUsuarioAuditoria })
   },
 }

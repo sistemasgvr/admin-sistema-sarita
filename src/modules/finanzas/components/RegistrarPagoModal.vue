@@ -86,19 +86,42 @@
       </button>
     </template>
   </AppModal>
+
+  <AppConfirmDialog
+    v-model="confirmDuplicadoOpen"
+    :title="duplicadoInfo?.severidad === 'alta' ? 'Posible pago duplicado (exacto)' : 'Posible pago duplicado'"
+    :variant="duplicadoInfo?.severidad === 'alta' ? 'danger' : 'warning'"
+    :confirm-label="canForzarDuplicado ? 'Sí, registrar de todas formas' : 'No tienes permiso para forzar'"
+    :loading="mutation.isPending.value"
+    @confirm="canForzarDuplicado ? forzarPagoDuplicado() : null"
+  >
+    <span>
+      {{ duplicadoInfo?.mensaje }}
+      <template v-if="!canForzarDuplicado">
+        <br /><br />
+        <span class="text-theme-xs">
+          Para registrar un pago que el sistema detecta como duplicado, necesitas el permiso
+          <code>finanzas.forzar_duplicado</code>.
+        </span>
+      </template>
+    </span>
+  </AppConfirmDialog>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { computed, reactive, ref, watch } from 'vue'
+import { AppConfirmDialog, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
 import { useRegistrarPagoMutation } from '@/modules/finanzas/composables/usePagoMutations'
+import { finanzasService } from '@/modules/finanzas/services/finanzas.service'
 import type {
   CuentaFinanciera,
   TipoCuenta,
 } from '@/modules/finanzas/interfaces/cuenta.interface'
+import type { DuplicadoPagoInfo } from '@/modules/finanzas/interfaces/garantia.interface'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
@@ -223,13 +246,15 @@ const validar = (): boolean => {
   return ok
 }
 
-const submit = async () => {
-  if (!props.cuenta) return
-  normalizarMonto()
-  if (!validar()) return
+const duplicadoInfo = ref<DuplicadoPagoInfo | null>(null)
+const confirmDuplicadoOpen = ref(false)
+const canForzarDuplicado = computed(() =>
+  authStore.hasPermission(PermisoBanderas.FINANZAS_FORZAR_DUPLICADO),
+)
 
+const ejecutarPago = async (forzar: boolean) => {
   const monto = parseMoneyInput(form.monto)
-  if (monto == null) return
+  if (monto == null || !props.cuenta) return
   const montoFinal = Math.round(monto * 100) / 100
 
   try {
@@ -241,11 +266,43 @@ const submit = async () => {
       referencia: form.referencia.trim() || undefined,
       observacion: form.observacion.trim() || undefined,
       idUsuarioAuditoria: authStore.user?.id ?? undefined,
+      forzarDuplicado: forzar,
     })
+    confirmDuplicadoOpen.value = false
+    duplicadoInfo.value = null
     open.value = false
     emit('saved')
   } catch {
-    // El toast de error ya lo maneja la mutación.
+    // El toast lo maneja la mutación
   }
 }
+
+const submit = async () => {
+  if (!props.cuenta) return
+  normalizarMonto()
+  if (!validar()) return
+
+  const monto = parseMoneyInput(form.monto)
+  if (monto == null) return
+
+  // Chequeo previo de duplicado
+  try {
+    const info = await finanzasService.verificarDuplicadoPago({
+      idCuenta: props.cuenta.id,
+      fechaPago: form.fechaPago,
+      monto: Math.round(monto * 100) / 100,
+    })
+    if (info.duplicado) {
+      duplicadoInfo.value = info
+      confirmDuplicadoOpen.value = true
+      return
+    }
+  } catch {
+    // Si el chequeo falla, seguimos: el backend volverá a chequear.
+  }
+
+  await ejecutarPago(false)
+}
+
+const forzarPagoDuplicado = () => ejecutarPago(true)
 </script>

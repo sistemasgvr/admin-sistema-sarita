@@ -168,6 +168,29 @@
         </div>
       </div>
 
+      <!-- Observaciones y comentarios -->
+      <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+        <h4 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Observaciones y comentarios
+        </h4>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <p class="text-xs text-gray-400 dark:text-gray-500">N° de comprobante</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300">{{ cuenta.numero_comprobante || '—' }}</p>
+          </div>
+          <div v-if="cuenta.descripcion">
+            <p class="text-xs text-gray-400 dark:text-gray-500">Descripción</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300">{{ cuenta.descripcion }}</p>
+          </div>
+          <div class="sm:col-span-2">
+            <p class="text-xs text-gray-400 dark:text-gray-500">Observación de la cuenta</p>
+            <p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+              {{ cuenta.observacion || 'Sin observaciones.' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Historial de pagos -->
       <div v-if="!esPlan">
         <h4 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
@@ -189,6 +212,9 @@
                 {{ formatListDate(pago.fechaPago) }}
                 <span v-if="pago.numeroOperacion"> · Op. {{ pago.numeroOperacion }}</span>
                 <span v-if="pago.referencia"> · {{ pago.referencia }}</span>
+              </p>
+              <p v-if="pago.observacion" class="mt-1 whitespace-pre-wrap text-theme-xs italic text-gray-500 dark:text-gray-400">
+                “{{ pago.observacion }}”
               </p>
             </div>
             <button

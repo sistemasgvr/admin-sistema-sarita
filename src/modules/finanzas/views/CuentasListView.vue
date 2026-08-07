@@ -50,15 +50,26 @@
             </div>
           </div>
 
-          <button
-            v-if="canCrear"
-            type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="crearModalOpen = true"
-          >
-            <AppIcon :name="ICONS.plus" :size="18" />
-            {{ ctaCrearLabel }}
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="canExportar"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              @click="exportarModalOpen = true"
+            >
+              <AppIcon :name="ICONS.download" :size="16" />
+              Exportar
+            </button>
+            <button
+              v-if="canCrear"
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              @click="crearModalOpen = true"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+              {{ ctaCrearLabel }}
+            </button>
+          </div>
         </div>
       </template>
 
@@ -159,6 +170,13 @@
     />
     <CrearCuentaModal v-if="canCrear" v-model="crearModalOpen" :tipo="tipo" />
 
+    <AppExportarExcelModal
+      v-if="canExportar"
+      v-model="exportarModalOpen"
+      :title="`Exportar ${terceroLabelPlural.toLowerCase()} — ${tipo === 'COBRAR' ? 'Por Cobrar' : 'Por Pagar'}`"
+      :on-exportar="exportarCuentas"
+    />
+
     <EditarCuentaModal
       v-if="canEditar"
       v-model="editarModalOpen"
@@ -201,6 +219,8 @@ import RegistrarPagoModal from '@/modules/finanzas/components/RegistrarPagoModal
 import CuentaDetalleModal from '@/modules/finanzas/components/CuentaDetalleModal.vue'
 import CrearCuentaModal from '@/modules/finanzas/components/CrearCuentaModal.vue'
 import EditarCuentaModal from '@/modules/finanzas/components/EditarCuentaModal.vue'
+import AppExportarExcelModal from '@/modules/finanzas/components/AppExportarExcelModal.vue'
+import { exportarCuentasExcel } from '@/modules/finanzas/utils/exportarExcel'
 import { useCuentasQuery } from '@/modules/finanzas/composables/useCuentasQuery'
 import { useResumenCuentasQuery } from '@/modules/finanzas/composables/useResumenCuentasQuery'
 import { useEliminarCuentaMutation } from '@/modules/finanzas/composables/usePagoMutations'
@@ -253,6 +273,8 @@ const canEliminar = computed(() =>
     esCobrar.value ? PermisoBanderas.FINANZAS_CXC_ELIMINAR : PermisoBanderas.FINANZAS_CXP_ELIMINAR,
   ),
 )
+
+const canExportar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_EXPORTAR))
 
 const ctaCrearLabel = computed(() =>
   esCobrar.value ? 'Nueva cuenta por cobrar' : 'Nueva cuenta por pagar',
@@ -358,6 +380,12 @@ const detalleModalOpen = ref(false)
 const cuentaDetalleId = ref<number | null>(null)
 
 const crearModalOpen = ref(false)
+
+/* Exportar Excel */
+const exportarModalOpen = ref(false)
+const exportarCuentas = async (rango: { desde?: string; hasta?: string }) => {
+  await exportarCuentasExcel(props.tipo, rango)
+}
 
 const editarModalOpen = ref(false)
 const cuentaEditando = ref<CuentaFinanciera | null>(null)
