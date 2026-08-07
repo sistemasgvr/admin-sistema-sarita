@@ -15,8 +15,8 @@ export function useCreateMantenimientoMutation() {
   return useMutation({
     mutationFn: (payload: CreateMantenimientoPayload) => mantenimientosService.crear(payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: mantenimientosQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: mantenimientosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       if (variables.idBalon) {
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
@@ -40,7 +40,7 @@ export function useUpdateMantenimientoMutation() {
       queryClient.invalidateQueries({
         queryKey: mantenimientosQueryKeys.detail(variables.id),
       })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       const idBalon = data?.id_balon
       if (idBalon) {
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(idBalon) })
@@ -65,7 +65,7 @@ export function useFinalizarMantenimientoMutation() {
       queryClient.invalidateQueries({
         queryKey: mantenimientosQueryKeys.detail(variables.id),
       })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       const idBalon = data?.id_balon
       if (idBalon) {
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(idBalon) })
@@ -90,7 +90,7 @@ export function useDeleteMantenimientoMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       mantenimientosService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: mantenimientosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: mantenimientosQueryKeys.all })
       toastSuccess('Mantenimiento eliminado correctamente')
     },
     onError: (error) => {

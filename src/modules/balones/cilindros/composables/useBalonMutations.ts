@@ -16,7 +16,7 @@ export function useCreateBalonMutation() {
   return useMutation({
     mutationFn: (payload: CreateBalonPayload) => balonesService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: ['tipos-balon'] })
       toastSuccess('Cilindro registrado correctamente')
     },
@@ -50,7 +50,7 @@ export function useDeleteBalonMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       balonesService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: ['tipos-balon'] })
       toastSuccess('Cilindro eliminado correctamente')
     },
@@ -74,7 +74,7 @@ export function useRegistrarPhHistorialMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.id) })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.id) })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       toastSuccess('Prueba hidrostática registrada correctamente')
     },
     onError: (error) => {

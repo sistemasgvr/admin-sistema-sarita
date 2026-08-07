@@ -7,13 +7,17 @@ import type {
 } from '@/modules/choferes/interfaces/chofer.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
+function invalidateChoferes(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: choferesQueryKeys.all })
+}
+
 export function useCreateChoferMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (payload: CreateChoferPayload) => choferesService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: choferesQueryKeys.lists() })
+      invalidateChoferes(queryClient)
       toastSuccess('Chofer creado correctamente')
     },
     onError: (error) => {
@@ -29,7 +33,7 @@ export function useUpdateChoferMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: UpdateChoferPayload }) =>
       choferesService.actualizar(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: choferesQueryKeys.all })
+      invalidateChoferes(queryClient)
       toastSuccess('Chofer actualizado correctamente')
     },
     onError: (error) => {
@@ -45,7 +49,7 @@ export function useDeleteChoferMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       choferesService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: choferesQueryKeys.lists() })
+      invalidateChoferes(queryClient)
       toastSuccess('Chofer eliminado correctamente')
     },
     onError: (error) => {

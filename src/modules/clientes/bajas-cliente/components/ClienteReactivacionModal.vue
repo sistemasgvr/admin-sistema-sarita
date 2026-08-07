@@ -22,11 +22,12 @@
 
       <AppTextarea
         v-model="motivoDetalle"
-        label="Motivo de la reactivación (opcional)"
-        placeholder="Describe el motivo de la reactivación..."
+        label="Comentario / detalle"
+        placeholder="Este comentario se verá al aprobar o rechazar la solicitud..."
         v-bind="motivoDetalleAttrs"
         :disabled="isSubmitting"
         :error="errors.motivoDetalle"
+        hint="Visible para quien revise la solicitud en Aprobar bajas."
       />
     </form>
 

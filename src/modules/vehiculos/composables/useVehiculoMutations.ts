@@ -7,13 +7,17 @@ import type {
 } from '@/modules/vehiculos/interfaces/vehiculo.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
+function invalidateVehiculos(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: vehiculosQueryKeys.all })
+}
+
 export function useCreateVehiculoMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (payload: CreateVehiculoPayload) => vehiculosService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehiculosQueryKeys.lists() })
+      invalidateVehiculos(queryClient)
       toastSuccess('Vehículo creado correctamente')
     },
     onError: (error) => {
@@ -29,7 +33,7 @@ export function useUpdateVehiculoMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: UpdateVehiculoPayload }) =>
       vehiculosService.actualizar(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehiculosQueryKeys.all })
+      invalidateVehiculos(queryClient)
       toastSuccess('Vehículo actualizado correctamente')
     },
     onError: (error) => {
@@ -45,7 +49,7 @@ export function useDeleteVehiculoMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       vehiculosService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: vehiculosQueryKeys.lists() })
+      invalidateVehiculos(queryClient)
       toastSuccess('Vehículo eliminado correctamente')
     },
     onError: (error) => {

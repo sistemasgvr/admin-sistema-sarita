@@ -68,7 +68,7 @@ export function resolveNotificacionTarget(
         idCliente
       ) {
         return {
-          name: 'admin-clientes-editar',
+          name: 'admin-clientes-detalle',
           params: { id: String(idCliente) },
         }
       }

@@ -15,8 +15,8 @@ export function useCreateMovimientoInventarioMutation() {
     mutationFn: (payload: CreateMovimientoInventarioPayload) =>
       movimientosInventarioService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: movimientosQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: movimientosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       toastSuccess('Movimiento registrado correctamente')
     },
     onError: (error) => {
@@ -52,8 +52,8 @@ export function useDeleteMovimientoInventarioMutation() {
   return useMutation({
     mutationFn: (id: number) => movimientosInventarioService.eliminar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: movimientosQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: movimientosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       toastSuccess('Movimiento anulado correctamente')
     },
     onError: (error) => {

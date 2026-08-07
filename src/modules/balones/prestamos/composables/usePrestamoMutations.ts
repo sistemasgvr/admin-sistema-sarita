@@ -13,7 +13,7 @@ export function useCreatePrestamoMutation() {
   return useMutation({
     mutationFn: (payload: CreatePrestamoPayload) => prestamosService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
       toastSuccess('Préstamo registrado correctamente')
     },
     onError: (error) => {
@@ -46,7 +46,7 @@ export function useDeletePrestamoMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       prestamosService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
       toastSuccess('Préstamo eliminado correctamente')
     },
     onError: (error) => {

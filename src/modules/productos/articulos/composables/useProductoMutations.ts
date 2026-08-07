@@ -14,8 +14,8 @@ export function useCreateProductoMutation() {
   return useMutation({
     mutationFn: (payload: CreateProductoPayload) => productosService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       toastSuccess('Producto creado correctamente')
     },
     onError: (error) => {
@@ -32,7 +32,7 @@ export function useUpdateProductoMutation() {
       productosService.actualizar(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       toastSuccess('Producto actualizado correctamente')
     },
     onError: (error) => {
@@ -47,7 +47,8 @@ export function useDeleteProductoMutation() {
   return useMutation({
     mutationFn: (id: number) => productosService.eliminar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       toastSuccess('Producto eliminado correctamente')
     },
     onError: (error) => {

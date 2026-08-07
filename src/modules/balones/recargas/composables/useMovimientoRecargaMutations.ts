@@ -16,8 +16,8 @@ export function useCreateMovimientoRecargaMutation() {
     mutationFn: (payload: CreateMovimientoRecargaPayload) =>
       movimientosRecargaService.crear(payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       if (variables.idBalon) {
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
@@ -37,8 +37,8 @@ export function useCreateRecargaClienteMutation() {
     mutationFn: (payload: CreateRecargaClientePayload) =>
       movimientosRecargaService.crearRecargaCliente(payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
       toastSuccess('Recarga registrada y comprobante generado')
@@ -60,7 +60,7 @@ export function useUpdateMovimientoRecargaMutation() {
       queryClient.invalidateQueries({
         queryKey: movimientosRecargaQueryKeys.detail(variables.id),
       })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       const idBalon = data?.id_balon
       if (idBalon) {
         queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(idBalon) })
@@ -81,7 +81,7 @@ export function useDeleteMovimientoRecargaMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       movimientosRecargaService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: movimientosRecargaQueryKeys.all })
       toastSuccess('Recarga eliminada correctamente')
     },
     onError: (error) => {

@@ -13,7 +13,7 @@ export function useCreateAlquilerMutation() {
   return useMutation({
     mutationFn: (payload: CreateAlquilerPayload) => alquileresService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
       toastSuccess('Alquiler registrado correctamente')
     },
     onError: (error) => {
@@ -46,7 +46,7 @@ export function useDeleteAlquilerMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       alquileresService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
       toastSuccess('Alquiler eliminado correctamente')
     },
     onError: (error) => {

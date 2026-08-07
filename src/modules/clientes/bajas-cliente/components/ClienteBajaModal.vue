@@ -34,11 +34,12 @@
 
       <AppTextarea
         v-model="motivoDetalle"
-        label="Detalle del motivo (opcional)"
-        placeholder="Describe el motivo de la baja..."
+        label="Comentario / detalle"
+        placeholder="Este comentario se verá al aprobar o rechazar la solicitud..."
         v-bind="motivoDetalleAttrs"
         :disabled="isSubmitting"
         :error="errors.motivoDetalle"
+        hint="Visible para quien revise la solicitud en Aprobar bajas."
       />
     </form>
 

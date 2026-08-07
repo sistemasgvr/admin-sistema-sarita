@@ -13,7 +13,7 @@ export function useCreateStockMutation() {
   return useMutation({
     mutationFn: (payload: CreateStockPayload) => stockService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       toastSuccess('Stock registrado correctamente')
     },
     onError: (error) => {
@@ -44,7 +44,7 @@ export function useDeleteStockMutation() {
   return useMutation({
     mutationFn: (id: number) => stockService.eliminar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       toastSuccess('Registro de stock eliminado correctamente')
     },
     onError: (error) => {

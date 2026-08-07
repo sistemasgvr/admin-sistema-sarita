@@ -18,12 +18,12 @@ export function useCreateAlquilerDetalleMutation() {
     mutationFn: (payload: CreateAlquilerDetallePayload) =>
       alquileresDetalleService.crear(payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.all })
       queryClient.invalidateQueries({
         queryKey: alquileresQueryKeys.detail(variables.idAlquiler),
       })
-      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: alquileresAntiguedadQueryKeys.all })
       toastSuccess('Cilindro agregado al alquiler')
     },
@@ -44,7 +44,7 @@ export function useUpdateAlquilerDetalleMutation() {
       queryClient.invalidateQueries({
         queryKey: alquileresDetalleQueryKeys.detail(variables.id),
       })
-      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
       toastSuccess('Cilindro actualizado correctamente')
     },
     onError: (error) => {
@@ -63,7 +63,7 @@ export function useDevolverAlquilerDetalleMutation() {
       queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: alquileresAntiguedadQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       toastSuccess('Devolución registrada correctamente')
     },
     onError: (error) => {
@@ -79,8 +79,8 @@ export function useDeleteAlquilerDetalleMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       alquileresDetalleService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: alquileresAntiguedadQueryKeys.all })
       toastSuccess('Cilindro eliminado del alquiler')
     },

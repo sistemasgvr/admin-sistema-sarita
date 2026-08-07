@@ -15,7 +15,7 @@ export function useCreateCompraMutation() {
   return useMutation({
     mutationFn: (payload: CreateCompraPayload) => comprasService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
       toastSuccess('Comprobante de compra registrado')
     },
     onError: (error) => {
@@ -48,7 +48,7 @@ export function useCrearDetalleMutation() {
       comprasService.crearDetalle(id, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: comprasQueryKeys.detail(variables.id) })
-      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
       toastSuccess('Línea agregada a la compra')
     },
     onError: (error) => {

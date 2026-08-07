@@ -55,11 +55,10 @@ const goToList = () => {
 
 const onSaved = (cliente: Cliente) => {
   if (!isEdit.value) {
-    // Al crear, se pasa a la vista de edición del cliente recién creado para
-    // poder asignarle de una vez direcciones, vehículos, choferes y cuentas.
-    void router.replace({ name: 'admin-clientes-editar', params: { id: String(cliente.id) } })
+    // Tras crear, abrir ficha para gestionar direcciones/contactos y relacionados.
+    void router.replace({ name: 'admin-clientes-detalle', params: { id: String(cliente.id) } })
     return
   }
-  goToList()
+  void router.push({ name: 'admin-clientes-detalle', params: { id: String(cliente.id) } })
 }
 </script>

@@ -7,13 +7,17 @@ import type {
 } from '@/modules/contactos/interfaces/contacto.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
+function invalidateContactos(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: contactosQueryKeys.all })
+}
+
 export function useCreateContactoMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (payload: CreateContactoPayload) => contactosService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: contactosQueryKeys.lists() })
+      invalidateContactos(queryClient)
       toastSuccess('Contacto creado correctamente')
     },
     onError: (error) => {
@@ -29,7 +33,7 @@ export function useUpdateContactoMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: UpdateContactoPayload }) =>
       contactosService.actualizar(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: contactosQueryKeys.all })
+      invalidateContactos(queryClient)
       toastSuccess('Contacto actualizado correctamente')
     },
     onError: (error) => {
@@ -44,7 +48,7 @@ export function useDeleteContactoMutation() {
   return useMutation({
     mutationFn: (id: number) => contactosService.eliminar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: contactosQueryKeys.lists() })
+      invalidateContactos(queryClient)
       toastSuccess('Contacto eliminado correctamente')
     },
     onError: (error) => {

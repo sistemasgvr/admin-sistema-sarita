@@ -10,6 +10,12 @@ import type {
 } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
+function invalidateClienteYBajas(queryClient: ReturnType<typeof useQueryClient>) {
+  // lists + details + mapa + badge de pendientes
+  void queryClient.invalidateQueries({ queryKey: clientesQueryKeys.all })
+  void queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.all })
+}
+
 export function useSolicitarBajaClienteMutation() {
   const queryClient = useQueryClient()
 
@@ -17,8 +23,7 @@ export function useSolicitarBajaClienteMutation() {
     mutationFn: (payload: SolicitarBajaClientePayload) =>
       bajasClienteService.solicitar(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.lists() })
+      invalidateClienteYBajas(queryClient)
       toastSuccess(
         'Solicitud de baja registrada. Un administrador con permiso debe aprobarla.',
       )
@@ -36,8 +41,7 @@ export function useSolicitarReactivacionClienteMutation() {
     mutationFn: (payload: SolicitarReactivacionClientePayload) =>
       bajasClienteService.solicitarReactivacion(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.lists() })
+      invalidateClienteYBajas(queryClient)
       toastSuccess(
         'Solicitud de reactivación registrada. Un administrador con permiso debe aprobarla.',
       )
@@ -55,8 +59,7 @@ export function useAprobarBajaClienteMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: AprobarBajaClientePayload }) =>
       bajasClienteService.aprobar(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
+      invalidateClienteYBajas(queryClient)
       toastSuccess('Solicitud aprobada correctamente')
     },
     onError: (error) => {
@@ -72,8 +75,7 @@ export function useRechazarBajaClienteMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: RechazarBajaClientePayload }) =>
       bajasClienteService.rechazar(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
+      invalidateClienteYBajas(queryClient)
       toastSuccess('Solicitud de baja rechazada')
     },
     onError: (error) => {

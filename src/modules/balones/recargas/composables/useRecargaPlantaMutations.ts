@@ -12,7 +12,7 @@ export function useCreateRecargaPlantaMutation() {
   return useMutation({
     mutationFn: (payload: CreateRecargaPlantaPayload) => recargasPlantaService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recargasPlantaQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: recargasPlantaQueryKeys.all })
       toastSuccess('Orden de recarga registrada')
     },
     onError: (error) => toastApiError(error, 'No se pudo registrar la orden'),
@@ -25,7 +25,7 @@ export function useUpdateRecargaPlantaMutation() {
     mutationFn: (vars: { id: number; payload: UpdateRecargaPlantaPayload }) =>
       recargasPlantaService.actualizar(vars.id, vars.payload),
     onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: recargasPlantaQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: recargasPlantaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: recargasPlantaQueryKeys.detail(vars.id) })
       toastSuccess('Orden de recarga actualizada')
     },
@@ -39,7 +39,7 @@ export function useDeleteRecargaPlantaMutation() {
     mutationFn: (vars: { id: number; idUsuarioAuditoria: number }) =>
       recargasPlantaService.eliminar(vars.id, vars.idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: recargasPlantaQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: recargasPlantaQueryKeys.all })
       toastSuccess('Orden de recarga eliminada')
     },
     onError: (error) => toastApiError(error, 'No se pudo eliminar la orden'),

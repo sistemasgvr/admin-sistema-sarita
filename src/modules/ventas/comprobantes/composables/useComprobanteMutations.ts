@@ -17,10 +17,10 @@ export function useCreateComprobanteMutation() {
   return useMutation({
     mutationFn: (payload: CreateComprobantePayload) => comprobantesService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       toastSuccess('Comprobante registrado correctamente')
     },
     onError: (error) => {
@@ -36,7 +36,7 @@ export function useUpdateComprobanteMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: UpdateComprobantePayload }) =>
       comprobantesService.actualizar(id, payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
       toastSuccess('Comprobante actualizado correctamente')
     },
@@ -56,8 +56,8 @@ export function useEmitirComprobanteMutation() {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
       queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       toastSuccess(`Comprobante emitido: ${data.sunat.estado}`)
     },
     onError: (error) => {
@@ -73,7 +73,7 @@ export function useDeleteComprobanteMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       comprobantesService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       toastSuccess('Comprobante eliminado correctamente')
     },
     onError: (error) => {
@@ -137,7 +137,7 @@ export function useEnviarResumenDiarioMutation() {
       return data
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.resumenLists() })
 
       const ticket = data.sunat?.ticket
@@ -170,7 +170,7 @@ export function useConsultarEstadoResumenMutation() {
       queryClient.invalidateQueries({
         queryKey: comprobantesQueryKeys.resumenDetail(variables.id),
       })
-      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       toastSuccess(`Estado del resumen: ${data.sunat.estado}`)
     },
     onError: (error) => {

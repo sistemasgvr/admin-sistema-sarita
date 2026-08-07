@@ -76,8 +76,9 @@
       <template #actions="{ row }">
         <button
           type="button"
+          title="Ver ficha"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openDetailModal(row)"
+          @click="openDetailView(row)"
         >
           <AppIcon :name="ICONS.eye" :size="16" />
         </button>
@@ -157,8 +158,6 @@
       </template>
     </AppTable>
 
-    <ClienteDetailModal v-model="detailModalOpen" :cliente="clienteToView" />
-
     <ClienteBajaModal
       v-model="bajaModalOpen"
       :cliente="clienteToBaja"
@@ -213,7 +212,6 @@ import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/ClienteBajaModal.vue'
 import ClienteReactivacionModal from '@/modules/clientes/bajas-cliente/components/ClienteReactivacionModal.vue'
-import ClienteDetailModal from '@/modules/clientes/components/ClienteDetailModal.vue'
 import { useDeleteClienteMutation } from '@/modules/clientes/composables/useClienteMutations'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type {
@@ -331,9 +329,6 @@ const summaryChips = computed<SummaryChip[]>(() => [
   { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
 ])
 
-const detailModalOpen = ref(false)
-const clienteToView = ref<Cliente | null>(null)
-
 const deleteModalOpen = ref(false)
 const clienteToDelete = ref<Cliente | null>(null)
 
@@ -436,9 +431,11 @@ const openEditView = (cliente: Cliente) => {
   })
 }
 
-const openDetailModal = (cliente: Cliente) => {
-  clienteToView.value = cliente
-  detailModalOpen.value = true
+const openDetailView = (cliente: Cliente) => {
+  void router.push({
+    name: 'admin-clientes-detalle',
+    params: { id: String(cliente.id) },
+  })
 }
 
 /* const openDeleteModal = (cliente: Cliente) => {

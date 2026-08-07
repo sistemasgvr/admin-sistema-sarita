@@ -27,8 +27,11 @@
                   .join(' ') || '—'
           }}
         </p>
-        <p v-if="row.numero_documento" class="text-xs text-gray-500 dark:text-gray-400">
-          {{ row.numero_documento }}
+        <p
+          v-if="row.cliente_numero_documento || row.numero_documento"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
+          {{ row.cliente_numero_documento || row.numero_documento }}
         </p>
       </template>
 
@@ -48,6 +51,15 @@
 
       <template #cell-nombre_motivo_baja="{ value }">
         <span>{{ value ? formatListaOpcionLabel(value as string) : '—' }}</span>
+      </template>
+
+      <template #cell-motivo_detalle="{ value }">
+        <p
+          class="max-w-[220px] truncate text-sm text-gray-600 dark:text-gray-300"
+          :title="(value as string) || undefined"
+        >
+          {{ (value as string)?.trim() || '—' }}
+        </p>
       </template>
 
       <template #cell-nombre_estado_aprobacion="{ value }">
@@ -137,32 +149,49 @@
       "
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        <template v-if="esReactivacion">
-          ¿Confirmas la reactivación del cliente
-          <span class="font-medium text-gray-800 dark:text-white/90">
-            {{
-              solicitudSeleccionada?.cliente_razon_social
-                ? solicitudSeleccionada.cliente_razon_social
-                : `${solicitudSeleccionada?.cliente_nombres ?? ''} ${solicitudSeleccionada?.cliente_apellido_paterno ?? ''} ${solicitudSeleccionada?.cliente_apellido_materno ?? ''}`.trim()
-            }}
-          </span>
-          ?
-        </template>
-        <template v-else>
-          ¿Confirmas la baja del cliente
-          <span class="font-medium text-gray-800 dark:text-white/90">
-            {{
-              solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.cliente_nombres
-            }}
-          </span>
-          por motivo
-          <span class="font-medium text-gray-800 dark:text-white/90">
-            {{ formatListaOpcionLabel(solicitudSeleccionada?.nombre_motivo_baja) }}
-          </span>
-          ?
-        </template>
-      </p>
+      <div class="space-y-3">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          <template v-if="esReactivacion">
+            ¿Confirmas la reactivación del cliente
+            <span class="font-medium text-gray-800 dark:text-white/90">
+              {{
+                solicitudSeleccionada?.cliente_razon_social
+                  ? solicitudSeleccionada.cliente_razon_social
+                  : `${solicitudSeleccionada?.cliente_nombres ?? ''} ${solicitudSeleccionada?.cliente_apellido_paterno ?? ''} ${solicitudSeleccionada?.cliente_apellido_materno ?? ''}`.trim()
+              }}
+            </span>
+            ?
+          </template>
+          <template v-else>
+            ¿Confirmas la baja del cliente
+            <span class="font-medium text-gray-800 dark:text-white/90">
+              {{
+                solicitudSeleccionada?.cliente_razon_social ?? solicitudSeleccionada?.cliente_nombres
+              }}
+            </span>
+            por motivo
+            <span class="font-medium text-gray-800 dark:text-white/90">
+              {{ formatListaOpcionLabel(solicitudSeleccionada?.nombre_motivo_baja) }}
+            </span>
+            ?
+          </template>
+        </p>
+
+        <div
+          v-if="solicitudSeleccionada?.motivo_detalle?.trim()"
+          class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-white/[0.03]"
+        >
+          <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Comentario del solicitante
+          </p>
+          <p class="mt-1 text-sm text-gray-800 dark:text-white/90">
+            {{ solicitudSeleccionada.motivo_detalle }}
+          </p>
+        </div>
+        <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+          Sin comentario adicional del solicitante.
+        </p>
+      </div>
 
       <template #footer>
         <button
@@ -198,7 +227,7 @@
       "
       size="sm"
     >
-      <div class="space-y-4">
+      <div class="space-y-3">
         <p class="text-sm text-gray-600 dark:text-gray-400">
           <template v-if="esReactivacion">
             La solicitud de reactivación quedará rechazada y el cliente se mantendrá inactivo.
@@ -207,6 +236,18 @@
             La solicitud de baja quedará rechazada y el cliente seguirá activo en el sistema.
           </template>
         </p>
+
+        <div
+          v-if="solicitudSeleccionada?.motivo_detalle?.trim()"
+          class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-white/[0.03]"
+        >
+          <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Comentario del solicitante
+          </p>
+          <p class="mt-1 text-sm text-gray-800 dark:text-white/90">
+            {{ solicitudSeleccionada.motivo_detalle }}
+          </p>
+        </div>
       </div>
 
       <template #footer>
@@ -248,6 +289,7 @@ import type {
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { bajasClienteQueryKeys } from '@/modules/clientes/bajas-cliente/constants/bajasClienteQueryKeys'
 import { clientesQueryKeys } from '@/modules/clientes/constants/clientesQueryKeys'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { AppBadge, AppHelpTip, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
@@ -350,6 +392,7 @@ const columns: TableColumn[] = [
   { key: 'cliente', label: 'Cliente' },
   { key: 'nombre_tipo_solicitud', label: 'Tipo de Solicitud' },
   { key: 'nombre_motivo_baja', label: 'Motivo' },
+  { key: 'motivo_detalle', label: 'Comentario' },
   { key: 'nombre_usuario_solicita', label: 'Solicitante' },
   { key: 'fecha_creacion', label: 'Solicitado' },
   { key: 'nombre_estado_aprobacion', label: 'Estado' },
@@ -408,7 +451,7 @@ const detailSections = computed<DetailSection[]>(() => {
               },
             ]
           : []),
-        { label: 'Detalle', value: d.motivo_detalle || '—', fullWidth: true },
+        { label: 'Comentario', value: d.motivo_detalle || '—', fullWidth: true },
         {
           label: 'Solicitado el',
           value: d.fecha_creacion ? formatListDate(d.fecha_creacion) : '—',
@@ -517,7 +560,11 @@ const confirmarAprobacion = async () => {
       await clientesService.eliminar(solicitud.id_cliente, userId)
     }
 
-    queryClient.invalidateQueries({ queryKey: clientesQueryKeys.lists() })
+    // eliminar/restaurar van por service directo (no mutation), hay que refrescar todo
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.all }),
+      queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.all }),
+    ])
 
     if (esReactivacion.value) {
       toastSuccess('Cliente reactivado correctamente')

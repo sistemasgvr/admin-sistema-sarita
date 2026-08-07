@@ -9,6 +9,8 @@ export interface BajaCliente {
   cliente_nombres?: string | null
   cliente_apellido_paterno?: string | null
   cliente_apellido_materno?: string | null
+  cliente_numero_documento?: string | null
+  /** @deprecated usar cliente_numero_documento */
   numero_documento?: string | null
   id_motivo_baja?: number | null
   nombre_motivo_baja?: string | null

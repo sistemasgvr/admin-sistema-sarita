@@ -31,7 +31,7 @@ export function useCreateGuiaRemisionMutation() {
   return useMutation({
     mutationFn: (payload: CreateGuiaRemisionPayload) => guiasRemisionService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.all })
       toastSuccess('Guía de remisión registrada')
     },
     onError: (error) => {
@@ -98,7 +98,7 @@ export function useDeleteGuiaRemisionMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       guiasRemisionService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.all })
       toastSuccess('Guía eliminada correctamente')
     },
     onError: (error) => {

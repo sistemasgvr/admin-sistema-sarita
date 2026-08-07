@@ -18,11 +18,11 @@ export function useCreatePrestamoDetalleMutation() {
     mutationFn: (payload: CreatePrestamoDetallePayload) =>
       prestamosDetalleService.crear(payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
       queryClient.invalidateQueries({
         queryKey: prestamosQueryKeys.detail(variables.idPrestamo),
       })
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
       toastSuccess('Cilindro agregado al préstamo')
     },
@@ -43,7 +43,7 @@ export function useUpdatePrestamoDetalleMutation() {
       queryClient.invalidateQueries({
         queryKey: prestamosDetalleQueryKeys.detail(variables.id),
       })
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
       toastSuccess('Detalle actualizado correctamente')
     },
@@ -63,7 +63,7 @@ export function useDevolverPrestamoDetalleMutation() {
       queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       toastSuccess('Devolución / reingreso registrado')
     },
     onError: (error) => {
@@ -79,8 +79,8 @@ export function useDeletePrestamoDetalleMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       prestamosDetalleService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
       toastSuccess('Cilindro eliminado del préstamo')
     },

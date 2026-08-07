@@ -23,6 +23,16 @@ export const clientesRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'clientes/:id(\\d+)',
+    name: 'admin-clientes-detalle',
+    component: () => import('@/modules/clientes/views/ClienteDetailView.vue'),
+    meta: {
+      title: 'Ficha de cliente',
+      module: 'clientes',
+      permission: PermisoBanderas.CLIENTES_LISTAR,
+    },
+  },
+  {
     path: 'clientes',
     name: 'admin-clientes',
     component: () => import('@/modules/clientes/views/ClientesTabsView.vue'),

@@ -14,7 +14,7 @@ export function useCreateRolMutation() {
   return useMutation({
     mutationFn: (payload: CreateRolPayload) => rolesService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: rolesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: rolesQueryKeys.all })
       toastSuccess('Rol creado correctamente')
     },
     onError: (error) => {
@@ -45,7 +45,7 @@ export function useDeleteRolMutation() {
   return useMutation({
     mutationFn: (id: number) => rolesService.eliminar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: rolesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: rolesQueryKeys.all })
       toastSuccess('Rol eliminado correctamente')
     },
     onError: (error) => {

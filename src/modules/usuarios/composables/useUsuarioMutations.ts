@@ -13,7 +13,7 @@ export function useCreateUsuarioMutation() {
   return useMutation({
     mutationFn: (payload: CreateUsuarioPayload) => usuariosService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.all })
       toastSuccess('Usuario creado correctamente')
     },
     onError: (error) => {
@@ -44,7 +44,7 @@ export function useDesactivarUsuarioMutation() {
   return useMutation({
     mutationFn: (id: number) => usuariosService.desactivar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.all })
       toastSuccess('Usuario desactivado correctamente')
     },
     onError: (error) => {
@@ -59,7 +59,7 @@ export function useActivarUsuarioMutation() {
   return useMutation({
     mutationFn: (id: number) => usuariosService.activar(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.all })
       toastSuccess('Usuario activado correctamente')
     },
     onError: (error) => {
