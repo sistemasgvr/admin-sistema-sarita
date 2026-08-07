@@ -184,34 +184,48 @@ export async function exportarGarantiasExcel(rango: RangoFechas) {
   const detalle = wb.addWorksheet('Detalle')
   detalle.columns = [
     { header: 'ID', key: 'id', width: 8 },
-    { header: 'Fecha recepción', key: 'fecha', width: 14 },
+    { header: 'Fecha', key: 'fecha', width: 14 },
     { header: 'Cliente', key: 'cliente', width: 34 },
     { header: 'Documento', key: 'documento', width: 14 },
-    { header: 'Método de pago', key: 'medioPago', width: 18 },
-    { header: 'Importe', key: 'importe', width: 14, style: { numFmt: '#,##0.00' } },
+    { header: 'Origen', key: 'origen', width: 12 },
+    { header: 'Vínculo', key: 'vinculo', width: 22 },
+    { header: 'Método pago', key: 'medioPago', width: 16 },
+    { header: 'Cobrado', key: 'cobrado', width: 14, style: { numFmt: '#,##0.00' } },
+    { header: 'Devuelto', key: 'devuelto', width: 14, style: { numFmt: '#,##0.00' } },
+    { header: 'Saldo', key: 'saldo', width: 14, style: { numFmt: '#,##0.00' } },
     { header: 'Estado', key: 'estado', width: 12 },
     { header: 'Fecha reembolso', key: 'fechaReembolso', width: 14 },
-    { header: 'Método reembolso', key: 'medioReembolso', width: 18 },
+    { header: 'Método reembolso', key: 'medioReembolso', width: 16 },
     { header: 'Observaciones', key: 'obs', width: 40 },
-    { header: 'Obs. reembolso', key: 'obsReembolso', width: 40 },
   ]
   data.forEach((g) => {
+    const vinculo =
+      g.numero_prestamo
+        ? `Préstamo ${g.numero_prestamo}`
+        : g.numero_alquiler
+          ? `Alquiler ${g.numero_alquiler}`
+          : g.comprobante_cobro
+            ? `Comprobante ${g.comprobante_cobro}`
+            : g.nombre_producto || ''
     detalle.addRow({
       id: g.id,
-      fecha: g.fecha,
-      cliente: g.cliente,
+      fecha: g.fecha_registro,
+      cliente: g.nombre_cliente ?? '',
       documento: g.documento_cliente ?? '',
+      origen: g.origen ?? '',
+      vinculo,
       medioPago: g.medio_pago ?? '',
-      importe: Number(g.importe),
-      estado: g.fecha_reembolso ? 'DEVUELTA' : 'ACTIVA',
+      cobrado: Number(g.monto_cobrado),
+      devuelto: Number(g.monto_devuelto),
+      saldo: Number(g.monto_saldo),
+      estado: g.nombre_estado ?? '',
       fechaReembolso: g.fecha_reembolso ?? '',
       medioReembolso: g.medio_reembolso ?? '',
       obs: g.observacion ?? '',
-      obsReembolso: g.observacion_reembolso ?? '',
     })
   })
   estilarEncabezado(detalle)
-  detalle.autoFilter = { from: 'A1', to: 'K1' }
+  detalle.autoFilter = { from: 'A1', to: 'N1' }
   detalle.views = [{ state: 'frozen', ySplit: 1 }]
 
   const totales = wb.addWorksheet('Totales por cliente')
@@ -219,30 +233,28 @@ export async function exportarGarantiasExcel(rango: RangoFechas) {
     { header: 'Cliente', key: 'cliente', width: 40 },
     { header: 'Documento', key: 'documento', width: 14 },
     { header: 'Garantías', key: 'cantidad', width: 12 },
-    { header: 'Activas', key: 'activas', width: 10 },
+    { header: 'Con saldo', key: 'activas', width: 12 },
     { header: 'Devueltas', key: 'devueltas', width: 10 },
-    { header: 'Importe total', key: 'importe', width: 16, style: { numFmt: '#,##0.00' } },
-    { header: 'Saldo activo', key: 'saldo', width: 16, style: { numFmt: '#,##0.00' } },
+    { header: 'Cobrado total', key: 'importe', width: 16, style: { numFmt: '#,##0.00' } },
+    { header: 'Saldo pendiente', key: 'saldo', width: 16, style: { numFmt: '#,##0.00' } },
   ]
   const mapa = new Map<
     string,
     { cliente: string; documento: string; cantidad: number; activas: number; devueltas: number; importe: number; saldo: number }
   >()
   for (const g of data) {
-    const key = g.documento_cliente || g.cliente
+    const cliente = g.nombre_cliente || '—'
+    const key = g.documento_cliente || cliente
     const acc = mapa.get(key) ?? {
-      cliente: g.cliente,
+      cliente,
       documento: g.documento_cliente ?? '',
       cantidad: 0, activas: 0, devueltas: 0, importe: 0, saldo: 0,
     }
     acc.cantidad += 1
-    acc.importe += Number(g.importe)
-    if (g.fecha_reembolso) {
-      acc.devueltas += 1
-    } else {
-      acc.activas += 1
-      acc.saldo += Number(g.importe)
-    }
+    acc.importe += Number(g.monto_cobrado)
+    acc.saldo += Number(g.monto_saldo)
+    if (Number(g.monto_saldo) > 0) acc.activas += 1
+    if (g.nombre_estado === 'DEVUELTA') acc.devueltas += 1
     mapa.set(key, acc)
   }
   Array.from(mapa.values())
@@ -253,10 +265,10 @@ export async function exportarGarantiasExcel(rango: RangoFechas) {
     cliente: 'TOTAL',
     documento: '',
     cantidad: data.length,
-    activas: data.filter((g) => !g.fecha_reembolso).length,
-    devueltas: data.filter((g) => !!g.fecha_reembolso).length,
-    importe: data.reduce((s, g) => s + Number(g.importe), 0),
-    saldo: data.filter((g) => !g.fecha_reembolso).reduce((s, g) => s + Number(g.importe), 0),
+    activas: data.filter((g) => Number(g.monto_saldo) > 0).length,
+    devueltas: data.filter((g) => g.nombre_estado === 'DEVUELTA').length,
+    importe: data.reduce((s, g) => s + Number(g.monto_cobrado), 0),
+    saldo: data.reduce((s, g) => s + Number(g.monto_saldo), 0),
   })
   filaTotal.font = { bold: true }
   filaTotal.fill = {

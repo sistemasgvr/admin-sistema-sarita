@@ -8,7 +8,7 @@
               <AppInput
                 v-model="buscar"
                 type="search"
-                placeholder="Buscar por cliente, DNI o comentario..."
+                placeholder="Buscar por cliente, préstamo, alquiler..."
               />
             </div>
             <div class="w-full sm:w-56">
@@ -42,28 +42,51 @@
         </div>
       </template>
 
-      <template #cell-fecha="{ row }">{{ formatListDate(row.fecha) }}</template>
+      <template #cell-fecha="{ row }">{{ formatListDate(row.fecha_registro) }}</template>
 
       <template #cell-cliente="{ row }">
         <div class="min-w-0">
-          <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ row.cliente }}</p>
-          <p class="text-theme-xs text-gray-400 dark:text-gray-500">{{ row.documento_cliente || '—' }}</p>
+          <p class="truncate font-medium text-gray-800 dark:text-white/90">
+            {{ row.nombre_cliente || '—' }}
+          </p>
+          <p class="text-theme-xs text-gray-400 dark:text-gray-500">
+            {{ row.documento_cliente || '—' }}
+          </p>
         </div>
       </template>
 
-      <template #cell-medio="{ row }">{{ row.medio_pago || '—' }}</template>
+      <template #cell-origen="{ row }">
+        <div class="min-w-0">
+          <AppBadge :color="origenColor(resolveOrigen(row))" size="sm">
+            {{ origenLabel(resolveOrigen(row)) }}
+          </AppBadge>
+          <p class="mt-0.5 truncate text-theme-xs text-gray-400 dark:text-gray-500">
+            {{ origenDetalle(row) }}
+          </p>
+        </div>
+      </template>
 
-      <template #cell-importe="{ row }">
-        <span class="font-semibold text-gray-800 dark:text-white/90">{{ formatCurrency(row.importe) }}</span>
+      <template #cell-montos="{ row }">
+        <div class="text-right text-theme-sm">
+          <p class="font-semibold text-gray-800 dark:text-white/90">
+            {{ formatCurrency(row.monto_cobrado) }}
+          </p>
+          <p class="text-theme-xs text-gray-400 dark:text-gray-500">
+            Saldo {{ formatCurrency(row.monto_saldo) }}
+            <span v-if="Number(row.monto_devuelto) > 0">
+              · Dev. {{ formatCurrency(row.monto_devuelto) }}
+            </span>
+          </p>
+          <p v-if="row.medio_pago" class="text-theme-xs text-gray-400 dark:text-gray-500">
+            {{ row.medio_pago }}
+          </p>
+        </div>
       </template>
 
       <template #cell-estado="{ row }">
-        <AppBadge :color="row.fecha_reembolso ? 'success' : 'warning'" size="sm">
-          {{ row.fecha_reembolso ? 'DEVUELTA' : 'ACTIVA' }}
+        <AppBadge :color="estadoColor(row.nombre_estado)" size="sm">
+          {{ row.nombre_estado || '—' }}
         </AppBadge>
-        <p v-if="row.fecha_reembolso" class="mt-0.5 text-theme-xs text-gray-400 dark:text-gray-500">
-          {{ formatListDate(row.fecha_reembolso) }}
-        </p>
       </template>
 
       <template #cell-observacion="{ row }">
@@ -82,36 +105,27 @@
           <AppIcon :name="ICONS.eye" :size="16" />
         </button>
         <button
-          v-if="canReembolsar && !row.fecha_reembolso"
+          v-if="canReembolsar && Number(row.monto_saldo) > 0"
           type="button"
-          title="Registrar reembolso"
+          title="Devolver garantía"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
           @click="openReembolsar(row)"
         >
           <AppIcon :name="ICONS.banknote" :size="16" />
         </button>
         <button
-          v-if="canReembolsar && row.fecha_reembolso"
+          v-if="canEditar && row.puede_editar"
           type="button"
-          title="Anular reembolso"
-          class="inline-flex items-center rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
-          @click="openAnularReembolso(row)"
-        >
-          <AppIcon :name="ICONS.refreshCw" :size="16" />
-        </button>
-        <button
-          v-if="canEditar && !row.fecha_reembolso"
-          type="button"
-          title="Editar"
+          title="Editar garantía manual"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
           @click="openEditar(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
         </button>
         <button
-          v-if="canEliminar"
+          v-if="canEliminar && row.puede_eliminar"
           type="button"
-          title="Eliminar"
+          title="Eliminar garantía manual"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
           @click="openEliminar(row)"
         >
@@ -129,7 +143,11 @@
       </template>
     </AppTable>
 
-    <GarantiaFormModal v-if="canCrear || canEditar" v-model="formModalOpen" :garantia="garantiaEditando" @saved="onGuardada" />
+    <GarantiaFormModal
+      v-if="canCrear || canEditar"
+      v-model="formModalOpen"
+      :garantia="garantiaEditando"
+    />
 
     <ReembolsarGarantiaModal
       v-if="canReembolsar"
@@ -138,36 +156,72 @@
     />
 
     <AppModal v-model="detalleOpen" title="Detalle de la garantía" size="lg">
-      <div v-if="garantiaDetalle" class="space-y-4">
-        <!-- Badge de estado -->
+      <div v-if="detalleLoading" class="py-8 text-center text-sm text-gray-500">Cargando...</div>
+      <div v-else-if="garantiaDetalle" class="space-y-4">
         <div class="flex flex-wrap items-center gap-2">
-          <AppBadge :color="garantiaDetalle.fecha_reembolso ? 'success' : 'warning'" size="sm">
-            {{ garantiaDetalle.fecha_reembolso ? 'DEVUELTA' : 'ACTIVA' }}
+          <AppBadge :color="estadoColor(garantiaDetalle.nombre_estado)" size="sm">
+            {{ garantiaDetalle.nombre_estado || '—' }}
+          </AppBadge>
+          <AppBadge :color="origenColor(resolveOrigen(garantiaDetalle))" size="sm">
+            {{ origenLabel(resolveOrigen(garantiaDetalle)) }}
           </AppBadge>
         </div>
 
-        <!-- Recepción -->
         <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
-          <h4 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">Recepción</h4>
+          <h4 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">Cobro</h4>
           <div class="grid grid-cols-2 gap-3">
             <div>
               <p class="text-xs text-gray-400 dark:text-gray-500">Fecha</p>
-              <p class="text-sm text-gray-800 dark:text-white/90">{{ formatListDate(garantiaDetalle.fecha) }}</p>
+              <p class="text-sm text-gray-800 dark:text-white/90">
+                {{ formatListDate(garantiaDetalle.fecha_registro) }}
+              </p>
             </div>
             <div>
-              <p class="text-xs text-gray-400 dark:text-gray-500">Importe</p>
-              <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
-                {{ formatCurrency(garantiaDetalle.importe) }}
+              <p class="text-xs text-gray-400 dark:text-gray-500">Montos</p>
+              <p class="text-sm text-gray-800 dark:text-white/90">
+                Cobrado {{ formatCurrency(garantiaDetalle.monto_cobrado) }} · Saldo
+                {{ formatCurrency(garantiaDetalle.monto_saldo) }}
               </p>
             </div>
             <div class="col-span-2">
               <p class="text-xs text-gray-400 dark:text-gray-500">Cliente</p>
-              <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ garantiaDetalle.cliente }}</p>
-              <p class="text-theme-xs text-gray-400 dark:text-gray-500">{{ garantiaDetalle.documento_cliente || '—' }}</p>
+              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ garantiaDetalle.nombre_cliente || '—' }}
+              </p>
+              <p class="text-theme-xs text-gray-400 dark:text-gray-500">
+                {{ garantiaDetalle.documento_cliente || '—' }}
+              </p>
             </div>
             <div class="col-span-2">
-              <p class="text-xs text-gray-400 dark:text-gray-500">Método de pago recibido</p>
-              <p class="text-sm text-gray-700 dark:text-gray-300">{{ garantiaDetalle.medio_pago || '—' }}</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500">Origen / vínculo</p>
+              <p class="text-sm text-gray-700 dark:text-gray-300">{{ origenDetalle(garantiaDetalle) }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-400 dark:text-gray-500">Método de pago</p>
+              <p class="text-sm text-gray-700 dark:text-gray-300">
+                {{ garantiaDetalle.medio_pago || '—' }}
+              </p>
+            </div>
+            <div v-if="garantiaDetalle.fecha_reembolso || garantiaDetalle.medio_reembolso">
+              <p class="text-xs text-gray-400 dark:text-gray-500">Reembolso</p>
+              <p class="text-sm text-gray-700 dark:text-gray-300">
+                {{
+                  [
+                    garantiaDetalle.fecha_reembolso
+                      ? formatListDate(garantiaDetalle.fecha_reembolso)
+                      : null,
+                    garantiaDetalle.medio_reembolso,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || '—'
+                }}
+              </p>
+            </div>
+            <div v-if="garantiaDetalle.nombre_producto" class="col-span-2">
+              <p class="text-xs text-gray-400 dark:text-gray-500">Producto</p>
+              <p class="text-sm text-gray-700 dark:text-gray-300">
+                {{ garantiaDetalle.nombre_producto }}
+              </p>
             </div>
             <div class="col-span-2">
               <p class="text-xs text-gray-400 dark:text-gray-500">Observaciones</p>
@@ -178,43 +232,34 @@
           </div>
         </div>
 
-        <!-- Reembolso (solo si existe) -->
-        <div
-          v-if="garantiaDetalle.fecha_reembolso"
-          class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-500/30 dark:bg-emerald-500/10"
-        >
-          <h4 class="mb-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-            Reembolso registrado
-          </h4>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <p class="text-xs text-emerald-600 dark:text-emerald-300">Fecha del reembolso</p>
-              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ formatListDate(garantiaDetalle.fecha_reembolso) }}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs text-emerald-600 dark:text-emerald-300">Método usado</p>
-              <p class="text-sm text-gray-800 dark:text-white/90">
-                {{ garantiaDetalle.medio_reembolso || '—' }}
-              </p>
-            </div>
-            <div class="col-span-2">
-              <p class="text-xs text-emerald-600 dark:text-emerald-300">Observaciones del reembolso</p>
-              <p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
-                {{ garantiaDetalle.observacion_reembolso || 'Sin observaciones.' }}
-              </p>
-            </div>
+        <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+          <h4 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">Movimientos</h4>
+          <div v-if="!(garantiaDetalle.movimientos?.length)" class="text-sm text-gray-500">
+            Sin movimientos.
           </div>
-        </div>
-
-        <div
-          v-else
-          class="rounded-xl border border-dashed border-amber-200 bg-amber-50/50 p-3 text-center dark:border-amber-500/30 dark:bg-amber-500/10"
-        >
-          <p class="text-theme-sm text-amber-700 dark:text-amber-300">
-            Garantía activa · aún no se ha registrado el reembolso.
-          </p>
+          <ul v-else class="divide-y divide-gray-100 dark:divide-gray-800">
+            <li
+              v-for="m in garantiaDetalle.movimientos"
+              :key="m.id"
+              class="flex items-start justify-between gap-3 py-2 text-sm"
+            >
+              <div class="min-w-0">
+                <p class="font-medium text-gray-800 dark:text-white/90">
+                  {{ m.nombre_tipo_movimiento || 'Movimiento' }}
+                </p>
+                <p class="text-theme-xs text-gray-400">
+                  {{ formatListDate(m.fecha) }}
+                  <span v-if="m.comprobante"> · {{ m.comprobante }}</span>
+                </p>
+                <p v-if="m.observacion" class="mt-0.5 text-theme-xs text-gray-500">
+                  {{ m.observacion }}
+                </p>
+              </div>
+              <p class="shrink-0 font-semibold text-gray-800 dark:text-white/90">
+                {{ formatCurrency(m.monto) }}
+              </p>
+            </li>
+          </ul>
         </div>
       </div>
     </AppModal>
@@ -231,25 +276,10 @@
     >
       <span>
         ¿Confirmas eliminar la garantía de
-        <strong v-if="garantiaAEliminar">{{ garantiaAEliminar.cliente }}</strong>
-        por <strong v-if="garantiaAEliminar">{{ formatCurrency(garantiaAEliminar.importe) }}</strong>?
-        Se hace una baja lógica reversible.
-      </span>
-    </AppConfirmDialog>
-
-    <AppConfirmDialog
-      v-if="canReembolsar"
-      v-model="anularReembolsoOpen"
-      title="Anular reembolso"
-      variant="warning"
-      confirm-label="Sí, anular reembolso"
-      loading-label="Anulando..."
-      :loading="anularReembolsoMutation.isPending.value"
-      @confirm="confirmarAnularReembolso"
-    >
-      <span>
-        La garantía volverá a estado <strong>ACTIVA</strong> y se limpiarán los datos del reembolso
-        (fecha, método y observaciones). Podrás registrar un nuevo reembolso después.
+        <strong v-if="garantiaAEliminar">{{ garantiaAEliminar.nombre_cliente }}</strong>
+        por
+        <strong v-if="garantiaAEliminar">{{ formatCurrency(garantiaAEliminar.monto_cobrado) }}</strong>?
+        Se hace una baja lógica.
       </span>
     </AppConfirmDialog>
 
@@ -278,15 +308,14 @@ import GarantiaFormModal from '@/modules/finanzas/components/GarantiaFormModal.v
 import ReembolsarGarantiaModal from '@/modules/finanzas/components/ReembolsarGarantiaModal.vue'
 import AppExportarExcelModal from '@/modules/finanzas/components/AppExportarExcelModal.vue'
 import { useGarantiasQuery } from '@/modules/finanzas/composables/useGarantiasQuery'
-import {
-  useAnularReembolsoGarantiaMutation,
-  useEliminarGarantiaMutation,
-} from '@/modules/finanzas/composables/useGarantiaMutations'
+import { useEliminarGarantiaMutation } from '@/modules/finanzas/composables/useGarantiaMutations'
+import { finanzasService } from '@/modules/finanzas/services/finanzas.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import type {
   EstadoGarantia,
   Garantia,
   GarantiaListFilters,
+  OrigenGarantia,
 } from '@/modules/finanzas/interfaces/garantia.interface'
 import type { RangoFechas, SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
@@ -295,13 +324,16 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import { exportarGarantiasExcel } from '@/modules/finanzas/utils/exportarExcel'
+import { toastApiError } from '@/shared/composables/useToast'
 
 const authStore = useAuthStore()
 
 const canCrear = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_CREAR))
 const canEditar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_EDITAR))
 const canEliminar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_ELIMINAR))
-const canReembolsar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_REEMBOLSAR))
+const canReembolsar = computed(() =>
+  authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_REEMBOLSAR),
+)
 const canExportar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_EXPORTAR))
 
 const buscar = ref('')
@@ -313,6 +345,7 @@ const limite = ref(10)
 const filtroEstadoOptions: SelectOption[] = [
   { label: 'Todas', value: '' },
   { label: 'Activas', value: 'ACTIVA' },
+  { label: 'Parciales', value: 'PARCIAL' },
   { label: 'Devueltas', value: 'DEVUELTA' },
 ]
 
@@ -325,8 +358,8 @@ const isLoading = computed(() => garantiasQuery.isFetching.value)
 const columns: TableColumn<Garantia>[] = [
   { key: 'fecha', label: 'Fecha' },
   { key: 'cliente', label: 'Cliente' },
-  { key: 'medio', label: 'Método de pago' },
-  { key: 'importe', label: 'Importe', align: 'right' },
+  { key: 'origen', label: 'Origen' },
+  { key: 'montos', label: 'Montos', align: 'right' },
   { key: 'estado', label: 'Estado', align: 'center' },
   { key: 'observacion', label: 'Observaciones' },
 ]
@@ -340,15 +373,19 @@ watch(buscar, (v) => {
   }, 300)
 })
 
-watch(rango, (r) => {
-  pagina.value = 1
-  filters.value = {
-    ...filters.value,
-    desde: r.start || undefined,
-    hasta: r.end || undefined,
-    pagina: 1,
-  }
-}, { deep: true })
+watch(
+  rango,
+  (r) => {
+    pagina.value = 1
+    filters.value = {
+      ...filters.value,
+      desde: r.start || undefined,
+      hasta: r.end || undefined,
+      pagina: 1,
+    }
+  },
+  { deep: true },
+)
 
 watch(filtroEstado, (v) => {
   pagina.value = 1
@@ -359,69 +396,126 @@ watch([pagina, limite], () => {
   filters.value = { ...filters.value, pagina: pagina.value, limite: limite.value }
 })
 
-/* Modal form */
-const formModalOpen = ref(false)
-const garantiaEditando = ref<Garantia | null>(null)
-const openCrear = () => { garantiaEditando.value = null; formModalOpen.value = true }
-const openEditar = (g: Garantia) => { garantiaEditando.value = g; formModalOpen.value = true }
-const onGuardada = () => { garantiaEditando.value = null }
-
-/* Detalle */
-const detalleOpen = ref(false)
-const garantiaDetalle = ref<Garantia | null>(null)
-const openDetalle = (g: Garantia) => { garantiaDetalle.value = g; detalleOpen.value = true }
-
-/* Reembolsar */
-const reembolsarModalOpen = ref(false)
-const garantiaAReembolsar = ref<Garantia | null>(null)
-const openReembolsar = (g: Garantia) => { garantiaAReembolsar.value = g; reembolsarModalOpen.value = true }
-
-const anularReembolsoOpen = ref(false)
-const garantiaAAnularReembolso = ref<Garantia | null>(null)
-const anularReembolsoMutation = useAnularReembolsoGarantiaMutation()
-
-const openAnularReembolso = (g: Garantia) => {
-  garantiaAAnularReembolso.value = g
-  anularReembolsoOpen.value = true
+function resolveOrigen(g: Garantia): OrigenGarantia {
+  if (g.origen) return g.origen
+  if (g.id_prestamo) return 'PRESTAMO'
+  if (g.id_alquiler) return 'ALQUILER'
+  if (g.comprobante_cobro || g.movimientos?.some((m) => m.id_comprobante)) return 'POS'
+  return 'MANUAL'
 }
 
-const confirmarAnularReembolso = async () => {
-  const g = garantiaAAnularReembolso.value
-  if (!g) return
-  try {
-    await anularReembolsoMutation.mutateAsync({
-      id: g.id,
-      idUsuarioAuditoria: authStore.user?.id ?? undefined,
-    })
-  } catch {
-    /* toast en la mutación */
-  } finally {
-    anularReembolsoOpen.value = false
-    garantiaAAnularReembolso.value = null
+function origenLabel(origen?: OrigenGarantia | null) {
+  switch (origen) {
+    case 'PRESTAMO':
+      return 'Préstamo'
+    case 'ALQUILER':
+      return 'Alquiler'
+    case 'POS':
+      return 'POS'
+    case 'MANUAL':
+      return 'Manual'
+    default:
+      return '—'
   }
 }
 
-/* Eliminar */
+function origenColor(origen?: OrigenGarantia | null): 'primary' | 'success' | 'warning' | 'neutral' {
+  switch (origen) {
+    case 'PRESTAMO':
+      return 'primary'
+    case 'ALQUILER':
+      return 'success'
+    case 'POS':
+      return 'warning'
+    default:
+      return 'neutral'
+  }
+}
+
+function origenDetalle(g: Garantia) {
+  if (g.numero_prestamo) return `Préstamo ${g.numero_prestamo}`
+  if (g.numero_alquiler) return `Alquiler ${g.numero_alquiler}`
+  if (g.comprobante_cobro) return `Comprobante ${g.comprobante_cobro}`
+  if (g.nombre_producto) return g.nombre_producto
+  return 'Sin vínculo operativo'
+}
+
+function estadoColor(estado?: string | null): 'success' | 'warning' | 'primary' | 'neutral' {
+  switch (estado) {
+    case 'DEVUELTA':
+      return 'success'
+    case 'PARCIAL':
+      return 'primary'
+    case 'ACTIVA':
+      return 'warning'
+    default:
+      return 'neutral'
+  }
+}
+
+const formModalOpen = ref(false)
+const garantiaEditando = ref<Garantia | null>(null)
+const openCrear = () => {
+  garantiaEditando.value = null
+  formModalOpen.value = true
+}
+const openEditar = (g: Garantia) => {
+  garantiaEditando.value = g
+  formModalOpen.value = true
+}
+watch(formModalOpen, (open) => {
+  if (!open) garantiaEditando.value = null
+})
+
+const detalleOpen = ref(false)
+const detalleLoading = ref(false)
+const garantiaDetalle = ref<Garantia | null>(null)
+
+const openDetalle = async (g: Garantia) => {
+  detalleOpen.value = true
+  detalleLoading.value = true
+  garantiaDetalle.value = g
+  try {
+    garantiaDetalle.value = await finanzasService.obtenerGarantia(g.id)
+  } catch (error) {
+    toastApiError(error, 'No se pudo cargar el detalle')
+  } finally {
+    detalleLoading.value = false
+  }
+}
+
+const reembolsarModalOpen = ref(false)
+const garantiaAReembolsar = ref<Garantia | null>(null)
+const openReembolsar = (g: Garantia) => {
+  garantiaAReembolsar.value = g
+  reembolsarModalOpen.value = true
+}
+
 const eliminarOpen = ref(false)
 const garantiaAEliminar = ref<Garantia | null>(null)
 const eliminarMutation = useEliminarGarantiaMutation()
 
-const openEliminar = (g: Garantia) => { garantiaAEliminar.value = g; eliminarOpen.value = true }
+const openEliminar = (g: Garantia) => {
+  garantiaAEliminar.value = g
+  eliminarOpen.value = true
+}
 
 const confirmarEliminar = async () => {
   const g = garantiaAEliminar.value
   if (!g) return
   try {
-    await eliminarMutation.mutateAsync({ id: g.id, idUsuarioAuditoria: authStore.user?.id ?? undefined })
+    await eliminarMutation.mutateAsync({
+      id: g.id,
+      idUsuarioAuditoria: authStore.user?.id ?? undefined,
+    })
   } catch {
-    /* Toast lo maneja la mutación */
+    /* toast en mutación */
   } finally {
     eliminarOpen.value = false
     garantiaAEliminar.value = null
   }
 }
 
-/* Exportar */
 const exportarModalOpen = ref(false)
 const exportarGarantias = async (r: { desde?: string; hasta?: string }) => {
   await exportarGarantiasExcel(r)
