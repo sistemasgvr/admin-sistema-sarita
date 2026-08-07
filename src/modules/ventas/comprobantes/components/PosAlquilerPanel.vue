@@ -205,7 +205,21 @@
               min="0"
               step="0.01"
             />
+            <AppInput
+              v-model="montoGarantia"
+              label="Garantía / depósito"
+              type="number"
+              :min="NUMBER_MIN.money"
+              :step="NUMBER_STEP.money"
+              hint="Prefill del producto alquilable. 0 si no se cobra."
+            />
           </div>
+          <p
+            v-if="origenMontoGarantia"
+            class="mt-2 text-xs text-gray-500 dark:text-gray-400"
+          >
+            {{ origenMontoGarantia }}
+          </p>
           <div class="mt-5">
             <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
           </div>
@@ -269,7 +283,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
+import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
+import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
 import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
@@ -346,11 +362,10 @@ const imprimiendoTicket = ref(false)
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
-/** Regulador: solo servicios alquilables. */
+/** Productos alquilables (servicio o físico). */
 const serviciosAlquilerFilters = ref({
   pagina: 1,
   limite: 100,
-  esServicio: true,
   esAlquilable: true,
   soloActivos: 1,
   buscar: undefined as string | undefined,
@@ -400,6 +415,8 @@ const hoy = new Date().toISOString().slice(0, 10)
 const fechaInicio = ref(hoy)
 const fechaFinPactada = ref(addDaysIso(hoy, 14))
 const tarifaPeriodo = ref(0)
+const montoGarantia = ref<number | string>(0)
+const origenMontoGarantia = ref('')
 const observacion = ref('')
 const guardando = ref(false)
 
@@ -445,9 +462,37 @@ const todasLasLineas = computed(() => [...kitLineas, ...descartables])
 
 const lineasActivas = computed(() => lineasKitConProducto(todasLasLineas.value))
 
-const totalKit = computed(() => totalKitMedicinal(todasLasLineas.value))
+const totalKit = computed(
+  () => totalKitMedicinal(todasLasLineas.value) + Math.max(0, Number(montoGarantia.value || 0)),
+)
 
 const totales = computed(() => calcularTotalesDesdeImporte(totalKit.value))
+
+async function prefillMontoGarantia(producto: Producto) {
+  let sugerido = Number(producto.precio_garantia ?? 0)
+  let origen = sugerido > 0 ? `producto (${producto.nombre})` : ''
+  try {
+    const catalogo = await catalogoPreciosService.listar({
+      idProducto: producto.id,
+      pagina: 1,
+      limite: 5,
+    })
+    const conGarantia = (catalogo.data ?? []).find(
+      (row) => row.precio_garantia != null && Number(row.precio_garantia) > 0,
+    )
+    if (conGarantia) {
+      sugerido = Number(conGarantia.precio_garantia)
+      origen = `catálogo (${conGarantia.nombre_item})`
+    }
+  } catch {
+    // sin catálogo
+  }
+  montoGarantia.value = sugerido
+  origenMontoGarantia.value =
+    sugerido > 0
+      ? `Sugerido S/ ${sugerido.toFixed(2)} desde ${origen}`
+      : 'Sin precio_garantia configurado — ingresa el monto o déjalo en 0'
+}
 
 const lineaRegulador = computed(() => kitLineas.find((linea) => linea.rol === 'regulador'))
 
@@ -466,7 +511,7 @@ const puedeGuardar = computed(() => {
 function labelProductoParaRol(rol: KitMedicinalRol) {
   switch (rol) {
     case 'regulador':
-      return 'Servicio alquilable'
+      return 'Producto alquilable'
     case 'flete':
       return 'Servicio (flete)'
     case 'contenido':
@@ -517,7 +562,11 @@ function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
     linea.codigo = ''
     linea.nombre = ''
     linea.precioUnitario = 0
-    if (linea.rol === 'regulador') tarifaPeriodo.value = 0
+    if (linea.rol === 'regulador') {
+      tarifaPeriodo.value = 0
+      montoGarantia.value = 0
+      origenMontoGarantia.value = ''
+    }
     return
   }
 
@@ -529,6 +578,7 @@ function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
   linea.precioUnitario = Number(producto.precio ?? 0)
   if (linea.rol === 'regulador') {
     tarifaPeriodo.value = Number(producto.precio ?? 0)
+    void prefillMontoGarantia(producto)
   }
 }
 
@@ -541,10 +591,6 @@ function quitarDescartable(key: string) {
   if (index >= 0) descartables.splice(index, 1)
 }
 
-function generarNumeroAlquiler() {
-  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  return `ALQ-${stamp}-${String(Date.now()).slice(-4)}`
-}
 
 async function registrarKit() {
   const userId = authStore.user?.id
@@ -572,6 +618,31 @@ async function registrarKit() {
   guardando.value = true
 
   try {
+    const idProductoReg = Number(lineaRegulador.value.idProducto)
+    const garantia = Math.max(0, Number(montoGarantia.value || 0))
+    const detallesKit = activas.map((linea) => ({
+      idProducto: Number(linea.idProducto),
+      cantidad: Number(linea.cantidad),
+      precioUnitario: Number(linea.precioUnitario),
+      descuento: 0,
+      porcentajeIgv: 18,
+      idAfectacionIgv: idAfectacionGravado.value,
+      descripcion: `${KIT_MEDICINAL_ROL_LABEL[linea.rol]}: ${linea.nombre || linea.codigo}`,
+      idBalon: linea.rol === 'regulador' ? Number(idBalon.value) : undefined,
+    }))
+    if (garantia > 0) {
+      detallesKit.push({
+        idProducto: idProductoReg,
+        cantidad: 1,
+        precioUnitario: garantia,
+        descuento: 0,
+        porcentajeIgv: 18,
+        idAfectacionIgv: idAfectacionGravado.value,
+        descripcion: `Garantía reembolsable — ${lineaRegulador.value.nombre || 'alquiler'}`,
+        idBalon: Number(idBalon.value) || undefined,
+      })
+    }
+
     const comprobante = await createComprobanteMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idTipoComprobante: Number(idTipoComprobante.value),
@@ -579,16 +650,7 @@ async function registrarKit() {
       numero: numero.value || undefined,
       fecha: fecha.value,
       idCliente: Number(idCliente.value),
-      detalles: activas.map((linea) => ({
-        idProducto: Number(linea.idProducto),
-        cantidad: Number(linea.cantidad),
-        precioUnitario: Number(linea.precioUnitario),
-        descuento: 0,
-        porcentajeIgv: 18,
-        idAfectacionIgv: idAfectacionGravado.value,
-        descripcion: `${KIT_MEDICINAL_ROL_LABEL[linea.rol]}: ${linea.nombre || linea.codigo}`,
-        idBalon: linea.rol === 'regulador' ? Number(idBalon.value) : undefined,
-      })),
+      detalles: detallesKit,
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       glosa: observacion.value || 'Kit medicinal',
@@ -596,17 +658,26 @@ async function registrarKit() {
       origenPos: OrigenPos.MEDICINAL,
     })
 
+    const productoReg = findProducto('regulador', idProductoReg)
+    const idProductoStock =
+      productoReg &&
+      productoReg.afecta_stock &&
+      !productoReg.es_servicio &&
+      !productoReg.es_gas
+        ? idProductoReg
+        : undefined
+
     const alquiler = await alquileresService.crear({
       idUsuarioAuditoria: userId,
-      numeroAlquiler: generarNumeroAlquiler(),
       idCliente: Number(idCliente.value),
       idAlmacen: Number(idAlmacen.value),
       fechaInicio: fechaInicio.value,
       fechaFinPactada: fechaFinPactada.value || undefined,
       tarifaDiaria: Number(tarifaPeriodo.value || 0),
-      totalCobrado: totalKit.value,
+      totalCobrado: totalKitMedicinal(todasLasLineas.value),
       idComprobanteVenta: comprobante.id,
-      idProductoRegulador: Number(lineaRegulador.value.idProducto),
+      idProductoRegulador: idProductoReg,
+      idProductoStock,
       observacion: observacion.value || 'Kit medicinal (alquiler regulador)',
     })
 
@@ -649,10 +720,28 @@ async function registrarKit() {
       fechaInicio: fechaInicio.value,
       fechaFin: fechaFinPactada.value || addDaysIso(fechaInicio.value, 14),
       monto: montoRegulador,
-      idProducto: Number(lineaRegulador.value.idProducto),
+      idProducto: idProductoReg,
       idComprobante: comprobante.id,
       observacion: 'Periodo 1 — kit medicinal (regulador)',
     })
+
+    if (garantia > 0) {
+      try {
+        await garantiasService.crear({
+          idUsuarioAuditoria: userId,
+          idCliente: Number(idCliente.value),
+          monto: garantia,
+          idComprobante: comprobante.id,
+          idAlquiler: alquiler.id,
+          idProducto: idProductoReg,
+          cantidadVenta: 1,
+          fechaRegistro: fecha.value,
+          observacion: `Garantía kit medicinal · ${lineaRegulador.value.nombre || 'alquiler'}`,
+        })
+      } catch (error) {
+        toastApiError(error, 'Kit creado, pero falló el registro de la garantía')
+      }
+    }
 
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
@@ -670,6 +759,8 @@ async function limpiarFormulario() {
   fechaInicio.value = inicio
   fechaFinPactada.value = addDaysIso(inicio, 14)
   tarifaPeriodo.value = 0
+  montoGarantia.value = 0
+  origenMontoGarantia.value = ''
   observacion.value = ''
   kitLineas.splice(0, kitLineas.length, ...crearKitMedicinalInicial())
   descartables.splice(0, descartables.length)

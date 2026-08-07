@@ -288,8 +288,22 @@
           <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" required />
           <AppInput v-model="fechaFin" label="Fin pactado" type="date" required />
         </div>
+        <AppInput
+          v-model="montoGarantia"
+          label="Garantía / depósito"
+          type="number"
+          :min="NUMBER_MIN.money"
+          :step="NUMBER_STEP.money"
+          hint="Prefill del producto o catálogo. Déjalo en 0 si no se cobra."
+        />
+        <p
+          v-if="origenMontoGarantia"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
+          {{ origenMontoGarantia }}
+        </p>
         <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
-          Se alquila el <strong>regulador/accesorio</strong>. El cilindro <strong>no se alquila</strong>:
+          Se alquila el <strong>producto alquilable</strong>. El cilindro <strong>no se alquila</strong>:
           si también entregas uno, queda en <strong>préstamo</strong> (mismo comprobante).
         </p>
         <PosBalonSelectField
@@ -302,7 +316,7 @@
           empty-text="Sin cilindros en almacén."
         />
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          Reguladores no requieren cilindro. Si eliges uno, se crea préstamo (no alquiler del balón).
+          Si eliges cilindro, se crea préstamo (no alquiler del balón).
         </p>
       </template>
 
@@ -1136,7 +1150,9 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     precioAlquiler.value = fromLinea.precioAlquiler ?? 0
     idProductoAlquiler.value = fromLinea.idProductoAlquiler ?? ''
     nombreProductoAlquiler.value = fromLinea.nombreProductoAlquiler || ''
-    if (escenarioGas.value === 'entregar_prestamo') {
+    const esAlquilerLinea =
+      fromLinea.tipoPos === 'alquiler' || Boolean(fromLinea.esAlquilable)
+    if (escenarioGas.value === 'entregar_prestamo' || esAlquilerLinea) {
       if (fromLinea.montoGarantia != null) {
         montoGarantia.value = Number(fromLinea.montoGarantia)
         origenMontoGarantia.value = ''
@@ -1177,6 +1193,10 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   precioAlquiler.value = 0
   idProductoAlquiler.value = ''
   nombreProductoAlquiler.value = ''
+
+  if (tipo.value === 'alquiler' && fromProducto) {
+    void prefillMontoGarantia(fromProducto)
+  }
 }
 
 function elegirTipo(t: PosAnadirTipo) {
@@ -1359,6 +1379,7 @@ async function confirmar() {
   if (tipo.value === 'alquiler') {
     payload.fechaInicioAlquiler = fechaInicio.value
     payload.fechaFinAlquiler = fechaFin.value
+    payload.montoGarantia = Math.max(0, Number(montoGarantia.value || 0))
   }
 
   if (tipo.value === 'mantenimiento') {

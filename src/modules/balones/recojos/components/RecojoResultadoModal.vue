@@ -9,6 +9,26 @@
       Cargando recojo...
     </div>
     <div v-else-if="recojo" class="space-y-4">
+      <div
+        v-if="puedeIniciarRuta"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50/70 px-3 py-2.5 dark:border-brand-500/30 dark:bg-brand-500/10"
+      >
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">Ruta al cliente</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ recojo.direccion || 'Dirección principal con coordenadas' }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          @click="iniciarRuta"
+        >
+          <AppIcon :name="ICONS.mapPin" :size="15" />
+          Iniciar ruta
+        </button>
+      </div>
+
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppInput v-model="fechaVisita" label="Fecha de visita" type="date" required />
         <AppSelect
@@ -35,9 +55,20 @@
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ linea.numeroPrestamo || linea.numeroAlquiler || '—' }}
+                <template v-if="linea.nombreProductoGas">
+                  · {{ linea.nombreProductoGas }}
+                </template>
                 <template v-if="linea.fechaVencimiento">
                   · Vence {{ linea.fechaVencimiento }}
                 </template>
+              </p>
+              <p
+                v-if="linea.capacidad != null || linea.nombreUnidad"
+                class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+              >
+                Capacidad
+                {{ linea.capacidad != null ? linea.capacidad : '—' }}
+                {{ linea.nombreUnidad || '' }}
               </p>
             </div>
             <AppSelect
@@ -56,12 +87,24 @@
               v-model="linea.nombreEstadoContenido"
               label="Contenido al recojo"
               :options="contenidoOptions"
+              @update:model-value="onContenidoChange(linea)"
+            />
+            <AppInput
+              v-model="linea.cantidadRestante"
+              :label="`Cantidad restante${linea.nombreUnidad ? ` (${linea.nombreUnidad})` : ''}`"
+              type="number"
+              :step="stepInputCantidadPorUnidad(linea.nombreUnidad, true)"
+              :min="0"
+              :max="linea.capacidad ?? undefined"
+              :hint="hintCantidad(linea)"
+              placeholder="Ej. mitad del cilindro"
             />
             <AlmacenSelectField
               v-model="linea.idAlmacenDestino"
               label="Almacén destino"
               searchable
               required
+              class="sm:col-span-2"
             />
           </div>
 
@@ -127,7 +170,14 @@ import {
 } from '@/modules/balones/recojos/interfaces/recojo.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
+import { ICONS } from '@/shared/constants/icons'
+import {
+  abrirRutaGoogleMaps,
+  clienteTieneCoordenadas,
+} from '@/shared/utils/googleMapsRuta'
+import { stepInputCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 
 interface LineaResultado {
   idPrestamoDetalle?: number
@@ -135,9 +185,13 @@ interface LineaResultado {
   codigoBalon: string
   numeroPrestamo: string
   numeroAlquiler: string
+  nombreProductoGas: string
   fechaVencimiento: string
+  capacidad: number | null
+  nombreUnidad: string
   resultado: ResultadoRecojoNombre
   nombreEstadoContenido: string
+  cantidadRestante: string
   nuevaFechaRetorno: string
   idAlmacenDestino: number | ''
   observacion: string
@@ -169,7 +223,7 @@ const motivoOptions = [
 const contenidoOptions = [
   { value: 'VACIO', label: 'Vacío' },
   { value: 'LLENO', label: 'Lleno (gas no usado)' },
-  { value: 'DESCONOCIDO', label: 'Desconocido' },
+  { value: 'DESCONOCIDO', label: 'Parcial / desconocido' },
 ]
 
 const recojoLabel = computed(() => {
@@ -178,6 +232,10 @@ const recojoLabel = computed(() => {
     .filter(Boolean)
     .join(' · ')
 })
+
+const puedeIniciarRuta = computed(() =>
+  clienteTieneCoordenadas(recojo.value?.latitud, recojo.value?.longitud),
+)
 
 const puedeGuardar = computed(
   () => Boolean(fechaVisita.value) && lineas.value.length > 0 && lineas.value.every(validarLinea),
@@ -189,10 +247,48 @@ function addDaysIso(iso: string, days: number) {
   return d.toISOString().slice(0, 10)
 }
 
+function parseCantidad(value: string): number | null {
+  if (value.trim() === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function hintCantidad(linea: LineaResultado) {
+  const um = linea.nombreUnidad || 'u.m.'
+  if (linea.capacidad != null) {
+    return `Según unidad del producto (${um}). Capacidad: ${linea.capacidad}`
+  }
+  return `Ingresa la medida restante en ${um}`
+}
+
+function onContenidoChange(linea: LineaResultado) {
+  if (linea.nombreEstadoContenido === 'VACIO') {
+    linea.cantidadRestante = '0'
+    return
+  }
+  if (linea.nombreEstadoContenido === 'LLENO' && linea.capacidad != null) {
+    linea.cantidadRestante = String(linea.capacidad)
+  }
+}
+
 function validarLinea(linea: LineaResultado) {
-  if (linea.resultado === 'RECOGIDO') return Boolean(linea.idAlmacenDestino)
+  if (linea.resultado === 'RECOGIDO') {
+    if (!linea.idAlmacenDestino) return false
+    const cantidad = parseCantidad(linea.cantidadRestante)
+    if (cantidad == null) return true
+    if (cantidad < 0) return false
+    if (linea.capacidad != null && cantidad > Number(linea.capacidad)) return false
+    return true
+  }
   if (linea.resultado === 'EXTENDIDO') return Boolean(linea.nuevaFechaRetorno)
   return true
+}
+
+function iniciarRuta() {
+  const lat = Number(recojo.value?.latitud)
+  const lng = Number(recojo.value?.longitud)
+  if (!clienteTieneCoordenadas(lat, lng)) return
+  abrirRutaGoogleMaps(lat, lng)
 }
 
 watch(
@@ -205,19 +301,27 @@ watch(
     const manana = addDaysIso(fechaVisita.value, 1)
     lineas.value = (recojo.value.detalles ?? [])
       .filter((d) => !d.fecha_devolucion && !d.nombre_resultado)
-      .map((d) => ({
-        idPrestamoDetalle: d.id_prestamo_detalle ?? undefined,
-        idAlquilerDetalle: d.id_alquiler_detalle ?? undefined,
-        codigoBalon: d.codigo_balon || (d.id_balon ? `#${d.id_balon}` : `Detalle #${d.id}`),
-        numeroPrestamo: d.numero_origen || d.numero_prestamo || '',
-        numeroAlquiler: d.origen === 'ALQUILER' ? (d.numero_origen || d.numero_alquiler || '') : '',
-        fechaVencimiento: d.fecha_vencimiento?.slice(0, 10) || '',
-        resultado: 'RECOGIDO' as ResultadoRecojoNombre,
-        nombreEstadoContenido: 'VACIO',
-        nuevaFechaRetorno: manana,
-        idAlmacenDestino: '' as number | '',
-        observacion: '',
-      }))
+      .map((d) => {
+        const capacidad =
+          d.capacidad != null && d.capacidad !== '' ? Number(d.capacidad) : null
+        return {
+          idPrestamoDetalle: d.id_prestamo_detalle ?? undefined,
+          idAlquilerDetalle: d.id_alquiler_detalle ?? undefined,
+          codigoBalon: d.codigo_balon || (d.id_balon ? `#${d.id_balon}` : `Detalle #${d.id}`),
+          numeroPrestamo: d.numero_origen || d.numero_prestamo || '',
+          numeroAlquiler: d.origen === 'ALQUILER' ? (d.numero_origen || d.numero_alquiler || '') : '',
+          nombreProductoGas: d.nombre_producto_gas || '',
+          fechaVencimiento: d.fecha_vencimiento?.slice(0, 10) || '',
+          capacidad: Number.isFinite(capacidad as number) ? (capacidad as number) : null,
+          nombreUnidad: d.nombre_unidad_medida || d.descripcion_unidad_medida || '',
+          resultado: 'RECOGIDO' as ResultadoRecojoNombre,
+          nombreEstadoContenido: 'VACIO',
+          cantidadRestante: '0',
+          nuevaFechaRetorno: manana,
+          idAlmacenDestino: '' as number | '',
+          observacion: '',
+        }
+      })
   },
 )
 
@@ -243,6 +347,17 @@ async function confirmar() {
     return
   }
 
+  for (const linea of lineas.value) {
+    if (linea.resultado !== 'RECOGIDO') continue
+    const cantidad = parseCantidad(linea.cantidadRestante)
+    if (cantidad != null && linea.capacidad != null && cantidad > Number(linea.capacidad)) {
+      toastWarning(
+        `Cantidad restante de ${linea.codigoBalon} supera la capacidad (${linea.capacidad} ${linea.nombreUnidad})`,
+      )
+      return
+    }
+  }
+
   try {
     await mutation.mutateAsync({
       id: Number(props.recojoId),
@@ -251,20 +366,25 @@ async function confirmar() {
         fechaVisita: fechaVisita.value,
         motivoFalloNombre: motivoFalloNombre.value || undefined,
         observacion: observacion.value.trim() || undefined,
-        detalles: lineas.value.map((l) => ({
-          idPrestamoDetalle: l.idPrestamoDetalle,
-          idAlquilerDetalle: l.idAlquilerDetalle,
-          resultado: l.resultado,
-          nombreEstadoContenido:
-            l.resultado === 'RECOGIDO' ? l.nombreEstadoContenido || 'VACIO' : undefined,
-          nuevaFechaRetorno:
-            l.resultado === 'EXTENDIDO' ? l.nuevaFechaRetorno || undefined : undefined,
-          idAlmacenDestino:
-            l.resultado === 'RECOGIDO' && l.idAlmacenDestino
-              ? Number(l.idAlmacenDestino)
-              : undefined,
-          observacion: l.observacion.trim() || undefined,
-        })),
+        detalles: lineas.value.map((l) => {
+          const cantidad = parseCantidad(l.cantidadRestante)
+          return {
+            idPrestamoDetalle: l.idPrestamoDetalle,
+            idAlquilerDetalle: l.idAlquilerDetalle,
+            resultado: l.resultado,
+            nombreEstadoContenido:
+              l.resultado === 'RECOGIDO' ? l.nombreEstadoContenido || 'VACIO' : undefined,
+            cantidadRestante:
+              l.resultado === 'RECOGIDO' && cantidad != null ? cantidad : undefined,
+            nuevaFechaRetorno:
+              l.resultado === 'EXTENDIDO' ? l.nuevaFechaRetorno || undefined : undefined,
+            idAlmacenDestino:
+              l.resultado === 'RECOGIDO' && l.idAlmacenDestino
+                ? Number(l.idAlmacenDestino)
+                : undefined,
+            observacion: l.observacion.trim() || undefined,
+          }
+        }),
       },
     })
     open.value = false

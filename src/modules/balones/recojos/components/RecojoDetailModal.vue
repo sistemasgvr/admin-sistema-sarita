@@ -9,6 +9,26 @@
       Cargando...
     </div>
     <div v-else-if="recojo" class="space-y-4">
+      <div
+        v-if="puedeIniciarRuta"
+        class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-200 bg-brand-50/70 px-3 py-2.5 dark:border-brand-500/30 dark:bg-brand-500/10"
+      >
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">Ubicación del cliente</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            {{ recojo.direccion || 'Coordenadas disponibles' }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          @click="iniciarRuta"
+        >
+          <AppIcon :name="ICONS.mapPin" :size="15" />
+          Iniciar ruta
+        </button>
+      </div>
+
       <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
         <div>
           <dt class="text-gray-500 dark:text-gray-400">Cliente</dt>
@@ -42,6 +62,12 @@
           </dd>
         </div>
         <div>
+          <dt class="text-gray-500 dark:text-gray-400">Alquiler</dt>
+          <dd class="text-gray-800 dark:text-white/90">
+            {{ recojo.numero_alquiler || (recojo.id_alquiler ? `#${recojo.id_alquiler}` : '—') }}
+          </dd>
+        </div>
+        <div>
           <dt class="text-gray-500 dark:text-gray-400">Motivo fallo</dt>
           <dd class="text-gray-800 dark:text-white/90">
             {{ recojo.nombre_motivo_fallo || '—' }}
@@ -69,9 +95,12 @@
               <span v-else class="text-xs text-gray-500">Pendiente de resultado</span>
             </div>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ d.numero_prestamo || '—' }}
+              {{ d.numero_origen || d.numero_prestamo || d.numero_alquiler || '—' }}
               <template v-if="d.nombre_estado_contenido">
                 · Contenido {{ d.nombre_estado_contenido }}
+              </template>
+              <template v-if="d.cantidad_restante != null && d.cantidad_restante !== ''">
+                · Restante {{ d.cantidad_restante }}{{ d.nombre_unidad_medida ? ` ${d.nombre_unidad_medida}` : '' }}
               </template>
               <template v-if="d.nueva_fecha_retorno">
                 · Nueva fecha {{ d.nueva_fecha_retorno.slice(0, 10) }}
@@ -99,6 +128,12 @@
 import { computed } from 'vue'
 import { useRecojoQuery } from '@/modules/balones/recojos/composables/useRecojosQuery'
 import { AppModal, ListaOpcionBadge } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
+import {
+  abrirRutaGoogleMaps,
+  clienteTieneCoordenadas,
+} from '@/shared/utils/googleMapsRuta'
 
 const props = defineProps<{
   recojoId?: number | null
@@ -108,4 +143,15 @@ const open = defineModel<boolean>({ default: false })
 const idRef = computed(() => (open.value ? props.recojoId : null))
 const query = useRecojoQuery(idRef)
 const recojo = computed(() => query.data.value ?? null)
+
+const puedeIniciarRuta = computed(() =>
+  clienteTieneCoordenadas(recojo.value?.latitud, recojo.value?.longitud),
+)
+
+function iniciarRuta() {
+  const lat = Number(recojo.value?.latitud)
+  const lng = Number(recojo.value?.longitud)
+  if (!clienteTieneCoordenadas(lat, lng)) return
+  abrirRutaGoogleMaps(lat, lng)
+}
 </script>

@@ -29,12 +29,18 @@ export interface RecojoDetalle {
   numero_alquiler?: string | null
   id_balon?: number | null
   codigo_balon?: string | null
+  id_producto_gas?: number | null
+  nombre_producto_gas?: string | null
+  capacidad?: number | string | null
+  nombre_unidad_medida?: string | null
+  descripcion_unidad_medida?: string | null
   fecha_vencimiento?: string | null
   fecha_devolucion?: string | null
   id_resultado?: number | null
   nombre_resultado?: string | null
   id_estado_contenido?: number | null
   nombre_estado_contenido?: string | null
+  cantidad_restante?: number | string | null
   nueva_fecha_retorno?: string | null
   id_almacen_destino?: number | null
   nombre_almacen_destino?: string | null
@@ -47,6 +53,9 @@ export interface Recojo {
   id_cliente: number
   nombre_cliente?: string | null
   documento_cliente?: string | null
+  latitud?: number | string | null
+  longitud?: number | string | null
+  direccion?: string | null
   id_prestamo?: number | null
   numero_prestamo?: string | null
   id_alquiler?: number | null
@@ -115,6 +124,7 @@ export interface RegistrarResultadoDetallePayload {
   idAlquilerDetalle?: number
   resultado: ResultadoRecojoNombre
   nombreEstadoContenido?: string
+  cantidadRestante?: number
   nuevaFechaRetorno?: string
   idAlmacenDestino?: number
   observacion?: string

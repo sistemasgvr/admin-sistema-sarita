@@ -58,6 +58,15 @@
       <template #actions="{ row }">
         <div class="inline-flex items-center justify-end gap-1.5">
           <button
+            v-if="puedeIniciarRuta(row)"
+            type="button"
+            title="Iniciar ruta"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-300 text-brand-600 transition hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-400 dark:hover:bg-brand-500/10"
+            @click="iniciarRuta(row)"
+          >
+            <AppIcon :name="ICONS.mapPin" :size="15" />
+          </button>
+          <button
             v-if="canView"
             type="button"
             title="Ver detalle"
@@ -157,6 +166,10 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import {
+  abrirRutaGoogleMaps,
+  clienteTieneCoordenadas,
+} from '@/shared/utils/googleMapsRuta'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
@@ -291,10 +304,39 @@ function openResultado(row: Recojo) {
   resultadoOpen.value = true
 }
 
+function puedeIniciarRuta(row: Recojo) {
+  return clienteTieneCoordenadas(row.latitud, row.longitud)
+}
+
+async function iniciarRuta(row: Recojo) {
+  const lat = Number(row.latitud)
+  const lng = Number(row.longitud)
+  if (!clienteTieneCoordenadas(lat, lng)) return
+  abrirRutaGoogleMaps(lat, lng)
+  const userId = authStore.user?.id
+  if (
+    canEdit.value &&
+    userId &&
+    (row.nombre_estado ?? '').toUpperCase() === 'PROGRAMADO'
+  ) {
+    await updateMutation.mutateAsync({
+      id: row.id,
+      payload: { idUsuarioAuditoria: userId, estadoNombre: 'EN_RUTA' },
+    })
+  }
+}
+
 function actionItemsForRow(row: Recojo): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value || updateMutation.isPending.value
   const editable = esEditable(row)
   return [
+    {
+      key: 'iniciar_ruta',
+      label: 'Iniciar ruta',
+      icon: ICONS.mapPin,
+      disabled: busy,
+      hidden: !puedeIniciarRuta(row),
+    },
     {
       key: 'resultado',
       label: 'Registrar resultado',
@@ -330,6 +372,10 @@ function actionItemsForRow(row: Recojo): ActionMenuItem[] {
 
 async function onActionSelect(key: string, row: Recojo) {
   const userId = authStore.user?.id
+  if (key === 'iniciar_ruta') {
+    await iniciarRuta(row)
+    return
+  }
   if (key === 'resultado') {
     openResultado(row)
     return

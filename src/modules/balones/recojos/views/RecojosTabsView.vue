@@ -87,6 +87,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import RecojoProgramarModal from '@/modules/balones/recojos/components/RecojoProgramarModal.vue'
@@ -109,11 +110,39 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
-const tab = ref<'pendientes' | 'visitas'>('pendientes')
+const route = useRoute()
+const router = useRouter()
+
+const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]) => {
+  const value = Array.isArray(tab) ? tab[0] : tab
+  return value === 'visitas' ? 'visitas' : 'pendientes'
+}
+
+const tab = ref<'pendientes' | 'visitas'>(resolveTab(route.query.tab))
 const tabs = [
   { value: 'pendientes' as const, label: 'Pendientes', icon: ICONS.clipboardList },
   { value: 'visitas' as const, label: 'Visitas', icon: ICONS.truck },
 ]
+
+watch(tab, (value) => {
+  const wantsVisitas = value === 'visitas'
+  const hasVisitasQuery = route.query.tab === 'visitas'
+  if (wantsVisitas === hasVisitasQuery) return
+  if (wantsVisitas) {
+    void router.replace({ query: { ...route.query, tab: 'visitas' } })
+    return
+  }
+  const { tab: _tab, ...rest } = route.query
+  void router.replace({ query: rest })
+})
+
+watch(
+  () => route.query.tab,
+  (value) => {
+    const resolved = resolveTab(value)
+    if (tab.value !== resolved) tab.value = resolved
+  },
+)
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)

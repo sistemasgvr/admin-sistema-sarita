@@ -129,7 +129,12 @@
                       + Préstamo
                     </span>
                     <span
-                      v-if="esEntregarPrestamo(linea) && Number(linea.montoGarantia || 0) > 0"
+                      v-if="
+                        (esEntregarPrestamo(linea) ||
+                          linea.tipoPos === 'alquiler' ||
+                          linea.esAlquilable) &&
+                        Number(linea.montoGarantia || 0) > 0
+                      "
                       class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
                     >
                       + Garantía
@@ -158,6 +163,21 @@
                       <template v-else>
                         · Préstamo cilindro (sin garantía)
                       </template>
+                    </p>
+                    <p class="mt-0.5 truncate text-xs text-brand-600 dark:text-brand-400">
+                      {{ resumenLinea(linea) }}
+                    </p>
+                  </template>
+                  <template
+                    v-else-if="
+                      (linea.tipoPos === 'alquiler' || linea.esAlquilable) &&
+                      Number(linea.montoGarantia || 0) > 0
+                    "
+                  >
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Alquiler {{ formatPosMoney(importeGasLinea(linea)) }}
+                      + Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                      = {{ formatPosMoney(calcularImporteLinea(linea)) }}
                     </p>
                     <p class="mt-0.5 truncate text-xs text-brand-600 dark:text-brand-400">
                       {{ resumenLinea(linea) }}
@@ -503,7 +523,11 @@ function calcularImporteLinea(linea: PosLineItem) {
   if (linea.escenarioGas === 'comprar_balon') {
     return base + Number(linea.precioBalon || 0)
   }
-  if (esEntregarPrestamo(linea)) {
+  if (
+    esEntregarPrestamo(linea) ||
+    linea.tipoPos === 'alquiler' ||
+    Boolean(linea.esAlquilable)
+  ) {
     return base + Number(linea.montoGarantia || 0)
   }
   return base
@@ -734,7 +758,7 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.idProductoAlquiler = payload.idProductoAlquiler
   linea.nombreProductoAlquiler = payload.nombreProductoAlquiler
   linea.montoGarantia =
-    payload.escenarioGas === 'entregar_prestamo'
+    payload.escenarioGas === 'entregar_prestamo' || payload.tipo === 'alquiler'
       ? Math.max(0, Number(payload.montoGarantia || 0))
       : undefined
   linea.idTipoMantenimiento = payload.idTipoMantenimiento
@@ -750,11 +774,6 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
 
 function quitarLinea(key: string) {
   lineas.value = lineas.value.filter((linea) => linea.key !== key)
-}
-
-function generarNumeroAlquiler() {
-  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  return `ALQ-${stamp}-${String(Date.now()).slice(-4)}`
 }
 
 function resolverOrigenPos(): string {
@@ -976,7 +995,12 @@ try {
         ]
       }
 
-      if (esEntregarPrestamo(linea) && Number(linea.montoGarantia || 0) > 0) {
+      const esAlquilerLinea =
+        linea.tipoPos === 'alquiler' || Boolean(linea.esAlquilable)
+      if (
+        (esEntregarPrestamo(linea) || esAlquilerLinea) &&
+        Number(linea.montoGarantia || 0) > 0
+      ) {
         return [
           base,
           {
@@ -1136,16 +1160,23 @@ try {
     ) {
       for (const lineaAlquilable of lineasAlquiler) {
         try {
-          const montoAlquiler = calcularImporteLinea(lineaAlquilable)
+          // Sin garantía: esa va en línea aparte del comprobante y en ven_garantia.
+          const montoAlquiler = importeGasLinea(lineaAlquilable)
           const idProductoAlquiler = Number(lineaAlquilable.idProducto)
           const inicio =
             lineaAlquilable.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
           const fin = lineaAlquilable.fechaFinAlquiler || addDaysIso(inicio, 14)
 
+          const idProductoStock =
+            lineaAlquilable.afectaStock &&
+            !lineaAlquilable.esServicio &&
+            !lineaAlquilable.esGas
+              ? idProductoAlquiler
+              : undefined
+
           // En este dominio tarifa_diaria se usa como monto del periodo (ver bal_renovar_alquiler).
           const alquiler = await alquileresService.crear({
             idUsuarioAuditoria: userId,
-            numeroAlquiler: generarNumeroAlquiler(),
             idCliente: Number(idCliente.value),
             idAlmacen: Number(idAlmacen.value),
             fechaInicio: inicio,
@@ -1154,6 +1185,7 @@ try {
             totalCobrado: montoAlquiler,
             idComprobanteVenta: comprobante.id,
             idProductoRegulador: idProductoAlquiler,
+            idProductoStock,
             observacion:
               lineaAlquilable.observacionLinea ||
               glosa.value ||
@@ -1171,6 +1203,29 @@ try {
             idComprobante: comprobante.id,
             observacion: 'Periodo 1 — POS unificado',
           })
+
+          const montoGarantiaAlq = Number(lineaAlquilable.montoGarantia || 0)
+          if (montoGarantiaAlq > 0) {
+            try {
+              await garantiasService.crear({
+                idUsuarioAuditoria: userId,
+                idCliente: Number(idCliente.value),
+                monto: montoGarantiaAlq,
+                idComprobante: comprobante.id,
+                idAlquiler: alquiler.id,
+                idProducto: idProductoAlquiler,
+                cantidadVenta: 1,
+                fechaRegistro: fecha.value,
+                observacion: `Garantía POS · alquiler ${lineaAlquilable.nombre}`,
+              })
+            } catch (error) {
+              advertencias += 1
+              toastApiError(
+                error,
+                `Comprobante y alquiler creados, pero falló la garantía de ${lineaAlquilable.nombre}`,
+              )
+            }
+          }
         } catch (error) {
           advertencias += 1
           toastApiError(
