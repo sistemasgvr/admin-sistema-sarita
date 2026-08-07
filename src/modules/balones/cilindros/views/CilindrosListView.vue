@@ -464,14 +464,14 @@ const resumenCards = computed<SummaryCardItem[]>(() => [
   },
   {
     key: 'llenos',
-    label: 'Llenos',
+    label: 'Llenos (almacén)',
     value: String(resumen.value.llenos ?? 0),
     icon: ICONS.droplet,
     iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
   },
   {
     key: 'vacios',
-    label: 'Vacíos',
+    label: 'Vacíos (almacén)',
     value: String(resumen.value.vacios ?? 0),
     icon: ICONS.archive,
     iconClass: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
