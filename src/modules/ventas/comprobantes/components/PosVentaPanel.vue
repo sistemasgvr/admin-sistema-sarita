@@ -128,6 +128,12 @@
                     >
                       + Préstamo
                     </span>
+                    <span
+                      v-if="esEntregarPrestamo(linea) && Number(linea.montoGarantia || 0) > 0"
+                      class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                    >
+                      + Garantía
+                    </span>
                   </div>
                   <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90">
                     {{ linea.nombre }}
@@ -145,7 +151,13 @@
                   <template v-else-if="esEntregarPrestamo(linea)">
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Gas {{ formatPosMoney(importeGasLinea(linea)) }}
-                      · Préstamo cilindro (sin cobro de envase)
+                      <template v-if="Number(linea.montoGarantia || 0) > 0">
+                        + Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                        = {{ formatPosMoney(calcularImporteLinea(linea)) }}
+                      </template>
+                      <template v-else>
+                        · Préstamo cilindro (sin garantía)
+                      </template>
                     </p>
                     <p class="mt-0.5 truncate text-xs text-brand-600 dark:text-brand-400">
                       {{ resumenLinea(linea) }}
@@ -264,6 +276,26 @@
                   S/ 0.00
                 </span>
               </div>
+              <div
+                v-if="Number(linea.montoGarantia || 0) > 0"
+                class="mt-0.5 flex items-baseline justify-between gap-2 pl-3 text-xs"
+              >
+                <span class="min-w-0 truncate text-amber-600 dark:text-amber-400">
+                  + Garantía (depósito)
+                </span>
+                <span class="shrink-0 tabular-nums text-amber-600 dark:text-amber-400">
+                  {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                </span>
+              </div>
+              <div
+                v-if="Number(linea.montoGarantia || 0) > 0"
+                class="mt-0.5 flex items-baseline justify-between gap-2 border-t border-dashed border-gray-200 pt-0.5 text-xs dark:border-gray-700"
+              >
+                <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
+                <span class="tabular-nums font-medium text-gray-800 dark:text-white/90">
+                  {{ formatPosMoney(calcularImporteLinea(linea)) }}
+                </span>
+              </div>
             </template>
             <div v-else class="flex items-baseline justify-between gap-2">
               <span class="min-w-0 truncate text-gray-700 dark:text-gray-300">
@@ -317,6 +349,7 @@ import { alquileresService } from '@/modules/balones/alquileres/services/alquile
 import { bajasPendientesService } from '@/modules/balones/bajas-pendientes/services/bajas-pendientes.service'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
 import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
+import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
 import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
@@ -470,6 +503,9 @@ function calcularImporteLinea(linea: PosLineItem) {
   if (linea.escenarioGas === 'comprar_balon') {
     return base + Number(linea.precioBalon || 0)
   }
+  if (esEntregarPrestamo(linea)) {
+    return base + Number(linea.montoGarantia || 0)
+  }
   return base
 }
 
@@ -571,7 +607,12 @@ function etiquetaCilindro(linea: PosLineItem): string {
 function resumenLinea(linea: PosLineItem): string {
   const parts: string[] = []
   if (esRecargaCliente(linea)) parts.push('Recarga cliente')
-  if (esEntregarPrestamo(linea)) parts.push('Préstamo cilindro')
+  if (esEntregarPrestamo(linea)) {
+    parts.push('Préstamo cilindro')
+    if (Number(linea.montoGarantia || 0) > 0) {
+      parts.push(`Garantía ${formatPosMoney(Number(linea.montoGarantia || 0))}`)
+    }
+  }
   if (linea.escenarioGas === 'comprar_balon') {
     parts.push(linea.nombreProductoEnvase?.trim() || 'Venta de envase')
   }
@@ -692,6 +733,10 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.precioAlquiler = payload.precioAlquiler
   linea.idProductoAlquiler = payload.idProductoAlquiler
   linea.nombreProductoAlquiler = payload.nombreProductoAlquiler
+  linea.montoGarantia =
+    payload.escenarioGas === 'entregar_prestamo'
+      ? Math.max(0, Number(payload.montoGarantia || 0))
+      : undefined
   linea.idTipoMantenimiento = payload.idTipoMantenimiento
   linea.fechaIngresoMantenimiento = payload.fechaIngresoMantenimiento
   linea.descripcionMantenimiento = payload.descripcionMantenimiento
@@ -931,6 +976,22 @@ try {
         ]
       }
 
+      if (esEntregarPrestamo(linea) && Number(linea.montoGarantia || 0) > 0) {
+        return [
+          base,
+          {
+            idProducto: Number(linea.idProducto),
+            cantidad: 1,
+            precioUnitario: Number(linea.montoGarantia || 0),
+            descuento: 0,
+            porcentajeIgv: 18,
+            idAfectacionIgv: linea.idAfectacionIgv ?? idAfectacionGravado.value,
+            descripcion: `Garantía reembolsable — ${linea.nombre}`,
+            idBalon: linea.idBalon,
+          },
+        ]
+      }
+
       return [base]
     })
 
@@ -1031,6 +1092,33 @@ try {
                 ? 'Cilindro en préstamo (kit/regulador en alquiler aparte)'
                 : 'Entrega desde POS unificado',
             })
+
+            const montoGarantia = Number(lineaPrestamo.montoGarantia || 0)
+            if (esEntregarPrestamo(lineaPrestamo) && montoGarantia > 0) {
+              try {
+                const productoLinea = productosPorId.value.get(
+                  Number(lineaPrestamo.idProducto),
+                )
+                await garantiasService.crear({
+                  idUsuarioAuditoria: userId,
+                  idCliente: Number(idCliente.value),
+                  monto: montoGarantia,
+                  idComprobante: comprobante.id,
+                  idPrestamo: prestamo.id,
+                  idProducto: Number(lineaPrestamo.idProducto),
+                  cantidadVenta: 1,
+                  idUnidadMedida: productoLinea?.id_unidad_medida ?? undefined,
+                  fechaRegistro: fecha.value,
+                  observacion: `Garantía POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
+                })
+              } catch (error) {
+                advertencias += 1
+                toastApiError(
+                  error,
+                  `Comprobante y préstamo creados, pero falló el registro de garantía de ${lineaPrestamo.nombre}`,
+                )
+              }
+            }
           } catch (error) {
             advertencias += 1
             toastApiError(

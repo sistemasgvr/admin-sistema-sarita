@@ -268,7 +268,7 @@
             v-bind="precioGarantiaAttrs"
             :disabled="isSubmitting"
             :error="errors.precioGarantia"
-            hint="Industrial: depósito reembolsable. Medicinal alquilable: opcional."
+            hint="Depósito reembolsable al prestar cilindro (industrial) o alquilar. Prefill en POS; se puede dejar en 0."
           />
         </div>
       </DetailSectionCard>

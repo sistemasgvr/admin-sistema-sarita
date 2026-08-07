@@ -165,14 +165,10 @@ const sections = computed<DetailSection[]>(() => {
       items: [
         { label: 'Precio de venta', value: formatDetailPrecio(data.precio) },
         { label: 'Precio de compra', value: formatDetailPrecio(data.precio_compra) },
-        ...(data.es_alquilable
-          ? [
-              {
-                label: 'Precio de garantía',
-                value: formatDetailPrecio(data.precio_garantia),
-              },
-            ]
-          : []),
+        {
+          label: 'Precio de garantía',
+          value: formatDetailPrecio(data.precio_garantia),
+        },
         {
           label: 'Tipo',
           value: data.es_servicio

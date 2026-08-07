@@ -163,8 +163,8 @@
               Gas + préstamo del cilindro
             </p>
             <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
-              Cobras solo el gas. El cilindro de la empresa se entrega en préstamo (no se alquila
-              el balón). El alquiler de accesorios se registra aparte.
+              Cobras el gas y, si aplica, la garantía (editable abajo). El cilindro se entrega en
+              préstamo; el alquiler de accesorios se registra aparte.
             </p>
             <p class="mt-1.5 text-xs font-medium text-violet-700 dark:text-violet-300">
               Cliente:
@@ -201,6 +201,20 @@
               hint="Opcional"
             />
           </div>
+          <AppInput
+            v-model="montoGarantia"
+            label="Garantía / depósito"
+            type="number"
+            :min="NUMBER_MIN.money"
+            :step="NUMBER_STEP.money"
+            hint="Prefill del producto o catálogo. Déjalo en 0 si no se cobra (p. ej. canje)."
+          />
+          <p
+            v-if="origenMontoGarantia"
+            class="text-xs text-gray-500 dark:text-gray-400"
+          >
+            {{ origenMontoGarantia }}
+          </p>
         </template>
 
         <template v-else-if="escenarioGas === 'comprar_balon'">
@@ -376,6 +390,7 @@ import { useProductosQuery } from '@/modules/productos/articulos/composables/use
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
+import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import type { BalonOrigenRecarga } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
@@ -433,6 +448,7 @@ export interface PosLineaConfirmada {
   idProductoAlquiler?: number
   nombreProductoAlquiler?: string
   etiquetaBalon?: string
+  montoGarantia?: number
 }
 
 const props = withDefaults(
@@ -496,6 +512,8 @@ const tipoMantenimientoBuscar = ref('')
 const fechaIngreso = ref(new Date().toISOString().slice(0, 10))
 const descripcionMantenimiento = ref('')
 const escenarioGas = ref<EscenarioGas | null>(null)
+const montoGarantia = ref<number | string>(0)
+const origenMontoGarantia = ref('')
 const precioBalon = ref<number | string>(0)
 const idProductoEnvase = ref<number | ''>('')
 const nombreProductoEnvase = ref(NOMBRE_PRODUCTO_VENTA_ENVASE)
@@ -649,7 +667,7 @@ const escenariosGas = computed(() => {
     opciones.push({
       key: 'entregar_prestamo',
       label: 'Entregar / préstamo',
-      help: 'Entregas un cilindro empresa lleno en préstamo. Cobras solo el gas.',
+      help: 'Cilindro empresa en préstamo. Cobras gas + garantía (editable).',
       icon: ICONS.cylinder,
     })
   }
@@ -723,6 +741,10 @@ function setEscenarioGas(key: EscenarioGas) {
   if (key === 'entregar_prestamo') {
     fechaInicio.value = new Date().toISOString().slice(0, 10)
     fechaFin.value = ''
+    void prefillMontoGarantia(producto.value)
+  } else {
+    montoGarantia.value = 0
+    origenMontoGarantia.value = ''
   }
   if (key === 'comprar_balon') {
     void resolverProductoVentaEnvase()
@@ -730,6 +752,40 @@ function setEscenarioGas(key: EscenarioGas) {
   if (key === 'balon_cliente') {
     void refrescarOrigenesRecarga()
   }
+}
+
+async function prefillMontoGarantia(prod?: Producto | null) {
+  if (!prod) {
+    montoGarantia.value = 0
+    origenMontoGarantia.value = ''
+    return
+  }
+
+  let sugerido = Number(prod.precio_garantia ?? 0)
+  let origen = sugerido > 0 ? `producto (${prod.nombre})` : ''
+
+  try {
+    const catalogo = await catalogoPreciosService.listar({
+      idProducto: prod.id,
+      pagina: 1,
+      limite: 5,
+    })
+    const conGarantia = (catalogo.data ?? []).find(
+      (row) => row.precio_garantia != null && Number(row.precio_garantia) > 0,
+    )
+    if (conGarantia) {
+      sugerido = Number(conGarantia.precio_garantia)
+      origen = `catálogo (${conGarantia.nombre_item})`
+    }
+  } catch {
+    // sin catálogo: se usa precio del producto
+  }
+
+  montoGarantia.value = sugerido
+  origenMontoGarantia.value =
+    sugerido > 0
+      ? `Sugerido S/ ${sugerido.toFixed(2)} desde ${origen}`
+      : 'Sin precio_garantia configurado — ingresa el monto o déjalo en 0'
 }
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
@@ -1080,6 +1136,17 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     precioAlquiler.value = fromLinea.precioAlquiler ?? 0
     idProductoAlquiler.value = fromLinea.idProductoAlquiler ?? ''
     nombreProductoAlquiler.value = fromLinea.nombreProductoAlquiler || ''
+    if (escenarioGas.value === 'entregar_prestamo') {
+      if (fromLinea.montoGarantia != null) {
+        montoGarantia.value = Number(fromLinea.montoGarantia)
+        origenMontoGarantia.value = ''
+      } else {
+        void prefillMontoGarantia(fromProducto)
+      }
+    } else {
+      montoGarantia.value = 0
+      origenMontoGarantia.value = ''
+    }
     if (fromLinea.escenarioGas === 'comprar_balon' || fromLinea.precioBalon != null) {
       void resolverProductoVentaEnvase()
     }
@@ -1102,6 +1169,8 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   fechaIngreso.value = new Date().toISOString().slice(0, 10)
   descripcionMantenimiento.value = fromProducto?.nombre || ''
   escenarioGas.value = null
+  montoGarantia.value = 0
+  origenMontoGarantia.value = ''
   precioBalon.value = 0
   idProductoEnvase.value = ''
   nombreProductoEnvase.value = NOMBRE_PRODUCTO_VENTA_ENVASE
@@ -1278,6 +1347,7 @@ async function confirmar() {
     if (escenarioGas.value === 'entregar_prestamo') {
       payload.fechaInicioAlquiler = fechaInicio.value
       payload.fechaFinAlquiler = fechaFin.value || undefined
+      payload.montoGarantia = Math.max(0, Number(montoGarantia.value || 0))
     }
     if (escenarioGas.value === 'comprar_balon') {
       payload.precioBalon = Number(precioBalon.value || 0)
