@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Programar recojo"
-    subtitle="Agenda una visita para recoger cilindros en préstamo o alquiler."
+    subtitle="Agenda una visita para recoger cilindros o reguladores en préstamo o alquiler."
     size="lg"
   >
     <template #header>
@@ -17,7 +17,7 @@
             Programar recojo
           </h4>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-            Agenda una visita para recoger cilindros en préstamo o alquiler.
+            Agenda una visita para recoger cilindros o reguladores en préstamo o alquiler.
           </p>
         </div>
       </div>
@@ -81,27 +81,43 @@
       <div>
         <p class="mb-2 inline-flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-white/90">
           <AppIcon :name="ICONS.cylinder" :size="16" class="text-gray-500 dark:text-gray-400" />
-          Cilindros a recoger
+          Ítems a recoger
         </p>
         <p
           v-if="!idOrigen"
           class="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
         >
-          Selecciona un préstamo o alquiler para listar cilindros pendientes.
+          Selecciona un préstamo o alquiler para listar pendientes.
         </p>
         <p
-          v-else-if="detallesQuery.isFetching.value || alquilerDetallesQuery.isFetching.value"
+          v-else-if="cargandoItems"
           class="text-sm text-gray-500 dark:text-gray-400"
         >
-          Cargando cilindros...
+          Cargando...
         </p>
-        <p
-          v-else-if="pendientes.length === 0"
-          class="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
-        >
-          No hay cilindros pendientes de devolución en este registro.
-        </p>
-        <ul v-else class="space-y-2">
+        <ul v-else-if="pendientes.length > 0 || esSoloRegulador" class="space-y-2">
+          <li
+            v-if="esSoloRegulador"
+            class="flex items-start gap-3 rounded-xl border border-gray-200 px-3 py-2.5 dark:border-gray-700"
+          >
+            <input
+              id="recojo-det-regulador"
+              v-model="incluirRegulador"
+              type="checkbox"
+              class="mt-1"
+            />
+            <label for="recojo-det-regulador" class="min-w-0 flex-1 cursor-pointer">
+              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ etiquetaRegulador }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Regulador / accesorio · sin cilindro asociado
+                <template v-if="alquilerSeleccionado?.fecha_fin_pactada">
+                  · Retorno {{ alquilerSeleccionado.fecha_fin_pactada.slice(0, 10) }}
+                </template>
+              </p>
+            </label>
+          </li>
           <li
             v-for="detalle in pendientes"
             :key="detalle.id"
@@ -127,6 +143,12 @@
             </label>
           </li>
         </ul>
+        <p
+          v-else
+          class="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+        >
+          No hay ítems pendientes de devolución en este registro.
+        </p>
       </div>
     </div>
 
@@ -157,7 +179,10 @@ import { useCreateRecojoMutation } from '@/modules/balones/recojos/composables/u
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import type { PrestamoDetalleListFilters } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
-import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
+import {
+  useAlquilerQuery,
+  useAlquileresQuery,
+} from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import type { AlquilerDetalleListFilters } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
@@ -191,6 +216,7 @@ const fechaProgramada = ref(new Date().toISOString().slice(0, 10))
 const horaEstimada = ref('')
 const observacion = ref('')
 const idsSeleccionados = ref<number[]>([])
+const incluirRegulador = ref(false)
 const clienteBuscar = ref('')
 
 const clientesFilters = ref({
@@ -218,6 +244,11 @@ const detallesFilters = ref<PrestamoDetalleListFilters>({
 const detallesQuery = usePrestamosDetalleQuery(detallesFilters)
 const alquilerDetallesFilters = ref<AlquilerDetalleListFilters>({ pagina: 1, limite: 100, idAlquiler: undefined })
 const alquilerDetallesQuery = useAlquileresDetalleQuery(alquilerDetallesFilters)
+const alquilerIdRef = computed(() =>
+  tipoOrigen.value === 'ALQUILER' && idAlquiler.value ? Number(idAlquiler.value) : null,
+)
+const alquilerQuery = useAlquilerQuery(alquilerIdRef)
+const alquilerSeleccionado = computed(() => alquilerQuery.data.value ?? null)
 
 const clienteOptions = computed(() =>
   (clientesQuery.data.value?.data ?? []).map((c) => ({
@@ -263,13 +294,33 @@ const pendientes = computed(() =>
 )
 const idOrigen = computed(() => tipoOrigen.value === 'PRESTAMO' ? idPrestamo.value : idAlquiler.value)
 const tipoOrigenOptions = [{ value: 'PRESTAMO', label: 'Préstamo' }, { value: 'ALQUILER', label: 'Alquiler' }]
+const cargandoItems = computed(
+  () =>
+    detallesQuery.isFetching.value ||
+    alquilerDetallesQuery.isFetching.value ||
+    (tipoOrigen.value === 'ALQUILER' && alquilerQuery.isFetching.value),
+)
+const esSoloRegulador = computed(() => {
+  if (tipoOrigen.value !== 'ALQUILER' || !idAlquiler.value) return false
+  if (cargandoItems.value) return false
+  if (pendientes.value.length > 0) return false
+  const alq = alquilerSeleccionado.value
+  return Boolean(alq?.id_producto_regulador || alq?.id_producto_stock)
+})
+const etiquetaRegulador = computed(() => {
+  const alq = alquilerSeleccionado.value
+  if (!alq) return 'Regulador / accesorio'
+  const codigo = alq.codigo_producto_regulador || alq.codigo_producto_stock
+  const nombre = alq.nombre_producto_regulador || alq.nombre_producto_stock
+  return [codigo, nombre].filter(Boolean).join(' — ') || 'Regulador / accesorio'
+})
 
 const puedeGuardar = computed(
   () =>
     Boolean(idCliente.value) &&
     Boolean(idOrigen.value) &&
     Boolean(fechaProgramada.value) &&
-    idsSeleccionados.value.length > 0,
+    (idsSeleccionados.value.length > 0 || (esSoloRegulador.value && incluirRegulador.value)),
 )
 
 watch(clienteBuscar, (term) => {
@@ -306,12 +357,21 @@ watch(idPrestamo, (value) => {
 watch(idAlquiler, (value) => {
   alquilerDetallesFilters.value = { ...alquilerDetallesFilters.value, idAlquiler: value ? Number(value) : undefined }
   idsSeleccionados.value = []
+  incluirRegulador.value = false
 })
-watch(tipoOrigen, () => { idsSeleccionados.value = [] })
+watch(tipoOrigen, () => {
+  idsSeleccionados.value = []
+  incluirRegulador.value = false
+})
 
 watch(pendientes, (rows) => {
   if (!open.value || idsSeleccionados.value.length > 0) return
   idsSeleccionados.value = rows.map((r) => r.id)
+})
+
+watch(esSoloRegulador, (solo) => {
+  if (!open.value) return
+  if (solo) incluirRegulador.value = true
 })
 
 watch(
@@ -326,6 +386,7 @@ watch(
     horaEstimada.value = ''
     observacion.value = ''
     idsSeleccionados.value = []
+    incluirRegulador.value = false
     if (props.idCliente) {
       const clienteId = Number(props.idCliente)
       prestamosFilters.value = {
@@ -352,7 +413,7 @@ watch(
 async function confirmar() {
   const userId = authStore.user?.id
   if (!userId || !puedeGuardar.value) {
-    toastWarning('Completa cliente, tipo, registro, fecha y al menos un cilindro')
+    toastWarning('Completa cliente, tipo, registro, fecha y al menos un ítem')
     return
   }
 
@@ -369,9 +430,12 @@ async function confirmar() {
           : horaEstimada.value.slice(0, 8)
         : undefined,
       observacion: observacion.value.trim() || undefined,
-      detalles: idsSeleccionados.value.map((id) =>
-        tipoOrigen.value === 'PRESTAMO' ? { idPrestamoDetalle: id } : { idAlquilerDetalle: id },
-      ),
+      detalles:
+        esSoloRegulador.value && incluirRegulador.value
+          ? []
+          : idsSeleccionados.value.map((id) =>
+              tipoOrigen.value === 'PRESTAMO' ? { idPrestamoDetalle: id } : { idAlquilerDetalle: id },
+            ),
     })
     open.value = false
     emit('saved')

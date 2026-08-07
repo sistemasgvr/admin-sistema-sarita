@@ -80,8 +80,42 @@
       </p>
 
       <div>
+        <div v-if="recojo.tiene_regulador || recojo.es_solo_regulador" class="mb-4 space-y-2">
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">Regulador / accesorio</p>
+          <div class="rounded-xl border border-gray-200 px-3 py-2.5 text-sm dark:border-gray-700">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="font-medium text-gray-800 dark:text-white/90">
+                {{
+                  [recojo.codigo_producto_alquiler, recojo.nombre_producto_alquiler]
+                    .filter(Boolean)
+                    .join(' — ') || 'Regulador / accesorio'
+                }}
+              </p>
+              <ListaOpcionBadge
+                v-if="recojo.nombre_resultado_regulador"
+                :value="recojo.nombre_resultado_regulador"
+              />
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ recojo.numero_alquiler || (recojo.id_alquiler ? `#${recojo.id_alquiler}` : 'Alquiler') }}
+              <template v-if="recojo.nombre_condicion_regulador">
+                · {{ recojo.nombre_condicion_regulador === 'PARA_REPARAR' ? 'Para reparar' : 'Bueno' }}
+              </template>
+              <template v-if="recojo.observacion_regulador">
+                · {{ recojo.observacion_regulador }}
+              </template>
+            </p>
+          </div>
+        </div>
+
         <p class="mb-2 text-sm font-medium text-gray-800 dark:text-white/90">Cilindros</p>
-        <ul class="space-y-2">
+        <p
+          v-if="(recojo.detalles ?? []).length === 0"
+          class="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+        >
+          Sin cilindros en este recojo.
+        </p>
+        <ul v-else class="space-y-2">
           <li
             v-for="d in recojo.detalles ?? []"
             :key="d.id"

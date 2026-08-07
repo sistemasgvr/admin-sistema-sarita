@@ -197,7 +197,7 @@
         >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppInput v-model="fechaInicio" label="Inicio" type="date" />
-            <AppInput v-model="fechaFinPactada" label="Fin pactado" type="date" />
+            <AppInput v-model="fechaFinPactada" label="Fin pactado" type="date" required />
             <AppInput
               v-model="tarifaPeriodo"
               label="Tarifa regulador (periodo)"
@@ -608,6 +608,14 @@ async function registrarKit() {
     toastWarning('Selecciona el regulador (alquiler) del kit')
     return
   }
+  if (!fechaFinPactada.value) {
+    toastWarning('Indica la fecha de fin del alquiler')
+    return
+  }
+  if (fechaFinPactada.value < fechaInicio.value) {
+    toastWarning('La fecha de fin no puede ser anterior al inicio')
+    return
+  }
 
   const activas = lineasActivas.value
   if (activas.length === 0) {
@@ -672,7 +680,7 @@ async function registrarKit() {
       idCliente: Number(idCliente.value),
       idAlmacen: Number(idAlmacen.value),
       fechaInicio: fechaInicio.value,
-      fechaFinPactada: fechaFinPactada.value || undefined,
+      fechaFinPactada: fechaFinPactada.value,
       tarifaDiaria: Number(tarifaPeriodo.value || 0),
       totalCobrado: totalKitMedicinal(todasLasLineas.value),
       idComprobanteVenta: comprobante.id,

@@ -15,13 +15,20 @@
         @submit="onSubmit"
       >
         <FormCardsLayout>
-          <DetailSectionCard title="Datos generales" :icon="ICONS.clipboardList">
+          <DetailSectionCard
+            title="Datos generales"
+            :icon="ICONS.clipboardList"
+            :help="
+              isCreateMode
+                ? 'El número se genera automáticamente (correlativo). El estado inicia en Activo.'
+                : undefined
+            "
+          >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="numeroAlquiler"
                 label="Número de alquiler"
                 placeholder="Cargando correlativo..."
-                :hint="isCreateMode ? 'Correlativo automático' : undefined"
                 v-bind="numeroAlquilerAttrs"
                 :disabled="isSubmitting || isCreateMode || cargandoNumero"
                 :error="errors.numeroAlquiler"
@@ -31,10 +38,14 @@
                 v-model="idEstado"
                 label="Estado"
                 placeholder="Selecciona estado"
-                optional
                 v-bind="idEstadoAttrs"
-                :disabled="isSubmitting || estadosAlquilerQuery.isFetching.value"
+                :disabled="
+                  isSubmitting ||
+                  estadosAlquilerQuery.isFetching.value ||
+                  isCreateMode
+                "
                 :options="estadoAlquilerOptions"
+                :hint="isCreateMode ? 'Activo por defecto' : undefined"
               />
 
               <ClienteSelectField
@@ -53,7 +64,11 @@
             </div>
           </DetailSectionCard>
 
-          <DetailSectionCard title="Vigencia" :icon="ICONS.calendar">
+          <DetailSectionCard
+            title="Vigencia"
+            :icon="ICONS.calendar"
+            help="La fecha de fin pactada es obligatoria para programar el retorno / recojo."
+          >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <AppInput
                 v-model="fechaInicio"
@@ -69,9 +84,10 @@
                 v-model="fechaFinPactada"
                 label="Fin pactado"
                 type="date"
-                optional
+                required
                 v-bind="fechaFinPactadaAttrs"
                 :disabled="isSubmitting"
+                :error="errors.fechaFinPactada"
               />
 
               <AppInput
@@ -196,10 +212,10 @@
 
       <DetailSectionCard
         v-if="activeAlquilerId"
-        title="Cilindros vinculados (préstamo)"
+        title="Cilindros vinculados"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="El alquiler cobra el regulador. Si entregas envase, regístralo aquí solo como vínculo físico; la custodia correcta es préstamo (preferible desde POS / módulo Préstamos)."
+        help="Recojos lista cilindros pendientes de devolver. Si este alquiler no tiene cilindros vinculados, no aparecerá en Pendientes de recojo."
       >
         <template #actions>
           <button
@@ -213,8 +229,14 @@
           </button>
         </template>
 
-        <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-          {{ detalleRows.length }} cilindro(s) vinculado(s). Preferible usar Préstamos para la custodia del envase.
+        <p
+          v-if="detalleRows.length === 0"
+          class="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          0 cilindros: este alquiler no sale en Recojos hasta que vincules al menos uno.
+        </p>
+        <p v-else class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          {{ detalleRows.length }} cilindro(s) vinculado(s).
         </p>
 
         <AppTable
@@ -250,12 +272,14 @@
 
       <DetailSectionCard
         v-else-if="isCreateMode"
-        title="Cilindros vinculados (préstamo)"
+        title="Cilindros vinculados"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="Paso 1: crea el alquiler del regulador. El cilindro se presta (módulo Préstamos o POS); aquí solo puedes vincularlo después si hace falta."
+        help="Tras guardar podrás vincular cilindros. Recojos solo muestra cilindros pendientes de devolver (si el alquiler queda en 0 cilindros, no aparece en Pendientes)."
       >
-        <p class="text-center text-sm text-gray-400 dark:text-gray-500">Sin cilindros vinculados</p>
+        <p class="text-center text-sm text-gray-400 dark:text-gray-500">
+          Primero guarda el alquiler; luego agrega cilindros si corresponde.
+        </p>
       </DetailSectionCard>
     </div>
 
@@ -421,6 +445,13 @@ const estadoAlquilerOptions = computed(() => [
   ...toSelectOptions(estadosAlquilerQuery.data.value),
 ])
 
+const idEstadoActivo = computed(
+  () =>
+    estadosAlquilerQuery.data.value?.find(
+      (item) => (item.nombre ?? '').toUpperCase() === 'ACTIVO',
+    )?.id ?? null,
+)
+
 const canCreateDetalle = computed(() =>
   authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_CREAR),
 )
@@ -494,7 +525,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idCliente: requiredSelect('El cliente'),
       idAlmacen: requiredSelect('El almacén'),
       fechaInicio: requiredString('La fecha de inicio'),
-      fechaFinPactada: optionalString(),
+      fechaFinPactada: requiredString('La fecha de fin'),
       fechaFinReal: optionalString(),
       tarifaDiaria: optionalNumber().min(0, 'Debe ser mayor o igual a cero'),
       totalCobrado: optionalNumber().min(0, 'Debe ser mayor o igual a cero'),
@@ -532,6 +563,15 @@ const [idEstado, idEstadoAttrs] = defineField('idEstado')
 const [observacion, observacionAttrs] = defineField('observacion')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
 const [idProductoRegulador] = defineField('idProductoRegulador')
+
+watch(
+  () => [isCreateMode.value, idEstadoActivo.value] as const,
+  ([create, activoId]) => {
+    if (!create || !activoId) return
+    if (!idEstado.value) idEstado.value = activoId
+  },
+  { immediate: true },
+)
 
 const productoAlquilableBuscar = ref('')
 const montoGarantia = ref<number | string>(0)
@@ -657,7 +697,7 @@ const resetCreateForm = () => {
       fechaFinReal: '',
       tarifaDiaria: undefined,
       totalCobrado: undefined,
-      idEstado: '',
+      idEstado: idEstadoActivo.value ?? '',
       observacion: '',
       idComprobanteVenta: undefined,
       idProductoRegulador: '',
@@ -689,6 +729,14 @@ const onSubmit = handleSubmit(async (values) => {
       const almacen = toOptionalNumber(values.idAlmacen)
       const productoId = toOptionalNumber(values.idProductoRegulador)
       if (!cliente || !almacen || !values.fechaInicio) return
+      if (!values.fechaFinPactada) {
+        toastWarning('Indica la fecha de fin del alquiler')
+        return
+      }
+      if (values.fechaFinPactada < values.fechaInicio) {
+        toastWarning('La fecha de fin no puede ser anterior al inicio')
+        return
+      }
       if (!productoId) {
         toastWarning('Selecciona el producto alquilable')
         return
@@ -725,6 +773,8 @@ const onSubmit = handleSubmit(async (values) => {
         idCliente: cliente,
         idAlmacen: almacen,
         fechaInicio: values.fechaInicio,
+        fechaFinPactada: values.fechaFinPactada,
+        idEstado: toOptionalNumber(values.idEstado) ?? idEstadoActivo.value ?? undefined,
         idProductoRegulador: productoId,
         idProductoStock,
       })

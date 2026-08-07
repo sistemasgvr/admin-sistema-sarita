@@ -1,7 +1,14 @@
 export interface Mantenimiento {
   id: number
-  id_balon: number
+  id_balon?: number | null
   codigo_balon?: string | null
+  id_producto?: number | null
+  codigo_producto?: string | null
+  nombre_producto?: string | null
+  tipo_origen?: 'CILINDRO' | 'PRODUCTO' | string | null
+  id_alquiler?: number | null
+  id_recojo?: number | null
+  id_almacen?: number | null
   id_propietario?: number | null
   nombre_propietario?: string | null
   id_cliente_propietario?: number | null

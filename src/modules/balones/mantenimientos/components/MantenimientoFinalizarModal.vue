@@ -2,17 +2,25 @@
   <AppModal
     v-model="open"
     title="Finalizar mantenimiento"
-    :subtitle="mantenimiento?.codigo_balon || undefined"
+    :subtitle="etiquetaItem || undefined"
     size="sm"
   >
     <div class="space-y-4">
       <p class="text-sm text-gray-600 dark:text-gray-400">
         Se marcará como
         <span class="font-medium text-gray-800 dark:text-white/90">FINALIZADO</span>.
-        <template v-if="esServicioCliente">
+        <template v-if="esProducto">
+          El regulador/accesorio
+          <span class="font-medium text-gray-800 dark:text-white/90">
+            {{ etiquetaItem }}
+          </span>
+          reingresa a
+          <span class="font-medium text-gray-800 dark:text-white/90">stock</span>.
+        </template>
+        <template v-else-if="esServicioCliente">
           El cilindro
           <span class="font-medium text-gray-800 dark:text-white/90">
-            {{ codigoCilindro }}
+            {{ etiquetaItem }}
           </span>
           se
           <span class="font-medium text-gray-800 dark:text-white/90">entrega al cliente</span>
@@ -21,7 +29,7 @@
         <template v-else>
           El cilindro
           <span class="font-medium text-gray-800 dark:text-white/90">
-            {{ codigoCilindro }}
+            {{ etiquetaItem }}
           </span>
           reingresa a
           <span class="font-medium text-gray-800 dark:text-white/90">EN_ALMACEN</span>.
@@ -93,14 +101,28 @@ const finalizarMutation = useFinalizarMantenimientoMutation()
 const fechaSalida = ref(new Date().toISOString().slice(0, 10))
 const observacion = ref('')
 
-const codigoCilindro = computed(
+const esProducto = computed(
   () =>
-    props.mantenimiento?.codigo_balon ||
-    (props.mantenimiento?.id_balon ? `#${props.mantenimiento.id_balon}` : 'sin código'),
+    props.mantenimiento?.tipo_origen === 'PRODUCTO' || Boolean(props.mantenimiento?.id_producto),
 )
+
+const etiquetaItem = computed(() => {
+  if (esProducto.value) {
+    return (
+      [props.mantenimiento?.codigo_producto, props.mantenimiento?.nombre_producto]
+        .filter(Boolean)
+        .join(' — ') || 'Regulador / accesorio'
+    )
+  }
+  return (
+    props.mantenimiento?.codigo_balon ||
+    (props.mantenimiento?.id_balon ? `#${props.mantenimiento.id_balon}` : 'sin código')
+  )
+})
 
 /** Cilindro del cliente o envase con ubicación en cliente → se entrega, no a stock */
 const esServicioCliente = computed(() => {
+  if (esProducto.value) return false
   const propietario = (props.mantenimiento?.nombre_propietario ?? '').toUpperCase()
   return propietario === 'CLIENTE' || props.mantenimiento?.id_cliente_ubicacion != null
 })

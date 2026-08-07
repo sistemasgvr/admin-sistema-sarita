@@ -39,7 +39,17 @@
           </span>
         </template>
         <template #cell-origen_numero="{ row }">{{ row.numero_origen || '—' }}</template>
-        <template #cell-cilindro="{ row }">{{ row.codigo_balon || `#${row.id_balon || row.id_detalle}` }}</template>
+        <template #cell-cilindro="{ row }">
+          <span class="inline-flex flex-col">
+            <span>{{ etiquetaItem(row) }}</span>
+            <span
+              v-if="row.tipo_item === 'REGULADOR'"
+              class="text-theme-xs text-gray-500 dark:text-gray-400"
+            >
+              Regulador / accesorio
+            </span>
+          </span>
+        </template>
         <template #cell-fecha_retorno="{ value }">{{ String(value ?? '').slice(0, 10) || '—' }}</template>
         <template #cell-programado="{ row }">
           <span
@@ -152,7 +162,7 @@ const pendientesQuery = usePendientesRecojoQuery(filters)
 const rows = computed(() =>
   (pendientesQuery.data.value?.data ?? []).map((row) => ({
     ...row,
-    row_key: `${row.origen}-${row.id_detalle}`,
+    row_key: `${row.origen}-${row.id_origen}-${row.tipo_item || 'CILINDRO'}-${row.id_detalle}`,
   })),
 )
 const authStore = useAuthStore()
@@ -164,7 +174,7 @@ const columns: TableColumn[] = [
   { key: 'origen', label: 'Origen' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'origen_numero', label: 'N° préstamo / alquiler' },
-  { key: 'cilindro', label: 'Cilindro' },
+  { key: 'cilindro', label: 'Cilindro / producto' },
   { key: 'fecha_retorno', label: 'Fecha retorno' },
   { key: 'programado', label: 'Recojo' },
 ]
@@ -210,6 +220,12 @@ watch(buscar, () => {
 })
 
 watch([pagina, limite], () => syncFilters())
+
+function etiquetaItem(row: PendienteRecojo) {
+  if (row.codigo_balon) return row.codigo_balon
+  if (row.tipo_item === 'REGULADOR') return 'Regulador / accesorio'
+  return `#${row.id_balon || row.id_detalle}`
+}
 
 function programar(row: PendienteRecojo) {
   pendiente.value = row

@@ -60,6 +60,18 @@ export interface Recojo {
   numero_prestamo?: string | null
   id_alquiler?: number | null
   numero_alquiler?: string | null
+  id_producto_alquiler?: number | null
+  codigo_producto_alquiler?: string | null
+  nombre_producto_alquiler?: string | null
+  tiene_regulador?: boolean | null
+  es_solo_regulador?: boolean | null
+  id_resultado_regulador?: number | null
+  nombre_resultado_regulador?: string | null
+  id_condicion_regulador?: number | null
+  nombre_condicion_regulador?: string | null
+  descripcion_condicion_regulador?: string | null
+  nueva_fecha_retorno_regulador?: string | null
+  observacion_regulador?: string | null
   tipo_origen?: 'PRESTAMO' | 'ALQUILER' | 'MIXTO'
   fecha_programada: string
   hora_estimada?: string | null
@@ -134,7 +146,9 @@ export interface PendienteRecojo {
   origen: 'PRESTAMO' | 'ALQUILER'
   id_origen: number
   numero_origen: string
+  /** 0 cuando es alquiler solo regulador/accesorio (sin cilindro) */
   id_detalle: number
+  tipo_item?: 'CILINDRO' | 'REGULADOR' | string | null
   id_cliente: number
   nombre_cliente?: string | null
   id_balon?: number | null
@@ -153,6 +167,15 @@ export interface PendienteRecojoFilters {
   fechaHasta?: string
 }
 
+export type CondicionReguladorNombre = 'BUENO' | 'PARA_REPARAR'
+
+export interface RegistrarResultadoReguladorPayload {
+  resultado: ResultadoRecojoNombre
+  condicion?: CondicionReguladorNombre
+  nuevaFechaRetorno?: string
+  observacion?: string
+}
+
 export interface RegistrarResultadoRecojoPayload {
   idUsuarioAuditoria: number
   fechaVisita?: string
@@ -160,7 +183,13 @@ export interface RegistrarResultadoRecojoPayload {
   motivoFalloNombre?: MotivoFalloRecojoNombre | string
   observacion?: string
   detalles: RegistrarResultadoDetallePayload[]
+  regulador?: RegistrarResultadoReguladorPayload
 }
+
+export const CONDICIONES_REGULADOR: { value: CondicionReguladorNombre; label: string }[] = [
+  { value: 'BUENO', label: 'Bueno / operativo' },
+  { value: 'PARA_REPARAR', label: 'Para reparar' },
+]
 
 export interface DeleteRecojoResponse {
   eliminado: boolean
