@@ -304,6 +304,7 @@
       :es-clientes-varios="esClienteVariosSeleccionado"
       :linea="lineaEditando"
       :producto-edicion="productoEdicion"
+      :inicio-preferido="inicioPreferidoAnadir"
       @confirm="onConfirmLinea"
     />
   </div>
@@ -311,6 +312,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import { bajasPendientesService } from '@/modules/balones/bajas-pendientes/services/bajas-pendientes.service'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
@@ -423,11 +425,15 @@ const idAlmacen = ref<number | ''>('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
 
+const route = useRoute()
+const router = useRouter()
+
 const anadirOpen = ref(false)
 const lineaEditando = ref<PosLineItem | null>(null)
 const productoEdicion = ref<Producto | null>(null)
 /** Productos de líneas (para editar sin depender del catálogo visible). */
 const productosPorId = ref<Map<number, Producto>>(new Map())
+const inicioPreferidoAnadir = ref<'gas' | null>(null)
 
 const glosa = ref('')
 const comprobanteGuardadoId = ref<number | null>(null)
@@ -441,6 +447,14 @@ async function onAlmacenCreated() {
 
 onMounted(() => {
   aplicarAlmacenPorDefecto()
+
+  if (String(route.query.tab ?? '') === 'recarga') {
+    inicioPreferidoAnadir.value = 'gas'
+    anadirOpen.value = true
+    const nextQuery = { ...route.query }
+    delete nextQuery.tab
+    void router.replace({ query: nextQuery })
+  }
 })
 
 const lineasActivas = computed(() =>
@@ -590,6 +604,7 @@ function resumenLinea(linea: PosLineItem): string {
 function abrirAnadir() {
   lineaEditando.value = null
   productoEdicion.value = null
+  inicioPreferidoAnadir.value = null
   anadirOpen.value = true
 }
 

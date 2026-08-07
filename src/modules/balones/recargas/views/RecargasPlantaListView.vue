@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb
       v-if="!embedded"
-      page-title="Recargas"
+      page-title="Recargas planta externa"
       :items="breadcrumbItems"
     />
 
@@ -12,59 +12,57 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Cilindro, cliente o comprobante..."
+          search-placeholder="Número, GRE o proveedor..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
             <RouterLink
               v-if="canCreate"
-              :to="{ name: 'admin-ventas-pos', query: { tab: 'recarga' } }"
+              :to="{ name: 'admin-balones-recargas-planta-nueva' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Recargar balón
+              Nueva orden
             </RouterLink>
           </template>
         </AppListToolbar>
       </template>
 
-      <template #cell-vigencia="{ row }">
-        <DateRangeBadges
-          :from="row.fecha_salida_almacen"
-          :to="row.fecha_llegada_almacen"
-        />
+      <template #cell-numero="{ row }">
+        <p class="font-medium text-gray-800 dark:text-white/90">
+          {{ row.numero || `RP-${row.id}` }}
+        </p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          {{ formatListDate(row.fecha_salida) }}
+        </p>
       </template>
 
-      <template #cell-codigo_balon="{ value }">
-        <p class="font-medium text-gray-800 dark:text-white/90">{{ value }}</p>
+      <template #cell-nombre_estado="{ value }">
+        <AppBadge v-if="value === 'BORRADOR'" color="neutral">Borrador</AppBadge>
+        <AppBadge v-else-if="value === 'ENVIADO'" color="warning">Enviado</AppBadge>
+        <AppBadge v-else-if="value === 'RETORNADO'" color="primary">Retornado</AppBadge>
+        <AppBadge v-else-if="value === 'CERRADO'" color="success">Cerrado</AppBadge>
+        <span v-else class="text-gray-400">{{ value || '—' }}</span>
       </template>
 
-      <template #cell-nombre_producto="{ value }">
-        <span v-if="value">{{ value }}</span>
-        <span v-else class="text-gray-400">—</span>
-      </template>
-
-      <template #cell-tipo_recarga_nombre="{ value }">
-        <AppBadge v-if="value === 'CLIENTE'" color="primary">Mostrador</AppBadge>
-        <AppBadge v-else-if="value === 'PLANTA_EXTERNA'" color="warning">Planta ext.</AppBadge>
-        <span v-else class="text-gray-400">—</span>
-      </template>
-
-      <template #cell-nombre_cliente="{ value }">
+      <template #cell-nombre_proveedor="{ value }">
         <span v-if="value">{{ value }}</span>
         <span v-else class="text-gray-400">—</span>
       </template>
 
       <template #cell-documentos="{ row }">
         <div class="space-y-0.5 text-sm text-gray-600 dark:text-gray-400">
-          <p v-if="row.tipo_recarga_nombre === 'PLANTA_EXTERNA'" class="whitespace-nowrap">
-            GRE: {{ formatDocumento(row.serie_guia_salida, row.numero_guia_salida) }}
+          <p class="whitespace-nowrap">
+            GRE sal.: {{ formatDocumento(row.serie_guia_salida, row.numero_guia_salida) }}
           </p>
           <p class="whitespace-nowrap">
-            {{ row.tipo_recarga_nombre === 'CLIENTE' ? 'Comp.' : 'Fac.' }}:
-            {{ formatDocumento(row.serie_factura, row.numero_factura) }}
+            Fac.: {{ formatDocumento(row.serie_factura, row.numero_factura) }}
           </p>
         </div>
+      </template>
+
+      <template #cell-total_cilindros="{ value }">
+        <span class="font-medium">{{ value ?? 0 }}</span>
       </template>
 
       <template #cell-nombre_almacen="{ value }">
@@ -75,13 +73,13 @@
       <template #actions="{ row }">
         <div class="inline-flex items-center justify-end gap-1.5">
           <button
-            v-if="canView"
+            v-if="canEdit"
             type="button"
-            title="Ver detalle"
+            title="Editar / retorno"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openDetailModal(row)"
+            @click="goToEdit(row)"
           >
-            <AppIcon :name="ICONS.eye" :size="15" />
+            <AppIcon :name="ICONS.pencil" :size="15" />
           </button>
           <AppActionMenu
             :items="actionItemsForRow(row)"
@@ -94,31 +92,22 @@
         <AppPagination
           v-model:pagina="pagina"
           v-model:limite="limite"
-          :meta="recargasQuery.data.value?.meta"
+          :meta="ordenesQuery.data.value?.meta"
           :disabled="isLoading"
         />
       </template>
     </AppTable>
 
-    <MovimientoRecargaDetailModal
-      v-model="detailModalOpen"
-      :recarga-id="recargaToViewId"
-    />
-
     <AppModal
       v-model="deleteModalOpen"
-      title="Eliminar recarga"
-      subtitle="Esta acción dará de baja el registro de recarga."
+      title="Eliminar orden"
+      subtitle="Solo borradores o enviados sin retorno."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        ¿Confirmas que deseas eliminar la recarga del cilindro
+        ¿Eliminar la orden
         <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ recargaToDelete?.codigo_balon }}
-        </span>
-        con salida el
-        <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ formatListDate(recargaToDelete?.fecha_salida_almacen) }}
+          {{ ordenToDelete?.numero || `RP-${ordenToDelete?.id}` }}
         </span>
         ?
       </p>
@@ -149,15 +138,12 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import MovimientoRecargaDetailModal from '@/modules/balones/recargas/components/MovimientoRecargaDetailModal.vue'
-import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
-import { useDeleteMovimientoRecargaMutation } from '@/modules/balones/recargas/composables/useMovimientoRecargaMutations'
-import { useMovimientosRecargaQuery } from '@/modules/balones/recargas/composables/useMovimientosRecargaQuery'
+import { useDeleteRecargaPlantaMutation } from '@/modules/balones/recargas/composables/useRecargaPlantaMutations'
+import { useRecargasPlantaQuery } from '@/modules/balones/recargas/composables/useRecargasPlantaQuery'
 import type {
-  MovimientoRecarga,
-  MovimientoRecargaListFilters,
-} from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
-import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
+  RecargaPlanta,
+  RecargaPlantaListFilters,
+} from '@/modules/balones/recargas/interfaces/recarga-planta.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -194,34 +180,25 @@ const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 
-const filters = ref<MovimientoRecargaListFilters>({
+const filters = ref<RecargaPlantaListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
 })
 
-const recargasQuery = useMovimientosRecargaQuery(filters)
-
-const balonesFilters = ref({ pagina: 1, limite: 200 })
-const balonesQuery = useBalonesQuery(balonesFilters)
+const ordenesQuery = useRecargasPlantaQuery(filters)
 
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
-const detailModalOpen = ref(false)
-const recargaToViewId = ref<number | null>(null)
-
 const deleteModalOpen = ref(false)
-const recargaToDelete = ref<MovimientoRecarga | null>(null)
-const deleteMutation = useDeleteMovimientoRecargaMutation()
+const ordenToDelete = ref<RecargaPlanta | null>(null)
+const deleteMutation = useDeleteRecargaPlantaMutation()
 
-const breadcrumbItems = balonesBreadcrumbItems('Recargas')
+const breadcrumbItems = balonesBreadcrumbItems('Recargas planta externa')
 
 const canCreate = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR),
-)
-const canView = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_VER),
 )
 const canEdit = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_EDITAR),
@@ -231,43 +208,23 @@ const canDelete = computed(() =>
 )
 
 const isLoading = computed(
-  () => recargasQuery.isFetching.value || recargasQuery.isLoading.value,
+  () => ordenesQuery.isFetching.value || ordenesQuery.isLoading.value,
 )
 
-const rows = computed(() => recargasQuery.data.value?.data ?? [])
+const rows = computed(() => ordenesQuery.data.value?.data ?? [])
 
 const columns: TableColumn[] = [
-  { key: 'vigencia', label: 'Fecha' },
-  { key: 'tipo_recarga_nombre', label: 'Tipo' },
-  { key: 'codigo_balon', label: 'Cilindro' },
-  { key: 'nombre_cliente', label: 'Cliente' },
-  { key: 'nombre_producto', label: 'Gas' },
+  { key: 'numero', label: 'Orden' },
+  { key: 'nombre_estado', label: 'Estado' },
+  { key: 'nombre_proveedor', label: 'Proveedor' },
+  { key: 'total_cilindros', label: 'Cil.' },
   { key: 'documentos', label: 'Documentos' },
   { key: 'nombre_almacen', label: 'Almacén' },
 ]
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
-  {
-    key: 'fechaDesde',
-    label: 'Desde',
-    type: 'date',
-  },
-  {
-    key: 'fechaHasta',
-    label: 'Hasta',
-    type: 'date',
-  },
-  {
-    key: 'idBalon',
-    label: 'Cilindro',
-    type: 'select',
-    placeholder: 'Seleccionar cilindro',
-    disabled: balonesQuery.isLoading.value,
-    options: (balonesQuery.data.value?.data ?? []).map((balon) => ({
-      value: balon.id,
-      label: balon.codigo_balon,
-    })),
-  },
+  { key: 'fechaDesde', label: 'Desde', type: 'date' },
+  { key: 'fechaHasta', label: 'Hasta', type: 'date' },
   {
     key: 'idAlmacen',
     label: 'Almacén',
@@ -291,14 +248,12 @@ let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const syncFilters = () => {
   const active = dynamicFilters.value
-
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
-    idBalon: active.idBalon != null ? Number(active.idBalon) : undefined,
     idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
   }
 }
@@ -320,61 +275,58 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const goToOrdenesPlanta = () => {
-  void router.push({ name: 'admin-balones-recargas', query: { tab: 'planta' } })
+const goToEdit = (row: RecargaPlanta) => {
+  void router.push({
+    name: 'admin-balones-recargas-planta-editar',
+    params: { id: row.id },
+  })
 }
 
-const openDetailModal = (row: MovimientoRecarga) => {
-  recargaToViewId.value = row.id
-  detailModalOpen.value = true
-}
-
-const openDeleteModal = (row: MovimientoRecarga) => {
-  recargaToDelete.value = row
+const openDeleteModal = (row: RecargaPlanta) => {
+  ordenToDelete.value = row
   deleteModalOpen.value = true
 }
 
-function actionItemsForRow(row: MovimientoRecarga): ActionMenuItem[] {
+function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
-  const blockedDelete = row.puede_eliminar === false
-  const esPlanta = row.tipo_recarga_nombre === 'PLANTA_EXTERNA'
+  const blocked = row.nombre_estado === 'CERRADO' || row.nombre_estado === 'RETORNADO'
 
   return [
     {
-      key: 'orden-planta',
-      label: 'Ver órdenes planta',
-      icon: ICONS.clipboardList,
+      key: 'edit',
+      label: 'Editar / retorno',
+      icon: ICONS.pencil,
       disabled: busy,
-      hidden: !(canEdit.value && esPlanta),
+      hidden: !canEdit.value,
     },
     {
       key: 'delete',
-      label: blockedDelete ? 'Eliminar (tiene P.H./comprobante)' : 'Eliminar',
+      label: blocked ? 'Eliminar (estado no permite)' : 'Eliminar',
       icon: ICONS.trash,
-      danger: !blockedDelete,
-      disabled: busy || blockedDelete,
-      hidden: !canDelete.value || esPlanta,
+      danger: !blocked,
+      disabled: busy || blocked,
+      hidden: !canDelete.value,
     },
   ]
 }
 
-function onActionSelect(key: string, row: MovimientoRecarga) {
-  if (key === 'orden-planta') goToOrdenesPlanta()
+function onActionSelect(key: string, row: RecargaPlanta) {
+  if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
 }
 
 const confirmDelete = async () => {
-  const recarga = recargaToDelete.value
+  const orden = ordenToDelete.value
   const userId = authStore.user?.id
-  if (!recarga || !userId) return
+  if (!orden || !userId) return
 
   try {
     await deleteMutation.mutateAsync({
-      id: recarga.id,
+      id: orden.id,
       idUsuarioAuditoria: userId,
     })
     deleteModalOpen.value = false
-    recargaToDelete.value = null
+    ordenToDelete.value = null
   } catch {
     // toast en mutation
   }

@@ -446,6 +446,8 @@ const props = withDefaults(
     /** Edición de una línea ya en el carrito. */
     linea?: PosLineItem | null
     productoEdicion?: Producto | null
+    /** Deep-link desde ?tab=recarga: abre catálogo de gas. */
+    inicioPreferido?: 'gas' | null
   }>(),
   {
     idCliente: '',
@@ -454,6 +456,7 @@ const props = withDefaults(
     esClientesVarios: false,
     linea: null,
     productoEdicion: null,
+    inicioPreferido: null,
   },
 )
 
@@ -1329,6 +1332,10 @@ watch(
     buscar.value = ''
     dynamicFilters.value = {}
     resetConfig()
+
+    if (props.inicioPreferido === 'gas') {
+      elegirTipo('gas')
+    }
   },
 )
 

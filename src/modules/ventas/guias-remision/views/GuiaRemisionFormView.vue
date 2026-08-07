@@ -4,11 +4,11 @@
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
       <RouterLink
-        :to="{ name: 'admin-ventas-guias-remision' }"
+        :to="volverLink"
         class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-800 dark:text-gray-400 dark:hover:text-white/90"
       >
         <AppIcon :name="ICONS.chevronLeft" :size="16" />
-        Volver a guías
+        {{ volverLabel }}
       </RouterLink>
       <AppHelpTip :text="pageHelpText" />
     </div>
@@ -568,8 +568,10 @@ import AlmacenSelectField from '@/modules/configuracion/almacenes/components/Alm
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
 import type { Balon } from '@/modules/balones/cilindros/interfaces/balon.interface'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
 import type { Direccion } from '@/modules/direcciones/interfaces/direccion.interface'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
@@ -611,19 +613,66 @@ const guiaId = computed(() => {
 })
 
 const isEdit = computed(() => Boolean(guiaId.value))
+
+const origenRecargaPlanta = computed(
+  () => String(route.query.origen ?? '') === 'recarga-planta',
+)
+
+function resolveReturnTo(): string | null {
+  const raw = route.query.returnTo
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value !== 'string' || !value.startsWith('/admin/')) return null
+  return value
+}
+
+const returnTo = computed(() => resolveReturnTo())
+const returnIdParam = computed(() => {
+  const raw = route.query.returnIdParam
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return typeof value === 'string' && value.trim() ? value.trim() : 'idGuiaSalida'
+})
+
+const volverLink = computed(() =>
+  returnTo.value
+    ? returnTo.value
+    : { name: 'admin-ventas-guias-remision' as const },
+)
+const volverLabel = computed(() =>
+  origenRecargaPlanta.value ? 'Volver a orden de recarga' : 'Volver a guías',
+)
+
 const pageTitle = computed(() =>
-  isEdit.value ? 'Editar guía de remisión' : 'Nueva guía de remisión',
-)
-const pageHelpText = computed(() =>
   isEdit.value
-    ? 'Solo se pueden editar guías no aceptadas por SUNAT. Serie y número no se modifican.'
-    : 'Remitente (09 / T…) o Transportista (31 / V…). Privado usa flota propia. Un cilindro por línea.',
+    ? 'Editar guía de remisión'
+    : origenRecargaPlanta.value
+      ? 'GRE salida vacíos (planta externa)'
+      : 'Nueva guía de remisión',
 )
+const pageHelpText = computed(() => {
+  if (isEdit.value) {
+    return 'Solo se pueden editar guías no aceptadas por SUNAT. Serie y número no se modifican.'
+  }
+  if (origenRecargaPlanta.value) {
+    return 'Salida de cilindros vacíos EMPRESA a planta. Un cilindro por línea (id_balon). Al guardar vuelves a la orden de recarga.'
+  }
+  return 'Remitente (09 / T…) o Transportista (31 / V…). Privado usa flota propia. Un cilindro por línea.'
+})
 const breadcrumbItems = computed(() => [
   { label: 'Ventas', to: '/admin/ventas' },
   { label: 'Guías de remisión', to: '/admin/ventas/guias-remision' },
-  { label: isEdit.value ? 'Editar' : 'Nueva' },
+  { label: isEdit.value ? 'Editar' : origenRecargaPlanta.value ? 'GRE vacíos' : 'Nueva' },
 ])
+
+const propietarioListaId = ref(ListaIds.PROPIETARIO_BALON)
+const contenidoListaId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
+const propietarioQuery = useListaOpcionesQuery(propietarioListaId)
+const contenidoQuery = useListaOpcionesQuery(contenidoListaId)
+const idPropietarioEmpresa = computed(
+  () => propietarioQuery.data.value?.find((op) => op.nombre === 'EMPRESA')?.id,
+)
+const idContenidoVacio = computed(
+  () => contenidoQuery.data.value?.find((op) => op.nombre === 'VACIO')?.id,
+)
 
 const guiaQuery = useGuiaRemisionQuery(guiaId)
 const loadingGuia = computed(() => isEdit.value && guiaQuery.isFetching.value)
@@ -998,8 +1047,17 @@ function applyCatalogDefaults() {
     if (priv) idModalidadTraslado.value = priv.id
   }
   if (!values.idMotivoTraslado) {
-    const venta = cats.motivosTraslado.find((t) => t.descripcion === '01')
-    if (venta) idMotivoTraslado.value = venta.id
+    const motivoPreferido = origenRecargaPlanta.value
+      ? cats.motivosTraslado.find((t) => t.descripcion === '13' || t.nombre === 'OTROS')
+      : cats.motivosTraslado.find((t) => t.descripcion === '01')
+    if (motivoPreferido) idMotivoTraslado.value = motivoPreferido.id
+  }
+  if (
+    origenRecargaPlanta.value &&
+    !String(values.observaciones ?? '').trim()
+  ) {
+    observaciones.value =
+      'Salida de cilindros vacíos EMPRESA a planta externa para recarga'
   }
   if (!values.idUnidadMedida) {
     const kgm = cats.unidadesMedida.find(
@@ -1485,6 +1543,13 @@ async function searchBalones(query: string): Promise<SelectOption[]> {
     buscar: query || undefined,
     pagina: 1,
     limite: 20,
+    soloBajas: false,
+    ...(origenRecargaPlanta.value
+      ? {
+          idPropietario: idPropietarioEmpresa.value,
+          idEstadoContenido: idContenidoVacio.value,
+        }
+      : {}),
   })
   return response.data.map((b) => {
     balonesCache.set(b.id, b)
@@ -1647,8 +1712,20 @@ function resetLocal() {
   clienteUbicacionCache.value = null
 }
 
+function goBack(createdId?: number) {
+  if (returnTo.value) {
+    const query: Record<string, string> = {}
+    if (createdId) {
+      query[returnIdParam.value] = String(createdId)
+    }
+    void router.push({ path: returnTo.value, query })
+    return
+  }
+  void router.push({ name: 'admin-ventas-guias-remision' })
+}
+
 function handleClose() {
-  router.push({ name: 'admin-ventas-guias-remision' })
+  goBack()
 }
 
 async function initCreateForm() {
@@ -1891,15 +1968,15 @@ const onSubmit = handleSubmit(async (formValues) => {
       id: guiaId.value,
       payload: payloadBase,
     })
-    await router.push({ name: 'admin-ventas-guias-remision' })
+    goBack()
     return
   }
 
-  await createMutation.mutateAsync({
+  const created = await createMutation.mutateAsync({
     idTipoGuiaRemision: Number(formValues.idTipoGuiaRemision),
     serie: String(formValues.serie).trim().toUpperCase(),
     ...payloadBase,
   })
-  await router.push({ name: 'admin-ventas-guias-remision' })
+  goBack(created?.id)
 })
 </script>
