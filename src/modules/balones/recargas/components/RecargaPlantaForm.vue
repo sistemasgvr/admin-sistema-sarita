@@ -150,6 +150,7 @@
                   <th class="px-3 py-2 font-medium">Gas / producto</th>
                   <th class="px-3 py-2 font-medium">Capacidad</th>
                   <th class="px-3 py-2 font-medium">Estado</th>
+                  <th class="px-3 py-2 font-medium">Contenido</th>
                   <th v-if="mode === 'create'" class="px-3 py-2 font-medium" />
                 </tr>
               </thead>
@@ -173,9 +174,20 @@
                     <template v-else>—</template>
                   </td>
                   <td class="px-3 py-2.5">
-                    <span class="text-gray-500 dark:text-gray-400">
-                      {{ linea.nombre_estado_contenido || '—' }}
-                    </span>
+                    <BalonEstadoBadge
+                      v-if="linea.nombre_estado_balon"
+                      :balon="{ nombre_estado_balon: linea.nombre_estado_balon }"
+                      size="sm"
+                    />
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="px-3 py-2.5">
+                    <BalonContenidoBadge
+                      v-if="linea.nombre_estado_contenido"
+                      :balon="{ nombre_estado_contenido: linea.nombre_estado_contenido }"
+                      size="sm"
+                    />
+                    <span v-else class="text-gray-400">—</span>
                   </td>
                   <td v-if="mode === 'create'" class="px-3 py-2.5 text-right">
                     <button
@@ -199,7 +211,7 @@
           v-if="mode === 'edit'"
           title="Retorno y compra"
           :icon="ICONS.calendar"
-          help="Al indicar fecha de llegada los cilindros pasan a LLENO. La compra solo se vincula (no se crea aquí)."
+          help="Al indicar fecha de llegada los cilindros vuelven a En almacén LLENO. La compra solo se vincula (no se crea aquí)."
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <GuiaRemisionSelectField
@@ -345,6 +357,8 @@ import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
+import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
+import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
 import {
   useCreateRecargaPlantaMutation,
@@ -639,6 +653,7 @@ async function agregarBalonSeleccionado() {
       capacidad: balon.capacidad ?? null,
       id_unidad_medida: null,
       nombre_unidad_medida: balon.nombre_unidad_medida ?? null,
+      nombre_estado_balon: balon.nombre_estado_balon ?? null,
       nombre_estado_contenido: balon.nombre_estado_contenido ?? null,
     })
     detalleError.value = ''

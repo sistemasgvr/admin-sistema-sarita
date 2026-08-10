@@ -761,6 +761,13 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
     payload.escenarioGas === 'entregar_prestamo' || payload.tipo === 'alquiler'
       ? Math.max(0, Number(payload.montoGarantia || 0))
       : undefined
+  if (Number(linea.montoGarantia || 0) > 0) {
+    linea.idMedioPagoGarantia = payload.idMedioPagoGarantia
+    linea.observacionGarantia = payload.observacionGarantia
+  } else {
+    linea.idMedioPagoGarantia = undefined
+    linea.observacionGarantia = undefined
+  }
   linea.idTipoMantenimiento = payload.idTipoMantenimiento
   linea.fechaIngresoMantenimiento = payload.fechaIngresoMantenimiento
   linea.descripcionMantenimiento = payload.descripcionMantenimiento
@@ -863,6 +870,17 @@ async function guardarComprobante() {
 
     if (esEntregarPrestamo(linea) && !linea.fechaInicioAlquiler) {
       toastWarning(`${linea.nombre}: indica la fecha de entrega del préstamo`)
+      return
+    }
+
+    if (
+      Number(linea.montoGarantia || 0) > 0 &&
+      !linea.idMedioPagoGarantia &&
+      (esEntregarPrestamo(linea) || linea.tipoPos === 'alquiler' || linea.esAlquilable)
+    ) {
+      toastWarning(
+        `${linea.nombre}: indica el medio con el que se recibe la garantía`,
+      )
       return
     }
 
@@ -1133,7 +1151,12 @@ try {
                   cantidadVenta: 1,
                   idUnidadMedida: productoLinea?.id_unidad_medida ?? undefined,
                   fechaRegistro: fecha.value,
-                  observacion: `Garantía POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
+                  idMedioPago: lineaPrestamo.idMedioPagoGarantia
+                    ? Number(lineaPrestamo.idMedioPagoGarantia)
+                    : undefined,
+                  observacion:
+                    lineaPrestamo.observacionGarantia?.trim() ||
+                    `Garantía POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
                 })
               } catch (error) {
                 advertencias += 1
@@ -1216,7 +1239,12 @@ try {
                 idProducto: idProductoAlquiler,
                 cantidadVenta: 1,
                 fechaRegistro: fecha.value,
-                observacion: `Garantía POS · alquiler ${lineaAlquilable.nombre}`,
+                idMedioPago: lineaAlquilable.idMedioPagoGarantia
+                  ? Number(lineaAlquilable.idMedioPagoGarantia)
+                  : undefined,
+                observacion:
+                  lineaAlquilable.observacionGarantia?.trim() ||
+                  `Garantía POS · alquiler ${lineaAlquilable.nombre}`,
               })
             } catch (error) {
               advertencias += 1

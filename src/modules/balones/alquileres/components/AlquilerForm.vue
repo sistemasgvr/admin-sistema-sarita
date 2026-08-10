@@ -132,6 +132,17 @@
                 :disabled="isSubmitting"
               />
 
+              <div
+                v-if="isCreateMode && Number(montoGarantia || 0) > 0"
+                class="sm:col-span-2"
+              >
+                <GarantiaRecepcionFields
+                  v-model:id-medio-pago="idMedioPagoGarantia"
+                  v-model:observacion="observacionGarantia"
+                  :disabled="isSubmitting"
+                />
+              </div>
+
               <AppInput
                 v-model="tarifaDiaria"
                 label="Tarifa periodo"
@@ -354,6 +365,7 @@ import { useDeleteAlquilerDetalleMutation } from '@/modules/balones/alquileres/c
 import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
+import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import AlquilerDetalleFormModal from '@/modules/balones/alquileres/components/AlquilerDetalleFormModal.vue'
 import AlquilerDevolverModal from '@/modules/balones/alquileres/components/AlquilerDevolverModal.vue'
@@ -575,6 +587,8 @@ watch(
 
 const productoAlquilableBuscar = ref('')
 const montoGarantia = ref<number | string>(0)
+const idMedioPagoGarantia = ref<string | number>('')
+const observacionGarantia = ref('')
 
 const productoAlquilableOptions = computed(() => {
   const data = alquilerQuery.data.value
@@ -704,6 +718,8 @@ const resetCreateForm = () => {
     },
   })
   montoGarantia.value = 0
+  idMedioPagoGarantia.value = ''
+  observacionGarantia.value = ''
   void cargarSiguienteNumero()
 }
 
@@ -739,6 +755,12 @@ const onSubmit = handleSubmit(async (values) => {
       }
       if (!productoId) {
         toastWarning('Selecciona el producto alquilable')
+        return
+      }
+
+      const garantiaPendiente = Math.max(0, Number(montoGarantia.value || 0))
+      if (garantiaPendiente > 0 && !idMedioPagoGarantia.value) {
+        toastWarning('Indica el medio con el que se recibe la garantía')
         return
       }
 
@@ -792,7 +814,10 @@ const onSubmit = handleSubmit(async (values) => {
               ? Number(values.idComprobanteVenta)
               : undefined,
             fechaRegistro: values.fechaInicio,
-            observacion: `Garantía alquiler ${created.numero_alquiler || created.id}`,
+            idMedioPago: Number(idMedioPagoGarantia.value),
+            observacion:
+              observacionGarantia.value.trim() ||
+              `Garantía alquiler ${created.numero_alquiler || created.id}`,
           })
         } catch (error) {
           toastApiError(
@@ -926,6 +951,8 @@ watch(idProductoRegulador, (value) => {
   const id = Number(value)
   if (!id) {
     montoGarantia.value = 0
+    idMedioPagoGarantia.value = ''
+    observacionGarantia.value = ''
     return
   }
   void prefillMontoGarantia(id)
@@ -936,5 +963,7 @@ watch(idAlmacen, (nuevo, anterior) => {
   if (nuevo === anterior) return
   idProductoRegulador.value = ''
   montoGarantia.value = 0
+  idMedioPagoGarantia.value = ''
+  observacionGarantia.value = ''
 })
 </script>

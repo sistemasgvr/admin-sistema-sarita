@@ -39,6 +39,9 @@
         :productos="productos"
         :total="productosQuery.data.value?.meta?.total ?? null"
         :loading="productosQuery.isLoading.value || productosQuery.isFetching.value"
+        :stock-gas-por-producto="stockGasPorProducto"
+        :sin-almacen-para-gas="tipo === 'gas' && !idAlmacen"
+        :stock-gas-listo="tipo !== 'gas' || !idAlmacen || stockGasQuery.isFetched.value"
         @filter-change="onFiltersChange"
         @add="elegirProducto"
       />
@@ -215,6 +218,11 @@
           >
             {{ origenMontoGarantia }}
           </p>
+          <GarantiaRecepcionFields
+            v-if="Number(montoGarantia || 0) > 0"
+            v-model:id-medio-pago="idMedioPagoGarantia"
+            v-model:observacion="observacionGarantia"
+          />
         </template>
 
         <template v-else-if="escenarioGas === 'comprar_balon'">
@@ -302,6 +310,11 @@
         >
           {{ origenMontoGarantia }}
         </p>
+        <GarantiaRecepcionFields
+          v-if="Number(montoGarantia || 0) > 0"
+          v-model:id-medio-pago="idMedioPagoGarantia"
+          v-model:observacion="observacionGarantia"
+        />
         <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
           Se alquila el <strong>producto alquilable</strong>. El cilindro <strong>no se alquila</strong>:
           si también entregas uno, queda en <strong>préstamo</strong> (mismo comprobante).
@@ -393,6 +406,7 @@
 </template>
 
 <script setup lang="ts">
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -405,8 +419,12 @@ import type { Producto, ProductoListFilters } from '@/modules/productos/articulo
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
+import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
+import type { StockGasListFilters } from '@/modules/balones/stock-gas/interfaces/stock-gas.interface'
+import { stockGasService } from '@/modules/balones/stock-gas/services/stock-gas.service'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import type { BalonOrigenRecarga } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
+import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
@@ -420,6 +438,7 @@ import {
   productoAfectaStock,
   productoSinStockParaVenta,
   validarStockParaAgregar,
+  type StockGasPosInfo,
 } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -463,6 +482,8 @@ export interface PosLineaConfirmada {
   nombreProductoAlquiler?: string
   etiquetaBalon?: string
   montoGarantia?: number
+  idMedioPagoGarantia?: number
+  observacionGarantia?: string
 }
 
 const props = withDefaults(
@@ -528,6 +549,8 @@ const descripcionMantenimiento = ref('')
 const escenarioGas = ref<EscenarioGas | null>(null)
 const montoGarantia = ref<number | string>(0)
 const origenMontoGarantia = ref('')
+const idMedioPagoGarantia = ref<string | number>('')
+const observacionGarantia = ref('')
 const precioBalon = ref<number | string>(0)
 const idProductoEnvase = ref<number | ''>('')
 const nombreProductoEnvase = ref(NOMBRE_PRODUCTO_VENTA_ENVASE)
@@ -759,6 +782,8 @@ function setEscenarioGas(key: EscenarioGas) {
   } else {
     montoGarantia.value = 0
     origenMontoGarantia.value = ''
+    idMedioPagoGarantia.value = ''
+    observacionGarantia.value = ''
   }
   if (key === 'comprar_balon') {
     void resolverProductoVentaEnvase()
@@ -868,6 +893,38 @@ const filters = ref<ProductoListFilters>({
 })
 
 const productosQuery = useProductosQuery(filters)
+
+const stockGasFilters = computed<StockGasListFilters>(() => ({
+  pagina: 1,
+  limite: 500,
+  idAlmacen: props.idAlmacen ? Number(props.idAlmacen) : undefined,
+}))
+
+const stockGasQuery = useQuery({
+  queryKey: computed(() => stockGasQueryKeys.list(stockGasFilters.value)),
+  queryFn: () => stockGasService.listar(stockGasFilters.value),
+  enabled: computed(
+    () =>
+      open.value &&
+      paso.value === 'catalogo' &&
+      tipo.value === 'gas' &&
+      Boolean(props.idAlmacen),
+  ),
+  placeholderData: keepPreviousData,
+})
+
+const stockGasPorProducto = computed(() => {
+  const map: Record<number, StockGasPosInfo> = {}
+  for (const row of stockGasQuery.data.value?.data ?? []) {
+    map[row.id_producto_gas] = {
+      capacidad_disponible: Number(row.capacidad_disponible || 0),
+      balones_llenos: Number(row.balones_llenos || 0),
+      nombre_unidad_medida: row.nombre_unidad_medida,
+      tiene_stock_disponible: row.tiene_stock_disponible,
+    }
+  }
+  return map
+})
 
 const productosBase = computed(() =>
   filtrarProductosCatalogo(productosQuery.data.value?.data ?? []),
@@ -1159,9 +1216,13 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
       } else {
         void prefillMontoGarantia(fromProducto)
       }
+      idMedioPagoGarantia.value = fromLinea.idMedioPagoGarantia ?? ''
+      observacionGarantia.value = fromLinea.observacionGarantia ?? ''
     } else {
       montoGarantia.value = 0
       origenMontoGarantia.value = ''
+      idMedioPagoGarantia.value = ''
+      observacionGarantia.value = ''
     }
     if (fromLinea.escenarioGas === 'comprar_balon' || fromLinea.precioBalon != null) {
       void resolverProductoVentaEnvase()
@@ -1187,6 +1248,8 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   escenarioGas.value = null
   montoGarantia.value = 0
   origenMontoGarantia.value = ''
+  idMedioPagoGarantia.value = ''
+  observacionGarantia.value = ''
   precioBalon.value = 0
   idProductoEnvase.value = ''
   nombreProductoEnvase.value = NOMBRE_PRODUCTO_VENTA_ENVASE
@@ -1337,6 +1400,15 @@ async function confirmar() {
     return
   }
 
+  const cobraGarantia =
+    Number(montoGarantia.value || 0) > 0 &&
+    (tipo.value === 'alquiler' ||
+      (tipo.value === 'gas' && escenarioGas.value === 'entregar_prestamo'))
+  if (cobraGarantia && !idMedioPagoGarantia.value) {
+    toastWarning('Indica el medio con el que se recibe la garantía')
+    return
+  }
+
   const payload: PosLineaConfirmada = {
     tipo: tipo.value,
     producto: producto.value,
@@ -1368,6 +1440,10 @@ async function confirmar() {
       payload.fechaInicioAlquiler = fechaInicio.value
       payload.fechaFinAlquiler = fechaFin.value || undefined
       payload.montoGarantia = Math.max(0, Number(montoGarantia.value || 0))
+      if (payload.montoGarantia > 0) {
+        payload.idMedioPagoGarantia = Number(idMedioPagoGarantia.value)
+        payload.observacionGarantia = observacionGarantia.value.trim() || undefined
+      }
     }
     if (escenarioGas.value === 'comprar_balon') {
       payload.precioBalon = Number(precioBalon.value || 0)
@@ -1380,6 +1456,10 @@ async function confirmar() {
     payload.fechaInicioAlquiler = fechaInicio.value
     payload.fechaFinAlquiler = fechaFin.value
     payload.montoGarantia = Math.max(0, Number(montoGarantia.value || 0))
+    if (payload.montoGarantia > 0) {
+      payload.idMedioPagoGarantia = Number(idMedioPagoGarantia.value)
+      payload.observacionGarantia = observacionGarantia.value.trim() || undefined
+    }
   }
 
   if (tipo.value === 'mantenimiento') {

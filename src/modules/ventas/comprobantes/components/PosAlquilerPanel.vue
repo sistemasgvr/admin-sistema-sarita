@@ -220,6 +220,12 @@
           >
             {{ origenMontoGarantia }}
           </p>
+          <div v-if="Number(montoGarantia || 0) > 0" class="mt-4">
+            <GarantiaRecepcionFields
+              v-model:id-medio-pago="idMedioPagoGarantia"
+              v-model:observacion="observacionGarantia"
+            />
+          </div>
           <div class="mt-5">
             <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
           </div>
@@ -283,6 +289,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
+import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
@@ -416,6 +423,8 @@ const fechaInicio = ref(hoy)
 const fechaFinPactada = ref(addDaysIso(hoy, 14))
 const tarifaPeriodo = ref(0)
 const montoGarantia = ref<number | string>(0)
+const idMedioPagoGarantia = ref<string | number>('')
+const observacionGarantia = ref('')
 const origenMontoGarantia = ref('')
 const observacion = ref('')
 const guardando = ref(false)
@@ -565,6 +574,8 @@ function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
     if (linea.rol === 'regulador') {
       tarifaPeriodo.value = 0
       montoGarantia.value = 0
+      idMedioPagoGarantia.value = ''
+      observacionGarantia.value = ''
       origenMontoGarantia.value = ''
     }
     return
@@ -623,11 +634,16 @@ async function registrarKit() {
     return
   }
 
+  const garantia = Math.max(0, Number(montoGarantia.value || 0))
+  if (garantia > 0 && !idMedioPagoGarantia.value) {
+    toastWarning('Indica el medio con el que se recibe la garantía')
+    return
+  }
+
   guardando.value = true
 
   try {
     const idProductoReg = Number(lineaRegulador.value.idProducto)
-    const garantia = Math.max(0, Number(montoGarantia.value || 0))
     const detallesKit = activas.map((linea) => ({
       idProducto: Number(linea.idProducto),
       cantidad: Number(linea.cantidad),
@@ -744,7 +760,10 @@ async function registrarKit() {
           idProducto: idProductoReg,
           cantidadVenta: 1,
           fechaRegistro: fecha.value,
-          observacion: `Garantía kit medicinal · ${lineaRegulador.value.nombre || 'alquiler'}`,
+          idMedioPago: Number(idMedioPagoGarantia.value),
+          observacion:
+            observacionGarantia.value.trim() ||
+            `Garantía kit medicinal · ${lineaRegulador.value.nombre || 'alquiler'}`,
         })
       } catch (error) {
         toastApiError(error, 'Kit creado, pero falló el registro de la garantía')
@@ -769,6 +788,8 @@ async function limpiarFormulario() {
   tarifaPeriodo.value = 0
   montoGarantia.value = 0
   origenMontoGarantia.value = ''
+  idMedioPagoGarantia.value = ''
+  observacionGarantia.value = ''
   observacion.value = ''
   kitLineas.splice(0, kitLineas.length, ...crearKitMedicinalInicial())
   descartables.splice(0, descartables.length)

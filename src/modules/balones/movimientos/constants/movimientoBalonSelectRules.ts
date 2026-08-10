@@ -58,6 +58,15 @@ export const MOVIMIENTO_BALON_SELECT_RULES: Record<string, MovimientoBalonSelect
     almacenDestino: 'optional',
     hint: 'Cilindros en almacén para enviar a mantenimiento.',
   },
+  SALIDA_PLANTA_EXTERNA: {
+    estadosBalon: ['EN_ALMACEN', 'EN_RECARGA_EXTERNA'],
+    contenidos: ['VACIO', 'LLENO'],
+    soloEmpresa: true,
+    cliente: 'hidden',
+    almacenOrigen: 'required',
+    almacenDestino: 'hidden',
+    hint: 'Cilindros EMPRESA enviados a planta externa para recarga.',
+  },
   SALIDA_ENTREGA_CLIENTE: {
     estadosBalon: ['EN_MANTENIMIENTO', 'EN_ALMACEN'],
     cliente: 'required',
@@ -89,6 +98,15 @@ export const MOVIMIENTO_BALON_SELECT_RULES: Record<string, MovimientoBalonSelect
     almacenOrigen: 'optional',
     almacenDestino: 'required',
     hint: 'Cilindros que ingresan desde planta de llenado.',
+  },
+  ENTRADA_PLANTA_EXTERNA: {
+    estadosBalon: ['EN_RECARGA_EXTERNA', 'EN_ALMACEN'],
+    contenidos: ['LLENO', 'VACIO'],
+    soloEmpresa: true,
+    cliente: 'hidden',
+    almacenOrigen: 'hidden',
+    almacenDestino: 'required',
+    hint: 'Cilindros que retornan llenos desde planta externa.',
   },
   RECARGA_CLIENTE: {
     estadosBalon: ['EN_ALMACEN', 'EN_PODER_CLIENTE', 'PRESTADO_CLIENTE'],

@@ -67,6 +67,8 @@ export interface CreateGarantiaPayload {
   idUnidadMedida?: number
   fechaRegistro?: string
   observacion?: string
+  /** Medio con el que se recibe el depósito. */
+  idMedioPago?: number
 }
 
 export interface DevolverGarantiaPayload {

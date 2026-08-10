@@ -327,6 +327,10 @@ export interface PosLineItem {
   nombreProductoAlquiler?: string
   /** Depósito reembolsable al entregar cilindro en préstamo (editable en POS). */
   montoGarantia?: number
+  /** Medio con el que se recibe la garantía (si montoGarantia > 0). */
+  idMedioPagoGarantia?: number
+  /** Comentario / nro. operación de la recepción de garantía. */
+  observacionGarantia?: string
   /** Mantenimiento (registro independiente en balones). */
   esMantenimiento?: boolean
   idTipoMantenimiento?: number

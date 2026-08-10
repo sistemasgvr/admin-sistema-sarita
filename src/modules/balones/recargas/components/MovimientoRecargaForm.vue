@@ -29,7 +29,7 @@
         <DetailSectionCard
           title="Salida de almacén"
           :icon="ICONS.warehouse"
-          help="Envía cilindros EMPRESA vacíos a planta externa. Al registrar la salida quedan VACÍO; al indicar fecha de llegada quedan LLENO con residual completo. La compra es solo vínculo documental."
+          help="Envía cilindros EMPRESA vacíos a planta externa. Al registrar la salida quedan en estado En recarga externa (contenido VACÍO); al indicar fecha de llegada vuelven a En almacén LLENO con residual completo. La compra es solo vínculo documental."
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppInput

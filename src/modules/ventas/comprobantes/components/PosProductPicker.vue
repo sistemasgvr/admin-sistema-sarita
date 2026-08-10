@@ -146,27 +146,21 @@
           </button>
 
           <div class="mt-1.5 flex items-end justify-between gap-2">
-            <div class="min-w-0">
+            <div class="min-w-0 space-y-1">
               <p class="text-sm font-semibold tabular-nums text-brand-500">
                 {{ formatMoney(producto.precio) }}
               </p>
-              <p
-                v-if="etiquetaStockPos(producto)"
-                class="truncate text-[11px] font-medium"
-                :class="
-                  producto.stock_bajo || Number(producto.stock_actual) <= 0
-                    ? 'text-error-500'
-                    : 'text-gray-500 dark:text-gray-400'
-                "
-              >
-                {{ etiquetaStockPos(producto) }}
-              </p>
-              <p
-                v-else-if="producto.es_servicio || producto.es_alquilable"
-                class="text-[11px] font-medium text-gray-400 dark:text-gray-500"
-              >
-                No inventariado
-              </p>
+              <div class="flex min-w-0 flex-wrap items-center gap-1">
+                <AppBadge
+                  v-for="(badge, idx) in badgesStockProducto(producto)"
+                  :key="`${producto.id}-${idx}-${badge.label}`"
+                  size="sm"
+                  :color="badge.color"
+                  :icon="badge.icon"
+                >
+                  {{ badge.label }}
+                </AppBadge>
+              </div>
             </div>
 
             <div class="flex shrink-0 items-center gap-1">
@@ -242,24 +236,17 @@
             <span v-if="producto.nombre_sub_categoria"> / {{ producto.nombre_sub_categoria }}</span>
             <span v-if="producto.marca"> · {{ producto.marca }}</span>
           </p>
-          <p
-            v-if="etiquetaStockPos(producto)"
-            class="mt-0.5 text-[11px] font-medium"
-            :class="
-              producto.stock_bajo || Number(producto.stock_actual) <= 0
-                ? 'text-error-500'
-                : 'text-gray-500 dark:text-gray-400'
-            "
-          >
-            {{ etiquetaStockPos(producto) }}
-            <span v-if="productoSinStockParaVenta(producto)"> · Agotado</span>
-          </p>
-          <p
-            v-else-if="producto.es_servicio || producto.es_alquilable"
-            class="mt-0.5 text-[11px] font-medium text-gray-400 dark:text-gray-500"
-          >
-            Servicio · no inventariado
-          </p>
+          <div class="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+            <AppBadge
+              v-for="(badge, idx) in badgesStockProducto(producto)"
+              :key="`${producto.id}-list-${idx}-${badge.label}`"
+              size="sm"
+              :color="badge.color"
+              :icon="badge.icon"
+            >
+              {{ badge.label }}
+            </AppBadge>
+          </div>
         </button>
 
         <div class="flex shrink-0 items-center gap-1.5">
@@ -307,24 +294,40 @@ import PosProductoQuickModal, {
   type PosProductoQuickTab,
 } from '@/modules/ventas/comprobantes/components/PosProductoQuickModal.vue'
 import {
-  etiquetaStockPos,
+  formatStockPos,
+  productoAfectaStock,
   productoSinStockParaVenta,
+  stockGasSinDisponible,
+  type StockGasPosInfo,
 } from '@/modules/ventas/comprobantes/utils/stockPos'
-import { AppActionMenu, AppListToolbar } from '@/shared/components'
+import { AppActionMenu, AppBadge, AppListToolbar } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
-import { ICONS } from '@/shared/constants/icons'
+import { ICONS, type IconName } from '@/shared/constants/icons'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
+import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type {
   DynamicFilterFieldDef,
   DynamicFilterValues,
 } from '@/shared/interfaces/dynamic-filter.interface'
 
-defineProps<{
+interface StockPosBadge {
+  label: string
+  color: BadgeColor
+  icon?: IconName
+}
+
+const props = defineProps<{
   productos: Producto[]
   filterFields: DynamicFilterFieldDef[]
   loading?: boolean
   total?: number | null
+  /** Stock de gas por id_producto (cilindros en almacén). */
+  stockGasPorProducto?: Record<number, StockGasPosInfo>
+  /** Si true y no hay almacén, el stock de gas muestra aviso. */
+  sinAlmacenParaGas?: boolean
+  /** false mientras carga stock-gas (evita mostrar 0 prematuro). */
+  stockGasListo?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -383,5 +386,57 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(
     Number(value || 0),
   )
+}
+
+function badgesStockProducto(producto: Producto): StockPosBadge[] {
+  if (producto.es_gas) {
+    if (props.sinAlmacenParaGas) {
+      return [{ label: 'Selecciona almacén', color: 'warning', icon: ICONS.warehouse }]
+    }
+    if (props.stockGasListo === false) {
+      return [{ label: 'Cargando…', color: 'neutral' }]
+    }
+    const info = props.stockGasPorProducto?.[producto.id]
+    if (!info || stockGasSinDisponible(info)) {
+      return [{ label: 'Sin stock', color: 'error', icon: ICONS.droplet }]
+    }
+    const um = info.nombre_unidad_medida?.trim()
+    const qty = formatStockPos(Number(info.capacidad_disponible || 0))
+    const badges: StockPosBadge[] = [
+      {
+        label: um ? `${qty} ${um}` : qty,
+        color: 'success',
+        icon: ICONS.droplet,
+      },
+    ]
+    const llenos = Number(info.balones_llenos || 0)
+    if (llenos > 0) {
+      badges.push({
+        label: `${llenos} ${llenos === 1 ? 'lleno' : 'llenos'}`,
+        color: 'primary',
+        icon: ICONS.cylinder,
+      })
+    }
+    return badges
+  }
+
+  if (producto.es_servicio || producto.es_alquilable || !productoAfectaStock(producto)) {
+    return [{ label: 'No inventariado', color: 'neutral' }]
+  }
+
+  if (producto.stock_actual == null) return []
+
+  const um = producto.nombre_unidad_medida?.trim()
+  const qty = formatStockPos(Number(producto.stock_actual))
+  const sinStock = Number(producto.stock_actual) <= 0
+  const bajo = Boolean(producto.stock_bajo)
+
+  return [
+    {
+      label: um ? `${qty} ${um}` : qty,
+      color: sinStock ? 'error' : bajo ? 'warning' : 'success',
+      icon: ICONS.package,
+    },
+  ]
 }
 </script>
