@@ -6,7 +6,7 @@ export interface CompraListItem {
   numero: string | null
   fecha: string
   id_proveedor: number | null
-  proveedor: string | null
+  nombre_proveedor: string | null
   id_almacen: number | null
   almacen: string | null
   sub_total: number | null
@@ -48,6 +48,7 @@ export interface CompraCabecera {
   estado_pago: string | null
   estado: number
   id_comprobante_referencia: number | null
+  id_recarga_planta: number | null
   tiene_movimientos_inventario: boolean
   puede_modificarse_parcial: boolean
   fecha_creacion: string | null
@@ -111,6 +112,13 @@ export interface CreateCompraPayload {
   idProveedor?: number
   idAlmacen?: number
   idComprobanteReferencia?: number
+  idRecargaPlanta?: number
+  /** Solo aplica si idRecargaPlanta viene informado: si es true, ubica los
+   * balones de la orden en el almacén/sucursal de esta compra y genera su
+   * movimiento de ingreso. Si es false u omitido, la compra queda igual
+   * vinculada a la orden pero los balones se registran después desde el
+   * módulo de Recargas en planta. */
+  guardarBalonesAlmacen?: boolean
   idTipoRegistro?: number
   idCategoriaGasto?: number
   idSucursal?: number

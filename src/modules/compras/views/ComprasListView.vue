@@ -34,7 +34,7 @@
 
       <template #cell-proveedor="{ row }">
         <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ row.proveedor ?? '—' }}
+          {{ row.nombre_proveedor ?? '—' }}
         </p>
       </template>
 

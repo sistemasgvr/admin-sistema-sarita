@@ -475,8 +475,8 @@ const compraOptions = computed<SelectOption[]>(() =>
   (comprasQuery.data.value?.data ?? []).map((c) => ({
     value: c.id,
     label: [c.serie, c.numero].filter(Boolean).join('-') || `Compra #${c.id}`,
-    title: c.proveedor
-      ? `${[c.serie, c.numero].filter(Boolean).join('-')} · ${c.proveedor}`
+    title: c.nombre_proveedor
+      ? `${[c.serie, c.numero].filter(Boolean).join('-')} · ${c.nombre_proveedor}`
       : undefined,
   })),
 )
