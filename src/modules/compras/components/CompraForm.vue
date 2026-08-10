@@ -18,7 +18,7 @@
               </template>
               <template v-else>
                 Esta compra corrige a la compra anulada
-                <span class="font-medium"
+                <span class="font-medium"   
                   >{{ referenciaCabecera?.serie ?? '—' }}-{{ referenciaCabecera?.numero ?? '—' }}</span
                 >. Los campos y líneas se prellenaron; ajústalos según corresponda.
               </template>
@@ -87,6 +87,7 @@
               />
             </div>
           </DetailSectionCard>
+
 
           <DetailSectionCard title="Clasificación y ubicación" :icon="ICONS.layers" :full-width="true">
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -160,11 +161,112 @@
             />
           </DetailSectionCard>
 
+                    <DetailSectionCard
+            title="Recarga en planta externa"
+            :icon="ICONS.cylinder"
+            :full-width="true"
+            help="Opcional. Si esta factura corresponde al despacho de una orden de recarga en planta externa, selecciónala: sus balones se agrupan por producto (gas) y se agregan como líneas al detalle, listas para ponerles precio."
+          >
+            <AppSelectSearch
+              v-model="idRecargaPlanta"
+              label="Orden de recarga"
+              :placeholder="idProveedor ? 'Selecciona una orden (opcional)' : 'Selecciona el proveedor primero'"
+              search-placeholder="Número de orden..."
+              :options="recargaPlantaOptions"
+              :loading="recargaPlantaQuery.isFetching.value"
+              :disabled="saving || !idProveedor"
+            />
+
+            <template v-if="idRecargaPlantaNum">
+              <AppCheckbox
+                v-model="guardarBalonesAlmacen"
+                label="Guardar los balones en el almacén y sucursal seleccionados"
+                :disabled="saving"
+                class="mt-3"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Márcalo solo si los balones ya llegaron físicamente al almacén. Si aún están en
+                camino, déjalo sin marcar: la compra queda igual vinculada a la orden y luego
+                podrás registrar su ingreso desde el módulo de Recargas en planta.
+              </p>
+
+              <div
+                v-if="guardarBalonesAlmacen"
+                class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+              >
+                Al registrar la compra, todos los balones de esta orden quedarán marcados como
+                <strong>llenos</strong> y ubicados en el almacén
+                <strong>{{ almacenSeleccionadoLabel ?? 'seleccionado en Clasificación y ubicación' }}</strong
+                ><template v-if="sucursalSeleccionadaLabel">, sucursal <strong>{{ sucursalSeleccionadaLabel }}</strong></template>.
+              </div>
+            </template>
+
+            <div v-if="recargaPlantaBalones.length" class="mt-4">
+              <p class="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                Balones vacíos de esta orden ({{ recargaPlantaBalones.length }})
+              </p>
+              <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-white/5">
+                      <tr>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
+                          Balón
+                        </th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
+                          Producto
+                        </th>
+                        <th class="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">
+                          Capacidad
+                        </th>
+                        <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
+                          Estado
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="balon in recargaPlantaBalones"
+                        :key="balon.id"
+                        class="border-t border-gray-100 dark:border-gray-800"
+                      >
+                        <td class="px-3 py-2 font-medium text-gray-800 dark:text-white/90">
+                          {{ balon.codigo_balon ?? '—' }}
+                        </td>
+                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400">
+                          {{
+                            balon.codigo_producto
+                              ? `${balon.codigo_producto} - ${balon.nombre_producto ?? ''}`
+                              : (balon.nombre_producto ?? '—')
+                          }}
+                        </td>
+                        <td class="px-3 py-2 text-right tabular-nums">{{ balon.capacidad ?? '—' }}</td>
+                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400">
+                          {{ balon.nombre_estado_balon ?? '—' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                La cantidad de cada gas en el detalle de productos de abajo es la suma de la capacidad de
+                estos balones agrupada por producto — no es una línea por balón.
+              </p>
+            </div>
+            <p
+              v-else-if="idRecargaPlantaNum && recargaPlantaDetalleQuery.isFetching.value"
+              class="mt-3 text-xs text-gray-500 dark:text-gray-400"
+            >
+              Cargando balones de la orden...
+            </p>
+          </DetailSectionCard>
+
           <DetailSectionCard
-            title="Detalle de productos"
+            title="Detalle de productos (opcional)"
             :icon="ICONS.clipboardList"
             :full-width="true"
-            help="Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros)."
+            help="Opcional: puedes registrar la compra sin líneas y agregarlas después. Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros)."
           >
             <template #actions>
               <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -184,8 +286,6 @@
                 @created="onProductoCreado"
               />
             </div>
-
-            <p v-if="lineasError" class="mb-2 text-xs text-error-500">{{ lineasError }}</p>
 
             <div
               v-if="lineas.length === 0"
@@ -288,7 +388,7 @@
               </div>
 
               <div
-                class="grid grid-cols-3 gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03]"
+                class="grid grid-cols-3 gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
               >
                 <div>
                   <p class="text-xs text-gray-500 dark:text-gray-400">Sub total</p>
@@ -311,8 +411,8 @@
               </div>
             </div>
           </DetailSectionCard>
+        
         </template>
-
         <!-- EDIT -->
         <template v-else>
           <DetailSectionCard title="Datos de la compra" :icon="ICONS.receipt" :full-width="true">
@@ -511,7 +611,7 @@
       <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button
           type="button"
-          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/3 sm:w-auto"
           :disabled="saving"
           @click="emit('cancel')"
         >
@@ -539,7 +639,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -566,6 +666,14 @@ import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composabl
 import { useCondicionesPagoQuery } from '@/modules/configuracion/condiciones-pago/composables/useCondicionesPagoQuery'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import {
+  useRecargaPlantaQuery,
+  useRecargasPlantaQuery,
+} from '@/modules/balones/recargas/composables/useRecargasPlantaQuery'
+import type {
+  RecargaPlantaDetalle,
+  RecargaPlantaListFilters,
+} from '@/modules/balones/recargas/interfaces/recarga-planta.interface'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import { calcularTotalesDesdeImporte } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import {
@@ -593,6 +701,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalString } from '@/shared/validation'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const props = withDefaults(
@@ -671,6 +780,8 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
       serie: requiredOnCreate('La serie'),
       numero: requiredOnCreate('El número'),
       idProveedor: requiredOnCreate('El proveedor'),
+      idRecargaPlanta: yup.mixed<string | number>().optional(),
+      guardarBalonesAlmacen: yup.boolean().default(false),
       idAlmacen: requiredOnCreate('El almacén'),
       idTipoComprobante: requiredOnCreate('El tipo de comprobante'),
       idTipoRegistro: requiredOnCreate('El tipo de registro'),
@@ -687,6 +798,8 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
     serie: '',
     numero: '',
     idProveedor: '' as string | number,
+    idRecargaPlanta: '' as string | number,
+    guardarBalonesAlmacen: false,
     idAlmacen: '' as string | number,
     idTipoComprobante: '' as string | number,
     idTipoRegistro: '' as string | number,
@@ -703,6 +816,8 @@ const [fecha, fechaAttrs] = defineField('fecha')
 const [serie, serieAttrs] = defineField('serie')
 const [numero, numeroAttrs] = defineField('numero')
 const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
+const [idRecargaPlanta] = defineField('idRecargaPlanta')
+const [guardarBalonesAlmacen] = defineField('guardarBalonesAlmacen')
 const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
 const [idTipoComprobante, idTipoComprobanteAttrs] = defineField('idTipoComprobante')
 const [idTipoRegistro, idTipoRegistroAttrs] = defineField('idTipoRegistro')
@@ -715,7 +830,6 @@ const [declararSunat] = defineField('declararSunat')
 
 const lineas = reactive<CompraLineaForm[]>([])
 const lineasExistentes = computed(() => compraData.value?.detalle ?? [])
-const lineasError = ref('')
 
 const lineaEliminando = ref<number | null>(null)
 const lineaGuardando = ref<number | null>(null)
@@ -790,6 +904,118 @@ const proveedorOptions = computed(() => {
   }
   return [proveedorCreadoOption.value, ...base]
 })
+
+
+const recargaPlantaFilters = ref<RecargaPlantaListFilters>({ pagina: 1, limite: 50 })
+const recargaPlantaQuery = useRecargasPlantaQuery(recargaPlantaFilters)
+const recargaPlantaOptions = computed(() =>
+  (recargaPlantaQuery.data.value?.data ?? []).map((rp) => {
+    const numero = rp.numero || `RP-${rp.id}`
+    const cilindros = rp.total_cilindros ?? 0
+    // Mismo criterio que valida com_crear_compra: ya vinculada a una
+    // compra, o su estado ya es CERRADO -> no se puede volver a elegir.
+    const yaCerrada = Boolean(rp.id_comprobante_compra) || rp.nombre_estado === 'CERRADO'
+    return {
+      value: rp.id,
+      label: `${numero} · ${formatListDate(rp.fecha_salida)} · ${cilindros} cilindro${cilindros === 1 ? '' : 's'}`,
+      disabled: yaCerrada,
+      badges: yaCerrada ? [{ label: 'Cerrada / facturada', color: 'neutral' as const }] : undefined,
+    }
+  }),
+)
+
+const idRecargaPlantaNum = computed(() =>
+  idRecargaPlanta.value !== '' && idRecargaPlanta.value != null ? Number(idRecargaPlanta.value) : null,
+)
+const recargaPlantaDetalleQuery = useRecargaPlantaQuery(idRecargaPlantaNum)
+const recargaPlantaBalones = computed(() => recargaPlantaDetalleQuery.data.value?.detalles ?? [])
+
+const almacenSeleccionadoLabel = computed(
+  () => almacenOptions.value.find((o) => String(o.value) === String(idAlmacen.value))?.label ?? null,
+)
+const sucursalSeleccionadaLabel = computed(
+  () => sucursalOptions.value.find((o) => String(o.value) === String(idSucursal.value))?.label ?? null,
+)
+
+const suppressRecargaPlantaReset = ref(false)
+watch(idProveedor, (id) => {
+  const idNum = id !== '' && id != null ? Number(id) : undefined
+  recargaPlantaFilters.value = { pagina: 1, limite: 50, idProveedor: idNum }
+  if (suppressRecargaPlantaReset.value) return
+  idRecargaPlanta.value = ''
+  guardarBalonesAlmacen.value = false
+})
+
+
+const RECARGA_LINEA_PREFIX = 'recarga-planta-'
+const recargaPlantaLineasSyncedFor = ref<number | null>(null)
+
+function quitarLineasDeRecargaPlanta() {
+  for (let i = lineas.length - 1; i >= 0; i--) {
+    if (lineas[i].key.startsWith(RECARGA_LINEA_PREFIX)) {
+      lineas.splice(i, 1)
+    }
+  }
+}
+
+function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
+  quitarLineasDeRecargaPlanta()
+
+  const grupos = new Map<number, CompraLineaForm>()
+  for (const balon of detalles) {
+    if (balon.id_producto == null) continue
+    const cantidadBalon = Number(balon.capacidad) || 0
+    if (cantidadBalon <= 0) continue
+
+    const existente = grupos.get(balon.id_producto)
+    if (existente) {
+      existente.cantidad += cantidadBalon
+      continue
+    }
+
+    grupos.set(balon.id_producto, {
+      key: `${RECARGA_LINEA_PREFIX}${balon.id_producto}`,
+      idProducto: balon.id_producto,
+      productoLabel: balon.codigo_producto
+        ? `${balon.codigo_producto} - ${balon.nombre_producto ?? ''}`
+        : (balon.nombre_producto ?? `Producto ${balon.id_producto}`),
+      cantidad: cantidadBalon,
+      precioUnitario: 0,
+      idUnidadMedida: balon.id_unidad_medida ?? null,
+      nombreUnidadMedida: balon.nombre_unidad_medida ?? null,
+      afectaStock: true,
+    })
+  }
+
+  lineas.push(...grupos.values())
+  if (grupos.size > 0) {
+    toastSuccess(
+      `${grupos.size} línea${grupos.size === 1 ? '' : 's'} de producto agregada${grupos.size === 1 ? '' : 's'} desde la orden de recarga. Completa el precio unitario.`,
+    )
+  }
+}
+
+// Se sincroniza una sola vez por orden seleccionada (no en cada refetch en
+// segundo plano de la query, para no pisar ediciones de cantidad/precio que
+// ya haya hecho el usuario sobre esas líneas).
+watch(
+  () => [idRecargaPlantaNum.value, recargaPlantaDetalleQuery.data.value] as const,
+  ([id, data]) => {
+    if (suppressRecargaPlantaReset.value) return
+
+    if (!id) {
+      quitarLineasDeRecargaPlanta()
+      recargaPlantaLineasSyncedFor.value = null
+      return
+    }
+
+    if (!data || data.id !== id) return
+    if (recargaPlantaLineasSyncedFor.value === id) return
+
+    recargaPlantaLineasSyncedFor.value = id
+    agregarLineasDesdeRecargaPlanta(data.detalles ?? [])
+  },
+)
 
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
@@ -964,7 +1190,6 @@ async function agregarProducto(producto: Producto) {
     esGas,
     afectaStock: Boolean(producto.afecta_stock),
   })
-  lineasError.value = ''
   toastSuccess(`${producto.nombre} agregado`)
 }
 
@@ -995,6 +1220,8 @@ function resetCreateForm() {
       serie: '',
       numero: '',
       idProveedor: '',
+      idRecargaPlanta: '',
+      guardarBalonesAlmacen: false,
       idAlmacen: '',
       idTipoComprobante: '',
       idTipoRegistro: '',
@@ -1006,16 +1233,19 @@ function resetCreateForm() {
       declararSunat: false,
     },
   })
+  recargaPlantaFilters.value = { pagina: 1, limite: 50 }
+  recargaPlantaLineasSyncedFor.value = null
   lineas.splice(0, lineas.length)
-  lineasError.value = ''
   proveedorBuscar.value = ''
   proveedorCreadoOption.value = null
   lineaProductoBuscar.value = ''
   lineaIdProducto.value = ''
 }
 
-function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.data.value>) {
+async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.data.value>) {
   const c = data.cabecera
+
+  suppressRecargaPlantaReset.value = true
 
   resetForm({
     values: {
@@ -1023,6 +1253,8 @@ function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.data.val
       serie: c.serie ?? '',
       numero: '',
       idProveedor: c.id_proveedor ?? '',
+      idRecargaPlanta: c.id_recarga_planta ?? '',
+      guardarBalonesAlmacen: false,
       idAlmacen: c.id_almacen ?? '',
       idTipoComprobante: c.id_tipo_comprobante ?? '',
       idTipoRegistro: c.id_tipo_registro ?? '',
@@ -1035,7 +1267,18 @@ function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.data.val
     },
   })
 
+  recargaPlantaFilters.value = {
+    pagina: 1,
+    limite: 50,
+    idProveedor: c.id_proveedor ?? undefined,
+  }
+
+  recargaPlantaLineasSyncedFor.value = c.id_recarga_planta ?? null
+
   proveedorBuscar.value = c.proveedor ?? ''
+
+  await nextTick()
+  suppressRecargaPlantaReset.value = false
 
   lineas.splice(
     0,
@@ -1055,7 +1298,6 @@ function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.data.val
         afectaStock: Boolean(d.afecta_stock),
       })),
   )
-  lineasError.value = ''
 }
 
 watch(
@@ -1070,7 +1312,7 @@ watch(
     }
 
     if (refData) {
-      prefillFromReferencia(refData)
+      void prefillFromReferencia(refData)
     }
   },
   { immediate: true },
@@ -1086,6 +1328,8 @@ watch(
         serie: '',
         numero: '',
         idProveedor: '',
+        idRecargaPlanta: '',
+        guardarBalonesAlmacen: false,
         idAlmacen: '',
         idTipoComprobante: '',
         idTipoRegistro: '',
@@ -1122,11 +1366,6 @@ const onSubmit = handleSubmit(async (values) => {
     return
   }
 
-  if (lineas.length === 0) {
-    lineasError.value = 'Agrega al menos un producto'
-    toastWarning('Agrega al menos un producto')
-    return
-  }
 
   const cantidadesOk = await validarCantidadesVeeValidate()
   if (!cantidadesOk) {
@@ -1146,7 +1385,6 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
   }
-  lineasError.value = ''
 
   const detalles = lineas.map((l) => ({
     idProducto: l.idProducto,
@@ -1161,6 +1399,8 @@ const onSubmit = handleSubmit(async (values) => {
     serie: String(values.serie ?? '').trim() || undefined,
     numero: String(values.numero ?? '').trim() || undefined,
     idProveedor: toOptionalNumber(values.idProveedor),
+    idRecargaPlanta: toOptionalNumber(values.idRecargaPlanta),
+    guardarBalonesAlmacen: toOptionalNumber(values.idRecargaPlanta) != null ? Boolean(values.guardarBalonesAlmacen) : undefined,
     idAlmacen: toOptionalNumber(values.idAlmacen),
     idTipoComprobante: toOptionalNumber(values.idTipoComprobante),
     idTipoRegistro: toOptionalNumber(values.idTipoRegistro),
