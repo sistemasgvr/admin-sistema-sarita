@@ -161,11 +161,11 @@
             />
           </DetailSectionCard>
 
-                    <DetailSectionCard
+          <DetailSectionCard
             title="Recarga en planta externa"
             :icon="ICONS.cylinder"
             :full-width="true"
-            help="Opcional. Si esta factura corresponde al despacho de una orden de recarga en planta externa, selecciónala: sus balones se agrupan por producto (gas) y se agregan como líneas al detalle, listas para ponerles precio."
+            help="Opcional. Vincula esta factura al costo de una orden de planta externa. Las líneas de gas se agrupan por producto para ponerles precio; el gas no ingresa a stock de productos (el inventario físico es el cilindro al retornar)."
           >
             <AppSelectSearch
               v-model="idRecargaPlanta"
@@ -185,19 +185,18 @@
                 class="mt-3"
               />
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Márcalo solo si los balones ya llegaron físicamente al almacén. Si aún están en
-                camino, déjalo sin marcar: la compra queda igual vinculada a la orden y luego
-                podrás registrar su ingreso desde el módulo de Recargas en planta.
+                Márcalo solo si los cilindros ya llegaron. Registra el retorno físico (En almacén /
+                Lleno). Si aún están en planta, deja sin marcar: la factura queda vinculada y el
+                retorno se completa desde Recargas → planta.
               </p>
 
               <div
                 v-if="guardarBalonesAlmacen"
                 class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
               >
-                Al registrar la compra, todos los balones de esta orden quedarán marcados como
-                <strong>llenos</strong> y ubicados en el almacén
-                <strong>{{ almacenSeleccionadoLabel ?? 'seleccionado en Clasificación y ubicación' }}</strong
-                ><template v-if="sucursalSeleccionadaLabel">, sucursal <strong>{{ sucursalSeleccionadaLabel }}</strong></template>.
+                Al guardar, los cilindros de la orden pasarán a
+                <strong>En almacén / Lleno</strong> (fecha de llegada = fecha de la compra). Esto no
+                crea stock de producto de gas; solo actualiza el libro de cilindros.
               </div>
             </template>
 
@@ -930,13 +929,6 @@ const idRecargaPlantaNum = computed(() =>
 const recargaPlantaDetalleQuery = useRecargaPlantaQuery(idRecargaPlantaNum)
 const recargaPlantaBalones = computed(() => recargaPlantaDetalleQuery.data.value?.detalles ?? [])
 
-const almacenSeleccionadoLabel = computed(
-  () => almacenOptions.value.find((o) => String(o.value) === String(idAlmacen.value))?.label ?? null,
-)
-const sucursalSeleccionadaLabel = computed(
-  () => sucursalOptions.value.find((o) => String(o.value) === String(idSucursal.value))?.label ?? null,
-)
-
 const suppressRecargaPlantaReset = ref(false)
 watch(idProveedor, (id) => {
   const idNum = id !== '' && id != null ? Number(id) : undefined
@@ -983,14 +975,15 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
       precioUnitario: 0,
       idUnidadMedida: balon.id_unidad_medida ?? null,
       nombreUnidadMedida: balon.nombre_unidad_medida ?? null,
-      afectaStock: true,
+      // Gas de planta: costo documental. No ingresa pro_stock (afecta_stock=false).
+      afectaStock: false,
     })
   }
 
   lineas.push(...grupos.values())
   if (grupos.size > 0) {
     toastSuccess(
-      `${grupos.size} línea${grupos.size === 1 ? '' : 's'} de producto agregada${grupos.size === 1 ? '' : 's'} desde la orden de recarga. Completa el precio unitario.`,
+      `${grupos.size} línea${grupos.size === 1 ? '' : 's'} de gas agregada${grupos.size === 1 ? '' : 's'} (sin stock de producto). Completa el precio unitario.`,
     )
   }
 }

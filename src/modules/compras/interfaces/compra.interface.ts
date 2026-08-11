@@ -6,7 +6,8 @@ export interface CompraListItem {
   numero: string | null
   fecha: string
   id_proveedor: number | null
-  nombre_proveedor: string | null
+  nombre_proveedor?: string | null
+  proveedor?: string | null
   id_almacen: number | null
   almacen: string | null
   sub_total: number | null

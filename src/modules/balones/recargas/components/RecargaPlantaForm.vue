@@ -211,7 +211,7 @@
           v-if="mode === 'edit'"
           title="Retorno y compra"
           :icon="ICONS.calendar"
-          help="Al indicar fecha de llegada los cilindros vuelven a En almacén LLENO. La compra solo se vincula (no se crea aquí)."
+          help="Fecha de llegada = retorno físico (En almacén / Lleno). La compra es la factura de costo del proveedor (módulo Compras); se vincula aquí y no mueve stock de productos de gas. Cerrado solo con compra + retorno."
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <GuiaRemisionSelectField
@@ -261,7 +261,7 @@
               :options="compraOptions"
               :loading="comprasQuery.isFetching.value"
               :disabled="isSubmitting"
-              hint="Ingreso documental vía módulo Compras."
+              hint="Factura de costo en Compras (productos/gas/gastos). No crea stock de gas."
             />
 
             <AppInput
@@ -441,14 +441,32 @@ const guiaSalidaBuscar = ref('')
 const guiaRetornoBuscar = ref('')
 const compraBuscar = ref('')
 
-const comprasFilters = ref({ buscar: '', pagina: 1, limite: 30 })
+const comprasFilters = ref<{
+  buscar: string
+  pagina: number
+  limite: number
+  idProveedor?: number
+  estado?: number
+}>({ buscar: '', pagina: 1, limite: 30, estado: 1 })
 
 let compraTimeout: ReturnType<typeof setTimeout> | undefined
+
+function syncComprasFilters(buscar = compraBuscar.value.trim(), proveedorRaw?: string | number | '') {
+  const proveedor =
+    proveedorRaw !== '' && proveedorRaw != null ? Number(proveedorRaw) : undefined
+  comprasFilters.value = {
+    buscar,
+    pagina: 1,
+    limite: 30,
+    estado: 1,
+    idProveedor: Number.isFinite(proveedor) ? proveedor : undefined,
+  }
+}
 
 watch(compraBuscar, (value) => {
   clearTimeout(compraTimeout)
   compraTimeout = setTimeout(() => {
-    comprasFilters.value = { buscar: value.trim(), pagina: 1, limite: 30 }
+    syncComprasFilters(value.trim(), idProveedor.value)
   }, 300)
 })
 
@@ -472,13 +490,15 @@ const returnToEditarOrden = computed(() =>
 )
 
 const compraOptions = computed<SelectOption[]>(() =>
-  (comprasQuery.data.value?.data ?? []).map((c) => ({
-    value: c.id,
-    label: [c.serie, c.numero].filter(Boolean).join('-') || `Compra #${c.id}`,
-    title: c.nombre_proveedor
-      ? `${[c.serie, c.numero].filter(Boolean).join('-')} · ${c.nombre_proveedor}`
-      : undefined,
-  })),
+  (comprasQuery.data.value?.data ?? []).map((c) => {
+    const doc = [c.serie, c.numero].filter(Boolean).join('-') || `Compra #${c.id}`
+    const proveedor = c.nombre_proveedor ?? c.proveedor
+    return {
+      value: c.id,
+      label: doc,
+      title: proveedor ? `${doc} · ${proveedor}` : undefined,
+    }
+  }),
 )
 
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
@@ -548,6 +568,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, setFieldValu
 const [fechaSalida, fechaSalidaAttrs] = defineField('fechaSalida')
 const [idProveedor] = defineField('idProveedor')
 const [idAlmacen] = defineField('idAlmacen')
+
+watch(idProveedor, (value) => syncComprasFilters(compraBuscar.value.trim(), value))
 const [serieGuiaSalida, serieGuiaSalidaAttrs] = defineField('serieGuiaSalida')
 const [numeroGuiaSalida, numeroGuiaSalidaAttrs] = defineField('numeroGuiaSalida')
 const [serieGuiaIngreso, serieGuiaIngresoAttrs] = defineField('serieGuiaIngreso')
