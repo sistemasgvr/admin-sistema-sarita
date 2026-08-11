@@ -178,6 +178,7 @@ interface LineaItem {
   descuento: number
   porcentajeIgv: number
   idAfectacionIgv?: number
+  idBalon?: number
 }
 
 const props = defineProps<{
@@ -377,6 +378,7 @@ watch(
       descuento: Number(detalle.descuento ?? 0),
       porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
       idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
+      idBalon: detalle.id_balon ?? undefined,
     }))
   },
 )
@@ -437,6 +439,7 @@ async function ejecutarCrear(row: ComprobanteListItem, origen: Comprobante, user
         porcentajeIgv: linea.porcentajeIgv,
         idAfectacionIgv: linea.idAfectacionIgv,
         descripcion: linea.descripcion,
+        idBalon: linea.idBalon || undefined,
       })),
     })
 

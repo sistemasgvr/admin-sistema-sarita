@@ -49,6 +49,8 @@ export interface ComprobanteDetalle {
   valor_venta?: number | null
   impuesto?: number | null
   importe?: number | null
+  id_balon?: number | null
+  codigo_balon?: string | null
 }
 
 export interface Comprobante extends ComprobanteListItem {
