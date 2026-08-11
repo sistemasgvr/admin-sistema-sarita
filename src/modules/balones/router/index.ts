@@ -157,6 +157,16 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'recojos',
+        name: 'admin-balones-recojos',
+        component: () => import('@/modules/balones/recojos/views/RecojosTabsView.vue'),
+        meta: {
+          title: 'Recojos',
+          module: 'balones',
+          permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
+        },
+      },
+      {
         path: 'alquileres/antiguedad',
         redirect: { name: 'admin-balones-alquileres', query: { tab: 'antiguedad' } },
       },
@@ -225,6 +235,17 @@ export const balonesRoutes: RouteRecordRaw[] = [
           title: 'Mantenimientos',
           module: 'balones',
           permission: PermisoBanderas.MANTENIMIENTOS_BALON_LISTAR,
+        },
+      },
+      {
+        path: 'rutas-pueblos',
+        name: 'admin-balones-rutas-pueblos',
+        component: () =>
+          import('@/modules/balones/rutas-pueblos/views/RutasPueblosListView.vue'),
+        meta: {
+          title: 'Ruta pueblos',
+          module: 'balones',
+          permission: PermisoBanderas.RUTAS_PUEBLOS_LISTAR,
         },
       },
       {

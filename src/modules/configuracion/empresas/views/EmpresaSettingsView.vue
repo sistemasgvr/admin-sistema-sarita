@@ -81,6 +81,33 @@
             :error="errors.email"
           />
         </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <AppInput
+            v-model="tolerancia_m3_ruta_pueblo"
+            label="Tolerancia ruta pueblos (m³)"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.5"
+            help="Al cerrar una ruta, avisa si el gas calculado y el reportado difieren más de este valor."
+            v-bind="toleranciaAttrs"
+            :disabled="!canSave || isSubmitting"
+            :error="errors.tolerancia_m3_ruta_pueblo"
+          />
+          <AppInput
+            v-model="psi_minimo_util"
+            label="PSI mínimo útil"
+            type="number"
+            step="1"
+            min="0"
+            placeholder="100"
+            help="Si la presión del cilindro es menor, se considera vacío / enviar a planta."
+            v-bind="psiMinimoAttrs"
+            :disabled="!canSave || isSubmitting"
+            :error="errors.psi_minimo_util"
+          />
+        </div>
       </form>
 
       <div
@@ -129,7 +156,7 @@ import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composab
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { optionalEmail, optionalString, requiredString } from '@/shared/validation'
+import { optionalEmail, optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
 const authStore = useAuthStore()
 const breadcrumbItems = configuracionBreadcrumbItems('Empresa')
@@ -146,6 +173,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       direccion: optionalString(),
       telefono: optionalString(),
       email: optionalEmail(),
+      tolerancia_m3_ruta_pueblo: optionalNumber(),
+      psi_minimo_util: optionalNumber(),
     }),
   ),
   initialValues: {
@@ -155,6 +184,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     direccion: '',
     telefono: '',
     email: '',
+    tolerancia_m3_ruta_pueblo: 0.5 as number | undefined,
+    psi_minimo_util: 100 as number | undefined,
   },
 })
 
@@ -164,6 +195,8 @@ const [nombre_comercial, nombreComercialAttrs] = defineField('nombre_comercial')
 const [direccion, direccionAttrs] = defineField('direccion')
 const [telefono, telefonoAttrs] = defineField('telefono')
 const [email, emailAttrs] = defineField('email')
+const [tolerancia_m3_ruta_pueblo, toleranciaAttrs] = defineField('tolerancia_m3_ruta_pueblo')
+const [psi_minimo_util, psiMinimoAttrs] = defineField('psi_minimo_util')
 
 const isLoading = computed(() => empresaQuery.isFetching.value)
 const empresa = computed(() => empresaQuery.data.value ?? null)
@@ -186,6 +219,14 @@ const syncFormValues = () => {
       direccion: empresa.value?.direccion ?? '',
       telefono: empresa.value?.telefono ?? '',
       email: empresa.value?.email ?? '',
+      tolerancia_m3_ruta_pueblo:
+        empresa.value?.tolerancia_m3_ruta_pueblo != null
+          ? Number(empresa.value.tolerancia_m3_ruta_pueblo)
+          : 0.5,
+      psi_minimo_util:
+        empresa.value?.psi_minimo_util != null
+          ? Number(empresa.value.psi_minimo_util)
+          : 100,
     },
   })
 }
@@ -201,6 +242,12 @@ const onSubmit = handleSubmit(async (values) => {
       direccion: values.direccion || undefined,
       telefono: values.telefono || undefined,
       email: values.email || undefined,
+      toleranciaM3RutaPueblo:
+        values.tolerancia_m3_ruta_pueblo != null
+          ? Number(values.tolerancia_m3_ruta_pueblo)
+          : undefined,
+      psiMinimoUtil:
+        values.psi_minimo_util != null ? Number(values.psi_minimo_util) : undefined,
     }
 
     if (isEditMode.value && empresa.value) {

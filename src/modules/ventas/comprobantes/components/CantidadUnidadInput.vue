@@ -7,8 +7,8 @@
     :min="minCantidadPorUnidad(nombreUnidad, esGas)"
     :step="stepInputCantidadPorUnidad(nombreUnidad, esGas)"
     :disabled="disabled"
-    :error="errorMessage || undefined"
-    :hint="hint"
+    :error="resolvedError"
+    :hint="resolvedHint"
     @update:model-value="onInput"
     @blur="onBlur"
   />
@@ -33,6 +33,8 @@ const props = withDefaults(
     esGas?: boolean | null
     label?: string
     hint?: string
+    /** Error externo (ej. cantidad > capacidad del cilindro). Tiene prioridad. */
+    error?: string
     disabled?: boolean
   }>(),
   {
@@ -40,6 +42,7 @@ const props = withDefaults(
     nombreUnidad: null,
     esGas: null,
     hint: undefined,
+    error: undefined,
     disabled: false,
   },
 )
@@ -75,6 +78,9 @@ const { value, errorMessage, handleBlur, setValue, validate, meta } = useField<n
     standalone: true,
   },
 )
+
+const resolvedError = computed(() => props.error || errorMessage.value || undefined)
+const resolvedHint = computed(() => (props.error ? undefined : props.hint))
 
 watch(
   () => props.modelValue,

@@ -4,6 +4,8 @@ import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuer
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
+import { useCondicionesPagoQuery } from '@/modules/configuracion/condiciones-pago/composables/useCondicionesPagoQuery'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import {
   CODIGO_VENTA_SIN_DOC,
@@ -11,6 +13,7 @@ import {
   esNotaVentaCodigo,
 } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import {
   seriePorDefectoDesdeCodigo,
   tipoRequiereRuc,
@@ -72,6 +75,11 @@ export function usePosComprobanteForm(options?: {
   const clienteDescripcion = ref('')
   const clienteSeleccionadoCache = ref<Cliente | null>(null)
   const clientesVarios = ref<Cliente | null>(null)
+  const idCondicionPago = ref<number | ''>('')
+  const idMedioPago = ref<number | ''>('')
+
+  const condicionesPagoFilters = ref({ pagina: 1, limite: 100 })
+  const condicionesPagoQuery = useCondicionesPagoQuery(condicionesPagoFilters)
 
   const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
   const canPrint = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_LISTAR))
@@ -155,6 +163,75 @@ export function usePosComprobanteForm(options?: {
     return opcion?.id
   })
 
+  const condicionPagoOptions = computed(() =>
+    (condicionesPagoQuery.data.value?.data ?? []).map((item) => {
+      const cuotas = Number(item.numero_cuotas ?? 0)
+      const dias = Number(item.dias_credito ?? 0)
+      let extra = ''
+      if (cuotas > 1) {
+        extra = `${cuotas} cuotas · día ${item.dia_mes_pago ?? '—'}`
+      } else if (dias > 0) {
+        extra = `${dias} días`
+      }
+      return {
+        value: item.id,
+        label: extra ? `${item.nombre} (${extra})` : item.nombre,
+      }
+    }),
+  )
+
+  const condicionPagoSeleccionada = computed(
+    () =>
+      (condicionesPagoQuery.data.value?.data ?? []).find(
+        (item) => item.id === Number(idCondicionPago.value),
+      ) ?? null,
+  )
+
+  const esVentaCredito = computed(() => {
+    const c = condicionPagoSeleccionada.value
+    if (!c) return false
+    return Number(c.dias_credito ?? 0) > 0 || Number(c.numero_cuotas ?? 0) > 1
+  })
+
+  const diasCredito = computed(() =>
+    Number(condicionPagoSeleccionada.value?.dias_credito ?? 0),
+  )
+
+  const numeroCuotasCondicion = computed(() =>
+    Number(condicionPagoSeleccionada.value?.numero_cuotas ?? 0),
+  )
+
+  const diaMesPagoCondicion = computed(() =>
+    Number(condicionPagoSeleccionada.value?.dia_mes_pago ?? 0),
+  )
+
+  const fechaVencimiento = computed(() => {
+    if (!esVentaCredito.value || !fecha.value) return ''
+    if (diasCredito.value > 0) return addDaysIso(fecha.value, diasCredito.value)
+    // Cuotas sin demora: el backend calcula el próximo día_mes_pago
+    return ''
+  })
+
+  const medioPagoOptions = computed(() =>
+    (catalogosQuery.data.value?.mediosPago ?? []).map((item) => ({
+      value: item.id,
+      label: (item.nombre ?? '').replace(/_/g, ' '),
+    })),
+  )
+
+  watch(
+    () => condicionesPagoQuery.data.value?.data,
+    (lista) => {
+      if (!lista?.length || idCondicionPago.value) return
+      const contado =
+        lista.find((item) => (item.codigo ?? '').toUpperCase() === 'CONTADO') ??
+        lista.find((item) => Number(item.dias_credito) === 0) ??
+        lista[0]
+      if (contado) idCondicionPago.value = contado.id
+    },
+    { immediate: true },
+  )
+
   async function refrescarSiguienteNumero() {
     if (!idTipoComprobante.value || !serie.value.trim()) {
       numero.value = ''
@@ -223,6 +300,15 @@ export function usePosComprobanteForm(options?: {
   function mensajeValidacionComprobante(): string | null {
     if (!idTipoComprobante.value) return 'Selecciona el tipo de comprobante'
     if (!idCliente.value) return 'Selecciona un cliente'
+    if (!idCondicionPago.value) return 'Selecciona la condición de pago'
+
+    if (esVentaCredito.value) {
+      if (esClientesVarios(clienteSeleccionado.value)) {
+        return 'No se puede vender a crédito a Clientes Varios. Selecciona un cliente identificado'
+      }
+    } else if (!idMedioPago.value) {
+      return 'Selecciona el medio de pago (contado)'
+    }
 
     const codigo = codigoTipoComprobante.value
     const serieOrigen = options?.serieOrigen?.() ?? null
@@ -298,6 +384,12 @@ export function usePosComprobanteForm(options?: {
     clienteDescripcion.value = ''
     aplicarClientesVariosPorDefecto()
     fecha.value = new Date().toISOString().slice(0, 10)
+    idMedioPago.value = ''
+    const contado = (condicionesPagoQuery.data.value?.data ?? []).find(
+      (item) =>
+        (item.codigo ?? '').toUpperCase() === 'CONTADO' || Number(item.dias_credito) === 0,
+    )
+    idCondicionPago.value = contado?.id ?? idCondicionPago.value
     await refrescarSiguienteNumero()
   }
 
@@ -326,6 +418,8 @@ export function usePosComprobanteForm(options?: {
     fecha,
     idCliente,
     clienteDescripcion,
+    idCondicionPago,
+    idMedioPago,
     canEmit,
     canPrint,
     canCreateCliente,
@@ -335,6 +429,13 @@ export function usePosComprobanteForm(options?: {
     clienteOptions,
     clienteSeleccionado,
     clientesVarios,
+    condicionPagoOptions,
+    medioPagoOptions,
+    esVentaCredito,
+    diasCredito,
+    numeroCuotasCondicion,
+    diaMesPagoCondicion,
+    fechaVencimiento,
     idAfectacionGravado,
     idMonedaPen,
     idTipoOperacionVentaInterna,

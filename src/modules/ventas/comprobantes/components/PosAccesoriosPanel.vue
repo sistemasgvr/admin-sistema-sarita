@@ -140,7 +140,17 @@
 
       <PosResumenAside
         v-model:glosa="glosa"
+        v-model:id-condicion-pago="idCondicionPago"
+        v-model:id-medio-pago="idMedioPago"
         :totales="totales"
+        :condicion-pago-options="condicionPagoOptions"
+        :medio-pago-options="medioPagoOptions"
+        :es-venta-credito="esVentaCredito"
+        :dias-credito="diasCredito"
+        :numero-cuotas="numeroCuotasCondicion"
+        :dia-mes-pago="diaMesPagoCondicion"
+        :fecha-vencimiento="fechaVencimiento"
+        :motivo-no-guardar="motivoNoGuardar"
         :puede-guardar="puedeGuardar"
         :guardando="createMutation.isPending.value"
         :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
@@ -210,16 +220,24 @@ const {
   numero,
   fecha,
   idCliente,
+  idCondicionPago,
+  idMedioPago,
   canEmit,
   canPrint,
   canCreateCliente,
   tipoComprobanteOptions,
   esNotaVenta,
   clienteOptions,
+  condicionPagoOptions,
+  medioPagoOptions,
+  esVentaCredito,
+  diasCredito,
+  numeroCuotasCondicion,
+  diaMesPagoCondicion,
+  fechaVencimiento,
   idAfectacionGravado,
   idMonedaPen,
   idTipoOperacionVentaInterna,
-  comprobanteBaseValido,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
@@ -451,19 +469,26 @@ const totales = computed(() => {
   return calcularTotalesDesdeImporte(importeConIgv)
 })
 
-const puedeGuardar = computed(
-  () =>
-    comprobanteBaseValido() &&
-    lineasActivas.value.length > 0 &&
-    (!requiereAlmacen.value || Boolean(idAlmacen.value)) &&
-    lineasActivas.value.every(
-      (linea) =>
-        !validarCantidadSegunUnidad(
-          Number(linea.cantidad),
-          linea.nombreUnidadMedida ?? 'UNID',
-        ),
-    ),
-)
+const motivoNoGuardar = computed(() => {
+  if (comprobanteGuardadoId.value) return null
+  const base = mensajeValidacionComprobante()
+  if (base) return base
+  if (!lineasActivas.value.length) return 'Añade al menos un ítem'
+  if (requiereAlmacen.value && !idAlmacen.value) return 'Selecciona el almacén'
+  for (const linea of lineasActivas.value) {
+    if (
+      validarCantidadSegunUnidad(
+        Number(linea.cantidad),
+        linea.nombreUnidadMedida ?? 'UNID',
+      )
+    ) {
+      return `${linea.nombre}: cantidad inválida para la unidad`
+    }
+  }
+  return null
+})
+
+const puedeGuardar = computed(() => !comprobanteGuardadoId.value && motivoNoGuardar.value === null)
 
 function crearLineaDesdeProducto(producto: Producto): PosLineItem {
   return {
@@ -575,6 +600,9 @@ async function guardarComprobante() {
     })),
     idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
     idMoneda: idMonedaPen.value,
+    idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
+    idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+    fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
     glosa: glosa.value || undefined,
     observaciones: clienteDescripcion.value || undefined,
     origenPos: OrigenPos.ACCESORIOS,

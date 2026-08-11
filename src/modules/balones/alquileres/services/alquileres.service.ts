@@ -12,9 +12,21 @@ import type {
   RenovarAlquilerPayload,
 } from '@/modules/balones/alquileres/interfaces/alquiler-periodo.interface'
 
+export interface SiguienteNumeroAlquilerResponse {
+  anio: number | null
+  ultimo: string | null
+  numero: string | null
+}
+
 export const alquileresService = {
   listar(filters: AlquilerListFilters = {}) {
     return apiGetPaginated<Alquiler>('/balones/alquileres', { params: filters })
+  },
+
+  obtenerSiguienteNumero(anio?: number) {
+    return apiGet<SiguienteNumeroAlquilerResponse>('/balones/alquileres/siguiente-numero', {
+      params: anio != null ? { anio } : undefined,
+    })
   },
 
   obtenerPorId(id: number) {

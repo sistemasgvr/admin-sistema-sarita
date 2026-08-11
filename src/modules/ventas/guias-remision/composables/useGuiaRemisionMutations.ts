@@ -25,14 +25,24 @@ function toastEstadoSunat(prefix: string, estado: string) {
   toastError(`${prefix}: ${estado || 'RECHAZADO'}`)
 }
 
+function mensajeGuiaGuardada(
+  accion: 'registrada' | 'actualizada',
+  detalles?: { idBalon?: number }[],
+) {
+  const conCilindros = (detalles ?? []).some((d) => Boolean(d.idBalon))
+  return conCilindros
+    ? `Guía de remisión ${accion}. Salida de cilindros registrada.`
+    : `Guía de remisión ${accion}`
+}
+
 export function useCreateGuiaRemisionMutation() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (payload: CreateGuiaRemisionPayload) => guiasRemisionService.crear(payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.all })
-      toastSuccess('Guía de remisión registrada')
+      toastSuccess(mensajeGuiaGuardada('registrada', variables.detalles))
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar la guía')
@@ -49,7 +59,7 @@ export function useUpdateGuiaRemisionMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: guiasRemisionQueryKeys.detail(variables.id) })
-      toastSuccess('Guía de remisión actualizada')
+      toastSuccess(mensajeGuiaGuardada('actualizada', variables.payload.detalles))
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo actualizar la guía')

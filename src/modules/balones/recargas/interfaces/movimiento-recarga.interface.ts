@@ -59,7 +59,27 @@ export interface OrigenRecargaFilters {
   idProductoGas: number
   capacidad?: number
   idAlmacen?: number
+  idBalonPreferido?: number
   limite?: number
+}
+
+/** Slice de un balón empresa en una asignación FIFO multi-origen. */
+export interface OrigenRecargaAsignado {
+  id_balon: number
+  codigo_balon: string
+  cantidad: number
+  capacidad_disponible: number
+  capacidad_tipo?: number | null
+  nombre_almacen?: string | null
+  orden: number
+}
+
+export interface AsignacionOrigenesRecarga {
+  origenes: OrigenRecargaAsignado[]
+  requerido?: number
+  idBalonOrigenPrincipal?: number
+  etiqueta?: string
+  totalDisponible?: number
 }
 
 export interface MovimientoRecargaListFilters {
@@ -105,7 +125,8 @@ export interface VincularRecargaClienteComprobantePayload {
   capacidad?: number
   idAlmacen?: number
   observacion?: string
-  idBalonOrigen: number
+  /** Preferido / primer origen; el backend completa el resto por FIFO si hace falta. */
+  idBalonOrigen?: number
 }
 
 export interface CreateRecargaClientePayload {
@@ -119,9 +140,12 @@ export interface CreateRecargaClientePayload {
   serie?: string
   capacidad?: number
   idMedioPago?: number
+  idCondicionPago?: number
+  fechaVencimiento?: string
   idAlmacen?: number
   observacion?: string
-  idBalonOrigen: number
+  /** Preferido / primer origen; el backend completa el resto por FIFO si hace falta. */
+  idBalonOrigen?: number
 }
 
 export interface RecargaClienteResult {

@@ -15,15 +15,22 @@
         @submit="onSubmit"
       >
         <FormCardsLayout>
-          <DetailSectionCard title="Datos generales" :icon="ICONS.clipboardList">
+          <DetailSectionCard
+            title="Datos generales"
+            :icon="ICONS.clipboardList"
+            :help="
+              isCreateMode
+                ? 'El número se genera automáticamente (correlativo). El estado inicia en Activo.'
+                : undefined
+            "
+          >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="numeroAlquiler"
                 label="Número de alquiler"
-                placeholder="Ej. ALQ-2026-001"
-                required
+                placeholder="Cargando correlativo..."
                 v-bind="numeroAlquilerAttrs"
-                :disabled="isSubmitting"
+                :disabled="isSubmitting || isCreateMode || cargandoNumero"
                 :error="errors.numeroAlquiler"
               />
 
@@ -31,10 +38,14 @@
                 v-model="idEstado"
                 label="Estado"
                 placeholder="Selecciona estado"
-                optional
                 v-bind="idEstadoAttrs"
-                :disabled="isSubmitting || estadosAlquilerQuery.isFetching.value"
+                :disabled="
+                  isSubmitting ||
+                  estadosAlquilerQuery.isFetching.value ||
+                  isCreateMode
+                "
                 :options="estadoAlquilerOptions"
+                :hint="isCreateMode ? 'Activo por defecto' : undefined"
               />
 
               <ClienteSelectField
@@ -53,7 +64,11 @@
             </div>
           </DetailSectionCard>
 
-          <DetailSectionCard title="Vigencia" :icon="ICONS.calendar">
+          <DetailSectionCard
+            title="Vigencia"
+            :icon="ICONS.calendar"
+            help="La fecha de fin pactada es obligatoria para programar el retorno / recojo."
+          >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <AppInput
                 v-model="fechaInicio"
@@ -69,9 +84,10 @@
                 v-model="fechaFinPactada"
                 label="Fin pactado"
                 type="date"
-                optional
+                required
                 v-bind="fechaFinPactadaAttrs"
                 :disabled="isSubmitting"
+                :error="errors.fechaFinPactada"
               />
 
               <AppInput
@@ -86,23 +102,46 @@
           </DetailSectionCard>
 
           <DetailSectionCard
-            title="Regulador y cobro"
+            title="Producto y cobro"
             :icon="ICONS.creditCard"
-            help="En medicinal el contrato rastrea el regulador (servicio alquilable). Los cilindros se agregan después de crear la cabecera."
+            help="Solo productos alquilables con stock disponible en el almacén seleccionado. Si afecta stock, se descuenta 1 unidad al crear. La garantía/depósito es opcional: se sugiere desde precio_garantia del producto o catálogo; déjala en 0 si no se cobra."
           >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ProductoSelectField
                 v-model="idProductoRegulador"
-                v-model:search="reguladorBuscar"
-                label="Regulador (servicio alquilable)"
-                placeholder="Selecciona servicio alquilable"
+                v-model:search="productoAlquilableBuscar"
+                label="Producto alquilable"
+                placeholder="Selecciona producto alquilable"
                 search-placeholder="Código o nombre..."
-                :es-servicio="true"
                 :es-alquilable="true"
-                :options="reguladorOptions"
-                :disabled="isSubmitting"
+                :id-almacen="idAlmacen === '' || idAlmacen == null ? undefined : Number(idAlmacen)"
+                :options="productoAlquilableOptions"
+                :bloquear-sin-stock="isCreateMode"
+                :disabled="isSubmitting || (isCreateMode && !idAlmacen)"
+                :required="isCreateMode"
                 class="sm:col-span-2"
               />
+
+              <AppInput
+                v-if="isCreateMode"
+                v-model="montoGarantia"
+                label="Garantía / depósito"
+                type="number"
+                :min="NUMBER_MIN.money"
+                :step="NUMBER_STEP.money"
+                :disabled="isSubmitting"
+              />
+
+              <div
+                v-if="isCreateMode && Number(montoGarantia || 0) > 0"
+                class="sm:col-span-2"
+              >
+                <GarantiaRecepcionFields
+                  v-model:id-medio-pago="idMedioPagoGarantia"
+                  v-model:observacion="observacionGarantia"
+                  :disabled="isSubmitting"
+                />
+              </div>
 
               <AppInput
                 v-model="tarifaDiaria"
@@ -184,10 +223,10 @@
 
       <DetailSectionCard
         v-if="activeAlquilerId"
-        title="Cilindros vinculados (préstamo)"
+        title="Cilindros vinculados"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="El alquiler cobra el regulador. Si entregas envase, regístralo aquí solo como vínculo físico; la custodia correcta es préstamo (preferible desde POS / módulo Préstamos)."
+        help="Recojos lista cilindros pendientes de devolver. Si este alquiler no tiene cilindros vinculados, no aparecerá en Pendientes de recojo."
       >
         <template #actions>
           <button
@@ -201,8 +240,14 @@
           </button>
         </template>
 
-        <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-          {{ detalleRows.length }} cilindro(s) vinculado(s). Preferible usar Préstamos para la custodia del envase.
+        <p
+          v-if="detalleRows.length === 0"
+          class="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          0 cilindros: este alquiler no sale en Recojos hasta que vincules al menos uno.
+        </p>
+        <p v-else class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+          {{ detalleRows.length }} cilindro(s) vinculado(s).
         </p>
 
         <AppTable
@@ -238,12 +283,14 @@
 
       <DetailSectionCard
         v-else-if="isCreateMode"
-        title="Cilindros vinculados (préstamo)"
+        title="Cilindros vinculados"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="Paso 1: crea el alquiler del regulador. El cilindro se presta (módulo Préstamos o POS); aquí solo puedes vincularlo después si hace falta."
+        help="Tras guardar podrás vincular cilindros. Recojos solo muestra cilindros pendientes de devolver (si el alquiler queda en 0 cilindros, no aparece en Pendientes)."
       >
-        <p class="text-center text-sm text-gray-400 dark:text-gray-500">Sin cilindros vinculados</p>
+        <p class="text-center text-sm text-gray-400 dark:text-gray-500">
+          Primero guarda el alquiler; luego agrega cilindros si corresponde.
+        </p>
       </DetailSectionCard>
     </div>
 
@@ -308,6 +355,8 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
+import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
 import {
   useCreateAlquilerMutation,
   useUpdateAlquilerMutation,
@@ -315,6 +364,9 @@ import {
 import { useDeleteAlquilerDetalleMutation } from '@/modules/balones/alquileres/composables/useAlquilerDetalleMutations'
 import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
+import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
+import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
+import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import AlquilerDetalleFormModal from '@/modules/balones/alquileres/components/AlquilerDetalleFormModal.vue'
 import AlquilerDevolverModal from '@/modules/balones/alquileres/components/AlquilerDevolverModal.vue'
 import type { AlquilerFormMode } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
@@ -341,6 +393,8 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { toastApiError, toastWarning } from '@/shared/composables/useToast'
+import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import {
   optionalNumber,
   optionalString,
@@ -369,6 +423,7 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 const createMutation = useCreateAlquilerMutation()
+const cargandoNumero = ref(false)
 const updateMutation = useUpdateAlquilerMutation()
 const deleteDetalleMutation = useDeleteAlquilerDetalleMutation()
 
@@ -401,6 +456,13 @@ const estadoAlquilerOptions = computed(() => [
   { value: '', label: 'Sin estado' },
   ...toSelectOptions(estadosAlquilerQuery.data.value),
 ])
+
+const idEstadoActivo = computed(
+  () =>
+    estadosAlquilerQuery.data.value?.find(
+      (item) => (item.nombre ?? '').toUpperCase() === 'ACTIVO',
+    )?.id ?? null,
+)
 
 const canCreateDetalle = computed(() =>
   authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_CREAR),
@@ -471,11 +533,11 @@ const optionalSelectNumber = () =>
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      numeroAlquiler: requiredString('El número de alquiler').max(30, 'Máximo 30 caracteres'),
+      numeroAlquiler: optionalString().max(30, 'Máximo 30 caracteres'),
       idCliente: requiredSelect('El cliente'),
       idAlmacen: requiredSelect('El almacén'),
       fechaInicio: requiredString('La fecha de inicio'),
-      fechaFinPactada: optionalString(),
+      fechaFinPactada: requiredString('La fecha de fin'),
       fechaFinReal: optionalString(),
       tarifaDiaria: optionalNumber().min(0, 'Debe ser mayor o igual a cero'),
       totalCobrado: optionalNumber().min(0, 'Debe ser mayor o igual a cero'),
@@ -514,17 +576,64 @@ const [observacion, observacionAttrs] = defineField('observacion')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
 const [idProductoRegulador] = defineField('idProductoRegulador')
 
-const reguladorBuscar = ref('')
-const reguladorOptions = computed(() => {
+watch(
+  () => [isCreateMode.value, idEstadoActivo.value] as const,
+  ([create, activoId]) => {
+    if (!create || !activoId) return
+    if (!idEstado.value) idEstado.value = activoId
+  },
+  { immediate: true },
+)
+
+const productoAlquilableBuscar = ref('')
+const montoGarantia = ref<number | string>(0)
+const idMedioPagoGarantia = ref<string | number>('')
+const observacionGarantia = ref('')
+
+const productoAlquilableOptions = computed(() => {
   const data = alquilerQuery.data.value
-  if (!data?.id_producto_regulador || !data.nombre_producto_regulador) return []
+  const id = data?.id_producto_regulador ?? data?.id_producto_stock
+  const nombre = data?.nombre_producto_regulador ?? data?.nombre_producto_stock
+  const codigo = data?.codigo_producto_regulador ?? data?.codigo_producto_stock
+  if (!id || !nombre) return []
   return [
     {
-      value: data.id_producto_regulador,
-      label: `${data.codigo_producto_regulador ? `${data.codigo_producto_regulador} — ` : ''}${data.nombre_producto_regulador}`,
+      value: id,
+      label: `${codigo ? `${codigo} — ` : ''}${nombre}`,
     },
   ]
 })
+
+async function prefillMontoGarantia(productoId: number) {
+  try {
+    const prod = await productosService.obtenerPorId(productoId)
+    let sugerido = Number(prod.precio_garantia ?? 0)
+
+    try {
+      const catalogo = await catalogoPreciosService.listar({
+        idProducto: productoId,
+        pagina: 1,
+        limite: 5,
+      })
+      const conGarantia = (catalogo.data ?? []).find(
+        (row) => row.precio_garantia != null && Number(row.precio_garantia) > 0,
+      )
+      if (conGarantia) {
+        sugerido = Number(conGarantia.precio_garantia)
+      }
+    } catch {
+      // sin catálogo
+    }
+
+    if (tarifaDiaria.value == null || Number(tarifaDiaria.value) === 0) {
+      tarifaDiaria.value = Number(prod.precio ?? 0) || undefined
+    }
+
+    montoGarantia.value = sugerido
+  } catch {
+    montoGarantia.value = 0
+  }
+}
 
 const toOptionalNumber = (value: string | number | undefined) =>
   value !== '' && value != null ? Number(value) : undefined
@@ -574,9 +683,21 @@ const syncFormValues = () => {
       idEstado: data.id_estado ?? '',
       observacion: data.observacion ?? '',
       idComprobanteVenta: data.id_comprobante_venta ?? undefined,
-      idProductoRegulador: data.id_producto_regulador ?? '',
+      idProductoRegulador: data.id_producto_regulador ?? data.id_producto_stock ?? '',
     },
   })
+}
+
+async function cargarSiguienteNumero() {
+  cargandoNumero.value = true
+  try {
+    const result = await alquileresService.obtenerSiguienteNumero()
+    numeroAlquiler.value = result.numero?.trim() || ''
+  } catch {
+    numeroAlquiler.value = ''
+  } finally {
+    cargandoNumero.value = false
+  }
 }
 
 const resetCreateForm = () => {
@@ -590,12 +711,16 @@ const resetCreateForm = () => {
       fechaFinReal: '',
       tarifaDiaria: undefined,
       totalCobrado: undefined,
-      idEstado: '',
+      idEstado: idEstadoActivo.value ?? '',
       observacion: '',
       idComprobanteVenta: undefined,
       idProductoRegulador: '',
     },
   })
+  montoGarantia.value = 0
+  idMedioPagoGarantia.value = ''
+  observacionGarantia.value = ''
+  void cargarSiguienteNumero()
 }
 
 const resetFormState = () => {
@@ -618,16 +743,89 @@ const onSubmit = handleSubmit(async (values) => {
     if (isCreateMode.value) {
       const cliente = toOptionalNumber(values.idCliente)
       const almacen = toOptionalNumber(values.idAlmacen)
-      if (!values.numeroAlquiler || !cliente || !almacen || !values.fechaInicio) return
+      const productoId = toOptionalNumber(values.idProductoRegulador)
+      if (!cliente || !almacen || !values.fechaInicio) return
+      if (!values.fechaFinPactada) {
+        toastWarning('Indica la fecha de fin del alquiler')
+        return
+      }
+      if (values.fechaFinPactada < values.fechaInicio) {
+        toastWarning('La fecha de fin no puede ser anterior al inicio')
+        return
+      }
+      if (!productoId) {
+        toastWarning('Selecciona el producto alquilable')
+        return
+      }
+
+      const garantiaPendiente = Math.max(0, Number(montoGarantia.value || 0))
+      if (garantiaPendiente > 0 && !idMedioPagoGarantia.value) {
+        toastWarning('Indica el medio con el que se recibe la garantía')
+        return
+      }
+
+      let idProductoStock: number | undefined
+      try {
+        const listado = await productosService.listar({
+          esAlquilable: true,
+          idAlmacen: almacen,
+          pagina: 1,
+          limite: 200,
+          soloActivos: 1,
+        })
+        const producto =
+          (listado.data ?? []).find((item) => item.id === productoId) ??
+          (await productosService.obtenerPorId(productoId))
+
+        if (producto.afecta_stock && !producto.es_servicio && !producto.es_gas) {
+          if (producto.stock_actual != null && Number(producto.stock_actual) <= 0) {
+            toastWarning(`${producto.nombre} no tiene stock disponible en el almacén`)
+            return
+          }
+          idProductoStock = productoId
+        }
+      } catch {
+        // sin detalle de stock: solo registra el producto alquilable
+      }
 
       const created = await createMutation.mutateAsync({
         ...fields,
         idUsuarioAuditoria: currentUserId,
-        numeroAlquiler: values.numeroAlquiler,
+        numeroAlquiler: values.numeroAlquiler?.trim() || undefined,
         idCliente: cliente,
         idAlmacen: almacen,
         fechaInicio: values.fechaInicio,
+        fechaFinPactada: values.fechaFinPactada,
+        idEstado: toOptionalNumber(values.idEstado) ?? idEstadoActivo.value ?? undefined,
+        idProductoRegulador: productoId,
+        idProductoStock,
       })
+
+      const garantia = Math.max(0, Number(montoGarantia.value || 0))
+      if (garantia > 0) {
+        try {
+          await garantiasService.crear({
+            idUsuarioAuditoria: currentUserId,
+            idCliente: cliente,
+            monto: garantia,
+            idAlquiler: created.id,
+            idProducto: productoId,
+            idComprobante: values.idComprobanteVenta
+              ? Number(values.idComprobanteVenta)
+              : undefined,
+            fechaRegistro: values.fechaInicio,
+            idMedioPago: Number(idMedioPagoGarantia.value),
+            observacion:
+              observacionGarantia.value.trim() ||
+              `Garantía alquiler ${created.numero_alquiler || created.id}`,
+          })
+        } catch (error) {
+          toastApiError(
+            error,
+            'Alquiler creado, pero falló el registro de la garantía',
+          )
+        }
+      }
 
       activeAlquilerId.value = created.id
       internalMode.value = 'edit'
@@ -747,4 +945,25 @@ watch(
     }
   },
 )
+
+watch(idProductoRegulador, (value) => {
+  if (!isCreateMode.value) return
+  const id = Number(value)
+  if (!id) {
+    montoGarantia.value = 0
+    idMedioPagoGarantia.value = ''
+    observacionGarantia.value = ''
+    return
+  }
+  void prefillMontoGarantia(id)
+})
+
+watch(idAlmacen, (nuevo, anterior) => {
+  if (!isCreateMode.value) return
+  if (nuevo === anterior) return
+  idProductoRegulador.value = ''
+  montoGarantia.value = 0
+  idMedioPagoGarantia.value = ''
+  observacionGarantia.value = ''
+})
 </script>

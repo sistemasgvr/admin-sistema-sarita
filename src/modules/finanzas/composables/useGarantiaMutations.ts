@@ -45,22 +45,9 @@ export function useReembolsarGarantiaMutation() {
       finanzasService.reembolsarGarantia(id, payload),
     onSuccess: () => {
       invalidate()
-      toastSuccess('Reembolso registrado correctamente')
+      toastSuccess('Devolución de garantía registrada')
     },
-    onError: (error) => toastApiError(error, 'No se pudo registrar el reembolso'),
-  })
-}
-
-export function useAnularReembolsoGarantiaMutation() {
-  const invalidate = useInvalidate()
-  return useMutation({
-    mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria?: number }) =>
-      finanzasService.anularReembolsoGarantia(id, idUsuarioAuditoria),
-    onSuccess: () => {
-      invalidate()
-      toastSuccess('Reembolso anulado correctamente')
-    },
-    onError: (error) => toastApiError(error, 'No se pudo anular el reembolso'),
+    onError: (error) => toastApiError(error, 'No se pudo registrar la devolución'),
   })
 }
 

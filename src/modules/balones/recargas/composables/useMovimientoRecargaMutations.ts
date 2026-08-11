@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { movimientosRecargaQueryKeys } from '@/modules/balones/recargas/constants/movimientosRecargaQueryKeys'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import type {
@@ -41,6 +42,7 @@ export function useCreateRecargaClienteMutation() {
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.detail(variables.idBalon) })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.phHistorial(variables.idBalon) })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Recarga registrada y comprobante generado')
     },
     onError: (error) => {

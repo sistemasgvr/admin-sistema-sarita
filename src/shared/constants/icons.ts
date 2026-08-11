@@ -65,6 +65,7 @@ export const ICONS = {
   phone: 'lucide:phone',
   mail: 'lucide:mail',
   car: 'lucide:car',
+  truck: 'lucide:truck',
   star: 'lucide:star',
   inbox: 'lucide:inbox',
   alertCircle: 'lucide:alert-circle',
@@ -88,6 +89,8 @@ export const ICONS = {
   wallet: 'lucide:wallet',
   banknote: 'lucide:banknote',
   userCheck: 'lucide:user-check',
+  bookOpen: 'lucide:book-open',
+  cashRegister: 'lucide:calculator',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]

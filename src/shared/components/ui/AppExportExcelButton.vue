@@ -6,10 +6,12 @@
     @click="handleClick"
   >
     <AppIcon
-      :name="isExporting ? ICONS.loader : ICONS.download"
+      v-if="isExporting"
+      :name="ICONS.loader"
       :size="18"
-      :class="{ 'animate-spin': isExporting }"
+      class="animate-spin"
     />
+    <IconExcel v-else class="h-[18px] w-[18px] shrink-0" />
     {{ isExporting ? 'Exportando...' : label }}
   </button>
 </template>
@@ -17,6 +19,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import IconExcel from '@/shared/components/IconExcel.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { toastApiError } from '@/shared/composables/useToast'
 

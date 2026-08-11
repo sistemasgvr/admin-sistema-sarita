@@ -58,10 +58,23 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Gas', value: data.nombre_gas },
         { label: 'Código gas', value: data.codigo_gas },
         {
-          label: 'Capacidad',
+          label: 'Capacidad (m³)',
           value: formatDetailCapacity(data.capacidad, data.nombre_unidad_medida),
         },
-        { label: 'Peso', value: data.peso != null ? `${data.peso} kg` : undefined },
+        {
+          label: 'Capacidad llena (lb)',
+          value: data.capacidad_lb != null ? `${data.capacidad_lb} lb` : undefined,
+        },
+        { label: 'Peso tara', value: data.peso != null ? `${data.peso} kg` : undefined },
+        {
+          label: 'Peso tara (lb)',
+          value: data.peso_tara_lb != null ? `${data.peso_tara_lb} lb` : undefined,
+        },
+        {
+          label: 'Presión llenado',
+          value:
+            data.presion_llenado_psi != null ? `${data.presion_llenado_psi} PSI` : undefined,
+        },
         {
           label: 'Vigencia P.H.',
           value: data.vigencia_ph_anios != null ? `${data.vigencia_ph_anios} años` : undefined,

@@ -226,6 +226,33 @@
                 Los gases no usan Productos / Stock accesorios; la cantidad sale de los cilindros.
               </p>
             </div>
+            <div
+              v-if="tipoItem === 'producto' && esGas"
+              class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
+            >
+              <AppInput
+                v-model="factorKgM3"
+                label="Factor kg / m³"
+                type="number"
+                min="0"
+                step="0.000001"
+                placeholder="Ej. 0.75"
+                help="m³ de gas por 1 kg (ficha técnica)."
+                :disabled="isSubmitting"
+                :error="errors.factorKgM3"
+              />
+              <AppInput
+                v-model="factorLbM3"
+                label="Factor lb / m³"
+                type="number"
+                min="0"
+                step="0.000001"
+                placeholder="Ej. 0.3174"
+                help="m³ de gas por 1 lb. Fallback si el tipo no tiene capacidad lb."
+                :disabled="isSubmitting"
+                :error="errors.factorLbM3"
+              />
+            </div>
             <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
               {{ ayudaCaracteristicas }}
             </p>
@@ -268,7 +295,7 @@
             v-bind="precioGarantiaAttrs"
             :disabled="isSubmitting"
             :error="errors.precioGarantia"
-            hint="Industrial: depósito reembolsable. Medicinal alquilable: opcional."
+            help="Depósito reembolsable al prestar cilindro (industrial) o alquilar. Prefill en POS; se puede dejar en 0."
           />
         </div>
       </DetailSectionCard>
@@ -473,6 +500,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
         precio: optionalNumber().min(0, 'El precio de venta no puede ser negativo'),
         precioCompra: optionalNumber().min(0, 'El precio de compra no puede ser negativo'),
         precioGarantia: optionalNumber().min(0, 'La garantía no puede ser negativa'),
+        factorKgM3: optionalNumber().min(0, 'El factor kg / m³ no puede ser negativo'),
+        factorLbM3: optionalNumber().min(0, 'El factor lb / m³ no puede ser negativo'),
       }),
     ),
     initialValues: {
@@ -492,6 +521,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
       precio: undefined as number | undefined,
       precioCompra: undefined as number | undefined,
       precioGarantia: undefined as number | undefined,
+      factorKgM3: undefined as number | undefined,
+      factorLbM3: undefined as number | undefined,
     },
   })
 
@@ -511,6 +542,8 @@ const [afectaStock] = defineField('afectaStock')
 const [precio, precioAttrs] = defineField('precio')
 const [precioCompra, precioCompraAttrs] = defineField('precioCompra')
 const [precioGarantia, precioGarantiaAttrs] = defineField('precioGarantia')
+const [factorKgM3] = defineField('factorKgM3')
+const [factorLbM3] = defineField('factorLbM3')
 
 const subCategoriaOptions = computed(() =>
   subCategorias.value
@@ -567,6 +600,8 @@ function syncFormFromProducto() {
       precio: data.precio ?? undefined,
       precioCompra: data.precio_compra ?? undefined,
       precioGarantia: data.precio_garantia ?? undefined,
+      factorKgM3: data.factor_kg_m3 != null ? Number(data.factor_kg_m3) : undefined,
+      factorLbM3: data.factor_lb_m3 != null ? Number(data.factor_lb_m3) : undefined,
     },
   })
   formHydrated.value = true
@@ -699,6 +734,14 @@ const onSubmit = handleSubmit(async (formValues) => {
       precio: formValues.precio ?? 0,
       precioCompra: esServicioValue ? 0 : (formValues.precioCompra ?? 0),
       precioGarantia: formValues.precioGarantia ?? 0,
+      factorKgM3:
+        !esServicioValue && formValues.esGas && formValues.factorKgM3 != null
+          ? Number(formValues.factorKgM3)
+          : undefined,
+      factorLbM3:
+        !esServicioValue && formValues.esGas && formValues.factorLbM3 != null
+          ? Number(formValues.factorLbM3)
+          : undefined,
     }
 
     let productoGuardado: Producto

@@ -53,12 +53,17 @@
       </template>
 
       <template #cell-capacidad_disponible="{ row }">
-        <AppBadge
-          size="sm"
-          :color="row.tiene_stock_disponible ? 'success' : 'neutral'"
-        >
-          {{ formatCapacidad(row.capacidad_disponible, row.nombre_unidad_medida) }}
-        </AppBadge>
+        <div class="space-y-1">
+          <AppBadge
+            size="sm"
+            :color="row.tiene_stock_disponible ? 'success' : 'neutral'"
+          >
+            {{ formatCapacidad(row.capacidad_disponible, row.nombre_unidad_medida || 'm³') }}
+          </AppBadge>
+          <p class="text-theme-xs text-gray-500 dark:text-gray-400">
+            {{ formatCapacidad(row.capacidad_disponible_lb, 'lb') }}
+          </p>
+        </div>
       </template>
 
       <template #cell-balones_llenos="{ value }">
@@ -185,8 +190,15 @@ const resumen = computed(
 const resumenCards = computed<SummaryCardItem[]>(() => [
   {
     key: 'capacidad',
-    label: 'Capacidad disponible',
-    value: formatCapacidad(resumen.value.capacidad_disponible, null),
+    label: 'Stock disponible (m³)',
+    value: formatCapacidad(resumen.value.capacidad_disponible, 'm³'),
+    icon: ICONS.gauge,
+    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
+  },
+  {
+    key: 'capacidad_lb',
+    label: 'Stock disponible (lb)',
+    value: formatCapacidad(resumen.value.capacidad_disponible_lb, 'lb'),
     icon: ICONS.gauge,
     iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
   },
@@ -203,13 +215,6 @@ const resumenCards = computed<SummaryCardItem[]>(() => [
     value: String(resumen.value.balones_vacios ?? 0),
     icon: ICONS.archive,
     iconClass: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
-  },
-  {
-    key: 'fuera',
-    label: 'Llenos fuera de almacén',
-    value: String(resumen.value.balones_llenos_fuera ?? 0),
-    icon: ICONS.alertTriangle,
-    iconClass: 'bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300',
   },
 ])
 
@@ -230,7 +235,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 const columns = computed<TableColumn<StockGasRow>[]>(() => [
   { key: 'producto', label: 'Gas' },
   { key: 'nombre_almacen', label: 'Almacén' },
-  { key: 'capacidad_disponible', label: 'Stock disponible', cellClass: 'whitespace-nowrap' },
+  { key: 'capacidad_disponible', label: 'Stock m³ / lb', cellClass: 'whitespace-nowrap' },
   { key: 'balones_llenos', label: 'Llenos', cellClass: 'whitespace-nowrap' },
   { key: 'balones_vacios', label: 'Vacíos', cellClass: 'whitespace-nowrap' },
   { key: 'balones_llenos_fuera', label: 'Llenos fuera', cellClass: 'whitespace-nowrap' },

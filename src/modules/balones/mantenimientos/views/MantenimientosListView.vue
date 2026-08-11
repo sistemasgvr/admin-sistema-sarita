@@ -27,9 +27,22 @@
 
       <template #cell-codigo_balon="{ row }">
         <div>
-          <p class="font-medium text-gray-800 dark:text-white/90">{{ row.codigo_balon }}</p>
+          <p class="font-medium text-gray-800 dark:text-white/90">
+            {{
+              row.tipo_origen === 'PRODUCTO' || row.id_producto
+                ? [row.codigo_producto, row.nombre_producto].filter(Boolean).join(' — ') ||
+                  'Regulador / accesorio'
+                : row.codigo_balon || '—'
+            }}
+          </p>
           <p
-            v-if="(row.nombre_propietario ?? '').toUpperCase() === 'CLIENTE'"
+            v-if="row.tipo_origen === 'PRODUCTO' || row.id_producto"
+            class="text-xs text-gray-500 dark:text-gray-400"
+          >
+            Regulador / accesorio
+          </p>
+          <p
+            v-else-if="(row.nombre_propietario ?? '').toUpperCase() === 'CLIENTE'"
             class="text-xs text-gray-500 dark:text-gray-400"
           >
             Propio de
@@ -116,7 +129,13 @@
       <p class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas eliminar el mantenimiento del cilindro
         <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ mantenimientoToDelete?.codigo_balon }}
+          {{
+            mantenimientoToDelete?.codigo_producto
+              ? [mantenimientoToDelete.codigo_producto, mantenimientoToDelete.nombre_producto]
+                  .filter(Boolean)
+                  .join(' — ')
+              : mantenimientoToDelete?.codigo_balon
+          }}
         </span>
         con ingreso el
         <span class="font-medium text-gray-800 dark:text-white/90">
@@ -238,7 +257,7 @@ const isLoading = computed(
 const rows = computed(() => mantenimientosQuery.data.value?.data ?? [])
 
 const columns: TableColumn[] = [
-  { key: 'codigo_balon', label: 'Cilindro' },
+  { key: 'codigo_balon', label: 'Cilindro / producto' },
   { key: 'nombre_tipo_mantenimiento', label: 'Tipo' },
   { key: 'vigencia', label: 'Ingreso / Salida' },
   { key: 'costo', label: 'Costo' },

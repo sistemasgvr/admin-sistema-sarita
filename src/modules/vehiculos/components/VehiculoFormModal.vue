@@ -3,9 +3,13 @@
     v-model="open"
     :title="mode === 'create' ? 'Nuevo vehículo' : 'Editar vehículo'"
     :subtitle="
-      mode === 'create'
-        ? 'Registra un vehículo, asignado o no a un cliente.'
-        : 'Actualiza los datos del vehículo seleccionado.'
+      soloEmpresa
+        ? mode === 'create'
+          ? 'Registra un vehículo de la flota propia de la empresa.'
+          : 'Actualiza los datos del vehículo de la empresa.'
+        : mode === 'create'
+          ? 'Registra un vehículo del cliente / proveedor.'
+          : 'Actualiza los datos del vehículo seleccionado.'
     "
     size="lg"
     @close="handleClose"
@@ -18,6 +22,7 @@
     >
       <div class="grid gap-3 sm:grid-cols-2">
         <SearchableSelect
+          v-if="!soloEmpresa"
           v-model="idCliente"
           label="Cliente / Proveedor dueño"
           placeholder="Busca por razón social, nombres o documento..."
@@ -25,7 +30,7 @@
           :clearable="false"
           :model-label="clienteLabelActual"
           v-bind="idClienteAttrs"
-          :disabled="isSubmitting"
+          :disabled="isSubmitting || Boolean(defaultClienteId)"
           :error="errors.idCliente"
           :search-fn="searchClientes"
         />
@@ -179,16 +184,20 @@ import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { optionalString, requiredSelect, requiredString } from '@/shared/validation'
+import { optionalString, requiredString } from '@/shared/validation'
 
 interface VehiculoFormModalProps {
   mode: VehiculoFormMode
   vehiculo?: Vehiculo | null
   defaultClienteId?: number | null
   defaultClienteLabel?: string | null
+  /** Configuración empresa: flota propia (id_cliente NULL). */
+  soloEmpresa?: boolean
 }
 
-const props = defineProps<VehiculoFormModalProps>()
+const props = withDefaults(defineProps<VehiculoFormModalProps>(), {
+  soloEmpresa: false,
+})
 
 const open = defineModel<boolean>({ default: false })
 
@@ -249,7 +258,14 @@ const clienteLabelActual = computed(() => {
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      idCliente: requiredSelect('El cliente'),
+      idCliente: yup
+        .number()
+        .nullable()
+        .optional()
+        .test('cliente-requerido', 'El cliente es obligatorio', (value) => {
+          if (props.soloEmpresa) return true
+          return value != null && Number(value) > 0
+        }),
       idTipoVehiculo: yup.number().required('El tipo de vehículo es obligatorio'),
       placa: requiredString('La placa'),
       placa2: optionalString(),
@@ -320,7 +336,11 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
       idUsuarioAuditoria: currentUserId,
-      idCliente: Number(values.idCliente),
+      idCliente: props.soloEmpresa
+        ? undefined
+        : values.idCliente
+          ? Number(values.idCliente)
+          : undefined,
       idTipoVehiculo: Number(values.idTipoVehiculo),
       placa: values.placa,
       placa2: values.placa2 || undefined,

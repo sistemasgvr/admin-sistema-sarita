@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Choferes" :items="breadcrumbItems" />
+    <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <AppSummaryChips :chips="summaryChips" />
 
@@ -95,7 +95,10 @@
       v-model="formModalOpen"
       :mode="formMode"
       :chofer="selectedChofer"
-      :default-cliente-id="idClienteFiltro ? Number(idClienteFiltro) : null"
+      :solo-empresa="soloEmpresa"
+      :default-cliente-id="
+        soloEmpresa ? null : idClienteFiltro ? Number(idClienteFiltro) : null
+      "
       @saved="onChoferSaved"
     />
 
@@ -165,19 +168,30 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
+import { configuracionBreadcrumbItems } from '@/modules/configuracion/config/configuracion-breadcrumb'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
+/** Sentinel API: id_cliente IS NULL (flota / cuentas de empresa). */
+const ID_CLIENTE_EMPRESA = -1
+
 const authStore = useAuthStore()
 const route = useRoute()
 
-const breadcrumbItems: BreadcrumbItem[] = [
-  { label: 'Flota' },
-  { label: 'Choferes' },
-]
+const soloEmpresa = computed(() => Boolean(route.meta.soloEmpresa))
+const pageTitle = computed(() =>
+  soloEmpresa.value ? 'Choferes de la empresa' : 'Choferes',
+)
+const breadcrumbItems = computed(() =>
+  soloEmpresa.value
+    ? configuracionBreadcrumbItems('Choferes')
+    : [
+        { label: 'Clientes', to: '/admin/clientes' },
+        { label: 'Choferes' },
+      ],
+)
 
 const idClienteFiltro = ref<string | number>('')
 const buscar = ref('')
@@ -223,6 +237,7 @@ const filters = ref<ChoferListFilters>({
   pagina: 1,
   limite: 10,
   isActivos: 1,
+  idCliente: soloEmpresa.value ? ID_CLIENTE_EMPRESA : undefined,
 })
 
 const choferesQuery = useChoferesQuery(filters)
@@ -231,7 +246,11 @@ const deleteMutation = useDeleteChoferMutation()
 // --- Chips de resumen (total / activos / inactivos, respetando búsqueda y cliente) ---
 const breakdownFiltersBase = computed<ChoferListFilters>(() => ({
   buscar: buscar.value.trim(),
-  idCliente: idClienteFiltro.value ? Number(idClienteFiltro.value) : undefined,
+  idCliente: soloEmpresa.value
+    ? ID_CLIENTE_EMPRESA
+    : idClienteFiltro.value
+      ? Number(idClienteFiltro.value)
+      : undefined,
   pagina: 1,
   limite: 1,
 }))
@@ -289,16 +308,25 @@ const getClienteNombre = (chofer: Chofer) => {
   return nombreCompleto || chofer.cliente_numero_documento || 'Sin cliente asignado'
 }
 
-const columns = computed<TableColumn<Chofer>[]>(() => [
-  { key: 'chofer', label: 'Chofer' },
-  { key: 'cliente', label: 'Cliente / Proveedor' },
-  { key: 'telefono', label: 'Teléfono' },
-  { key: 'estado', label: 'Estado' },
-])
+const columns = computed<TableColumn<Chofer>[]>(() => {
+  const cols: TableColumn<Chofer>[] = [{ key: 'chofer', label: 'Chofer' }]
+  if (!soloEmpresa.value) {
+    cols.push({ key: 'cliente', label: 'Cliente / Proveedor' })
+  }
+  cols.push(
+    { key: 'telefono', label: 'Teléfono' },
+    { key: 'estado', label: 'Estado' },
+  )
+  return cols
+})
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
+  if (soloEmpresa.value) {
+    filters.value = { ...filters.value, idCliente: ID_CLIENTE_EMPRESA }
+    return
+  }
   const idClienteQuery = route.query.idCliente
   if (idClienteQuery) {
     idClienteFiltro.value = Number(idClienteQuery)
@@ -306,6 +334,7 @@ onMounted(() => {
 })
 
 watch(idClienteFiltro, (value) => {
+  if (soloEmpresa.value) return
   pagina.value = 1
   filters.value = {
     ...filters.value,

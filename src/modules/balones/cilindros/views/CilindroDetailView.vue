@@ -26,9 +26,20 @@
         <AppBadge v-if="balon?.estado_ph" :color="phBadgeColor">
           PH {{ phBadgeLabel }}
         </AppBadge>
+        <AppBadge v-if="alertaPsiBajo" color="warning">PSI bajo / vacío</AppBadge>
       </template>
 
       <template #extra>
+        <div
+          v-if="alertaPsiBajo"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+        >
+          Presión actual
+          <strong>{{ Number(balon?.presion_actual) }} PSI</strong>
+          por debajo del mínimo útil
+          (<strong>{{ psiMinimoUtil }} PSI</strong>). Considerar envío a planta de llenado.
+        </div>
+
         <div
           v-if="balon?.tiene_solicitud_baja_pendiente"
           class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
@@ -84,12 +95,79 @@
         </DetailSectionCard>
 
         <DetailSectionCard
+          title="Historial de movimientos"
+          :icon="ICONS.history"
+          :full-width="true"
+        >
+          <template #actions>
+            <RouterLink
+              to="/admin/balones/movimientos"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+            >
+              <AppIcon :name="ICONS.list" :size="14" />
+              Movimientos
+            </RouterLink>
+          </template>
+          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Salidas, entradas y recargas (incl. planta externa) registradas para este cilindro.
+          </p>
+          <div v-if="movimientoHistorialRows.length" class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr
+                  class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800"
+                >
+                  <th class="pb-2 pr-4">Fecha</th>
+                  <th class="pb-2 pr-4">Tipo</th>
+                  <th class="pb-2 pr-4">Origen / destino</th>
+                  <th class="pb-2 pr-4">Cliente</th>
+                  <th class="pb-2">Observación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="item in movimientoHistorialRows"
+                  :key="item.id"
+                  class="border-b border-gray-50 dark:border-gray-800/80"
+                >
+                  <td class="py-2 pr-4 whitespace-nowrap">
+                    {{ formatDetailDateTime(item.fecha_movimiento) }}
+                  </td>
+                  <td class="py-2 pr-4 whitespace-nowrap">
+                    <ListaOpcionBadge
+                      v-if="item.nombre_tipo_movimiento"
+                      :value="item.nombre_tipo_movimiento"
+                    />
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="py-2 pr-4 whitespace-nowrap text-gray-600 dark:text-gray-400">
+                    {{ item.nombre_almacen_origen || '—' }}
+                    <span class="text-gray-400">/</span>
+                    {{ item.nombre_almacen_destino || '—' }}
+                  </td>
+                  <td
+                    class="py-2 pr-4 max-w-[10rem] truncate"
+                    :title="item.nombre_cliente || undefined"
+                  >
+                    {{ item.nombre_cliente || '—' }}
+                  </td>
+                  <td class="py-2 max-w-[14rem] truncate" :title="item.observacion || undefined">
+                    {{ item.observacion || '—' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p v-else class="text-sm text-gray-400">Sin movimientos registrados.</p>
+        </DetailSectionCard>
+
+        <DetailSectionCard
           title="Historial de préstamos"
           :icon="ICONS.arrowLeftRight"
           :full-width="true"
         >
           <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-            Comodato / préstamo de envase (garantía). No es lo mismo que un alquiler con tarifa.
+            Custodia del envase (comodato / garantía). El cilindro se presta; no se alquila.
           </p>
           <div v-if="prestamoHistorialRows.length" class="overflow-x-auto">
             <table class="min-w-full text-sm">
@@ -134,7 +212,11 @@
                     {{ formatDetailDate(item.fecha_devolucion) || '—' }}
                   </td>
                   <td class="py-2 whitespace-nowrap">
-                    {{ formatDetailListaOpcion(item.nombre_estado) || '—' }}
+                    <ListaOpcionBadge
+                      v-if="item.nombre_estado"
+                      :value="item.nombre_estado"
+                    />
+                    <span v-else class="text-gray-400">—</span>
                   </td>
                 </tr>
               </tbody>
@@ -144,14 +226,16 @@
         </DetailSectionCard>
 
         <DetailSectionCard
-          title="Historial de alquileres"
+          v-if="alquilerHistorialRows.length"
+          title="Alquiler de regulador (legado)"
           :icon="ICONS.receipt"
           :full-width="true"
         >
           <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-            Contratos de alquiler de regulador asociados a este cilindro (el envase se presta; no se alquila).
+            Vínculos antiguos donde el cilindro figuraba en un detalle de alquiler. Hoy el regulador
+            se alquila aparte y el envase va por préstamo.
           </p>
-          <div v-if="alquilerHistorialRows.length" class="overflow-x-auto">
+          <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
               <thead>
                 <tr
@@ -194,13 +278,16 @@
                     {{ formatDetailMoney(item.tarifa_diaria) || '—' }}
                   </td>
                   <td class="py-2 whitespace-nowrap">
-                    {{ formatDetailListaOpcion(item.nombre_estado) || '—' }}
+                    <ListaOpcionBadge
+                      v-if="item.nombre_estado"
+                      :value="item.nombre_estado"
+                    />
+                    <span v-else class="text-gray-400">—</span>
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <p v-else class="text-sm text-gray-400">Sin alquileres registrados.</p>
         </DetailSectionCard>
 
         <DetailSectionCard
@@ -357,8 +444,10 @@ import {
   usePhHistorialQuery,
 } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import type { TipoEventoEstadoBalon } from '@/modules/balones/cilindros/interfaces/balon.interface'
+import { useMovimientosBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
+import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
@@ -368,7 +457,7 @@ import {
   formatDetailMoney,
 } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
-import { AppBadge } from '@/shared/components'
+import { AppBadge, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
@@ -385,7 +474,13 @@ const balonIdRef = toRef(() => {
 const balonQuery = useBalonQuery(balonIdRef)
 const phHistorialQuery = usePhHistorialQuery(balonIdRef)
 const estadoHistorialQuery = useEstadoHistorialQuery(balonIdRef)
+const empresaQuery = useEmpresaActualQuery()
 
+const movimientosFilters = computed(() => ({
+  idBalon: balonIdRef.value ?? undefined,
+  pagina: 1,
+  limite: 50,
+}))
 const prestamosFilters = computed(() => ({
   idBalon: balonIdRef.value ?? undefined,
   pagina: 1,
@@ -396,6 +491,7 @@ const alquileresFilters = computed(() => ({
   pagina: 1,
   limite: 50,
 }))
+const movimientosHistorialQuery = useMovimientosBalonQuery(movimientosFilters)
 const prestamosHistorialQuery = usePrestamosDetalleQuery(prestamosFilters)
 const alquileresHistorialQuery = useAlquileresDetalleQuery(alquileresFilters)
 
@@ -404,13 +500,28 @@ const isLoading = computed(
     balonQuery.isFetching.value ||
     phHistorialQuery.isFetching.value ||
     estadoHistorialQuery.isFetching.value ||
+    movimientosHistorialQuery.isFetching.value ||
     prestamosHistorialQuery.isFetching.value ||
     alquileresHistorialQuery.isFetching.value,
 )
 
 const balon = computed(() => balonQuery.data.value ?? null)
+
+const psiMinimoUtil = computed(() => {
+  const raw = empresaQuery.data.value?.psi_minimo_util
+  const n = raw != null ? Number(raw) : 100
+  return Number.isFinite(n) ? n : 100
+})
+
+const alertaPsiBajo = computed(() => {
+  const psi = balon.value?.presion_actual
+  if (psi == null) return false
+  return Number(psi) < psiMinimoUtil.value
+})
+
 const phHistorialRows = computed(() => phHistorialQuery.data.value?.data ?? [])
 const estadoHistorialRows = computed(() => estadoHistorialQuery.data.value?.data ?? [])
+const movimientoHistorialRows = computed(() => movimientosHistorialQuery.data.value?.data ?? [])
 const prestamoHistorialRows = computed(() => prestamosHistorialQuery.data.value?.data ?? [])
 const alquilerHistorialRows = computed(() => alquileresHistorialQuery.data.value?.data ?? [])
 
@@ -519,7 +630,27 @@ const sections = computed<DetailSection[]>(() => {
             ? 'No aplica'
             : data.nombre_organo_inspector,
         },
-        { label: 'Presión actual', value: data.presion_actual?.toString() },
+        {
+          label: 'Residual gas (m³)',
+          value:
+            data.capacidad_restante != null
+              ? `${Number(data.capacidad_restante).toFixed(4)} m³`
+              : undefined,
+        },
+        {
+          label: 'Residual gas (lb)',
+          value:
+            data.capacidad_restante_lb != null
+              ? `${Number(data.capacidad_restante_lb).toFixed(2)} lb`
+              : undefined,
+        },
+        {
+          label: 'Presión actual',
+          value:
+            data.presion_actual != null
+              ? `${Number(data.presion_actual)} PSI`
+              : undefined,
+        },
       ],
     },
     {

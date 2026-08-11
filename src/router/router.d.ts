@@ -7,6 +7,8 @@ declare module 'vue-router' {
     requiresAuth?: boolean
     permission?: string
     module?: string
+    /** Listados de flota/cuentas propios (id_cliente IS NULL). */
+    soloEmpresa?: boolean
   }
 }
 

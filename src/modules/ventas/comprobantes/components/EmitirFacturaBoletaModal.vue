@@ -149,6 +149,7 @@ import {
 import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { type CodigoTipoComprobanteSunat, seriePorDefectoDesdeCodigo, validarSerieParaTipo } from '@/modules/ventas/comprobantes/utils/serieComprobante'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
@@ -177,6 +178,7 @@ interface LineaItem {
   descuento: number
   porcentajeIgv: number
   idAfectacionIgv?: number
+  idBalon?: number
 }
 
 const props = defineProps<{
@@ -209,6 +211,7 @@ const origenQuery = useComprobanteQuery(origenId)
 
 const serie = ref('')
 const fecha = ref(new Date().toISOString().slice(0, 10))
+const { assertCajaAbierta } = useCajaAbiertaRequerida(fecha)
 const emitirTrasCrear = ref(true)
 const observaciones = ref('')
 const lineas = ref<LineaItem[]>([])
@@ -375,6 +378,7 @@ watch(
       descuento: Number(detalle.descuento ?? 0),
       porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
       idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
+      idBalon: detalle.id_balon ?? undefined,
     }))
   },
 )
@@ -389,6 +393,8 @@ async function confirm() {
   const userId = authStore.user?.id
 
   if (!row || !origen || !userId || !canSave.value) return
+
+  if (!assertCajaAbierta()) return
 
   const serieError = validarSerieParaTipo(codigoTipo.value, serie.value)
   if (serieError) {
@@ -433,6 +439,7 @@ async function ejecutarCrear(row: ComprobanteListItem, origen: Comprobante, user
         porcentajeIgv: linea.porcentajeIgv,
         idAfectacionIgv: linea.idAfectacionIgv,
         descripcion: linea.descripcion,
+        idBalon: linea.idBalon || undefined,
       })),
     })
 

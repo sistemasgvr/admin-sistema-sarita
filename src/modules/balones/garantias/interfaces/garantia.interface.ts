@@ -21,6 +21,8 @@ export interface Garantia {
   id_prestamo?: number | null
   numero_prestamo?: string | null
   titulo_prestamo?: string | null
+  id_alquiler?: number | null
+  numero_alquiler?: string | null
   ubicacion?: string | null
   id_producto?: number | null
   codigo_producto?: string | null
@@ -48,6 +50,7 @@ export interface GarantiaListFilters {
   limite?: number
   idCliente?: number
   idPrestamo?: number
+  idAlquiler?: number
   idEstado?: number
 }
 
@@ -57,12 +60,15 @@ export interface CreateGarantiaPayload {
   monto: number
   idComprobante?: number
   idPrestamo?: number
+  idAlquiler?: number
   idProducto?: number
   ubicacion?: string
   cantidadVenta?: number
   idUnidadMedida?: number
   fechaRegistro?: string
   observacion?: string
+  /** Medio con el que se recibe el depósito. */
+  idMedioPago?: number
 }
 
 export interface DevolverGarantiaPayload {

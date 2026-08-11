@@ -85,6 +85,11 @@ const model = defineModel<number | ''>({ default: '' })
 /** Etiqueta legible del cilindro seleccionado (código · tipo · …). */
 const etiqueta = defineModel<string>('etiqueta', { default: '' })
 
+const emit = defineEmits<{
+  /** Balón completo de la lista actual (capacidad, gas, etc.). */
+  selected: [balon: Balon | null]
+}>()
+
 const authStore = useAuthStore()
 const balonModalOpen = ref(false)
 
@@ -118,12 +123,13 @@ const {
   selectionLocked: selectionLockedRef,
 })
 
-const resolvedEmptyText = computed(() => {
-  if (props.selectionLocked) {
-    return 'Primero selecciona el tipo de movimiento.'
-  }
-  return props.emptyText
-})
+const resolvedEmptyText = computed(() => props.emptyText)
+
+function resolveSelectedBalon(): Balon | null {
+  if (!model.value) return null
+  const rows = balonesQuery.data.value?.data ?? []
+  return rows.find((item) => item.id === Number(model.value)) ?? null
+}
 
 function syncEtiqueta() {
   if (!model.value) {
@@ -132,6 +138,10 @@ function syncEtiqueta() {
   }
   const opt = balonOptions.value.find((item) => item.value === model.value)
   etiqueta.value = opt?.title || opt?.label || etiqueta.value
+}
+
+function emitSelected() {
+  emit('selected', resolveSelectedBalon())
 }
 
 watch(
@@ -168,6 +178,7 @@ watch(
 watch(balonOptions, (options) => {
   if (!model.value) {
     etiqueta.value = ''
+    emitSelected()
     return
   }
   if (balonesQuery.isLoading.value || balonesQuery.isFetching.value) return
@@ -175,13 +186,16 @@ watch(balonOptions, (options) => {
   if (!stillValid) {
     model.value = ''
     etiqueta.value = ''
+    emitSelected()
     return
   }
   syncEtiqueta()
+  emitSelected()
 })
 
 watch(model, () => {
   syncEtiqueta()
+  emitSelected()
 })
 
 function onBalonCreated(balon: Balon) {
@@ -189,5 +203,6 @@ function onBalonCreated(balon: Balon) {
   balonBuscar.value = balon.codigo_balon
   etiqueta.value = balon.codigo_balon
   syncBalonFilters()
+  emit('selected', balon)
 }
 </script>

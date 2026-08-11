@@ -58,6 +58,40 @@ export const configuracionRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'choferes',
+        name: 'admin-configuracion-choferes',
+        component: () => import('@/modules/choferes/views/ChoferesListView.vue'),
+        meta: {
+          title: 'Choferes de la empresa',
+          module: 'configuracion',
+          permission: PermisoBanderas.CHOFERES_LISTAR,
+          soloEmpresa: true,
+        },
+      },
+      {
+        path: 'vehiculos',
+        name: 'admin-configuracion-vehiculos',
+        component: () => import('@/modules/vehiculos/views/VehiculosListView.vue'),
+        meta: {
+          title: 'Vehículos de la empresa',
+          module: 'configuracion',
+          permission: PermisoBanderas.VEHICULOS_LISTAR,
+          soloEmpresa: true,
+        },
+      },
+      {
+        path: 'cuentas-bancarias',
+        name: 'admin-configuracion-cuentas-bancarias',
+        component: () =>
+          import('@/modules/cuentas-bancarias/views/CuentasBancariasListView.vue'),
+        meta: {
+          title: 'Cuentas bancarias de la empresa',
+          module: 'configuracion',
+          permission: PermisoBanderas.CUENTAS_BANCARIAS_LISTAR,
+          soloEmpresa: true,
+        },
+      },
+      {
         path: 'sunat',
         name: 'admin-configuracion-sunat',
         component: () => import('@/modules/configuracion/sunat/views/SunatSettingsView.vue'),

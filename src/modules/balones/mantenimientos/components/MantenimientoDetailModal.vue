@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Detalle del mantenimiento"
-    :subtitle="mantenimiento?.codigo_balon ?? undefined"
+    :subtitle="subtitulo ?? undefined"
     size="xl"
   >
     <DetailCardsLayout :loading="isLoading" :sections="sections">
@@ -81,6 +81,21 @@ const mantenimientoQuery = useMantenimientoQuery(mantenimientoIdRef)
 
 const isLoading = computed(() => mantenimientoQuery.isFetching.value)
 const mantenimiento = computed(() => mantenimientoQuery.data.value ?? null)
+const esProducto = computed(
+  () =>
+    mantenimiento.value?.tipo_origen === 'PRODUCTO' || Boolean(mantenimiento.value?.id_producto),
+)
+const subtitulo = computed(() => {
+  const data = mantenimiento.value
+  if (!data) return undefined
+  if (esProducto.value) {
+    return (
+      [data.codigo_producto, data.nombre_producto].filter(Boolean).join(' — ') ||
+      'Regulador / accesorio'
+    )
+  }
+  return data.codigo_balon ?? undefined
+})
 
 const sections = computed<DetailSection[]>(() => {
   const data = mantenimiento.value
@@ -91,7 +106,12 @@ const sections = computed<DetailSection[]>(() => {
       title: 'Servicio',
       icon: ICONS.construction,
       items: [
-        { label: 'Cilindro', value: data.codigo_balon },
+        {
+          label: esProducto.value ? 'Producto' : 'Cilindro',
+          value: esProducto.value
+            ? [data.codigo_producto, data.nombre_producto].filter(Boolean).join(' — ')
+            : data.codigo_balon,
+        },
         { label: 'Tipo', value: formatDetailListaOpcion(data.nombre_tipo_mantenimiento) },
         { label: 'Estado', value: formatDetailListaOpcion(data.nombre_estado) },
         { label: 'Origen', value: formatDetailYesNo(data.es_externo, 'Externo', 'Interno') },

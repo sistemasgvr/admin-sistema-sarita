@@ -1,6 +1,11 @@
 <template>
   <AppModal v-model="open" :title="titulo" size="md">
     <div class="space-y-4">
+      <p v-if="!esEdicion" class="text-theme-sm text-gray-500 dark:text-gray-400">
+        Registro manual. Las garantías de préstamos, alquileres y POS se crean automáticamente desde
+        esos módulos.
+      </p>
+
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Fecha" required :error="errores.fecha">
           <AppInput
@@ -48,7 +53,7 @@
         <AppTextarea
           v-model="form.observacion"
           :rows="3"
-          placeholder="Ej.: balón azul 10kg, entregado 04/08, se compromete a devolver..."
+          placeholder="Ej.: depósito por balón industrial, compromiso de devolución..."
         />
       </AppFormField>
     </div>
@@ -100,13 +105,12 @@ const crearMutation = useCrearGarantiaMutation()
 const editarMutation = useActualizarGarantiaMutation()
 
 const esEdicion = computed(() => !!props.garantia)
-const titulo = computed(() => (esEdicion.value ? 'Editar garantía' : 'Nueva garantía'))
+const titulo = computed(() => (esEdicion.value ? 'Editar garantía manual' : 'Nueva garantía'))
 const cta = computed(() => (esEdicion.value ? 'Guardar cambios' : 'Registrar garantía'))
 const guardando = computed(
   () => crearMutation.isPending.value || editarMutation.isPending.value,
 )
 
-/* -------- Búsqueda de clientes -------- */
 const clienteSearch = ref('')
 const clientesFilters = ref<ClienteListFilters>({
   buscar: '',
@@ -142,7 +146,6 @@ const medioPagoOptions = computed<SelectOption[]>(() => [
   ...(mediosQuery.data.value ?? []).map((m) => ({ label: m.nombre, value: m.id })),
 ])
 
-/* -------- Formulario -------- */
 const hoy = () => new Date().toISOString().slice(0, 10)
 
 const form = reactive({
@@ -158,10 +161,10 @@ const errores = reactive<Record<string, string | undefined>>({})
 const cargarDesdeProps = () => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
   if (props.garantia) {
-    form.fecha = props.garantia.fecha
+    form.fecha = props.garantia.fecha_registro
     form.idCliente = props.garantia.id_cliente
     form.idMedioPago = props.garantia.id_medio_pago ?? ''
-    form.importe = Number(props.garantia.importe).toFixed(2)
+    form.importe = Number(props.garantia.monto_cobrado).toFixed(2)
     form.observacion = props.garantia.observacion ?? ''
   } else {
     form.fecha = hoy()
@@ -187,7 +190,6 @@ watch(() => form.observacion, (v) => {
   if (v.length <= 500) errores.observacion = undefined
 })
 
-/* Handlers monto */
 const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
   if (e.key.length > 1) return
   if (e.ctrlKey || e.metaKey) return
@@ -206,7 +208,6 @@ const normalizarImporte = () => {
 const validar = (): boolean => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
   let ok = true
-
   if (!form.fecha) { errores.fecha = 'La fecha es obligatoria'; ok = false }
   if (!form.idCliente) { errores.idCliente = 'Selecciona un cliente'; ok = false }
   const imp = parseMoneyInput(form.importe)
@@ -238,7 +239,7 @@ const submit = async () => {
     open.value = false
     emit('saved')
   } catch {
-    // Toast lo maneja la mutación.
+    /* toast en mutación */
   }
 }
 </script>

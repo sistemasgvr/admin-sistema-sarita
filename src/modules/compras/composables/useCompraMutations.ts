@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
 import { comprasService } from '@/modules/compras/services/compras.service'
 import type {
@@ -16,6 +17,7 @@ export function useCreateCompraMutation() {
     mutationFn: (payload: CreateCompraPayload) => comprasService.crear(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante de compra registrado')
     },
     onError: (error) => {
@@ -32,6 +34,7 @@ export function useActualizarCabeceraMutation() {
       comprasService.actualizarCabecera(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Cabecera de compra actualizada')
     },
     onError: (error) => {
@@ -102,6 +105,7 @@ export function useAnularCompraMutation() {
       comprasService.anular(id, idUsuarioAuditoria),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante de compra anulado')
     },
     onError: (error) => {

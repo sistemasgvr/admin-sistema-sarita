@@ -178,7 +178,12 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="P.H. y datos técnicos" :icon="ICONS.gauge" :full-width="true">
+        <DetailSectionCard
+          title="P.H. y datos técnicos"
+          :icon="ICONS.gauge"
+          :full-width="true"
+          help="Ingrese el mes y año grabados en el lomo; el sistema calcula el vencimiento según la vigencia del tipo (5 u 10 años). Las renovaciones se registran en Mantenimientos (P.H. / Recertificación)."
+        >
           <div class="space-y-5">
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <AppSelect
@@ -203,10 +208,11 @@
               />
               <AppInput
                 v-model="presionActual"
-                label="Presión actual"
+                label="Presión actual (PSI)"
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
+                help="Estado de llenado. No confundir con libras de masa (báscula)."
                 v-bind="presionActualAttrs"
                 :disabled="isSubmitting || isLoadingBalon"
                 :error="errors.presionActual"
@@ -253,16 +259,6 @@
             />
           </div>
         </DetailSectionCard>
-
-        <template #extra>
-          <p
-            class="rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 text-sm leading-relaxed text-brand-800 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200"
-          >
-            Ingrese el <strong>mes y año</strong> grabados en el lomo; el sistema calcula el
-            vencimiento según la vigencia del tipo (5 u 10 años). Las renovaciones se registran en
-            <strong>Mantenimientos</strong> (P.H. / Recertificación).
-          </p>
-        </template>
       </FormCardsLayout>
 
       <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

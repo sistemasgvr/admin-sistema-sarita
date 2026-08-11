@@ -4,6 +4,7 @@ import { balonesMenuSubItems } from '@/modules/balones/config/balones-menu'
 import { ventasMenuSubItems } from '@/modules/ventas/config/ventas-menu'
 import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
 import { clientesMenuSubItems } from '@/modules/clientes/config/clientes-menu'
+import { finanzasMenuSubItems } from '@/modules/finanzas/config/finanzas-menu'
 export interface AdminMenuSubItem {
   name: string
   path: string
@@ -41,30 +42,10 @@ export const adminMenuGroups: AdminMenuGroup[] = [
     title: 'Gestión',
     items: [
       {
-        icon: ICONS.users,
-        name: 'Clientes',
-        subItems: clientesMenuSubItems,
-        permission: PermisoBanderas.CLIENTES_LISTAR,
-      },
-      {
-        icon: ICONS.package,
-        name: 'Productos',
-        path: '/admin/productos',
-        permission: PermisoBanderas.PRODUCTOS_HUB_VER,
-        subItems: productosMenuSubItems,
-      },
-      {
-        icon: ICONS.cylinder,
-        name: 'Balones',
-        path: '/admin/balones',
-        permission: PermisoBanderas.BALONES_HUB_VER,
-        subItems: balonesMenuSubItems,
-      },
-      {
         icon: ICONS.creditCard,
         name: 'Ventas',
-        path: '/admin/ventas/pos',
-        permission: PermisoBanderas.VENTAS_VER,
+        path: '/admin/ventas/caja',
+        anyPermission: [PermisoBanderas.VENTAS_VER, PermisoBanderas.CAJA_VER],
         subItems: ventasMenuSubItems,
       },
       {
@@ -74,12 +55,28 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         permission: PermisoBanderas.ACTIVIDADES_LISTAR,
       },
       {
+        icon: ICONS.cylinder,
+        name: 'Balones',
+        path: '/admin/balones',
+        permission: PermisoBanderas.BALONES_HUB_VER,
+        subItems: balonesMenuSubItems,
+      },
+      {
+        icon: ICONS.users,
+        name: 'Clientes',
+        subItems: clientesMenuSubItems,
+        permission: PermisoBanderas.CLIENTES_LISTAR,
+      },
+      {
         icon: ICONS.banknote,
         name: 'Finanzas',
         path: '/admin/finanzas',
+        subItems: finanzasMenuSubItems,
         anyPermission: [
           PermisoBanderas.FINANZAS_CXC_VER,
           PermisoBanderas.FINANZAS_CXP_VER,
+          PermisoBanderas.FINANZAS_GARANTIAS_VER,
+          PermisoBanderas.CAJA_LIBRO_DIARIO,
         ],
       },
       {
@@ -87,6 +84,13 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         name: 'Compras',
         path: '/admin/compras',
         permission: PermisoBanderas.COMPRAS_LISTAR,
+      },
+      {
+        icon: ICONS.package,
+        name: 'Productos',
+        path: '/admin/productos',
+        permission: PermisoBanderas.PRODUCTOS_HUB_VER,
+        subItems: productosMenuSubItems,
       },
     ],
   },

@@ -23,7 +23,48 @@
       </div>
     </div>
 
-    <div class="mt-5">
+    <div class="mt-5 space-y-3">
+      <div>
+        <div class="mb-1.5 flex items-center gap-1">
+          <span
+            class="text-sm font-medium"
+            :class="
+              comprobanteGuardadoId
+                ? 'text-gray-300 dark:text-white/15'
+                : 'text-gray-700 dark:text-gray-300'
+            "
+          >
+            Condición de pago
+            <span class="text-error-500" aria-hidden="true">*</span>
+          </span>
+          <AppHelpTip
+            v-if="esVentaCredito"
+            tone="warning"
+            placement="top"
+            :text="textoAyudaCredito"
+            aria-label="Detalle de la condición de pago a crédito"
+          />
+        </div>
+        <AppSelect
+          v-model="idCondicionPagoModel"
+          placeholder="Contado / crédito"
+          :options="condicionPagoOptions"
+          :disabled="Boolean(comprobanteGuardadoId)"
+        />
+      </div>
+      <AppSelect
+        v-model="idMedioPagoModel"
+        label="Medio de pago"
+        :placeholder="esVentaCredito ? 'Opcional en crédito' : 'Efectivo, Yape…'"
+        :required="!esVentaCredito"
+        :options="medioPagoOptions"
+        :disabled="Boolean(comprobanteGuardadoId)"
+        :hint="
+          esVentaCredito
+            ? 'El cobro se registra después en Cuentas por cobrar.'
+            : 'Obligatorio al contado (caja / libro diario).'
+        "
+      />
       <AppInput v-model="glosaModel" label="Glosa" placeholder="Opcional" />
     </div>
 
@@ -38,25 +79,34 @@
     </div>
 
     <div class="mt-5 flex flex-col gap-2">
-      <button
-        type="button"
-        class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-        :disabled="!puedeGuardar || guardando || Boolean(comprobanteGuardadoId)"
-        @click="emit('guardar')"
-      >
-        <AppIcon
-          :name="guardando ? ICONS.loader : ICONS.clipboardCheck"
-          :size="16"
-          :class="guardando ? 'animate-spin' : ''"
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!puedeGuardar || guardando || Boolean(comprobanteGuardadoId)"
+          @click="emit('guardar')"
+        >
+          <AppIcon
+            :name="guardando ? ICONS.loader : ICONS.clipboardCheck"
+            :size="16"
+            :class="guardando ? 'animate-spin' : ''"
+          />
+          {{
+            guardando
+              ? guardandoLabel
+              : comprobanteGuardadoId
+                ? 'Ya guardado'
+                : guardarLabel
+          }}
+        </button>
+        <AppHelpTip
+          v-if="motivoNoGuardar && !comprobanteGuardadoId"
+          tone="error"
+          placement="top"
+          :text="motivoNoGuardar"
+          aria-label="Motivo por el que no se puede guardar"
         />
-        {{
-          guardando
-            ? guardandoLabel
-            : comprobanteGuardadoId
-              ? 'Ya guardado'
-              : guardarLabel
-        }}
-      </button>
+      </div>
 
       <button
         v-if="comprobanteGuardadoId && (esNotaVenta ? canPrint : canEmit)"
@@ -95,13 +145,14 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { formatPosMoney } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
-import { AppInput } from '@/shared/components'
+import { AppHelpTip, AppInput, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { ICONS } from '@/shared/constants/icons'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     totales: { valorVenta: number; igv: number; total: number }
     puedeGuardar: boolean
@@ -115,12 +166,29 @@ withDefaults(
     comprobanteGuardadoNumero?: string | null
     guardarLabel?: string
     guardandoLabel?: string
+    condicionPagoOptions?: { value: number; label: string }[]
+    medioPagoOptions?: { value: number; label: string }[]
+    esVentaCredito?: boolean
+    diasCredito?: number
+    numeroCuotas?: number
+    diaMesPago?: number
+    fechaVencimiento?: string
+    /** Motivo en tooltip cuando el botón Guardar está deshabilitado. */
+    motivoNoGuardar?: string | null
   }>(),
   {
     guardarLabel: 'Guardar',
     guardandoLabel: 'Guardando...',
     canPrint: false,
     esNotaVenta: false,
+    condicionPagoOptions: () => [],
+    medioPagoOptions: () => [],
+    esVentaCredito: false,
+    diasCredito: 0,
+    numeroCuotas: 0,
+    diaMesPago: 0,
+    fechaVencimiento: '',
+    motivoNoGuardar: null,
   },
 )
 
@@ -130,6 +198,15 @@ const emit = defineEmits<{
 }>()
 
 const glosaModel = defineModel<string>('glosa', { default: '' })
+const idCondicionPagoModel = defineModel<number | ''>('idCondicionPago', { default: '' })
+const idMedioPagoModel = defineModel<number | ''>('idMedioPago', { default: '' })
 
 const formatMoney = formatPosMoney
+
+const textoAyudaCredito = computed(() => {
+  if (props.numeroCuotas > 1) {
+    return `Plan de ${props.numeroCuotas} cuotas · cobro día ${props.diaMesPago || '—'} del mes. Se registrará cuenta por cobrar con cuotas.`
+  }
+  return `Crédito a ${props.diasCredito} días · vence ${props.fechaVencimiento || '—'}. Se registrará cuenta por cobrar.`
+})
 </script>

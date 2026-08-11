@@ -99,6 +99,15 @@
       @saved="onDevolucionDesdeLista"
     />
 
+    <RecojoProgramarModal
+      v-model="programarRecojoOpen"
+      :id-cliente="prestamoToRecojo?.id_cliente"
+      :id-prestamo="prestamoToRecojo?.id"
+      :numero-origen="prestamoToRecojo?.numero_prestamo"
+      tipo-origen="PRESTAMO"
+      @saved="onDevolucionDesdeLista"
+    />
+
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar préstamo"
@@ -141,6 +150,7 @@ import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
 import PrestamoDevolverCilindrosModal from '@/modules/balones/prestamos/components/PrestamoDevolverCilindrosModal.vue'
+import RecojoProgramarModal from '@/modules/balones/recojos/components/RecojoProgramarModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeletePrestamoMutation } from '@/modules/balones/prestamos/composables/usePrestamoMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
@@ -199,6 +209,8 @@ const prestamoToViewId = ref<number | null>(null)
 
 const devolverCilindrosModalOpen = ref(false)
 const prestamoToDevolver = ref<Prestamo | null>(null)
+const programarRecojoOpen = ref(false)
+const prestamoToRecojo = ref<Prestamo | null>(null)
 
 const deleteModalOpen = ref(false)
 const prestamoToDelete = ref<Prestamo | null>(null)
@@ -223,6 +235,9 @@ const canDevolver = computed(
   () =>
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
+)
+const canProgramarRecojo = computed(() =>
+  authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR),
 )
 
 const isLoading = computed(
@@ -334,6 +349,11 @@ const openDevolverCilindros = (row: Prestamo) => {
   devolverCilindrosModalOpen.value = true
 }
 
+const openProgramarRecojo = (row: Prestamo) => {
+  prestamoToRecojo.value = row
+  programarRecojoOpen.value = true
+}
+
 function isPrestamoActivo(row: Prestamo): boolean {
   return (row.nombre_estado ?? '').toUpperCase() === 'ACTIVO'
 }
@@ -364,6 +384,13 @@ function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
       hidden: !canDevolver.value || !activo || !tieneCilindros,
     },
     {
+      key: 'programar_recojo',
+      label: 'Programar recojo',
+      icon: ICONS.truck,
+      disabled: busy,
+      hidden: !canProgramarRecojo.value || !activo || !tieneCilindros || !row.id_cliente,
+    },
+    {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
@@ -383,6 +410,7 @@ function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: Prestamo) {
   if (key === 'devolver') openDevolverCilindros(row)
+  if (key === 'programar_recojo') openProgramarRecojo(row)
   if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
 }

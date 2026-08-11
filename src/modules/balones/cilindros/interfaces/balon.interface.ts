@@ -112,6 +112,7 @@ export interface Balon {
   numero_recepcion?: string | null
   presion_actual?: number | null
   capacidad_restante?: number | null
+  capacidad_restante_lb?: number | null
   observacion?: string | null
   tiene_solicitud_baja_pendiente?: boolean
   tiene_baja_aprobada?: boolean

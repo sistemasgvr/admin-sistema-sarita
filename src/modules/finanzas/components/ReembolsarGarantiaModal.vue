@@ -1,56 +1,65 @@
 <template>
-  <AppModal v-model="open" title="Registrar reembolso de garantía" size="md" :z-index="100000">
+  <AppModal v-model="open" title="Devolver garantía" size="md" :z-index="100000">
     <div v-if="garantia" class="space-y-4">
-      <!-- Contexto de la garantía (solo lectura) -->
       <div class="grid grid-cols-2 gap-3 rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
-        <div>
+        <div class="col-span-2">
           <p class="text-xs text-gray-400 dark:text-gray-500">Cliente</p>
           <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90">
-            {{ garantia.cliente }}
+            {{ garantia.nombre_cliente || '—' }}
           </p>
         </div>
         <div>
-          <p class="text-xs text-gray-400 dark:text-gray-500">Importe a devolver</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">Saldo pendiente</p>
           <p class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-            {{ formatCurrency(garantia.importe) }}
+            {{ formatCurrency(garantia.monto_saldo) }}
           </p>
         </div>
         <div>
-          <p class="text-xs text-gray-400 dark:text-gray-500">Fecha de recepción</p>
-          <p class="text-sm text-gray-700 dark:text-gray-300">{{ formatListDate(garantia.fecha) }}</p>
-        </div>
-        <div>
-          <p class="text-xs text-gray-400 dark:text-gray-500">Método de pago recibido</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500">Método recibido</p>
           <p class="text-sm text-gray-700 dark:text-gray-300">{{ garantia.medio_pago || '—' }}</p>
         </div>
       </div>
 
-      <!-- Formulario del reembolso -->
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppFormField label="Fecha del reembolso" required :error="errores.fechaReembolso">
+        <AppFormField label="Monto a devolver" required :error="errores.monto">
+          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
+            <AppInput
+              v-model="form.monto"
+              type="text"
+              inputmode="decimal"
+              placeholder="0.00"
+              :state="errores.monto ? 'error' : 'default'"
+            />
+          </div>
+        </AppFormField>
+
+        <AppFormField label="Fecha" required :error="errores.fecha">
           <AppInput
-            v-model="form.fechaReembolso"
+            v-model="form.fecha"
             type="date"
-            :min="garantia.fecha"
-            :state="errores.fechaReembolso ? 'error' : 'default'"
+            :state="errores.fecha ? 'error' : 'default'"
           />
         </AppFormField>
 
-        <AppFormField label="Método de pago del reembolso" required :error="errores.idMedioReembolso">
+        <AppFormField
+          label="Método de reembolso"
+          optional
+          :error="errores.idMedioReembolso"
+          class="sm:col-span-2"
+        >
           <AppSelect
             v-model="form.idMedioReembolso"
             :options="medioPagoOptions"
             placeholder="Selecciona el método"
-            :state="errores.idMedioReembolso ? 'error' : 'default'"
           />
         </AppFormField>
       </div>
 
-      <AppFormField label="Observaciones del reembolso" optional :error="errores.observacionReembolso">
+      <AppFormField label="Observaciones" optional :error="errores.observacion">
         <AppTextarea
-          v-model="form.observacionReembolso"
+          v-model="form.observacion"
           :rows="3"
-          placeholder="Ej.: entregado en tienda, voucher #123, retiro por cajero..."
+          placeholder="Ej.: entregado en tienda, voucher #123..."
         />
       </AppFormField>
     </div>
@@ -70,7 +79,7 @@
         :disabled="mutation.isPending.value"
         @click="submit"
       >
-        {{ mutation.isPending.value ? 'Guardando...' : 'Registrar reembolso' }}
+        {{ mutation.isPending.value ? 'Guardando...' : 'Registrar devolución' }}
       </button>
     </template>
   </AppModal>
@@ -85,8 +94,7 @@ import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPago
 import { useReembolsarGarantiaMutation } from '@/modules/finanzas/composables/useGarantiaMutations'
 import type { Garantia } from '@/modules/finanzas/interfaces/garantia.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { formatCurrency } from '@/shared/utils/currency'
-import { formatListDate } from '@/shared/utils/date'
+import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
 
 const props = defineProps<{ garantia: Garantia | null }>()
 const emit = defineEmits<{ saved: [] }>()
@@ -96,83 +104,83 @@ const authStore = useAuthStore()
 const mutation = useReembolsarGarantiaMutation()
 
 const mediosQuery = useMediosPagoQuery()
-const medioPagoOptions = computed<SelectOption[]>(() =>
-  (mediosQuery.data.value ?? []).map((m) => ({ label: m.nombre, value: m.id })),
-)
-
-const hoy = () => new Date().toISOString().slice(0, 10)
+const medioPagoOptions = computed<SelectOption[]>(() => [
+  { label: '— No especificado —', value: '' },
+  ...(mediosQuery.data.value ?? []).map((m) => ({ label: m.nombre, value: m.id })),
+])
 
 const form = reactive({
-  fechaReembolso: hoy(),
+  monto: '' as string | number,
+  fecha: new Date().toISOString().slice(0, 10),
   idMedioReembolso: '' as string | number,
-  observacionReembolso: '',
+  observacion: '',
 })
-
 const errores = reactive<Record<string, string | undefined>>({})
 
-const resetForm = () => {
-  // Fecha default: hoy, pero nunca antes de la fecha de recepción
-  const h = hoy()
-  form.fechaReembolso =
-    props.garantia?.fecha && h < props.garantia.fecha ? props.garantia.fecha : h
-  form.idMedioReembolso = props.garantia?.id_medio_pago ?? ''
-  form.observacionReembolso = ''
-  Object.keys(errores).forEach((k) => (errores[k] = undefined))
+watch(
+  () => [open.value, props.garantia] as const,
+  ([isOpen, g]) => {
+    if (!isOpen || !g) return
+    Object.keys(errores).forEach((k) => (errores[k] = undefined))
+    form.monto = Number(g.monto_saldo).toFixed(2)
+    form.fecha = new Date().toISOString().slice(0, 10)
+    form.idMedioReembolso = ''
+    form.observacion = ''
+  },
+)
+
+const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
+  if (e.key.length > 1) return
+  if (e.ctrlKey || e.metaKey) return
+  if (['-', '+', 'e', 'E'].includes(e.key)) { e.preventDefault(); return }
+  if (!/[\d.,]/.test(e.key)) e.preventDefault()
 }
-
-watch(open, (isOpen) => {
-  if (isOpen) resetForm()
-})
-
-watch(() => form.fechaReembolso, (v) => {
-  if (v && props.garantia?.fecha && v >= props.garantia.fecha) errores.fechaReembolso = undefined
-})
-watch(() => form.idMedioReembolso, (v) => { if (v) errores.idMedioReembolso = undefined })
-watch(() => form.observacionReembolso, (v) => {
-  if (v.length <= 500) errores.observacionReembolso = undefined
-})
+const bloquearPegadoInvalido = (e: ClipboardEvent) => {
+  const texto = e.clipboardData?.getData('text') ?? ''
+  if (/[-+eE]/.test(texto)) e.preventDefault()
+}
+const normalizarMonto = () => {
+  const norm = normalizeMoneyInput(form.monto)
+  if (norm) form.monto = norm
+}
 
 const validar = (): boolean => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
   let ok = true
-
-  if (!form.fechaReembolso) {
-    errores.fechaReembolso = 'La fecha del reembolso es obligatoria'
+  if (!form.fecha) { errores.fecha = 'La fecha es obligatoria'; ok = false }
+  const monto = parseMoneyInput(form.monto)
+  const saldo = Number(props.garantia?.monto_saldo ?? 0)
+  if (monto == null || monto <= 0) {
+    errores.monto = 'Ingresa un monto válido'
     ok = false
-  } else if (props.garantia?.fecha && form.fechaReembolso < props.garantia.fecha) {
-    errores.fechaReembolso = `No puede ser anterior a la recepción (${props.garantia.fecha})`
-    ok = false
-  }
-
-  if (!form.idMedioReembolso) {
-    errores.idMedioReembolso = 'Selecciona el método del reembolso'
+  } else if (monto > saldo) {
+    errores.monto = `No puede superar el saldo (${formatCurrency(saldo)})`
     ok = false
   }
-
-  if (form.observacionReembolso.length > 500) {
-    errores.observacionReembolso = 'Máximo 500 caracteres'
-    ok = false
-  }
+  if (form.observacion.length > 500) { errores.observacion = 'Máximo 500 caracteres'; ok = false }
   return ok
 }
 
 const submit = async () => {
-  if (!props.garantia || !validar()) return
+  if (!props.garantia) return
+  normalizarMonto()
+  if (!validar()) return
 
   try {
     await mutation.mutateAsync({
       id: props.garantia.id,
       payload: {
-        fechaReembolso: form.fechaReembolso,
-        idMedioReembolso: Number(form.idMedioReembolso),
-        observacionReembolso: form.observacionReembolso.trim() || undefined,
+        monto: Math.round((parseMoneyInput(form.monto) ?? 0) * 100) / 100,
+        fecha: form.fecha,
+        idMedioReembolso: form.idMedioReembolso ? Number(form.idMedioReembolso) : undefined,
+        observacion: form.observacion.trim() || undefined,
         idUsuarioAuditoria: authStore.user?.id ?? undefined,
       },
     })
     open.value = false
     emit('saved')
   } catch {
-    // Toast lo maneja la mutación
+    /* toast en mutación */
   }
 }
 </script>

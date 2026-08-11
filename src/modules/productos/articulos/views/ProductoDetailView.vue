@@ -165,14 +165,10 @@ const sections = computed<DetailSection[]>(() => {
       items: [
         { label: 'Precio de venta', value: formatDetailPrecio(data.precio) },
         { label: 'Precio de compra', value: formatDetailPrecio(data.precio_compra) },
-        ...(data.es_alquilable
-          ? [
-              {
-                label: 'Precio de garantía',
-                value: formatDetailPrecio(data.precio_garantia),
-              },
-            ]
-          : []),
+        {
+          label: 'Precio de garantía',
+          value: formatDetailPrecio(data.precio_garantia),
+        },
         {
           label: 'Tipo',
           value: data.es_servicio
@@ -191,6 +187,20 @@ const sections = computed<DetailSection[]>(() => {
               : data.afecta_stock
                 ? 'Productos / Stock accesorios'
                 : 'Sin stock',
+        },
+        {
+          label: 'Factor kg / m³',
+          value:
+            data.es_gas && data.factor_kg_m3 != null
+              ? String(data.factor_kg_m3)
+              : undefined,
+        },
+        {
+          label: 'Factor lb / m³',
+          value:
+            data.es_gas && data.factor_lb_m3 != null
+              ? String(data.factor_lb_m3)
+              : undefined,
         },
       ],
     },

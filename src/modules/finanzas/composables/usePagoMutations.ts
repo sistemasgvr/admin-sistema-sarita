@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { finanzasQueryKeys } from '@/modules/finanzas/constants/finanzasQueryKeys'
 import { finanzasService } from '@/modules/finanzas/services/finanzas.service'
 import type {
@@ -15,6 +16,7 @@ function useInvalidateCuentas(tipo: TipoCuenta) {
   return () => {
     queryClient.invalidateQueries({ queryKey: finanzasQueryKeys.cuentas(tipo) })
     queryClient.invalidateQueries({ queryKey: finanzasQueryKeys.resumen(tipo) })
+    void invalidateCajaQueries(queryClient)
   }
 }
 

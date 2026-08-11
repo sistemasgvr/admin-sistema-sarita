@@ -1,15 +1,9 @@
 import type { RouteRecordRaw } from 'vue-router'
-import { PermisoBanderas } from '@/shared/constants/permissions'
 
+/** Rutas legacy bajo Clientes → redirigen a Configuración (flota empresa). */
 export const vehiculosRoutes: RouteRecordRaw[] = [
   {
     path: 'clientes/vehiculos',
-    name: 'admin-clientes-vehiculos',
-    component: () => import('@/modules/vehiculos/views/VehiculosListView.vue'),
-    meta: {
-      title: 'Vehículos',
-      module: 'vehiculos',
-      permission: PermisoBanderas.VEHICULOS_LISTAR,
-    },
+    redirect: { name: 'admin-configuracion-vehiculos' },
   },
 ]

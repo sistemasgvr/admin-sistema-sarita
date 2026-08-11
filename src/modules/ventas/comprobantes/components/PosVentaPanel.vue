@@ -1,5 +1,11 @@
 <template>
-  <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+  <div class="space-y-4">
+    <PosCajaEstadoBanner
+      :mensaje="mensajeBloqueoCaja"
+      :caja-cerrada="cajaCerrada"
+    />
+
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section class="space-y-4">
       <FormCardsLayout>
         <DetailSectionCard
@@ -128,6 +134,17 @@
                     >
                       + Préstamo
                     </span>
+                    <span
+                      v-if="
+                        (esEntregarPrestamo(linea) ||
+                          linea.tipoPos === 'alquiler' ||
+                          linea.esAlquilable) &&
+                        Number(linea.montoGarantia || 0) > 0
+                      "
+                      class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                    >
+                      + Garantía
+                    </span>
                   </div>
                   <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90">
                     {{ linea.nombre }}
@@ -145,7 +162,28 @@
                   <template v-else-if="esEntregarPrestamo(linea)">
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Gas {{ formatPosMoney(importeGasLinea(linea)) }}
-                      · Préstamo cilindro (sin cobro de envase)
+                      <template v-if="Number(linea.montoGarantia || 0) > 0">
+                        + Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                        = {{ formatPosMoney(calcularImporteLinea(linea)) }}
+                      </template>
+                      <template v-else>
+                        · Préstamo cilindro (sin garantía)
+                      </template>
+                    </p>
+                    <p class="mt-0.5 truncate text-xs text-brand-600 dark:text-brand-400">
+                      {{ resumenLinea(linea) }}
+                    </p>
+                  </template>
+                  <template
+                    v-else-if="
+                      (linea.tipoPos === 'alquiler' || linea.esAlquilable) &&
+                      Number(linea.montoGarantia || 0) > 0
+                    "
+                  >
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Alquiler {{ formatPosMoney(importeGasLinea(linea)) }}
+                      + Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                      = {{ formatPosMoney(calcularImporteLinea(linea)) }}
                     </p>
                     <p class="mt-0.5 truncate text-xs text-brand-600 dark:text-brand-400">
                       {{ resumenLinea(linea) }}
@@ -264,6 +302,26 @@
                   S/ 0.00
                 </span>
               </div>
+              <div
+                v-if="Number(linea.montoGarantia || 0) > 0"
+                class="mt-0.5 flex items-baseline justify-between gap-2 pl-3 text-xs"
+              >
+                <span class="min-w-0 truncate text-amber-600 dark:text-amber-400">
+                  + Garantía (depósito)
+                </span>
+                <span class="shrink-0 tabular-nums text-amber-600 dark:text-amber-400">
+                  {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                </span>
+              </div>
+              <div
+                v-if="Number(linea.montoGarantia || 0) > 0"
+                class="mt-0.5 flex items-baseline justify-between gap-2 border-t border-dashed border-gray-200 pt-0.5 text-xs dark:border-gray-700"
+              >
+                <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
+                <span class="tabular-nums font-medium text-gray-800 dark:text-white/90">
+                  {{ formatPosMoney(calcularImporteLinea(linea)) }}
+                </span>
+              </div>
             </template>
             <div v-else class="flex items-baseline justify-between gap-2">
               <span class="min-w-0 truncate text-gray-700 dark:text-gray-300">
@@ -279,7 +337,17 @@
 
       <PosResumenAside
         v-model:glosa="glosa"
+        v-model:id-condicion-pago="idCondicionPago"
+        v-model:id-medio-pago="idMedioPago"
         :totales="totales"
+        :condicion-pago-options="condicionPagoOptions"
+        :medio-pago-options="medioPagoOptions"
+        :es-venta-credito="esVentaCredito"
+        :dias-credito="diasCredito"
+        :numero-cuotas="numeroCuotasCondicion"
+        :dia-mes-pago="diaMesPagoCondicion"
+        :fecha-vencimiento="fechaVencimiento"
+        :motivo-no-guardar="motivoNoGuardar"
         :puede-guardar="puedeGuardar"
         :guardando="createMutation.isPending.value || guardandoExtra"
         :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
@@ -295,6 +363,7 @@
         @emitir="emitirComprobante"
       />
     </aside>
+    </div>
 
     <PosAnadirItemModal
       v-model="anadirOpen"
@@ -317,6 +386,7 @@ import { alquileresService } from '@/modules/balones/alquileres/services/alquile
 import { bajasPendientesService } from '@/modules/balones/bajas-pendientes/services/bajas-pendientes.service'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
 import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
+import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
 import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
@@ -324,6 +394,8 @@ import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaO
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import PosCajaEstadoBanner from '@/modules/caja/components/PosCajaEstadoBanner.vue'
+import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
 import PosAnadirItemModal, {
   type PosLineaConfirmada,
 } from '@/modules/ventas/comprobantes/components/PosAnadirItemModal.vue'
@@ -368,6 +440,8 @@ const {
   numero,
   fecha,
   idCliente,
+  idCondicionPago,
+  idMedioPago,
   canEmit,
   canPrint,
   canCreateCliente,
@@ -375,15 +449,28 @@ const {
   esNotaVenta,
   clienteOptions,
   clienteSeleccionado,
+  condicionPagoOptions,
+  medioPagoOptions,
+  esVentaCredito,
+  diasCredito,
+  numeroCuotasCondicion,
+  diaMesPagoCondicion,
+  fechaVencimiento,
   idAfectacionGravado,
   idMonedaPen,
   idTipoOperacionVentaInterna,
-  comprobanteBaseValido,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
   clienteDescripcion,
 } = usePosComprobanteForm()
+
+const {
+  cajaAbierta,
+  cajaCerrada,
+  mensajeBloqueo: mensajeBloqueoCaja,
+  assertCajaAbierta,
+} = useCajaAbiertaRequerida(fecha)
 
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
@@ -470,6 +557,13 @@ function calcularImporteLinea(linea: PosLineItem) {
   if (linea.escenarioGas === 'comprar_balon') {
     return base + Number(linea.precioBalon || 0)
   }
+  if (
+    esEntregarPrestamo(linea) ||
+    linea.tipoPos === 'alquiler' ||
+    Boolean(linea.esAlquilable)
+  ) {
+    return base + Number(linea.montoGarantia || 0)
+  }
   return base
 }
 
@@ -507,36 +601,49 @@ const totales = computed(() => {
   return calcularTotalesDesdeImporte(importeConIgv)
 })
 
+const motivoNoGuardar = computed(() => {
+  if (comprobanteGuardadoId.value) return null
+  if (!cajaAbierta.value) {
+    return mensajeBloqueoCaja.value || 'Debes abrir la caja del día para vender'
+  }
+  const base = mensajeValidacionComprobante()
+  if (base) return base
+  if (!lineasActivas.value.length) return 'Añade al menos un ítem a la venta'
+  if (requiereAlmacen.value && !idAlmacen.value) return 'Selecciona el almacén'
+  if (!idAfectacionGravado.value) return 'Falta la afectación IGV en catálogos'
+  for (const linea of lineasActivas.value) {
+    if (
+      validarCantidadSegunUnidad(
+        Number(linea.cantidad),
+        linea.nombreUnidadMedida ?? 'UNID',
+      )
+    ) {
+      return `${linea.nombre}: cantidad inválida para la unidad`
+    }
+    if (linea.escenarioGas === 'comprar_balon' && !(linea.idBalon && linea.idProductoEnvase)) {
+      return `${linea.nombre}: falta cilindro o producto envase`
+    }
+    if (esEntregarPrestamo(linea) && !(linea.idBalon && linea.fechaInicioAlquiler)) {
+      return `${linea.nombre}: falta cilindro o fecha de préstamo`
+    }
+    if (
+      (linea.esMantenimiento || esRecargaCliente(linea)) &&
+      !(linea.idBalon && (linea.esMantenimiento || linea.idBalonOrigen))
+    ) {
+      return `${linea.nombre}: falta cilindro u origen de recarga`
+    }
+    if (
+      (linea.tipoPos === 'alquiler' || linea.esAlquilable) &&
+      !(linea.fechaInicioAlquiler && linea.fechaFinAlquiler)
+    ) {
+      return `${linea.nombre}: faltan fechas de alquiler`
+    }
+  }
+  return null
+})
+
 const puedeGuardar = computed(
-  () =>
-    !comprobanteGuardadoId.value &&
-    comprobanteBaseValido() &&
-    lineasActivas.value.length > 0 &&
-    (!requiereAlmacen.value || Boolean(idAlmacen.value)) &&
-    Boolean(idAfectacionGravado.value) &&
-    lineasActivas.value.every((linea) => {
-      if (
-        validarCantidadSegunUnidad(
-          Number(linea.cantidad),
-          linea.nombreUnidadMedida ?? 'UNID',
-        )
-      ) {
-        return false
-      }
-      if (linea.escenarioGas === 'comprar_balon') {
-        return Boolean(linea.idBalon && linea.idProductoEnvase)
-      }
-      if (esEntregarPrestamo(linea)) {
-        return Boolean(linea.idBalon && linea.fechaInicioAlquiler)
-      }
-      if (linea.esMantenimiento || esRecargaCliente(linea)) {
-        return Boolean(linea.idBalon && (linea.esMantenimiento || linea.idBalonOrigen))
-      }
-      if (linea.tipoPos === 'alquiler' || linea.esAlquilable) {
-        return Boolean(linea.fechaInicioAlquiler && linea.fechaFinAlquiler)
-      }
-      return true
-    }),
+  () => !comprobanteGuardadoId.value && motivoNoGuardar.value === null,
 )
 
 function badgeLabel(linea: PosLineItem) {
@@ -571,7 +678,12 @@ function etiquetaCilindro(linea: PosLineItem): string {
 function resumenLinea(linea: PosLineItem): string {
   const parts: string[] = []
   if (esRecargaCliente(linea)) parts.push('Recarga cliente')
-  if (esEntregarPrestamo(linea)) parts.push('Préstamo cilindro')
+  if (esEntregarPrestamo(linea)) {
+    parts.push('Préstamo cilindro')
+    if (Number(linea.montoGarantia || 0) > 0) {
+      parts.push(`Garantía ${formatPosMoney(Number(linea.montoGarantia || 0))}`)
+    }
+  }
   if (linea.escenarioGas === 'comprar_balon') {
     parts.push(linea.nombreProductoEnvase?.trim() || 'Venta de envase')
   }
@@ -692,6 +804,17 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.precioAlquiler = payload.precioAlquiler
   linea.idProductoAlquiler = payload.idProductoAlquiler
   linea.nombreProductoAlquiler = payload.nombreProductoAlquiler
+  linea.montoGarantia =
+    payload.escenarioGas === 'entregar_prestamo' || payload.tipo === 'alquiler'
+      ? Math.max(0, Number(payload.montoGarantia || 0))
+      : undefined
+  if (Number(linea.montoGarantia || 0) > 0) {
+    linea.idMedioPagoGarantia = payload.idMedioPagoGarantia
+    linea.observacionGarantia = payload.observacionGarantia
+  } else {
+    linea.idMedioPagoGarantia = undefined
+    linea.observacionGarantia = undefined
+  }
   linea.idTipoMantenimiento = payload.idTipoMantenimiento
   linea.fechaIngresoMantenimiento = payload.fechaIngresoMantenimiento
   linea.descripcionMantenimiento = payload.descripcionMantenimiento
@@ -705,11 +828,6 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
 
 function quitarLinea(key: string) {
   lineas.value = lineas.value.filter((linea) => linea.key !== key)
-}
-
-function generarNumeroAlquiler() {
-  const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  return `ALQ-${stamp}-${String(Date.now()).slice(-4)}`
 }
 
 function resolverOrigenPos(): string {
@@ -726,6 +844,8 @@ async function guardarComprobante() {
     toastWarning('Sesión inválida')
     return
   }
+
+  if (!assertCajaAbierta()) return
 
   if (comprobanteGuardadoId.value) {
     toastWarning('Ya hay un comprobante guardado. Emite o limpia para una nueva venta.')
@@ -799,6 +919,17 @@ async function guardarComprobante() {
 
     if (esEntregarPrestamo(linea) && !linea.fechaInicioAlquiler) {
       toastWarning(`${linea.nombre}: indica la fecha de entrega del préstamo`)
+      return
+    }
+
+    if (
+      Number(linea.montoGarantia || 0) > 0 &&
+      !linea.idMedioPagoGarantia &&
+      (esEntregarPrestamo(linea) || linea.tipoPos === 'alquiler' || linea.esAlquilable)
+    ) {
+      toastWarning(
+        `${linea.nombre}: indica el medio con el que se recibe la garantía`,
+      )
       return
     }
 
@@ -931,6 +1062,27 @@ try {
         ]
       }
 
+      const esAlquilerLinea =
+        linea.tipoPos === 'alquiler' || Boolean(linea.esAlquilable)
+      if (
+        (esEntregarPrestamo(linea) || esAlquilerLinea) &&
+        Number(linea.montoGarantia || 0) > 0
+      ) {
+        return [
+          base,
+          {
+            idProducto: Number(linea.idProducto),
+            cantidad: 1,
+            precioUnitario: Number(linea.montoGarantia || 0),
+            descuento: 0,
+            porcentajeIgv: 18,
+            idAfectacionIgv: linea.idAfectacionIgv ?? idAfectacionGravado.value,
+            descripcion: `Garantía reembolsable — ${linea.nombre}`,
+            idBalon: linea.idBalon,
+          },
+        ]
+      }
+
       return [base]
     })
 
@@ -945,6 +1097,9 @@ try {
       detalles,
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
+      idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
+      idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+      fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
       glosa: glosa.value || undefined,
       observaciones: clienteDescripcion.value || undefined,
       origenPos: resolverOrigenPos(),
@@ -969,7 +1124,9 @@ try {
             capacidad: lineaGas.capacidad,
             idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
             observacion: lineaGas.observacionLinea || glosa.value || undefined,
-            idBalonOrigen: Number(lineaGas.idBalonOrigen),
+            idBalonOrigen: lineaGas.idBalonOrigen
+              ? Number(lineaGas.idBalonOrigen)
+              : undefined,
           })
         } catch (error) {
           advertencias += 1
@@ -1031,6 +1188,38 @@ try {
                 ? 'Cilindro en préstamo (kit/regulador en alquiler aparte)'
                 : 'Entrega desde POS unificado',
             })
+
+            const montoGarantia = Number(lineaPrestamo.montoGarantia || 0)
+            if (esEntregarPrestamo(lineaPrestamo) && montoGarantia > 0) {
+              try {
+                const productoLinea = productosPorId.value.get(
+                  Number(lineaPrestamo.idProducto),
+                )
+                await garantiasService.crear({
+                  idUsuarioAuditoria: userId,
+                  idCliente: Number(idCliente.value),
+                  monto: montoGarantia,
+                  idComprobante: comprobante.id,
+                  idPrestamo: prestamo.id,
+                  idProducto: Number(lineaPrestamo.idProducto),
+                  cantidadVenta: 1,
+                  idUnidadMedida: productoLinea?.id_unidad_medida ?? undefined,
+                  fechaRegistro: fecha.value,
+                  idMedioPago: lineaPrestamo.idMedioPagoGarantia
+                    ? Number(lineaPrestamo.idMedioPagoGarantia)
+                    : undefined,
+                  observacion:
+                    lineaPrestamo.observacionGarantia?.trim() ||
+                    `Garantía POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
+                })
+              } catch (error) {
+                advertencias += 1
+                toastApiError(
+                  error,
+                  `Comprobante y préstamo creados, pero falló el registro de garantía de ${lineaPrestamo.nombre}`,
+                )
+              }
+            }
           } catch (error) {
             advertencias += 1
             toastApiError(
@@ -1048,16 +1237,23 @@ try {
     ) {
       for (const lineaAlquilable of lineasAlquiler) {
         try {
-          const montoAlquiler = calcularImporteLinea(lineaAlquilable)
+          // Sin garantía: esa va en línea aparte del comprobante y en ven_garantia.
+          const montoAlquiler = importeGasLinea(lineaAlquilable)
           const idProductoAlquiler = Number(lineaAlquilable.idProducto)
           const inicio =
             lineaAlquilable.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
           const fin = lineaAlquilable.fechaFinAlquiler || addDaysIso(inicio, 14)
 
+          const idProductoStock =
+            lineaAlquilable.afectaStock &&
+            !lineaAlquilable.esServicio &&
+            !lineaAlquilable.esGas
+              ? idProductoAlquiler
+              : undefined
+
           // En este dominio tarifa_diaria se usa como monto del periodo (ver bal_renovar_alquiler).
           const alquiler = await alquileresService.crear({
             idUsuarioAuditoria: userId,
-            numeroAlquiler: generarNumeroAlquiler(),
             idCliente: Number(idCliente.value),
             idAlmacen: Number(idAlmacen.value),
             fechaInicio: inicio,
@@ -1066,6 +1262,7 @@ try {
             totalCobrado: montoAlquiler,
             idComprobanteVenta: comprobante.id,
             idProductoRegulador: idProductoAlquiler,
+            idProductoStock,
             observacion:
               lineaAlquilable.observacionLinea ||
               glosa.value ||
@@ -1083,6 +1280,34 @@ try {
             idComprobante: comprobante.id,
             observacion: 'Periodo 1 — POS unificado',
           })
+
+          const montoGarantiaAlq = Number(lineaAlquilable.montoGarantia || 0)
+          if (montoGarantiaAlq > 0) {
+            try {
+              await garantiasService.crear({
+                idUsuarioAuditoria: userId,
+                idCliente: Number(idCliente.value),
+                monto: montoGarantiaAlq,
+                idComprobante: comprobante.id,
+                idAlquiler: alquiler.id,
+                idProducto: idProductoAlquiler,
+                cantidadVenta: 1,
+                fechaRegistro: fecha.value,
+                idMedioPago: lineaAlquilable.idMedioPagoGarantia
+                  ? Number(lineaAlquilable.idMedioPagoGarantia)
+                  : undefined,
+                observacion:
+                  lineaAlquilable.observacionGarantia?.trim() ||
+                  `Garantía POS · alquiler ${lineaAlquilable.nombre}`,
+              })
+            } catch (error) {
+              advertencias += 1
+              toastApiError(
+                error,
+                `Comprobante y alquiler creados, pero falló la garantía de ${lineaAlquilable.nombre}`,
+              )
+            }
+          }
         } catch (error) {
           advertencias += 1
           toastApiError(

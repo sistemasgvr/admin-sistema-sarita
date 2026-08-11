@@ -40,8 +40,10 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   SALIDA_PRESTAMO: 'warning',
   SALIDA_ALQUILER: 'primary',
   SALIDA_MANTENIMIENTO: 'warning',
+  SALIDA_PLANTA_EXTERNA: 'warning',
   ENTRADA_DEVOLUCION: 'success',
   ENTRADA_LLENADO: 'success',
+  ENTRADA_PLANTA_EXTERNA: 'success',
   RECARGA_CLIENTE: 'primary',
   TRASLADO_LIMA: 'warning',
   RETORNO_LIMA: 'neutral',
@@ -52,6 +54,7 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   PRESTADO_CLIENTE: 'primary',
   EN_RUTA_LIMA: 'neutral',
   EN_MANTENIMIENTO: 'warning',
+  EN_RECARGA_EXTERNA: 'warning',
   EN_PODER_CLIENTE: 'primary',
   ALQUILADO: 'primary',
   DEVUELTO: 'neutral',
@@ -78,6 +81,16 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   // TipoRecarga
   CLIENTE: 'primary',
   PLANTA_EXTERNA: 'warning',
+
+  // EstadoRecojo / ResultadoRecojoDetalle
+  PROGRAMADO: 'primary',
+  EN_RUTA: 'warning',
+  EXITOSO: 'success',
+  FALLIDO: 'error',
+  REPROGRAMADO: 'warning',
+  RECOGIDO: 'success',
+  NO_RECOGIDO: 'error',
+  EXTENDIDO: 'warning',
 
   // Estados genéricos de operaciones
   ACTIVO: 'success',

@@ -7,6 +7,7 @@ export interface StockGas {
   nombre_almacen?: string | null
   balones_llenos: number
   capacidad_disponible: number
+  capacidad_disponible_lb?: number
   balones_vacios: number
   balones_llenos_fuera: number
   tiene_stock_disponible: boolean
@@ -23,6 +24,7 @@ export interface StockGasListFilters {
 export interface StockGasResumen {
   balones_llenos?: number
   capacidad_disponible?: number
+  capacidad_disponible_lb?: number
   balones_vacios?: number
   balones_llenos_fuera?: number
 }

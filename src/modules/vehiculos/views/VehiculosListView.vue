@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Vehículos" :items="breadcrumbItems" />
+    <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <AppSummaryChips :chips="summaryChips" />
 
@@ -95,7 +95,10 @@
       v-model="formModalOpen"
       :mode="formMode"
       :vehiculo="selectedVehiculo"
-      :default-cliente-id="idClienteFiltro ? Number(idClienteFiltro) : null"
+      :solo-empresa="soloEmpresa"
+      :default-cliente-id="
+        soloEmpresa ? null : idClienteFiltro ? Number(idClienteFiltro) : null
+      "
       @saved="onVehiculoSaved"
     />
 
@@ -165,19 +168,30 @@ import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRoute
 import { ICONS } from '@/shared/constants/icons'
 import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
+import { configuracionBreadcrumbItems } from '@/modules/configuracion/config/configuracion-breadcrumb'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
+/** Sentinel API: id_cliente IS NULL (flota de empresa). */
+const ID_CLIENTE_EMPRESA = -1
+
 const authStore = useAuthStore()
 const route = useRoute()
 
-const breadcrumbItems: BreadcrumbItem[] = [
-  { label: 'Clientes', to: '/admin/clientes' },
-  { label: 'Vehículos' },
-]
+const soloEmpresa = computed(() => Boolean(route.meta.soloEmpresa))
+const pageTitle = computed(() =>
+  soloEmpresa.value ? 'Vehículos de la empresa' : 'Vehículos',
+)
+const breadcrumbItems = computed(() =>
+  soloEmpresa.value
+    ? configuracionBreadcrumbItems('Vehículos')
+    : [
+        { label: 'Clientes', to: '/admin/clientes' },
+        { label: 'Vehículos' },
+      ],
+)
 
 const idClienteFiltro = ref<string | number>('')
 const buscar = ref('')
@@ -223,6 +237,7 @@ const filters = ref<VehiculoListFilters>({
   pagina: 1,
   limite: 10,
   isActivos: 1,
+  idCliente: soloEmpresa.value ? ID_CLIENTE_EMPRESA : undefined,
 })
 
 const vehiculosQuery = useVehiculosQuery(filters)
@@ -231,7 +246,11 @@ const deleteMutation = useDeleteVehiculoMutation()
 // --- Chips de resumen (total / activos / inactivos, respetando búsqueda y cliente) ---
 const breakdownFiltersBase = computed<VehiculoListFilters>(() => ({
   buscar: buscar.value.trim(),
-  idCliente: idClienteFiltro.value ? Number(idClienteFiltro.value) : undefined,
+  idCliente: soloEmpresa.value
+    ? ID_CLIENTE_EMPRESA
+    : idClienteFiltro.value
+      ? Number(idClienteFiltro.value)
+      : undefined,
   pagina: 1,
   limite: 1,
 }))
@@ -281,20 +300,29 @@ const getClienteNombre = (vehiculo: Vehiculo) => {
 
   return nombreCompleto || vehiculo.cliente_numero_documento || 'Sin cliente asignado'
 }
-const columns = computed<TableColumn<Vehiculo>[]>(() => [
-  { key: 'vehiculo', label: 'Vehículo' },
-  { key: 'cliente', label: 'Cliente / Proveedor' },
-  { key: 'anio', label: 'Año' },
-  { key: 'color', label: 'Color' },
-  { key: 'estado', label: 'Estado' },
-])
+const columns = computed<TableColumn<Vehiculo>[]>(() => {
+  const cols: TableColumn<Vehiculo>[] = [{ key: 'vehiculo', label: 'Vehículo' }]
+  if (!soloEmpresa.value) {
+    cols.push({ key: 'cliente', label: 'Cliente / Proveedor' })
+  }
+  cols.push(
+    { key: 'anio', label: 'Año' },
+    { key: 'color', label: 'Color' },
+    { key: 'estado', label: 'Estado' },
+  )
+  return cols
+})
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
-  const idClienteQuery = route.query.idCliente
-  if (idClienteQuery) {
-    idClienteFiltro.value = Number(idClienteQuery)
+  if (soloEmpresa.value) {
+    filters.value = { ...filters.value, idCliente: ID_CLIENTE_EMPRESA }
+  } else {
+    const idClienteQuery = route.query.idCliente
+    if (idClienteQuery) {
+      idClienteFiltro.value = Number(idClienteQuery)
+    }
   }
   const buscarQuery = route.query.buscar
   if (typeof buscarQuery === 'string' && buscarQuery.trim()) {
@@ -303,6 +331,7 @@ onMounted(() => {
 })
 
 watch(idClienteFiltro, (value) => {
+  if (soloEmpresa.value) return
   pagina.value = 1
   filters.value = {
     ...filters.value,

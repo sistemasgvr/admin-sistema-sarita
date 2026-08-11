@@ -80,6 +80,9 @@ export interface DevolverPrestamoDetallePayload {
   idUsuarioAuditoria: number
   fechaDevolucion?: string
   idAlmacenDestino?: number
+  /** EstadoContenidoBalon: VACIO | LLENO | DESCONOCIDO */
+  nombreEstadoContenido?: string
+  observacion?: string
 }
 
 export interface DeletePrestamoDetalleResponse {

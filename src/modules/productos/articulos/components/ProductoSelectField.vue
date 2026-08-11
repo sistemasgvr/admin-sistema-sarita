@@ -20,6 +20,7 @@
         :required="required"
         :error="error"
         :hint="hint"
+        :help="help"
         :empty-text="emptyText"
       />
       <AppSelect
@@ -32,6 +33,7 @@
         :required="required"
         :error="error"
         :hint="hint"
+        :help="help"
       />
     </AppSelectWithCreate>
 
@@ -71,6 +73,7 @@ const props = withDefaults(
     searchPlaceholder?: string
     error?: string
     hint?: string
+    help?: string
     /**
      * Filtros tri-estado. Default `undefined` (no `false`): en Vue un boolean
      * opcional sin default se castea a false y rompía listados (ej. gases con
@@ -83,6 +86,11 @@ const props = withDefaults(
     soloActivos?: number | null
     /** Si se envía, el listado incluye stock_actual de ese almacén */
     idAlmacen?: number | '' | null
+    /**
+     * Con idAlmacen: no permite elegir productos que afectan stock y tienen stock ≤ 0.
+     * Aparecen deshabilitados en el listado.
+     */
+    bloquearSinStock?: boolean
   }>(),
   {
     options: undefined,
@@ -100,6 +108,7 @@ const props = withDefaults(
     afectaStock: undefined,
     soloActivos: 1,
     idAlmacen: undefined,
+    bloquearSinStock: false,
   },
 )
 
@@ -205,14 +214,41 @@ function productoLabel(producto: Producto) {
   return `${base} (stock: ${producto.stock_actual})`
 }
 
-const queryOptions = computed<SelectOption[]>(() => {
+function productoBloqueadoPorStock(producto: Producto) {
+  if (!props.bloquearSinStock) return false
+  if (!Number(props.idAlmacen)) return false
+  if (producto.es_gas || producto.es_servicio) return false
+  if (producto.afecta_stock === false) return false
+  if (producto.stock_actual == null) return false
+  return Number(producto.stock_actual) <= 0
+}
+
+const productosCatalogo = computed(() => {
   const rows = productosQuery.data.value?.data
   if (!Array.isArray(rows)) return []
-  return filtrarProductosCatalogo(rows).map((producto) => ({
+  return filtrarProductosCatalogo(rows)
+})
+
+const queryOptions = computed<SelectOption[]>(() =>
+  productosCatalogo.value.map((producto) => ({
     value: producto.id,
     label: productoLabel(producto),
-  }))
-})
+    disabled: productoBloqueadoPorStock(producto),
+  })),
+)
+
+watch(
+  () => [model.value, props.bloquearSinStock, props.idAlmacen, productosCatalogo.value] as const,
+  () => {
+    if (!props.bloquearSinStock || model.value === '' || model.value == null) return
+    const selected = productosCatalogo.value.find(
+      (item) => String(item.id) === String(model.value),
+    )
+    if (selected && productoBloqueadoPorStock(selected)) {
+      model.value = ''
+    }
+  },
+)
 
 const mergedOptions = computed(() => {
   if (!props.searchable) {

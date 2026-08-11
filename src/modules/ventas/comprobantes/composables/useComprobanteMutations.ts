@@ -7,6 +7,7 @@ import type {
   UpdateComprobantePayload,
 } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -21,6 +22,7 @@ export function useCreateComprobanteMutation() {
       queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante registrado correctamente')
     },
     onError: (error) => {
@@ -38,6 +40,7 @@ export function useUpdateComprobanteMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante actualizado correctamente')
     },
     onError: (error) => {
@@ -58,6 +61,7 @@ export function useEmitirComprobanteMutation() {
       queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      void invalidateCajaQueries(queryClient)
       toastSuccess(`Comprobante emitido: ${data.sunat.estado}`)
     },
     onError: (error) => {
@@ -74,6 +78,7 @@ export function useDeleteComprobanteMutation() {
       comprobantesService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante eliminado correctamente')
     },
     onError: (error) => {
@@ -115,6 +120,7 @@ export function useAnularComprobanteMutation() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
+      void invalidateCajaQueries(queryClient)
       toastSuccess(`Anulación enviada: ${data.sunat.estado}`)
     },
     onError: (error) => {

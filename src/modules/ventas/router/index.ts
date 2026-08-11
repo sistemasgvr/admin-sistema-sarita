@@ -93,6 +93,16 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'caja',
+        name: 'admin-ventas-caja',
+        component: () => import('@/modules/caja/views/CajaView.vue'),
+        meta: {
+          title: 'Caja',
+          module: 'ventas',
+          permission: PermisoBanderas.CAJA_VER,
+        },
+      },
+      {
         path: '',
         redirect: { name: 'admin-ventas-pos' },
       },

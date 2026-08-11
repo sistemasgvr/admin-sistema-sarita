@@ -3,6 +3,7 @@ import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 export const BALONES_HUB_PATH = '/admin/balones'
 export const BALONES_CILINDROS_PATH = '/admin/balones/cilindros'
 export const BALONES_PRESTAMOS_PATH = '/admin/balones/prestamos'
+export const BALONES_RECOJOS_PATH = '/admin/balones/recojos'
 export const BALONES_ALQUILERES_PATH = '/admin/balones/alquileres'
 
 export function balonesBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
@@ -30,6 +31,10 @@ export function balonesCilindrosBreadcrumbItems(pageTitle: string): BreadcrumbIt
 
 export function balonesPrestamosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return balonesSectionBreadcrumbItems('Préstamos', BALONES_PRESTAMOS_PATH, pageTitle)
+}
+
+export function balonesRecojosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
+  return balonesSectionBreadcrumbItems('Recojos', BALONES_RECOJOS_PATH, pageTitle)
 }
 
 export function balonesAlquileresBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {

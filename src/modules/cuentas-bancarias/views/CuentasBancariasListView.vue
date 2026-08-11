@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageBreadcrumb page-title="Cuentas Bancarias" />
+    <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <AppSummaryChips :chips="summaryChips" />
 
@@ -99,6 +99,7 @@
       v-model="formModalOpen"
       :mode="formMode"
       :cuenta="selectedCuenta"
+      :solo-empresa="soloEmpresa"
       @saved="onSaved"
     />
 
@@ -141,7 +142,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import CuentaBancariaDetailModal from '@/modules/cuentas-bancarias/components/CuentaBancariaDetailModal.vue'
 import CuentaBancariaFormModal from '@/modules/cuentas-bancarias/components/CuentaBancariaFormModal.vue'
@@ -154,6 +156,7 @@ import type {
   CuentaBancariaListFilters,
 } from '@/modules/cuentas-bancarias/interfaces/cuenta-bancaria.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { configuracionBreadcrumbItems } from '@/modules/configuracion/config/configuracion-breadcrumb'
 import {
   AppBadge,
   AppListToolbar,
@@ -170,7 +173,21 @@ import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
+/** Sentinel API: id_cliente IS NULL (cuentas de empresa). */
+const ID_CLIENTE_EMPRESA = -1
+
 const authStore = useAuthStore()
+const route = useRoute()
+
+const soloEmpresa = computed(() => Boolean(route.meta.soloEmpresa))
+const pageTitle = computed(() =>
+  soloEmpresa.value ? 'Cuentas bancarias de la empresa' : 'Cuentas Bancarias',
+)
+const breadcrumbItems = computed(() =>
+  soloEmpresa.value
+    ? configuracionBreadcrumbItems('Cuentas bancarias')
+    : [{ label: 'Cuentas Bancarias' }],
+)
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
@@ -215,6 +232,7 @@ const filters = ref<CuentaBancariaListFilters>({
   pagina: 1,
   limite: 10,
   isActivos: 1,
+  idCliente: soloEmpresa.value ? ID_CLIENTE_EMPRESA : undefined,
 })
 
 const query = useCuentasBancariasQuery(filters)
@@ -223,6 +241,7 @@ const deleteMutation = useDeleteCuentaBancariaMutation()
 // --- Chips de resumen (total / activos / inactivos, respetando la búsqueda) ---
 const breakdownFiltersBase = computed<CuentaBancariaListFilters>(() => ({
   buscar: buscar.value.trim(),
+  idCliente: soloEmpresa.value ? ID_CLIENTE_EMPRESA : undefined,
   pagina: 1,
   limite: 1,
 }))
@@ -265,15 +284,26 @@ const getNombreCliente = (cuenta: CuentaBancaria) => {
   return nombreCompleto || cuenta.cliente_numero_documento || '—'
 }
 
-const columns = computed<TableColumn<CuentaBancaria>[]>(() => [
-  { key: 'cuenta', label: 'Titular / Banco' },
-  { key: 'numero_cuenta', label: 'Nro. Cuenta' },
-  { key: 'numero_cuenta_interbancaria', label: 'CCI' },
-  { key: 'cliente', label: 'Cliente' },
-  { key: 'estado', label: 'Estado' },
-])
+const columns = computed<TableColumn<CuentaBancaria>[]>(() => {
+  const cols: TableColumn<CuentaBancaria>[] = [
+    { key: 'cuenta', label: 'Titular / Banco' },
+    { key: 'numero_cuenta', label: 'Nro. Cuenta' },
+    { key: 'numero_cuenta_interbancaria', label: 'CCI' },
+  ]
+  if (!soloEmpresa.value) {
+    cols.push({ key: 'cliente', label: 'Cliente' })
+  }
+  cols.push({ key: 'estado', label: 'Estado' })
+  return cols
+})
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
+
+onMounted(() => {
+  if (soloEmpresa.value) {
+    filters.value = { ...filters.value, idCliente: ID_CLIENTE_EMPRESA }
+  }
+})
 
 watch(buscar, (value) => {
   clearTimeout(buscarTimeout)

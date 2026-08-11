@@ -1,7 +1,13 @@
 import type { AdminMenuSubItem } from '@/modules/admin/config/menu'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
+/** Orden por flujo del día: abrir caja → vender → consultar → cierre SUNAT. */
 export const ventasMenuSubItems: AdminMenuSubItem[] = [
+  {
+    name: 'Caja',
+    path: '/admin/ventas/caja',
+    permission: PermisoBanderas.CAJA_VER,
+  },
   {
     name: 'Punto de venta',
     path: '/admin/ventas/pos',

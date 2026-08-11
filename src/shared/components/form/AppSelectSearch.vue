@@ -2,6 +2,7 @@
   <AppFormField
     :label="label"
     :hint="hint"
+    :help="help"
     :error="error"
     :required="required"
     :optional="optional"
@@ -155,6 +156,7 @@ defineOptions({
 interface AppSelectSearchProps {
   label?: string
   hint?: string
+  help?: string
   error?: string
   placeholder?: string
   searchPlaceholder?: string

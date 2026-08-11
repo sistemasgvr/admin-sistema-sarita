@@ -83,7 +83,11 @@
                 :client-filter="balonClientFilter"
                 :error="errors.idBalon"
                 :hint="selectRule.hint"
-                empty-text="No hay cilindros que cumplan el estado para este movimiento."
+                :empty-text="
+                  hasTipoMovimiento
+                    ? 'No hay cilindros que cumplan el estado para este movimiento.'
+                    : 'Primero selecciona el tipo de movimiento.'
+                "
               />
 
               <div

@@ -63,6 +63,11 @@
       >
         Monto sugerido: {{ origenMonto }}
       </p>
+
+      <GarantiaRecepcionFields
+        v-model:id-medio-pago="idMedioPago"
+        v-model:observacion="observacionRecepcion"
+      />
     </div>
 
     <template #footer>
@@ -88,6 +93,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import { useCreateGarantiaMutation } from '@/modules/balones/garantias/composables/useGarantiaMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import type { PrestamoListFilters } from '@/modules/balones/prestamos/interfaces/prestamo.interface'
@@ -130,6 +136,8 @@ const idPrestamo = ref<number | ''>('')
 const idProducto = ref<number | ''>('')
 const monto = ref(0)
 const origenMonto = ref('')
+const idMedioPago = ref<string | number>('')
+const observacionRecepcion = ref('')
 const guardando = ref(false)
 const clienteBuscar = ref('')
 const productoBuscar = ref('')
@@ -189,7 +197,8 @@ const puedeCobrar = computed(
     Boolean(idCliente.value) &&
     Boolean(idProducto.value) &&
     Boolean(idTipoComprobante.value) &&
-    Number(monto.value) > 0,
+    Number(monto.value) > 0 &&
+    Boolean(idMedioPago.value),
 )
 
 watch(clienteBuscar, (term) => {
@@ -259,6 +268,8 @@ watch(
     idProducto.value = props.idProducto ?? ''
     monto.value = 0
     origenMonto.value = ''
+    idMedioPago.value = ''
+    observacionRecepcion.value = ''
     if (props.idCliente) {
       prestamosFilters.value = {
         ...prestamosFilters.value,
@@ -271,7 +282,7 @@ watch(
 async function confirmar() {
   const userId = authStore.user?.id
   if (!userId || !puedeCobrar.value) {
-    toastWarning('Completa cliente, producto, tipo de comprobante y monto')
+    toastWarning('Completa cliente, producto, comprobante, monto y medio de recepción')
     return
   }
 
@@ -318,7 +329,9 @@ async function confirmar() {
       cantidadVenta: 1,
       idUnidadMedida: producto.id_unidad_medida ?? undefined,
       fechaRegistro: fecha.value,
-      observacion: 'Cobro desde flujo industrial',
+      idMedioPago: Number(idMedioPago.value),
+      observacion:
+        observacionRecepcion.value.trim() || 'Cobro desde flujo industrial',
     })
 
     open.value = false

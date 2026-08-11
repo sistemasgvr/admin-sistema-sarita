@@ -71,9 +71,12 @@ export const finanzasService = {
     return apiPost<DuplicadoPagoInfo>('/finanzas/verificar-duplicado-pago', payload)
   },
 
-  /* -------- Garantías -------- */
+  /* -------- Garantías (ven_garantia: POS / préstamos / alquileres / manual) -------- */
   listarGarantias(filters: GarantiaListFilters = {}) {
     return apiGetPaginated<Garantia>('/finanzas/garantias', { params: filters })
+  },
+  obtenerGarantia(id: number) {
+    return apiGet<Garantia>(`/finanzas/garantias/${id}`)
   },
   crearGarantia(payload: CrearGarantiaPayload) {
     return apiPost<Garantia>('/finanzas/garantias', payload)
@@ -86,8 +89,5 @@ export const finanzasService = {
   },
   reembolsarGarantia(id: number, payload: ReembolsarGarantiaPayload) {
     return apiPost<Garantia>(`/finanzas/garantias/${id}/reembolsar`, payload)
-  },
-  anularReembolsoGarantia(id: number, idUsuarioAuditoria?: number) {
-    return apiPatch<Garantia>(`/finanzas/garantias/${id}/anular-reembolso`, { idUsuarioAuditoria })
   },
 }

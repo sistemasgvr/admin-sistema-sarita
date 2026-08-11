@@ -64,3 +64,30 @@ export function etiquetaStockPos(producto: Producto): string | null {
   const qty = formatStockPos(Number(producto.stock_actual))
   return um ? `Stock: ${qty} ${um}` : `Stock: ${qty}`
 }
+
+/** Stock de gas (cilindros en almacén), distinto de pro_stock. */
+export interface StockGasPosInfo {
+  capacidad_disponible: number
+  balones_llenos?: number
+  nombre_unidad_medida?: string | null
+  tiene_stock_disponible?: boolean
+}
+
+export function etiquetaStockGasPos(
+  info?: StockGasPosInfo | null,
+  options?: { sinAlmacen?: boolean },
+): string | null {
+  if (options?.sinAlmacen) return 'Selecciona almacén'
+  if (!info) return 'Stock: 0'
+  const um = info.nombre_unidad_medida?.trim()
+  const qty = formatStockPos(Number(info.capacidad_disponible || 0))
+  const base = um ? `Stock: ${qty} ${um}` : `Stock: ${qty}`
+  const llenos = Number(info.balones_llenos || 0)
+  return llenos > 0 ? `${base} · ${llenos} llenos` : base
+}
+
+export function stockGasSinDisponible(info?: StockGasPosInfo | null): boolean {
+  if (!info) return true
+  if (info.tiene_stock_disponible != null) return !info.tiene_stock_disponible
+  return Number(info.capacidad_disponible || 0) <= 0
+}
