@@ -123,12 +123,7 @@ const {
   selectionLocked: selectionLockedRef,
 })
 
-const resolvedEmptyText = computed(() => {
-  if (props.selectionLocked) {
-    return 'Primero selecciona el tipo de movimiento.'
-  }
-  return props.emptyText
-})
+const resolvedEmptyText = computed(() => props.emptyText)
 
 function resolveSelectedBalon(): Balon | null {
   if (!model.value) return null

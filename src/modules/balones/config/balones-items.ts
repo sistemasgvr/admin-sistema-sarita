@@ -68,6 +68,14 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
+    key: 'rutas-pueblos',
+    title: 'Ruta pueblos',
+    path: '/admin/balones/rutas-pueblos',
+    permission: PermisoBanderas.RUTAS_PUEBLOS_LISTAR,
+    phase: 5,
+    implemented: true,
+  },
+  {
     key: 'mantenimientos',
     title: 'Mantenimientos',
     path: '/admin/balones/mantenimientos',

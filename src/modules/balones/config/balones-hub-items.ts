@@ -79,6 +79,16 @@ export const balonesHubItems: BalonesHubItem[] = [
     implemented: true,
   },
   {
+    key: 'rutas-pueblos',
+    title: 'Ruta pueblos',
+    description:
+      'Control de libras ida/vuelta en rutas a pueblos: Δ → m³ vs ventas del repartidor (sin forzar GRE).',
+    path: '/admin/balones/rutas-pueblos',
+    icon: ICONS.mapPin,
+    permission: PermisoBanderas.RUTAS_PUEBLOS_LISTAR,
+    implemented: true,
+  },
+  {
     key: 'alquileres',
     title: 'Alquileres',
     description:

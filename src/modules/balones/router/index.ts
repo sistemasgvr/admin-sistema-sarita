@@ -238,6 +238,17 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'rutas-pueblos',
+        name: 'admin-balones-rutas-pueblos',
+        component: () =>
+          import('@/modules/balones/rutas-pueblos/views/RutasPueblosListView.vue'),
+        meta: {
+          title: 'Ruta pueblos',
+          module: 'balones',
+          permission: PermisoBanderas.RUTAS_PUEBLOS_LISTAR,
+        },
+      },
+      {
         path: '',
         name: 'admin-balones',
         component: () => import('@/modules/balones/views/BalonesHubView.vue'),
