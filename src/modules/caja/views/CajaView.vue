@@ -290,6 +290,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import {
@@ -343,7 +344,16 @@ function formatFechaHora(value: string): string {
 }
 
 const auth = useAuthStore()
-const fecha = ref(hoyLocal())
+const route = useRoute()
+
+function fechaInicial(): string {
+  const raw = route.query.fecha
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  return hoyLocal()
+}
+
+const fecha = ref(fechaInicial())
 const idSucursal = ref<number | null>(null)
 const showAbrir = ref(false)
 const showCerrar = ref(false)
