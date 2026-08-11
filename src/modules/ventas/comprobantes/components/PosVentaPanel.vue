@@ -1,5 +1,11 @@
 <template>
-  <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+  <div class="space-y-4">
+    <PosCajaEstadoBanner
+      :mensaje="mensajeBloqueoCaja"
+      :caja-cerrada="cajaCerrada"
+    />
+
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
     <section class="space-y-4">
       <FormCardsLayout>
         <DetailSectionCard
@@ -347,6 +353,7 @@
         @emitir="emitirComprobante"
       />
     </aside>
+    </div>
 
     <PosAnadirItemModal
       v-model="anadirOpen"
@@ -377,6 +384,8 @@ import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaO
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import PosCajaEstadoBanner from '@/modules/caja/components/PosCajaEstadoBanner.vue'
+import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
 import PosAnadirItemModal, {
   type PosLineaConfirmada,
 } from '@/modules/ventas/comprobantes/components/PosAnadirItemModal.vue'
@@ -437,6 +446,13 @@ const {
   seleccionarCliente,
   clienteDescripcion,
 } = usePosComprobanteForm()
+
+const {
+  cajaAbierta,
+  cajaCerrada,
+  mensajeBloqueo: mensajeBloqueoCaja,
+  assertCajaAbierta,
+} = useCajaAbiertaRequerida(fecha)
 
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
@@ -569,6 +585,7 @@ const totales = computed(() => {
 
 const puedeGuardar = computed(
   () =>
+    cajaAbierta.value &&
     !comprobanteGuardadoId.value &&
     comprobanteBaseValido() &&
     lineasActivas.value.length > 0 &&
@@ -797,6 +814,8 @@ async function guardarComprobante() {
     toastWarning('Sesión inválida')
     return
   }
+
+  if (!assertCajaAbierta()) return
 
   if (comprobanteGuardadoId.value) {
     toastWarning('Ya hay un comprobante guardado. Emite o limpia para una nueva venta.')

@@ -151,6 +151,7 @@ import {
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -318,6 +319,7 @@ async function registrarMantenimiento() {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() }),
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.lists() }),
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.lists() }),
+      invalidateCajaQueries(queryClient),
     ])
 
     comprobanteGuardadoId.value = comprobante.id

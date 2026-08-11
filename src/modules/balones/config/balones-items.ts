@@ -9,16 +9,8 @@ export interface BalonesMenuItem {
   implemented: boolean
 }
 
-/** Orden del menú y plan por fases (ver README interno del módulo). */
+/** Orden por uso operativo del día; maestros (tipos) al final. */
 export const balonesMenuItems: BalonesMenuItem[] = [
-  {
-    key: 'tipos',
-    title: 'Tipos de balón',
-    path: '/admin/balones/tipos',
-    permission: PermisoBanderas.TIPOS_BALON_LISTAR,
-    phase: 1,
-    implemented: true,
-  },
   {
     key: 'cilindros',
     title: 'Libro de cilindros',
@@ -36,19 +28,19 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
-    key: 'movimientos',
-    title: 'Movimientos',
-    path: '/admin/balones/movimientos',
-    permission: PermisoBanderas.MOVIMIENTOS_BALON_LISTAR,
-    phase: 3,
-    implemented: true,
-  },
-  {
     key: 'recargas',
     title: 'Recargas',
     path: '/admin/balones/recargas',
     permission: PermisoBanderas.MOVIMIENTOS_RECARGA_LISTAR,
     phase: 4,
+    implemented: true,
+  },
+  {
+    key: 'alquileres',
+    title: 'Alquileres',
+    path: '/admin/balones/alquileres',
+    permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,
+    phase: 6,
     implemented: true,
   },
   {
@@ -68,11 +60,11 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
-    key: 'alquileres',
-    title: 'Alquileres',
-    path: '/admin/balones/alquileres',
-    permission: PermisoBanderas.ALQUILERES_BALON_LISTAR,
-    phase: 6,
+    key: 'movimientos',
+    title: 'Movimientos',
+    path: '/admin/balones/movimientos',
+    permission: PermisoBanderas.MOVIMIENTOS_BALON_LISTAR,
+    phase: 3,
     implemented: true,
   },
   {
@@ -81,6 +73,14 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     path: '/admin/balones/mantenimientos',
     permission: PermisoBanderas.MANTENIMIENTOS_BALON_LISTAR,
     phase: 7,
+    implemented: true,
+  },
+  {
+    key: 'tipos',
+    title: 'Tipos de balón',
+    path: '/admin/balones/tipos',
+    permission: PermisoBanderas.TIPOS_BALON_LISTAR,
+    phase: 1,
     implemented: true,
   },
 ]

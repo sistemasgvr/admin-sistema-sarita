@@ -9,23 +9,8 @@ export interface ProductosMenuItem {
   implemented: boolean
 }
 
+/** Orden por uso: catálogo/stock primero; categorías al final (maestros). */
 export const productosMenuItems: ProductosMenuItem[] = [
-  {
-    key: 'categorias',
-    title: 'Categorías',
-    path: '/admin/productos/categorias',
-    permission: PermisoBanderas.CATEGORIAS_LISTAR,
-    phase: 2,
-    implemented: true,
-  },
-  {
-    key: 'sub-categorias',
-    title: 'Subcategorías',
-    path: '/admin/productos/sub-categorias',
-    permission: PermisoBanderas.SUB_CATEGORIAS_LISTAR,
-    phase: 2,
-    implemented: true,
-  },
   {
     key: 'productos',
     title: 'Catálogo',
@@ -48,6 +33,22 @@ export const productosMenuItems: ProductosMenuItem[] = [
     path: '/admin/productos/movimientos',
     permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
     phase: 4,
+    implemented: true,
+  },
+  {
+    key: 'categorias',
+    title: 'Categorías',
+    path: '/admin/productos/categorias',
+    permission: PermisoBanderas.CATEGORIAS_LISTAR,
+    phase: 2,
+    implemented: true,
+  },
+  {
+    key: 'sub-categorias',
+    title: 'Subcategorías',
+    path: '/admin/productos/sub-categorias',
+    permission: PermisoBanderas.SUB_CATEGORIAS_LISTAR,
+    phase: 2,
     implemented: true,
   },
 ]

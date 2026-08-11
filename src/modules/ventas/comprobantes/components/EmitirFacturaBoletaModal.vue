@@ -149,6 +149,7 @@ import {
 import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { type CodigoTipoComprobanteSunat, seriePorDefectoDesdeCodigo, validarSerieParaTipo } from '@/modules/ventas/comprobantes/utils/serieComprobante'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
@@ -209,6 +210,7 @@ const origenQuery = useComprobanteQuery(origenId)
 
 const serie = ref('')
 const fecha = ref(new Date().toISOString().slice(0, 10))
+const { assertCajaAbierta } = useCajaAbiertaRequerida(fecha)
 const emitirTrasCrear = ref(true)
 const observaciones = ref('')
 const lineas = ref<LineaItem[]>([])
@@ -389,6 +391,8 @@ async function confirm() {
   const userId = authStore.user?.id
 
   if (!row || !origen || !userId || !canSave.value) return
+
+  if (!assertCajaAbierta()) return
 
   const serieError = validarSerieParaTipo(codigoTipo.value, serie.value)
   if (serieError) {
