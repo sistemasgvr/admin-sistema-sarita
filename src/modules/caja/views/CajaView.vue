@@ -10,7 +10,7 @@
           <div class="flex min-w-0 flex-wrap items-center gap-2">
             <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Caja / arqueo</h3>
             <AppHelpTip
-              text="Control operativo del día: abrir, registrar gastos/depósitos y cerrar. No reemplaza el Resumen diario SUNAT."
+              text="Control operativo del día: abrir, registrar/anular gastos y depósitos, y cerrar. Con caja cerrada no se anulan movimientos. No reemplaza el Resumen diario SUNAT."
             />
             <AppBadge
               v-if="sesion?.estadoCaja"
@@ -159,19 +159,21 @@
           </ul>
         </div>
 
-        <div v-if="sesion?.id" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div
-            class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]"
+        <div v-if="sesion?.id" class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <AppCollapsibleSection
+            v-model:open="gastosOpen"
+            title="Gastos de caja"
+            :badge="String(gastos.length)"
+            :icon="ICONS.arrowUpFromLine"
           >
-            <div class="mb-2 flex items-center justify-between">
-              <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90">Gastos de caja</h4>
-              <span class="text-theme-sm text-gray-500">{{ gastos.length }}</span>
-            </div>
-            <ul v-if="gastos.length" class="divide-y divide-gray-100 dark:divide-gray-800">
+            <ul
+              v-if="gastos.length"
+              class="max-h-56 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800"
+            >
               <li
                 v-for="g in gastos"
                 :key="g.id"
-                class="flex items-start justify-between gap-3 py-2 text-theme-sm"
+                class="flex items-start justify-between gap-3 py-2 text-theme-sm first:pt-0 last:pb-0"
               >
                 <div class="min-w-0">
                   <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ g.concepto }}</p>
@@ -180,26 +182,45 @@
                     <span v-if="g.numeroOperacion">· {{ g.numeroOperacion }}</span>
                   </p>
                 </div>
-                <span class="shrink-0 tabular-nums font-medium text-gray-800 dark:text-white/90">
-                  {{ formatCurrency(g.monto) }}
-                </span>
+                <div class="flex shrink-0 items-center gap-2">
+                  <span class="tabular-nums font-medium text-gray-800 dark:text-white/90">
+                    {{ formatCurrency(g.monto) }}
+                  </span>
+                  <button
+                    v-if="canAnularGasto"
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+                    title="Anular gasto"
+                    @click="pedirAnularGasto(g)"
+                  >
+                    <AppIcon :name="ICONS.trash" :size="16" />
+                  </button>
+                </div>
               </li>
             </ul>
             <p v-else class="text-theme-sm text-gray-500 dark:text-gray-400">Sin gastos.</p>
-          </div>
+            <p
+              v-if="gastos.length && !canAnularGasto"
+              class="mt-2 text-[11px] text-gray-400 dark:text-gray-500"
+            >
+              Para anular un gasto, la caja debe estar abierta.
+            </p>
+          </AppCollapsibleSection>
 
-          <div
-            class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]"
+          <AppCollapsibleSection
+            v-model:open="depositosOpen"
+            title="Depósitos"
+            :badge="String(depositos.length)"
+            :icon="ICONS.arrowDownToLine"
           >
-            <div class="mb-2 flex items-center justify-between">
-              <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90">Depósitos</h4>
-              <span class="text-theme-sm text-gray-500">{{ depositos.length }}</span>
-            </div>
-            <ul v-if="depositos.length" class="divide-y divide-gray-100 dark:divide-gray-800">
+            <ul
+              v-if="depositos.length"
+              class="max-h-56 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800"
+            >
               <li
                 v-for="d in depositos"
                 :key="d.id"
-                class="flex items-start justify-between gap-3 py-2 text-theme-sm"
+                class="flex items-start justify-between gap-3 py-2 text-theme-sm first:pt-0 last:pb-0"
               >
                 <div class="min-w-0">
                   <p class="truncate font-medium text-gray-800 dark:text-white/90">
@@ -210,13 +231,30 @@
                     <span v-if="d.numeroOperacion">· {{ d.numeroOperacion }}</span>
                   </p>
                 </div>
-                <span class="shrink-0 tabular-nums font-medium text-gray-800 dark:text-white/90">
-                  {{ formatCurrency(d.monto) }}
-                </span>
+                <div class="flex shrink-0 items-center gap-2">
+                  <span class="tabular-nums font-medium text-gray-800 dark:text-white/90">
+                    {{ formatCurrency(d.monto) }}
+                  </span>
+                  <button
+                    v-if="canAnularDeposito"
+                    type="button"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+                    title="Anular depósito"
+                    @click="pedirAnularDeposito(d)"
+                  >
+                    <AppIcon :name="ICONS.trash" :size="16" />
+                  </button>
+                </div>
               </li>
             </ul>
             <p v-else class="text-theme-sm text-gray-500 dark:text-gray-400">Sin depósitos.</p>
-          </div>
+            <p
+              v-if="depositos.length && !canAnularDeposito"
+              class="mt-2 text-[11px] text-gray-400 dark:text-gray-500"
+            >
+              Para anular un depósito, la caja debe estar abierta.
+            </p>
+          </AppCollapsibleSection>
         </div>
       </template>
 
@@ -229,6 +267,21 @@
       />
       <RegistrarGastoCajaModal v-model="showGasto" :fecha="fecha" :id-sesion="sesion?.id" />
       <RegistrarDepositoCajaModal v-model="showDeposito" :fecha="fecha" :id-sesion="sesion?.id" />
+
+      <AppConfirmDialog
+        v-model="confirmAnularOpen"
+        :title="confirmAnularTitulo"
+        variant="danger"
+        confirm-label="Sí, anular"
+        loading-label="Anulando..."
+        :loading="anulando"
+        @confirm="confirmarAnular"
+      >
+        <span>
+          ¿Anular este movimiento? Se quitará del arqueo del día. Solo es posible con la caja
+          <strong>abierta</strong>. Para corregir un monto, anula y registra uno nuevo.
+        </span>
+      </AppConfirmDialog>
     </div>
   </div>
 </template>
@@ -237,7 +290,14 @@
 import { computed, ref } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
-import { AppBadge, AppHelpTip, AppInput, AppSummaryCards } from '@/shared/components'
+import {
+  AppBadge,
+  AppCollapsibleSection,
+  AppConfirmDialog,
+  AppHelpTip,
+  AppInput,
+  AppSummaryCards,
+} from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
@@ -245,11 +305,20 @@ import AbrirCajaModal from '@/modules/caja/components/AbrirCajaModal.vue'
 import CerrarCajaModal from '@/modules/caja/components/CerrarCajaModal.vue'
 import RegistrarGastoCajaModal from '@/modules/caja/components/RegistrarGastoCajaModal.vue'
 import RegistrarDepositoCajaModal from '@/modules/caja/components/RegistrarDepositoCajaModal.vue'
-import { useCajaDiaQuery } from '@/modules/caja/composables/useCajaQuery'
+import {
+  useCajaDiaQuery,
+  useEliminarCajaDepositoMutation,
+  useEliminarCajaGastoMutation,
+} from '@/modules/caja/composables/useCajaQuery'
+import type {
+  CajaMovimientoDeposito,
+  CajaMovimientoGasto,
+} from '@/modules/caja/interfaces/caja.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
+import { toastWarning } from '@/shared/composables/useToast'
 
 const breadcrumbItems = ventasBreadcrumbItems('Caja')
 
@@ -278,11 +347,26 @@ const showAbrir = ref(false)
 const showCerrar = ref(false)
 const showGasto = ref(false)
 const showDeposito = ref(false)
+const gastosOpen = ref(false)
+const depositosOpen = ref(false)
+const confirmAnularOpen = ref(false)
+const anularTipo = ref<'gasto' | 'deposito' | null>(null)
+const anularId = ref<number | null>(null)
 
 const query = useCajaDiaQuery(fecha, idSucursal)
+const eliminarGastoMutation = useEliminarCajaGastoMutation()
+const eliminarDepositoMutation = useEliminarCajaDepositoMutation()
 const sesion = computed(() => query.data.value)
 const isLoading = computed(() => query.isLoading.value)
 const isError = computed(() => query.isError.value)
+const cajaAbierta = computed(() => sesion.value?.estadoCaja === 'ABIERTA')
+const anulando = computed(
+  () =>
+    eliminarGastoMutation.isPending.value || eliminarDepositoMutation.isPending.value,
+)
+const confirmAnularTitulo = computed(() =>
+  anularTipo.value === 'deposito' ? 'Anular depósito' : 'Anular gasto',
+)
 
 const totales = computed(() => sesion.value?.totales)
 const gastos = computed(() => sesion.value?.gastos ?? [])
@@ -308,6 +392,44 @@ const canAbrir = computed(() => auth.hasPermission(PermisoBanderas.CAJA_ABRIR))
 const canCerrar = computed(() => auth.hasPermission(PermisoBanderas.CAJA_CERRAR))
 const canGasto = computed(() => auth.hasPermission(PermisoBanderas.CAJA_REGISTRAR_GASTO))
 const canDeposito = computed(() => auth.hasPermission(PermisoBanderas.CAJA_REGISTRAR_DEPOSITO))
+const canAnularGasto = computed(() => canGasto.value && cajaAbierta.value)
+const canAnularDeposito = computed(() => canDeposito.value && cajaAbierta.value)
+
+function pedirAnularGasto(g: CajaMovimientoGasto) {
+  if (!canAnularGasto.value) {
+    toastWarning('Solo se puede anular un gasto con la caja abierta')
+    return
+  }
+  anularTipo.value = 'gasto'
+  anularId.value = g.id
+  confirmAnularOpen.value = true
+}
+
+function pedirAnularDeposito(d: CajaMovimientoDeposito) {
+  if (!canAnularDeposito.value) {
+    toastWarning('Solo se puede anular un depósito con la caja abierta')
+    return
+  }
+  anularTipo.value = 'deposito'
+  anularId.value = d.id
+  confirmAnularOpen.value = true
+}
+
+async function confirmarAnular() {
+  if (!anularId.value || !anularTipo.value) return
+  try {
+    if (anularTipo.value === 'gasto') {
+      await eliminarGastoMutation.mutateAsync(anularId.value)
+    } else {
+      await eliminarDepositoMutation.mutateAsync(anularId.value)
+    }
+    confirmAnularOpen.value = false
+    anularId.value = null
+    anularTipo.value = null
+  } catch {
+    // toast en la mutación
+  }
+}
 
 const resumenCards = computed<SummaryCardItem[]>(() => [
   {

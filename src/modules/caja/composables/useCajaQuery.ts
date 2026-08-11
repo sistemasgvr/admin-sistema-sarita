@@ -16,6 +16,7 @@ import type {
   LibroDiarioFilters,
 } from '@/modules/caja/interfaces/caja.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
 /** Invalidar día / libro diario tras ventas, cobranzas, gastos, depósitos, etc. */
 export function invalidateCajaQueries(queryClient: QueryClient) {
@@ -99,7 +100,11 @@ export function useEliminarCajaGastoMutation() {
   const auth = useAuthStore()
   return useMutation({
     mutationFn: (id: number) => cajaService.eliminarGasto(id, auth.user?.id),
-    onSuccess: () => invalidateCajaQueries(queryClient),
+    onSuccess: () => {
+      void invalidateCajaQueries(queryClient)
+      toastSuccess('Gasto anulado')
+    },
+    onError: (error) => toastApiError(error, 'No se pudo anular el gasto'),
   })
 }
 
@@ -108,7 +113,11 @@ export function useEliminarCajaDepositoMutation() {
   const auth = useAuthStore()
   return useMutation({
     mutationFn: (id: number) => cajaService.eliminarDeposito(id, auth.user?.id),
-    onSuccess: () => invalidateCajaQueries(queryClient),
+    onSuccess: () => {
+      void invalidateCajaQueries(queryClient)
+      toastSuccess('Depósito anulado')
+    },
+    onError: (error) => toastApiError(error, 'No se pudo anular el depósito'),
   })
 }
 
