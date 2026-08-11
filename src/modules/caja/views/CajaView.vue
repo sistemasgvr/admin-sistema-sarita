@@ -159,12 +159,13 @@
           </ul>
         </div>
 
-        <div v-if="sesion?.id" class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div v-if="sesion?.id" class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
           <AppCollapsibleSection
             v-model:open="gastosOpen"
             title="Gastos de caja"
             :badge="String(gastos.length)"
             :icon="ICONS.arrowUpFromLine"
+            class="self-start"
           >
             <ul
               v-if="gastos.length"
@@ -212,6 +213,7 @@
             title="Depósitos"
             :badge="String(depositos.length)"
             :icon="ICONS.arrowDownToLine"
+            class="self-start"
           >
             <ul
               v-if="depositos.length"

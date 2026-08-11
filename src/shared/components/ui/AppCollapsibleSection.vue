@@ -1,6 +1,6 @@
 <template>
   <section
-    class="w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900"
+    class="h-fit w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900"
   >
     <button
       type="button"
