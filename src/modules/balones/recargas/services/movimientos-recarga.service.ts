@@ -1,5 +1,6 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type {
+  AsignacionOrigenesRecarga,
   BalonOrigenRecarga,
   CreateMovimientoRecargaPayload,
   CreateRecargaClientePayload,
@@ -25,6 +26,13 @@ export const movimientosRecargaService = {
 
   sugerirOrigen(filters: OrigenRecargaFilters) {
     return apiGet<BalonOrigenRecarga>('/balones/movimientos-recarga/sugerir-origen', {
+      params: filters,
+    })
+  },
+
+  /** Asigna uno o más balones empresa (FIFO) para cubrir la capacidad pedida. */
+  asignarOrigenes(filters: OrigenRecargaFilters) {
+    return apiGet<AsignacionOrigenesRecarga>('/balones/movimientos-recarga/asignar-origenes', {
       params: filters,
     })
   },

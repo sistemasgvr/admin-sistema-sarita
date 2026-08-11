@@ -57,7 +57,11 @@
           v-model="cantidad"
           name="pos-anadir-cantidad"
           :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
+          :es-gas="tipo === 'gas'"
           :label="tipo === 'gas' ? 'Cantidad / m³' : 'Cantidad'"
+          :disabled="cantidadBloqueadaPorBalon"
+          :error="errorCantidadVsBalon || undefined"
+          :hint="hintCantidadBalon"
         />
         <AppInput
           v-model="precioUnitario"
@@ -127,22 +131,25 @@
             register-label="Registrar balón propio del cliente"
             empty-text="Sin balones. Registra el del cliente."
             required
+            @selected="onBalonClienteSelected"
           />
           <AppInput
             v-model="capacidad"
             label="Capacidad cilindro"
             type="number"
             :min="0"
-            :step="NUMBER_STEP.money"
-            placeholder="Opcional"
+            :step="NUMBER_STEP.measure"
+            placeholder="Se completa al elegir el balón"
+            :disabled="cantidadBloqueadaPorBalon"
+            hint="Se toma del balón del cliente. El gas puede salir de varios balones empresa (FIFO)."
           />
           <AppSelect
-            v-model="idBalonOrigen"
-            label="Balón empresa origen"
-            placeholder="Selecciona origen"
-            required
+            v-model="idBalonPreferido"
+            label="Priorizar balón empresa"
+            placeholder="Automático (FIFO)"
             :options="origenOptions"
             :disabled="cargandoOrigenes || !producto"
+            hint="Opcional. Si el primero no alcanza, se completa con el siguiente."
           />
           <p
             v-if="errorOrigenes"
@@ -151,10 +158,16 @@
             {{ errorOrigenes }}
           </p>
           <p
-            v-else-if="sugerenciaOrigenLabel"
+            v-else-if="cargandoOrigenes"
             class="text-xs text-gray-500 dark:text-gray-400"
           >
-            Sugerido (FIFO): {{ sugerenciaOrigenLabel }}
+            Calculando orígenes...
+          </p>
+          <p
+            v-else-if="sugerenciaOrigenLabel"
+            class="rounded-lg bg-brand-50 px-3 py-2 text-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"
+          >
+            Se tomará de (FIFO): {{ sugerenciaOrigenLabel }}
           </p>
         </template>
 
@@ -194,6 +207,7 @@
             placeholder="Cilindro en almacén"
             empty-text="Sin cilindros disponibles en almacén."
             required
+            @selected="onBalonEmpresaSelected"
           />
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppInput v-model="fechaInicio" label="Fecha entrega" type="date" required />
@@ -254,6 +268,7 @@
             placeholder="Solo cilindros de la empresa en almacén"
             empty-text="Sin cilindros de empresa disponibles."
             required
+            @selected="onBalonEmpresaSelected"
           />
 
           <AppInput
@@ -422,8 +437,10 @@ import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/ser
 import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
 import type { StockGasListFilters } from '@/modules/balones/stock-gas/interfaces/stock-gas.interface'
 import { stockGasService } from '@/modules/balones/stock-gas/services/stock-gas.service'
+import type { Balon } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import type { BalonOrigenRecarga } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
+import { formatOrigenRecargaLabel } from '@/modules/balones/recargas/utils/formatOrigenRecargaLabel'
 import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
@@ -444,7 +461,7 @@ import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { toastWarning } from '@/shared/composables/useToast'
+import { getApiErrorMessage, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
@@ -534,6 +551,7 @@ const precioUnitario = ref<number | string>(0)
 const idBalon = ref<number | ''>('')
 const etiquetaBalon = ref('')
 const idBalonOrigen = ref<number | ''>('')
+const idBalonPreferido = ref<number | ''>('')
 const origenes = ref<BalonOrigenRecarga[]>([])
 const cargandoOrigenes = ref(false)
 const errorOrigenes = ref('')
@@ -562,15 +580,82 @@ const nombreProductoAlquiler = ref('')
 const origenOptions = computed(() =>
   origenes.value.map((origen) => ({
     value: origen.id,
-    label: `${origen.codigo_balon} · disp. ${origen.capacidad_disponible}${
-      origen.nombre_almacen ? ` · ${origen.nombre_almacen}` : ''
-    }`,
+    label: formatOrigenRecargaLabel(origen),
   })),
 )
+
+/** Volumen que debe cubrir el origen (capacidad del cilindro o cantidad a cobrar). */
+const capacidadRequerida = computed(() => {
+  if (capacidad.value !== '' && capacidad.value != null && Number(capacidad.value) > 0) {
+    return Number(capacidad.value)
+  }
+  return Number(cantidad.value) || 0
+})
+
+/** Capacidad (m³) del cilindro seleccionado (cliente u empresa). */
+const capacidadBalonSeleccionado = ref<number | null>(null)
+
+const escenarioUsaBalon = computed(
+  () =>
+    tipo.value === 'gas' &&
+    (escenarioGas.value === 'balon_cliente' ||
+      escenarioGas.value === 'entregar_prestamo' ||
+      escenarioGas.value === 'comprar_balon'),
+)
+
+/** Con cilindro seleccionado, la cantidad la fija el sistema (capacidad del balón). */
+const cantidadBloqueadaPorBalon = computed(
+  () =>
+    escenarioUsaBalon.value &&
+    capacidadBalonSeleccionado.value != null &&
+    capacidadBalonSeleccionado.value > 0,
+)
+
+const errorCantidadVsBalon = computed(() => {
+  if (!escenarioUsaBalon.value) return ''
+  const cap = capacidadBalonSeleccionado.value
+  const cant = Number(cantidad.value)
+  if (cap == null || cap <= 0 || !(cant > 0)) return ''
+  if (cant > cap) {
+    return `Máximo ${cap} m³ (capacidad del cilindro)`
+  }
+  return ''
+})
+
+const hintCantidadBalon = computed(() => {
+  if (!escenarioUsaBalon.value) return undefined
+  const cap = capacidadBalonSeleccionado.value
+  if (cap != null && cap > 0) {
+    return `${cap} m³ — se toma de la capacidad del cilindro`
+  }
+  return 'Se completa al elegir el cilindro'
+})
+
+function aplicarCapacidadBalon(balon: Balon | null, opts?: { setCapacidadCilindro?: boolean }) {
+  if (!balon?.capacidad || Number(balon.capacidad) <= 0) {
+    capacidadBalonSeleccionado.value = null
+    return
+  }
+  const cap = Number(balon.capacidad)
+  capacidadBalonSeleccionado.value = cap
+  cantidad.value = cap
+  if (opts?.setCapacidadCilindro) {
+    capacidad.value = cap
+  }
+}
+
+function onBalonClienteSelected(balon: Balon | null) {
+  aplicarCapacidadBalon(balon, { setCapacidadCilindro: true })
+}
+
+function onBalonEmpresaSelected(balon: Balon | null) {
+  aplicarCapacidadBalon(balon)
+}
 
 async function refrescarOrigenesRecarga() {
   if (escenarioGas.value !== 'balon_cliente' || !producto.value) {
     origenes.value = []
+    idBalonOrigen.value = ''
     errorOrigenes.value = ''
     sugerenciaOrigenLabel.value = ''
     return
@@ -579,52 +664,61 @@ async function refrescarOrigenesRecarga() {
   cargandoOrigenes.value = true
   errorOrigenes.value = ''
   sugerenciaOrigenLabel.value = ''
+  idBalonOrigen.value = ''
 
-  const filters = {
-    idProductoGas: producto.value.id,
-    capacidad:
-      capacidad.value !== '' && capacidad.value != null
-        ? Number(capacidad.value)
-        : undefined,
-    idAlmacen: props.idAlmacen ? Number(props.idAlmacen) : undefined,
-    limite: 50,
-  }
+  const requerida = capacidadRequerida.value
+  const idAlmacen = props.idAlmacen ? Number(props.idAlmacen) : undefined
 
   try {
-    const listado = await movimientosRecargaService.listarOrigenes(filters)
+    const listado = await movimientosRecargaService.listarOrigenes({
+      idProductoGas: producto.value.id,
+      idAlmacen,
+      limite: 50,
+    })
     origenes.value = listado.data ?? []
 
+    if (idBalonPreferido.value && !origenes.value.some((o) => o.id === Number(idBalonPreferido.value))) {
+      idBalonPreferido.value = ''
+    }
+
     if (!origenes.value.length) {
-      idBalonOrigen.value = ''
       errorOrigenes.value =
-        'No hay balón empresa LLENO del mismo gas con capacidad suficiente en almacén. No se puede recargar.'
+        'No hay balón empresa LLENO del mismo gas con gas disponible en almacén. No se puede recargar.'
       return
     }
 
-    const sigueSeleccionado = origenes.value.some((o) => o.id === Number(idBalonOrigen.value))
-    if (!sigueSeleccionado) {
-      try {
-        const sugerido = await movimientosRecargaService.sugerirOrigen(filters)
-        idBalonOrigen.value = sugerido.id
-        sugerenciaOrigenLabel.value = `${sugerido.codigo_balon} (disp. ${sugerido.capacidad_disponible})`
-      } catch {
-        idBalonOrigen.value = origenes.value[0]?.id ?? ''
-        const primero = origenes.value[0]
-        if (primero) {
-          sugerenciaOrigenLabel.value = `${primero.codigo_balon} (disp. ${primero.capacidad_disponible})`
-        }
+    if (requerida <= 0) {
+      errorOrigenes.value = 'Indica la capacidad del cilindro del cliente para asignar orígenes.'
+      return
+    }
+
+    try {
+      const asignacion = await movimientosRecargaService.asignarOrigenes({
+        idProductoGas: producto.value.id,
+        capacidad: requerida,
+        idAlmacen,
+        idBalonPreferido: idBalonPreferido.value ? Number(idBalonPreferido.value) : undefined,
+      })
+
+      idBalonOrigen.value = asignacion.idBalonOrigenPrincipal ?? ''
+      sugerenciaOrigenLabel.value = asignacion.etiqueta || ''
+      if (!idBalonOrigen.value) {
+        errorOrigenes.value = 'No se pudo asignar balones empresa origen para esta recarga.'
       }
-    } else {
-      const actual = origenes.value.find((o) => o.id === Number(idBalonOrigen.value))
-      if (actual) {
-        sugerenciaOrigenLabel.value = `${actual.codigo_balon} (disp. ${actual.capacidad_disponible})`
-      }
+    } catch (error) {
+      idBalonOrigen.value = ''
+      sugerenciaOrigenLabel.value = ''
+      errorOrigenes.value = getApiErrorMessage(
+        error,
+        'Stock insuficiente de gas en balones empresa para cubrir la capacidad pedida.',
+      )
     }
   } catch {
     origenes.value = []
     idBalonOrigen.value = ''
+    sugerenciaOrigenLabel.value = ''
     errorOrigenes.value =
-      'No hay balón empresa LLENO del mismo gas con capacidad suficiente en almacén. No se puede recargar.'
+      'No hay balón empresa LLENO del mismo gas con gas disponible en almacén. No se puede recargar.'
   } finally {
     cargandoOrigenes.value = false
   }
@@ -764,7 +858,9 @@ function setEscenarioGas(key: EscenarioGas) {
   escenarioGas.value = key
   idBalon.value = ''
   etiquetaBalon.value = ''
+  capacidadBalonSeleccionado.value = null
   idBalonOrigen.value = ''
+  idBalonPreferido.value = ''
   origenes.value = []
   errorOrigenes.value = ''
   sugerenciaOrigenLabel.value = ''
@@ -1079,6 +1175,7 @@ const puedeConfirmar = computed(() => {
     )
   }
   if (Number(cantidad.value) <= 0) return false
+  if (errorCantidadVsBalon.value) return false
   if (tipo.value === 'alquiler') {
     return (
       Boolean(props.idCliente) &&
@@ -1175,7 +1272,9 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     idBalon.value = fromLinea.idBalon ?? ''
     etiquetaBalon.value = fromLinea.etiquetaBalon ?? ''
     idBalonOrigen.value = fromLinea.idBalonOrigen ?? ''
+    idBalonPreferido.value = fromLinea.idBalonOrigen ?? ''
     capacidad.value = fromLinea.capacidad ?? ''
+    sugerenciaOrigenLabel.value = fromLinea.etiquetaBalonOrigen ?? ''
     fechaInicio.value =
       fromLinea.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
     fechaFin.value =
@@ -1234,7 +1333,9 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   precioUnitario.value = Number(fromProducto?.precio ?? 0)
   idBalon.value = ''
   etiquetaBalon.value = ''
+  capacidadBalonSeleccionado.value = null
   idBalonOrigen.value = ''
+  idBalonPreferido.value = ''
   origenes.value = []
   errorOrigenes.value = ''
   sugerenciaOrigenLabel.value = ''
@@ -1331,6 +1432,10 @@ async function confirmar() {
     toastWarning(errorCantidad)
     return
   }
+  if (errorCantidadVsBalon.value) {
+    toastWarning(errorCantidadVsBalon.value)
+    return
+  }
 
   if (productoAfectaStock(producto.value)) {
     const errorStock = validarStockParaAgregar(producto.value, cant, {
@@ -1354,7 +1459,7 @@ async function confirmar() {
     if (!idBalonOrigen.value) {
       toastWarning(
         errorOrigenes.value ||
-          'Selecciona el balón empresa origen. Sin stock físico no se puede recargar.',
+          'No hay asignación de balones empresa origen. Sin stock físico no se puede recargar.',
       )
       return
     }
@@ -1430,10 +1535,7 @@ async function confirmar() {
       }
       if (idBalonOrigen.value) {
         payload.idBalonOrigen = Number(idBalonOrigen.value)
-        const origen = origenes.value.find((o) => o.id === Number(idBalonOrigen.value))
-        payload.etiquetaBalonOrigen = origen
-          ? `${origen.codigo_balon} · disp. ${origen.capacidad_disponible}`
-          : undefined
+        payload.etiquetaBalonOrigen = sugerenciaOrigenLabel.value || undefined
       }
     }
     if (escenarioGas.value === 'entregar_prestamo') {
@@ -1533,7 +1635,15 @@ watch(
 
 let origenTimeout: ReturnType<typeof setTimeout> | undefined
 watch(
-  [escenarioGas, producto, capacidad, () => props.idAlmacen, () => props.linea?.idBalonOrigen],
+  [
+    escenarioGas,
+    producto,
+    capacidad,
+    cantidad,
+    idBalonPreferido,
+    () => props.idAlmacen,
+    () => props.linea?.idBalonOrigen,
+  ],
   () => {
     if (origenTimeout) clearTimeout(origenTimeout)
     origenTimeout = setTimeout(() => {

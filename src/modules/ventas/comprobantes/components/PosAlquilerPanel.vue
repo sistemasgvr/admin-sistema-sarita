@@ -267,7 +267,17 @@
 
       <PosResumenAside
         v-model:glosa="observacion"
+        v-model:id-condicion-pago="idCondicionPago"
+        v-model:id-medio-pago="idMedioPago"
         :totales="totales"
+        :condicion-pago-options="condicionPagoOptions"
+        :medio-pago-options="medioPagoOptions"
+        :es-venta-credito="esVentaCredito"
+        :dias-credito="diasCredito"
+        :numero-cuotas="numeroCuotasCondicion"
+        :dia-mes-pago="diaMesPagoCondicion"
+        :fecha-vencimiento="fechaVencimiento"
+        :motivo-no-guardar="motivoNoGuardar"
         :puede-guardar="puedeGuardar"
         :guardando="guardando"
         :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
@@ -347,16 +357,24 @@ const {
   numero,
   fecha,
   idCliente,
+  idCondicionPago,
+  idMedioPago,
   canEmit,
   canPrint,
   canCreateCliente,
   tipoComprobanteOptions,
   esNotaVenta,
   clienteOptions,
+  condicionPagoOptions,
+  medioPagoOptions,
+  esVentaCredito,
+  diasCredito,
+  numeroCuotasCondicion,
+  diaMesPagoCondicion,
+  fechaVencimiento,
   idAfectacionGravado,
   idMonedaPen,
   idTipoOperacionVentaInterna,
-  comprobanteBaseValido,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
@@ -505,17 +523,20 @@ async function prefillMontoGarantia(producto: Producto) {
 
 const lineaRegulador = computed(() => kitLineas.find((linea) => linea.rol === 'regulador'))
 
-const puedeGuardar = computed(() => {
-  return (
-    comprobanteBaseValido() &&
-    Boolean(idBalon.value) &&
-    Boolean(idAlmacen.value) &&
-    Boolean(lineaRegulador.value?.idProducto) &&
-    Boolean(fechaInicio.value) &&
-    lineasActivas.value.length > 0 &&
-    totalKit.value >= 0
-  )
+const motivoNoGuardar = computed(() => {
+  if (comprobanteGuardadoId.value) return null
+  const base = mensajeValidacionComprobante()
+  if (base) return base
+  if (!idBalon.value) return 'Selecciona el cilindro'
+  if (!idAlmacen.value) return 'Selecciona el almacén'
+  if (!lineaRegulador.value?.idProducto) return 'Selecciona el producto alquilable'
+  if (!fechaInicio.value) return 'Indica la fecha de inicio'
+  if (!lineasActivas.value.length) return 'Completa al menos una línea del kit'
+  if (totalKit.value < 0) return 'El total del kit no puede ser negativo'
+  return null
 })
+
+const puedeGuardar = computed(() => !comprobanteGuardadoId.value && motivoNoGuardar.value === null)
 
 function labelProductoParaRol(rol: KitMedicinalRol) {
   switch (rol) {
@@ -677,6 +698,9 @@ async function registrarKit() {
       detalles: detallesKit,
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
+      idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
+      idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+      fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
       glosa: observacion.value || 'Kit medicinal',
       observaciones: observacion.value || undefined,
       origenPos: OrigenPos.MEDICINAL,

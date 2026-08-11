@@ -158,7 +158,26 @@ const rows = computed(() => condicionesPagoQuery.data.value?.data ?? [])
 const columns = computed<TableColumn<CondicionPago>[]>(() => [
   { key: 'codigo', label: 'Código' },
   { key: 'nombre', label: 'Nombre' },
-  { key: 'dias_credito', label: 'Días crédito' },
+  {
+    key: 'modalidad',
+    label: 'Modalidad',
+    formatter: (_value, row) => {
+      if (row.modalidad === 'CUOTAS' || Number(row.numero_cuotas) > 1) return 'Cuotas'
+      if (row.modalidad === 'CREDITO' || Number(row.dias_credito) > 0) return 'Crédito'
+      return 'Contado'
+    },
+  },
+  { key: 'dias_credito', label: 'Días' },
+  {
+    key: 'numero_cuotas',
+    label: 'Cuotas',
+    formatter: (value) => (value != null && value !== '' ? String(value) : '—'),
+  },
+  {
+    key: 'dia_mes_pago',
+    label: 'Día cobro',
+    formatter: (value) => (value != null && value !== '' ? String(value) : '—'),
+  },
 ])
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined

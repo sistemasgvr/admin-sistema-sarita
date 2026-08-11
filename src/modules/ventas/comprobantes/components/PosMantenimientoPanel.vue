@@ -110,7 +110,17 @@
     <aside class="xl:sticky xl:top-20 xl:self-start">
       <PosResumenAside
         v-model:glosa="observacion"
+        v-model:id-condicion-pago="idCondicionPago"
+        v-model:id-medio-pago="idMedioPago"
         :totales="totales"
+        :condicion-pago-options="condicionPagoOptions"
+        :medio-pago-options="medioPagoOptions"
+        :es-venta-credito="esVentaCredito"
+        :dias-credito="diasCredito"
+        :numero-cuotas="numeroCuotasCondicion"
+        :dia-mes-pago="diaMesPagoCondicion"
+        :fecha-vencimiento="fechaVencimiento"
+        :motivo-no-guardar="motivoNoGuardar"
         :puede-guardar="puedeGuardar"
         :guardando="guardando"
         :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
@@ -172,16 +182,24 @@ const {
   numero,
   fecha,
   idCliente,
+  idCondicionPago,
+  idMedioPago,
   canEmit,
   canPrint,
   canCreateCliente,
   tipoComprobanteOptions,
   esNotaVenta,
   clienteOptions,
+  condicionPagoOptions,
+  medioPagoOptions,
+  esVentaCredito,
+  diasCredito,
+  numeroCuotasCondicion,
+  diaMesPagoCondicion,
+  fechaVencimiento,
   idAfectacionGravado,
   idMonedaPen,
   idTipoOperacionVentaInterna,
-  comprobanteBaseValido,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
@@ -226,15 +244,18 @@ const servicioOptions = computed(() =>
 
 const totales = computed(() => calcularTotalesDesdeImporte(Number(costo.value || 0)))
 
-const puedeGuardar = computed(() => {
-  return (
-    comprobanteBaseValido() &&
-    Boolean(idBalon.value) &&
-    Boolean(idProducto.value) &&
-    Boolean(fechaIngreso.value) &&
-    Number(costo.value) >= 0
-  )
+const motivoNoGuardar = computed(() => {
+  if (comprobanteGuardadoId.value) return null
+  const base = mensajeValidacionComprobante()
+  if (base) return base
+  if (!idBalon.value) return 'Selecciona el cilindro'
+  if (!idProducto.value) return 'Selecciona el servicio'
+  if (!fechaIngreso.value) return 'Indica la fecha de ingreso'
+  if (Number(costo.value) < 0) return 'El costo no puede ser negativo'
+  return null
 })
+
+const puedeGuardar = computed(() => !comprobanteGuardadoId.value && motivoNoGuardar.value === null)
 
 function onServicioChange() {
   const producto = serviciosMantenimiento.value.find((item) => item.id === Number(idProducto.value))
@@ -289,6 +310,9 @@ async function registrarMantenimiento() {
       ],
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
+      idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
+      idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+      fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
       glosa: observacion.value || 'Mantenimiento de cilindro',
       observaciones: clienteDescripcion.value || undefined,
       origenPos: OrigenPos.MANTENIMIENTO,

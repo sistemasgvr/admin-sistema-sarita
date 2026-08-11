@@ -337,7 +337,17 @@
 
       <PosResumenAside
         v-model:glosa="glosa"
+        v-model:id-condicion-pago="idCondicionPago"
+        v-model:id-medio-pago="idMedioPago"
         :totales="totales"
+        :condicion-pago-options="condicionPagoOptions"
+        :medio-pago-options="medioPagoOptions"
+        :es-venta-credito="esVentaCredito"
+        :dias-credito="diasCredito"
+        :numero-cuotas="numeroCuotasCondicion"
+        :dia-mes-pago="diaMesPagoCondicion"
+        :fecha-vencimiento="fechaVencimiento"
+        :motivo-no-guardar="motivoNoGuardar"
         :puede-guardar="puedeGuardar"
         :guardando="createMutation.isPending.value || guardandoExtra"
         :emitiendo="emitMutation.isPending.value || imprimiendoTicket"
@@ -430,6 +440,8 @@ const {
   numero,
   fecha,
   idCliente,
+  idCondicionPago,
+  idMedioPago,
   canEmit,
   canPrint,
   canCreateCliente,
@@ -437,10 +449,16 @@ const {
   esNotaVenta,
   clienteOptions,
   clienteSeleccionado,
+  condicionPagoOptions,
+  medioPagoOptions,
+  esVentaCredito,
+  diasCredito,
+  numeroCuotasCondicion,
+  diaMesPagoCondicion,
+  fechaVencimiento,
   idAfectacionGravado,
   idMonedaPen,
   idTipoOperacionVentaInterna,
-  comprobanteBaseValido,
   mensajeValidacionComprobante,
   reiniciarTrasOperacion,
   seleccionarCliente,
@@ -583,37 +601,49 @@ const totales = computed(() => {
   return calcularTotalesDesdeImporte(importeConIgv)
 })
 
+const motivoNoGuardar = computed(() => {
+  if (comprobanteGuardadoId.value) return null
+  if (!cajaAbierta.value) {
+    return mensajeBloqueoCaja.value || 'Debes abrir la caja del día para vender'
+  }
+  const base = mensajeValidacionComprobante()
+  if (base) return base
+  if (!lineasActivas.value.length) return 'Añade al menos un ítem a la venta'
+  if (requiereAlmacen.value && !idAlmacen.value) return 'Selecciona el almacén'
+  if (!idAfectacionGravado.value) return 'Falta la afectación IGV en catálogos'
+  for (const linea of lineasActivas.value) {
+    if (
+      validarCantidadSegunUnidad(
+        Number(linea.cantidad),
+        linea.nombreUnidadMedida ?? 'UNID',
+      )
+    ) {
+      return `${linea.nombre}: cantidad inválida para la unidad`
+    }
+    if (linea.escenarioGas === 'comprar_balon' && !(linea.idBalon && linea.idProductoEnvase)) {
+      return `${linea.nombre}: falta cilindro o producto envase`
+    }
+    if (esEntregarPrestamo(linea) && !(linea.idBalon && linea.fechaInicioAlquiler)) {
+      return `${linea.nombre}: falta cilindro o fecha de préstamo`
+    }
+    if (
+      (linea.esMantenimiento || esRecargaCliente(linea)) &&
+      !(linea.idBalon && (linea.esMantenimiento || linea.idBalonOrigen))
+    ) {
+      return `${linea.nombre}: falta cilindro u origen de recarga`
+    }
+    if (
+      (linea.tipoPos === 'alquiler' || linea.esAlquilable) &&
+      !(linea.fechaInicioAlquiler && linea.fechaFinAlquiler)
+    ) {
+      return `${linea.nombre}: faltan fechas de alquiler`
+    }
+  }
+  return null
+})
+
 const puedeGuardar = computed(
-  () =>
-    cajaAbierta.value &&
-    !comprobanteGuardadoId.value &&
-    comprobanteBaseValido() &&
-    lineasActivas.value.length > 0 &&
-    (!requiereAlmacen.value || Boolean(idAlmacen.value)) &&
-    Boolean(idAfectacionGravado.value) &&
-    lineasActivas.value.every((linea) => {
-      if (
-        validarCantidadSegunUnidad(
-          Number(linea.cantidad),
-          linea.nombreUnidadMedida ?? 'UNID',
-        )
-      ) {
-        return false
-      }
-      if (linea.escenarioGas === 'comprar_balon') {
-        return Boolean(linea.idBalon && linea.idProductoEnvase)
-      }
-      if (esEntregarPrestamo(linea)) {
-        return Boolean(linea.idBalon && linea.fechaInicioAlquiler)
-      }
-      if (linea.esMantenimiento || esRecargaCliente(linea)) {
-        return Boolean(linea.idBalon && (linea.esMantenimiento || linea.idBalonOrigen))
-      }
-      if (linea.tipoPos === 'alquiler' || linea.esAlquilable) {
-        return Boolean(linea.fechaInicioAlquiler && linea.fechaFinAlquiler)
-      }
-      return true
-    }),
+  () => !comprobanteGuardadoId.value && motivoNoGuardar.value === null,
 )
 
 function badgeLabel(linea: PosLineItem) {
@@ -1067,6 +1097,9 @@ try {
       detalles,
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
+      idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
+      idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+      fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
       glosa: glosa.value || undefined,
       observaciones: clienteDescripcion.value || undefined,
       origenPos: resolverOrigenPos(),
@@ -1091,7 +1124,9 @@ try {
             capacidad: lineaGas.capacidad,
             idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
             observacion: lineaGas.observacionLinea || glosa.value || undefined,
-            idBalonOrigen: Number(lineaGas.idBalonOrigen),
+            idBalonOrigen: lineaGas.idBalonOrigen
+              ? Number(lineaGas.idBalonOrigen)
+              : undefined,
           })
         } catch (error) {
           advertencias += 1
