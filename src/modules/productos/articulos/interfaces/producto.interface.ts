@@ -19,6 +19,8 @@ export interface Producto {
   precio: number
   precio_compra?: number | null
   precio_garantia?: number | null
+  factor_kg_m3?: number | null
+  factor_lb_m3?: number | null
   /** True si tiene stock <> 0 en algún almacén (bloquea eliminación). */
   tiene_stock?: boolean | null
   stock_actual?: number | null
@@ -63,6 +65,8 @@ export interface CreateProductoPayload {
   precio?: number
   precioCompra?: number
   precioGarantia?: number
+  factorKgM3?: number
+  factorLbM3?: number
 }
 
 export interface UpdateProductoPayload {
@@ -81,6 +85,8 @@ export interface UpdateProductoPayload {
   precio?: number
   precioCompra?: number
   precioGarantia?: number
+  factorKgM3?: number
+  factorLbM3?: number
 }
 
 export interface DeleteProductoResponse {

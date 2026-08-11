@@ -23,19 +23,4 @@ export const clientesMenuSubItems: AdminMenuSubItem[] = [
     path: '/admin/clientes/mapa',
     permission: PermisoBanderas.CLIENTES_LISTAR,
   },
-  {
-    name: 'Choferes',
-    path: '/admin/clientes/choferes',
-    permission: PermisoBanderas.CHOFERES_LISTAR,
-  },
-  {
-    name: 'Vehículos',
-    path: '/admin/clientes/vehiculos',
-    permission: PermisoBanderas.VEHICULOS_LISTAR,
-  },
-  {
-    name: 'Cuentas Bancarias',
-    path: '/admin/clientes/cuentas-bancarias',
-    permission: PermisoBanderas.CUENTAS_BANCARIAS_LISTAR,
-  },
 ]

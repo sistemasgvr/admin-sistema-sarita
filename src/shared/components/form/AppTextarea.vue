@@ -2,6 +2,7 @@
   <AppFormField
     :label="label"
     :hint="hint"
+    :help="help"
     :error="error"
     :required="required"
     :optional="optional"
@@ -33,6 +34,7 @@ import type { FormControlState } from '@/shared/interfaces/form.interface'
 interface AppTextareaProps {
   label?: string
   hint?: string
+  help?: string
   error?: string
   placeholder?: string
   name?: string

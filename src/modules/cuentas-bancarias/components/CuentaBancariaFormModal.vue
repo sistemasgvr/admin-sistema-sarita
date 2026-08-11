@@ -3,15 +3,20 @@
     v-model="open"
     :title="mode === 'create' ? 'Nueva cuenta bancaria' : 'Editar cuenta bancaria'"
     :subtitle="
-      mode === 'create'
-        ? 'Registra una nueva cuenta bancaria (cliente o empresa).'
-        : 'Actualiza los datos de la cuenta bancaria seleccionada.'
+      soloEmpresa
+        ? mode === 'create'
+          ? 'Registra una cuenta bancaria de la empresa.'
+          : 'Actualiza la cuenta bancaria de la empresa.'
+        : mode === 'create'
+          ? 'Registra una cuenta bancaria del cliente / proveedor.'
+          : 'Actualiza los datos de la cuenta bancaria seleccionada.'
     "
     size="xl"
     @close="handleClose"
   >
     <form id="cuenta-bancaria-form" class="space-y-5" autocomplete="off" @submit="onSubmit">
       <section
+        v-if="!soloEmpresa"
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
         <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Cliente</h5>
@@ -22,7 +27,7 @@
           :clearable="false"
           v-bind="idClienteAttrs"
           :model-label="clienteLabel"
-          :disabled="isSubmitting"
+          :disabled="isSubmitting || Boolean(defaultClienteId)"
           :error="errors.idCliente"
           :search-fn="searchClientes"
         />
@@ -160,9 +165,13 @@ interface CuentaBancariaFormModalProps {
   mode: CuentaBancariaFormMode
   cuenta?: CuentaBancaria | null
   defaultClienteId?: number | null
+  /** Configuración empresa: cuenta propia (id_cliente NULL). */
+  soloEmpresa?: boolean
 }
 
-const props = defineProps<CuentaBancariaFormModalProps>()
+const props = withDefaults(defineProps<CuentaBancariaFormModalProps>(), {
+  soloEmpresa: false,
+})
 
 const open = defineModel<boolean>({ default: false })
 
@@ -249,7 +258,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       numeroCuenta: requiredString('El número de cuenta'),
       numeroCuentaInterbancaria: optionalString(),
       telefonoBilletera: optionalString(),
-      idCliente: requiredSelect('El cliente'),
+      idCliente: yup
+        .number()
+        .nullable()
+        .optional()
+        .test('cliente-requerido', 'El cliente es obligatorio', (value) => {
+          if (props.soloEmpresa) return true
+          return value != null && Number(value) > 0
+        }),
       esPrincipal: yup.boolean().default(false),
     }),
   ),
@@ -309,7 +325,11 @@ const onSubmit = handleSubmit(async (values) => {
         numeroCuenta: values.numeroCuenta,
         numeroCuentaInterbancaria: values.numeroCuentaInterbancaria || undefined,
         telefonoBilletera: values.telefonoBilletera || undefined,
-        idCliente: Number(values.idCliente),
+        idCliente: props.soloEmpresa
+          ? undefined
+          : values.idCliente
+            ? Number(values.idCliente)
+            : undefined,
         esPrincipal: values.esPrincipal ?? false,
       })
     } else if (props.cuenta) {
@@ -323,7 +343,11 @@ const onSubmit = handleSubmit(async (values) => {
           numeroCuenta: values.numeroCuenta,
           numeroCuentaInterbancaria: values.numeroCuentaInterbancaria || undefined,
           telefonoBilletera: values.telefonoBilletera || undefined,
-          idCliente: Number(values.idCliente),
+          idCliente: props.soloEmpresa
+            ? undefined
+            : values.idCliente
+              ? Number(values.idCliente)
+              : undefined,
           esPrincipal: values.esPrincipal ?? false,
         },
       })

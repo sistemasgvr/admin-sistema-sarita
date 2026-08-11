@@ -2,27 +2,13 @@
   <AppModal
     v-model="open"
     title="Nueva ruta pueblos"
-    subtitle="Salida de cilindros con libras. m³ = (lb ida − lb vuelta) × factor."
+    subtitle="Registra la salida de cilindros con libras. Al retorno se calcula el gas usado en m³."
     size="lg"
   >
     <div class="space-y-4">
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppInput v-model="fecha" label="Fecha" type="date" required />
         <AlmacenSelectField v-model="idAlmacen" searchable required />
-        <AppInput
-          v-model="factorLbM3"
-          label="Factor lb → m³"
-          type="number"
-          step="0.000001"
-          hint="Default 0.3174 (O2 aprox.). Editable por oficina."
-          required
-        />
-        <AppInput
-          v-model="toleranciaM3"
-          label="Tolerancia descuadre (m³)"
-          type="number"
-          step="0.01"
-        />
         <AppSelect
           v-model="idChofer"
           label="Chofer / repartidor"
@@ -30,12 +16,17 @@
           :options="choferOptions"
           :loading="choferesLoading"
         />
+        <AppInput v-model="observacion" label="Observación" placeholder="Zona, pueblos, etc." />
       </div>
-      <AppInput v-model="observacion" label="Observación" placeholder="Zona, pueblos, etc." />
 
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros (salida)</p>
+          <div class="flex items-center gap-1.5">
+            <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros a enviar</p>
+            <AppHelpTip
+              text="La conversión lb / m³ se toma del tipo de cada cilindro (capacidad m³ / capacidad lb). La tolerancia de cierre viene de Configuración / Empresa."
+            />
+          </div>
           <button
             type="button"
             class="text-xs font-medium text-brand-600 hover:underline"
@@ -55,18 +46,18 @@
             label="Cilindro"
             :id-almacen="idAlmacen"
             :extra-filters="balonExtraFilters"
-            :client-filter="soloBalonEnviable"
+            :client-filter="filtroBalonLinea(linea.key)"
             :selection-locked="!idAlmacen"
             :empty-text="
               idAlmacen
-                ? 'Sin cilindros en almacén disponibles para enviar.'
+                ? 'Sin cilindros disponibles (en almacén o ya agregados).'
                 : 'Selecciona el almacén primero.'
             "
             required
           />
           <AppInput
             v-model="linea.lbSalida"
-            label="Lb salida"
+            label="Libras al salir"
             type="number"
             step="0.01"
             min="0"
@@ -112,7 +103,7 @@ import type { Balon, BalonListFilters } from '@/modules/balones/cilindros/interf
 import { choferesService } from '@/modules/choferes/services/choferes.service'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useCreateRutaPuebloMutation } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosMutations'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppHelpTip, AppInput, AppModal, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
@@ -128,8 +119,6 @@ const estadoBalonQuery = useListaOpcionesQuery(ref(ListaIds.ESTADO_BALON))
 
 const fecha = ref(new Date().toISOString().slice(0, 10))
 const idAlmacen = ref<number | ''>('')
-const factorLbM3 = ref('0.3174')
-const toleranciaM3 = ref('0.5')
 const idChofer = ref<number | ''>('')
 const observacion = ref('')
 const choferOptions = ref<{ value: number; label: string }[]>([])
@@ -157,6 +146,20 @@ function soloBalonEnviable(balon: Balon) {
   return true
 }
 
+/** Excluye cilindros ya elegidos en otras líneas (evita duplicar el mismo código). */
+function filtroBalonLinea(lineaKey: string) {
+  // Dependencia explícita: al cambiar selecciones se regenera el filtro.
+  const idsOcupados = new Set(
+    lineas.value
+      .filter((l) => l.key !== lineaKey && l.idBalon)
+      .map((l) => Number(l.idBalon)),
+  )
+  return (balon: Balon) => {
+    if (!soloBalonEnviable(balon)) return false
+    return !idsOcupados.has(balon.id)
+  }
+}
+
 const saving = computed(() => createMutation.isPending.value)
 const canSave = computed(
   () =>
@@ -177,7 +180,12 @@ watch(idAlmacen, () => {
 async function loadChoferes() {
   choferesLoading.value = true
   try {
-    const res = await choferesService.listar({ pagina: 1, limite: 200 })
+    // Solo flota propia de la empresa (Configuración / Choferes).
+    const res = await choferesService.listar({
+      pagina: 1,
+      limite: 200,
+      idCliente: -1,
+    })
     choferOptions.value = (res.data ?? []).map((c) => ({
       value: c.id,
       label: [c.nombres, c.apellido_paterno, c.apellido_materno].filter(Boolean).join(' '),
@@ -191,8 +199,6 @@ watch(open, (v) => {
   if (!v) return
   fecha.value = new Date().toISOString().slice(0, 10)
   idAlmacen.value = ''
-  factorLbM3.value = '0.3174'
-  toleranciaM3.value = '0.5'
   idChofer.value = ''
   observacion.value = ''
   lineas.value = [{ key: crypto.randomUUID(), idBalon: '', lbSalida: '' }]
@@ -215,13 +221,17 @@ async function guardar() {
     return
   }
 
+  const ids = detalles.map((d) => d.idBalon)
+  if (new Set(ids).size !== ids.length) {
+    toastWarning('Hay cilindros duplicados en la ruta')
+    return
+  }
+
   await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     fecha: fecha.value,
     idAlmacen: Number(idAlmacen.value),
     idChofer: idChofer.value ? Number(idChofer.value) : undefined,
-    factorLbM3: Number(factorLbM3.value) || undefined,
-    toleranciaM3: Number(toleranciaM3.value) || undefined,
     observacion: observacion.value.trim() || undefined,
     detalles,
   })

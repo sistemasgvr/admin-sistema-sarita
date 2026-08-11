@@ -2,33 +2,37 @@
   <AppModal
     v-model="open"
     title="Cerrar ruta"
-    subtitle="Cruce m³ calculados (Δ libras) vs lo reportado por el repartidor."
+    subtitle="Compara el gas calculado por libras con lo que reportó el repartidor."
     size="md"
   >
     <div v-if="ruta" class="space-y-4">
       <div class="rounded-lg bg-gray-50 p-3 text-sm dark:bg-white/5">
         <div class="flex justify-between">
-          <span class="text-gray-500">m³ calculados (Δ lb)</span>
-          <span class="font-medium tabular-nums">{{ Number(ruta.m3_calculado ?? 0).toFixed(3) }}</span>
+          <span class="text-gray-500">Gas calculado (por libras)</span>
+          <span class="font-medium tabular-nums">{{ Number(ruta.m3_calculado ?? 0).toFixed(3) }} m³</span>
         </div>
         <div class="mt-1 flex justify-between">
-          <span class="text-gray-500">Tolerancia</span>
+          <span class="text-gray-500">Diferencia permitida</span>
           <span class="tabular-nums">± {{ Number(ruta.tolerancia_m3 ?? 0).toFixed(3) }} m³</span>
         </div>
       </div>
       <AppInput
         v-model="m3Reportado"
-        label="m³ reportados (ventas ruta)"
+        label="Gas reportado por el repartidor (m³)"
         type="number"
         step="0.001"
         min="0"
         required
-        hint="Lo que el repartidor declara haber vendido en m³"
+        hint="Ventas de la ruta según el repartidor"
       />
       <AppInput v-model="observacion" label="Observación" placeholder="Opcional" />
       <p v-if="previewDescuadre !== null" class="text-xs" :class="alertaClass">
-        Descuadre estimado: {{ previewDescuadre.toFixed(3) }} m³
-        {{ Math.abs(previewDescuadre) > Number(ruta.tolerancia_m3 ?? 0.5) ? '(fuera de tolerancia)' : '(OK)' }}
+        Diferencia: {{ previewDescuadre.toFixed(3) }} m³
+        {{
+          Math.abs(previewDescuadre) > Number(ruta.tolerancia_m3 ?? 0.5)
+            ? '(fuera del margen)'
+            : '(dentro del margen)'
+        }}
       </p>
     </div>
 

@@ -95,21 +95,21 @@ export function resolveNotificacionTarget(
       const idVehiculo = payloadNumber(payload, 'idVehiculo')
       if (idVehiculo) {
         return {
-          name: 'admin-clientes-vehiculos',
+          name: 'admin-configuracion-vehiculos',
           query: { id: String(idVehiculo) },
         }
       }
       const placa = payloadString(payload, 'vehiculoPlaca')
       return placa
-        ? { name: 'admin-clientes-vehiculos', query: { buscar: placa } }
-        : { name: 'admin-clientes-vehiculos' }
+        ? { name: 'admin-configuracion-vehiculos', query: { buscar: placa } }
+        : { name: 'admin-configuracion-vehiculos' }
     }
 
     case 'LICENCIA': {
       const idChofer = payloadNumber(payload, 'idChofer')
       return idChofer
-        ? { name: 'admin-clientes-choferes', query: { id: String(idChofer) } }
-        : { name: 'admin-clientes-choferes' }
+        ? { name: 'admin-configuracion-choferes', query: { id: String(idChofer) } }
+        : { name: 'admin-configuracion-choferes' }
     }
 
     case 'STOCK': {

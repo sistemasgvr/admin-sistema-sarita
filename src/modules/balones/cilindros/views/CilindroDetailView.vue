@@ -26,9 +26,20 @@
         <AppBadge v-if="balon?.estado_ph" :color="phBadgeColor">
           PH {{ phBadgeLabel }}
         </AppBadge>
+        <AppBadge v-if="alertaPsiBajo" color="warning">PSI bajo / vacío</AppBadge>
       </template>
 
       <template #extra>
+        <div
+          v-if="alertaPsiBajo"
+          class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+        >
+          Presión actual
+          <strong>{{ Number(balon?.presion_actual) }} PSI</strong>
+          por debajo del mínimo útil
+          (<strong>{{ psiMinimoUtil }} PSI</strong>). Considerar envío a planta de llenado.
+        </div>
+
         <div
           v-if="balon?.tiene_solicitud_baja_pendiente"
           class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
@@ -436,6 +447,7 @@ import type { TipoEventoEstadoBalon } from '@/modules/balones/cilindros/interfac
 import { useMovimientosBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
+import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
@@ -462,6 +474,7 @@ const balonIdRef = toRef(() => {
 const balonQuery = useBalonQuery(balonIdRef)
 const phHistorialQuery = usePhHistorialQuery(balonIdRef)
 const estadoHistorialQuery = useEstadoHistorialQuery(balonIdRef)
+const empresaQuery = useEmpresaActualQuery()
 
 const movimientosFilters = computed(() => ({
   idBalon: balonIdRef.value ?? undefined,
@@ -493,6 +506,19 @@ const isLoading = computed(
 )
 
 const balon = computed(() => balonQuery.data.value ?? null)
+
+const psiMinimoUtil = computed(() => {
+  const raw = empresaQuery.data.value?.psi_minimo_util
+  const n = raw != null ? Number(raw) : 100
+  return Number.isFinite(n) ? n : 100
+})
+
+const alertaPsiBajo = computed(() => {
+  const psi = balon.value?.presion_actual
+  if (psi == null) return false
+  return Number(psi) < psiMinimoUtil.value
+})
+
 const phHistorialRows = computed(() => phHistorialQuery.data.value?.data ?? [])
 const estadoHistorialRows = computed(() => estadoHistorialQuery.data.value?.data ?? [])
 const movimientoHistorialRows = computed(() => movimientosHistorialQuery.data.value?.data ?? [])
@@ -604,7 +630,27 @@ const sections = computed<DetailSection[]>(() => {
             ? 'No aplica'
             : data.nombre_organo_inspector,
         },
-        { label: 'Presión actual', value: data.presion_actual?.toString() },
+        {
+          label: 'Residual gas (m³)',
+          value:
+            data.capacidad_restante != null
+              ? `${Number(data.capacidad_restante).toFixed(4)} m³`
+              : undefined,
+        },
+        {
+          label: 'Residual gas (lb)',
+          value:
+            data.capacidad_restante_lb != null
+              ? `${Number(data.capacidad_restante_lb).toFixed(2)} lb`
+              : undefined,
+        },
+        {
+          label: 'Presión actual',
+          value:
+            data.presion_actual != null
+              ? `${Number(data.presion_actual)} PSI`
+              : undefined,
+        },
       ],
     },
     {

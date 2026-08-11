@@ -3,9 +3,13 @@
     v-model="open"
     :title="mode === 'create' ? 'Nuevo chofer' : 'Editar chofer'"
     :subtitle="
-      mode === 'create'
-        ? 'Registra un chofer, asignado o no a un cliente.'
-        : 'Actualiza los datos del chofer seleccionado.'
+      soloEmpresa
+        ? mode === 'create'
+          ? 'Registra un chofer de la flota propia de la empresa.'
+          : 'Actualiza los datos del chofer de la empresa.'
+        : mode === 'create'
+          ? 'Registra un chofer del cliente / proveedor.'
+          : 'Actualiza los datos del chofer seleccionado.'
     "
     size="lg"
     @close="handleClose"
@@ -17,13 +21,14 @@
       @submit="onSubmit"
     >
       <SearchableSelect
+        v-if="!soloEmpresa"
         v-model="idCliente"
         label="Cliente / Proveedor"
         placeholder="Busca por razón social, nombres o documento..."
         empty-option-label="Sin cliente asignado"
         :model-label="clienteLabelActual"
         v-bind="idClienteAttrs"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || Boolean(defaultClienteId)"
         :error="errors.idCliente"
         :search-fn="searchClientes"
       />
@@ -209,9 +214,13 @@ interface ChoferFormModalProps {
   chofer?: Chofer | null
   defaultClienteId?: number | null
   defaultClienteLabel?: string | null
+  /** Configuración empresa: flota propia (id_cliente NULL). */
+  soloEmpresa?: boolean
 }
 
-const props = defineProps<ChoferFormModalProps>()
+const props = withDefaults(defineProps<ChoferFormModalProps>(), {
+  soloEmpresa: false,
+})
 
 const open = defineModel<boolean>({ default: false })
 
@@ -372,7 +381,11 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
       idUsuarioAuditoria: currentUserId,
-      idCliente: values.idCliente ? Number(values.idCliente) : undefined,
+      idCliente: props.soloEmpresa
+        ? undefined
+        : values.idCliente
+          ? Number(values.idCliente)
+          : undefined,
       nombres: values.nombres,
       apellidoPaterno: values.apellidoPaterno || undefined,
       apellidoMaterno: values.apellidoMaterno || undefined,

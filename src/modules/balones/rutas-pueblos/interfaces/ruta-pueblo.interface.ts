@@ -7,6 +7,8 @@ export interface RutaPuebloDetalle {
   codigo_balon?: string | null
   nombre_tipo_balon?: string | null
   capacidad_tipo?: number | string | null
+  capacidad_lb_tipo?: number | string | null
+  factor_lb_m3_tipo?: number | string | null
   sellado: boolean
   lb_salida: number | string
   lb_retorno?: number | string | null

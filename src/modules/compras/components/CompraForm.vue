@@ -187,7 +187,7 @@
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 Márcalo solo si los cilindros ya llegaron. Registra el retorno físico (En almacén /
                 Lleno). Si aún están en planta, deja sin marcar: la factura queda vinculada y el
-                retorno se completa desde Recargas → planta.
+                retorno se completa desde Recargas / planta.
               </p>
 
               <div

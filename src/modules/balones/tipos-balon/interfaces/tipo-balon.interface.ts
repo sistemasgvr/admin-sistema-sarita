@@ -4,9 +4,12 @@ export interface TipoBalon {
   id_gas?: number | null
   nombre_gas?: string | null
   capacidad?: number | null
+  capacidad_lb?: number | null
   id_unidad_medida?: number | null
   nombre_unidad_medida?: string | null
   peso?: number | null
+  peso_tara_lb?: number | null
+  presion_llenado_psi?: number | null
   vigencia_ph_anios?: number | null
   estado: number
   total_balones?: number
@@ -29,9 +32,12 @@ export interface TipoBalonPayload {
   nombre: string
   idGas?: number
   capacidad?: number
+  capacidadLb?: number
   idUnidadMedida?: number
   peso?: number
   vigenciaPhAnios?: number
+  presionLlenadoPsi?: number
+  pesoTaraLb?: number
 }
 
 export type CreateTipoBalonPayload = TipoBalonPayload

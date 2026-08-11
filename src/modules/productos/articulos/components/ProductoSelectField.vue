@@ -20,6 +20,7 @@
         :required="required"
         :error="error"
         :hint="hint"
+        :help="help"
         :empty-text="emptyText"
       />
       <AppSelect
@@ -32,6 +33,7 @@
         :required="required"
         :error="error"
         :hint="hint"
+        :help="help"
       />
     </AppSelectWithCreate>
 
@@ -71,6 +73,7 @@ const props = withDefaults(
     searchPlaceholder?: string
     error?: string
     hint?: string
+    help?: string
     /**
      * Filtros tri-estado. Default `undefined` (no `false`): en Vue un boolean
      * opcional sin default se castea a false y rompía listados (ej. gases con

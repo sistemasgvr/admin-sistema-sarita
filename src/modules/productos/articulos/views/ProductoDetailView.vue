@@ -188,6 +188,20 @@ const sections = computed<DetailSection[]>(() => {
                 ? 'Productos / Stock accesorios'
                 : 'Sin stock',
         },
+        {
+          label: 'Factor kg / m³',
+          value:
+            data.es_gas && data.factor_kg_m3 != null
+              ? String(data.factor_kg_m3)
+              : undefined,
+        },
+        {
+          label: 'Factor lb / m³',
+          value:
+            data.es_gas && data.factor_lb_m3 != null
+              ? String(data.factor_lb_m3)
+              : undefined,
+        },
       ],
     },
     {

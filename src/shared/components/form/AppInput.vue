@@ -2,6 +2,7 @@
   <AppFormField
     :label="label"
     :hint="hint"
+    :help="help"
     :error="error"
     :required="required"
     :optional="optional"
@@ -55,6 +56,7 @@ interface AppInputProps {
   type?: InputType
   label?: string
   hint?: string
+  help?: string
   error?: string
   placeholder?: string
   name?: string

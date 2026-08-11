@@ -34,50 +34,93 @@
               :options="gasSelectedOptions"
               :disabled="isSubmitting"
               :error="errors.idGas"
-              hint="Solo productos marcados como gas. Borra el buscador para ver el listado."
+              help="Solo productos marcados como gas. Borra el buscador para ver el listado."
             />
 
             <div class="grid gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="capacidad"
-                label="Capacidad"
+                label="Capacidad (m³)"
                 type="number"
                 :min="NUMBER_MIN.measure"
                 :step="NUMBER_STEP.measure"
                 placeholder="10"
+                help="Volumen nominal del cilindro."
                 v-bind="capacidadAttrs"
                 :disabled="isSubmitting"
                 :error="errors.capacidad"
               />
 
-              <AppSelectWithCreate
-                :can-create="canCreateUnidad"
-                create-title="Nueva unidad de medida"
+              <AppInput
+                v-model="capacidadLb"
+                label="Capacidad llena (lb)"
+                type="number"
+                :min="NUMBER_MIN.measure"
+                :step="NUMBER_STEP.measure"
+                placeholder="31.5"
+                help="Peso del gas con el cilindro lleno. Se usa en ruta pueblos."
+                v-bind="capacidadLbAttrs"
+                :disabled="isSubmitting"
+                :error="errors.capacidadLb"
+              />
+            </div>
+
+            <AppSelectWithCreate
+              :can-create="canCreateUnidad"
+              create-title="Nueva unidad de medida"
+              :disabled="isSubmitting || isLoadingUnidadMedida"
+              @create="unidadModalOpen = true"
+            >
+              <AppSelect
+                v-model="idUnidadMedida"
+                label="Unidad de medida (capacidad)"
+                :placeholder="isLoadingUnidadMedida ? 'Cargando...' : 'Selecciona...'"
+                :options="unidadMedidaOptions"
                 :disabled="isSubmitting || isLoadingUnidadMedida"
-                @create="unidadModalOpen = true"
-              >
-                <AppSelect
-                  v-model="idUnidadMedida"
-                  label="Unidad de medida"
-                  :placeholder="isLoadingUnidadMedida ? 'Cargando...' : 'Selecciona...'"
-                  :options="unidadMedidaOptions"
-                  :disabled="isSubmitting || isLoadingUnidadMedida"
-                  v-bind="idUnidadMedidaAttrs"
-                  :error="errors.idUnidadMedida"
-                />
-              </AppSelectWithCreate>
+                v-bind="idUnidadMedidaAttrs"
+                :error="errors.idUnidadMedida"
+                help="Normalmente m³. Las lb se registran aparte arriba."
+              />
+            </AppSelectWithCreate>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <AppInput
+                v-model="peso"
+                label="Peso tara (kg)"
+                type="number"
+                :min="NUMBER_MIN.measure"
+                :step="NUMBER_STEP.measure"
+                placeholder="0"
+                help="Si no indicas tara en lb, se convierte automáticamente."
+                v-bind="pesoAttrs"
+                :disabled="isSubmitting"
+                :error="errors.peso"
+              />
+              <AppInput
+                v-model="pesoTaraLb"
+                label="Peso tara (lb)"
+                type="number"
+                :min="NUMBER_MIN.measure"
+                :step="NUMBER_STEP.measure"
+                placeholder="0"
+                help="Para báscula: bruto − tara = gas neto."
+                v-bind="pesoTaraLbAttrs"
+                :disabled="isSubmitting"
+                :error="errors.pesoTaraLb"
+              />
             </div>
 
             <AppInput
-              v-model="peso"
-              label="Peso tara (kg)"
+              v-model="presionLlenadoPsi"
+              label="Presión de llenado (PSI)"
               type="number"
               :min="NUMBER_MIN.measure"
-              :step="NUMBER_STEP.measure"
-              placeholder="0"
-              v-bind="pesoAttrs"
+              :step="1"
+              placeholder="2000"
+              help="PSI a capacidad nominal. Se usa para estimar m³ desde presión."
+              v-bind="presionLlenadoPsiAttrs"
               :disabled="isSubmitting"
-              :error="errors.peso"
+              :error="errors.presionLlenadoPsi"
             />
 
             <AppSelectWithCreate
@@ -94,7 +137,7 @@
                 :disabled="isSubmitting"
                 v-bind="vigenciaPhAniosAttrs"
                 :error="errors.vigenciaPhAnios"
-                hint="Plazo de renovación de prueba hidrostática según normativa del tipo de gas."
+                help="Plazo de renovación de prueba hidrostática según normativa del tipo de gas."
               />
             </AppSelectWithCreate>
           </div>
@@ -262,8 +305,11 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       nombre: requiredString('El nombre'),
       idGas: optionalNumber(),
       capacidad: optionalNumber(),
+      capacidadLb: optionalNumber(),
       idUnidadMedida: optionalNumber(),
       peso: optionalNumber(),
+      pesoTaraLb: optionalNumber(),
+      presionLlenadoPsi: optionalNumber(),
       vigenciaPhAnios: optionalNumber(),
     }),
   ),
@@ -271,8 +317,11 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     nombre: '',
     idGas: undefined as number | undefined,
     capacidad: undefined as number | undefined,
+    capacidadLb: undefined as number | undefined,
     idUnidadMedida: undefined as number | undefined,
     peso: undefined as number | undefined,
+    pesoTaraLb: undefined as number | undefined,
+    presionLlenadoPsi: undefined as number | undefined,
     vigenciaPhAnios: 5 as number | undefined,
   },
 })
@@ -280,8 +329,11 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 const [nombre, nombreAttrs] = defineField('nombre')
 const [idGas] = defineField('idGas')
 const [capacidad, capacidadAttrs] = defineField('capacidad')
+const [capacidadLb, capacidadLbAttrs] = defineField('capacidadLb')
 const [idUnidadMedida, idUnidadMedidaAttrs] = defineField('idUnidadMedida')
 const [peso, pesoAttrs] = defineField('peso')
+const [pesoTaraLb, pesoTaraLbAttrs] = defineField('pesoTaraLb')
+const [presionLlenadoPsi, presionLlenadoPsiAttrs] = defineField('presionLlenadoPsi')
 const [vigenciaPhAnios, vigenciaPhAniosAttrs] = defineField('vigenciaPhAnios')
 
 const syncFormValues = () => {
@@ -294,8 +346,11 @@ const syncFormValues = () => {
       nombre: props.tipoBalon?.nombre ?? '',
       idGas: props.tipoBalon?.id_gas ?? undefined,
       capacidad: props.tipoBalon?.capacidad ?? undefined,
+      capacidadLb: props.tipoBalon?.capacidad_lb ?? undefined,
       idUnidadMedida: props.tipoBalon?.id_unidad_medida ?? undefined,
       peso: props.tipoBalon?.peso ?? undefined,
+      pesoTaraLb: props.tipoBalon?.peso_tara_lb ?? undefined,
+      presionLlenadoPsi: props.tipoBalon?.presion_llenado_psi ?? undefined,
       vigenciaPhAnios: props.tipoBalon?.vigencia_ph_anios ?? 5,
     },
   })
@@ -337,8 +392,11 @@ const onSubmit = handleSubmit(async (values) => {
     nombre: values.nombre,
     idGas: values.idGas,
     capacidad: values.capacidad,
+    capacidadLb: values.capacidadLb,
     idUnidadMedida: values.idUnidadMedida,
     peso: values.peso,
+    pesoTaraLb: values.pesoTaraLb,
+    presionLlenadoPsi: values.presionLlenadoPsi,
     vigenciaPhAnios: values.vigenciaPhAnios,
   }
 

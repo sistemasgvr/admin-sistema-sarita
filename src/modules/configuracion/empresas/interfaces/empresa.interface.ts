@@ -6,6 +6,8 @@ export interface Empresa {
   direccion?: string
   telefono?: string
   email?: string
+  tolerancia_m3_ruta_pueblo?: number | string | null
+  psi_minimo_util?: number | string | null
   estado: boolean
   fecha_creacion: string
   fecha_modificacion: string
@@ -24,6 +26,8 @@ export interface CreateEmpresaPayload {
   direccion?: string
   telefono?: string
   email?: string
+  toleranciaM3RutaPueblo?: number
+  psiMinimoUtil?: number
 }
 
 export interface UpdateEmpresaPayload {
@@ -33,6 +37,8 @@ export interface UpdateEmpresaPayload {
   direccion?: string
   telefono?: string
   email?: string
+  toleranciaM3RutaPueblo?: number
+  psiMinimoUtil?: number
 }
 
 export interface DeleteEmpresaResponse {

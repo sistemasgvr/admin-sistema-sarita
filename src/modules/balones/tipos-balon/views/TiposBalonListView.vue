@@ -28,11 +28,16 @@
       </template>
 
       <template #cell-capacidad="{ row }">
-        <span v-if="row.capacidad != null">
-          {{ row.capacidad }}
-          <span v-if="row.nombre_unidad_medida" class="text-gray-400">
-            {{ row.nombre_unidad_medida }}
-          </span>
+        <span
+          v-if="row.capacidad != null || row.capacidad_lb != null"
+          class="whitespace-nowrap"
+        >
+          <template v-if="row.capacidad != null">
+            {{ row.capacidad }}
+            <span class="text-gray-400">{{ row.nombre_unidad_medida || 'm³' }}</span>
+          </template>
+          <template v-if="row.capacidad != null && row.capacidad_lb != null"> · </template>
+          <template v-if="row.capacidad_lb != null">{{ row.capacidad_lb }} lb</template>
         </span>
         <span v-else class="text-gray-400">—</span>
       </template>

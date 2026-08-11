@@ -2,6 +2,7 @@
   <AppFormField
     :label="label"
     :hint="hint"
+    :help="help"
     :error="error"
     :required="required"
     :optional="optional"
@@ -98,6 +99,7 @@ defineOptions({
 interface AppSelectProps {
   label?: string
   hint?: string
+  help?: string
   error?: string
   placeholder?: string
   /** Texto cuando el listado no tiene opciones */
