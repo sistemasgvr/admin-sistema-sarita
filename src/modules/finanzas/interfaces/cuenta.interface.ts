@@ -108,6 +108,8 @@ export interface RegistrarPagoPayload {
   referencia?: string
   observacion?: string
   idUsuarioAuditoria?: number
+  /** Si true, ignora el chequeo de duplicados (backend valida permiso). */
+  forzarDuplicado?: boolean
 }
 
 export interface CrearCuentaPayload {

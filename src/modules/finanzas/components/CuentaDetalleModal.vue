@@ -11,7 +11,8 @@
           {{ cuenta.tipo === 'COBRAR' ? 'Por cobrar' : 'Por pagar' }}
         </AppBadge>
         <AppBadge v-if="esPlan" color="dark" size="sm">
-          Plan de {{ cuenta.numero_cuotas_total }} cuotas
+          Plan de {{ cuenta.numero_cuotas_total }}
+          {{ (cuenta.numero_cuotas_total ?? 0) === 1 ? 'cuota' : 'cuotas' }}
         </AppBadge>
         <AppBadge v-else-if="esCuotaHija" color="neutral" size="sm">
           Cuota #{{ cuenta.numero_cuota }}
@@ -167,6 +168,29 @@
         </div>
       </div>
 
+      <!-- Observaciones y comentarios -->
+      <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+        <h4 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Observaciones y comentarios
+        </h4>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <p class="text-xs text-gray-400 dark:text-gray-500">N° de comprobante</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300">{{ cuenta.numero_comprobante || '—' }}</p>
+          </div>
+          <div v-if="cuenta.descripcion">
+            <p class="text-xs text-gray-400 dark:text-gray-500">Descripción</p>
+            <p class="text-sm text-gray-700 dark:text-gray-300">{{ cuenta.descripcion }}</p>
+          </div>
+          <div class="sm:col-span-2">
+            <p class="text-xs text-gray-400 dark:text-gray-500">Observación de la cuenta</p>
+            <p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+              {{ cuenta.observacion || 'Sin observaciones.' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Historial de pagos -->
       <div v-if="!esPlan">
         <h4 class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
@@ -188,6 +212,9 @@
                 {{ formatListDate(pago.fechaPago) }}
                 <span v-if="pago.numeroOperacion"> · Op. {{ pago.numeroOperacion }}</span>
                 <span v-if="pago.referencia"> · {{ pago.referencia }}</span>
+              </p>
+              <p v-if="pago.observacion" class="mt-1 whitespace-pre-wrap text-theme-xs italic text-gray-500 dark:text-gray-400">
+                “{{ pago.observacion }}”
               </p>
             </div>
             <button
@@ -356,11 +383,13 @@ const ejecutarAnular = async () => {
       idPago: p.id,
       idUsuarioAuditoria: authStore.user?.id ?? undefined,
     })
-    confirmAnularOpen.value = false
-    pagoAAnular.value = null
     await query.refetch()
   } catch {
-    // El toast de error ya lo maneja la mutación.
+    // El toast con el mensaje del backend lo dispara la mutación.
+  } finally {
+    // Cerramos siempre para que el toast quede visible sin ser tapado por el diálogo.
+    confirmAnularOpen.value = false
+    pagoAAnular.value = null
   }
 }
 
