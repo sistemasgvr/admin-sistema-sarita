@@ -26,12 +26,21 @@
         <span class="whitespace-nowrap">{{ row.fecha?.slice(0, 10) || '—' }}</span>
       </template>
 
+      <template #cell-nombre_almacen="{ row }">
+        <div class="min-w-0">
+          <p class="truncate">{{ row.nombre_almacen || '—' }}</p>
+          <p v-if="row.observacion" class="truncate text-xs text-gray-500 dark:text-gray-400">
+            {{ row.observacion }}
+          </p>
+        </div>
+      </template>
+
       <template #cell-nombre_estado="{ value }">
         <ListaOpcionBadge :value="value as string" />
       </template>
 
       <template #cell-cilindros="{ row }">
-        <span class="tabular-nums">
+        <span class="tabular-nums" :title="'Retornados / total'">
           {{ row.total_retornados ?? 0 }}/{{ row.total_cilindros ?? 0 }}
         </span>
       </template>
@@ -62,6 +71,14 @@
 
       <template #actions="{ row }">
         <div class="inline-flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            title="Ver detalle"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openDetail(row)"
+          >
+            <AppIcon :name="ICONS.eye" :size="15" />
+          </button>
           <button
             v-if="canEdit && row.nombre_estado === 'ABIERTA'"
             type="button"
@@ -112,6 +129,7 @@
     </AppTable>
 
     <RutaPuebloFormModal v-model="formOpen" @saved="refresh" />
+    <RutaPuebloDetailModal v-model="detailOpen" :ruta-id="rutaActivaId" />
     <RutaPuebloRetornoModal v-model="retornoOpen" :ruta-id="rutaActivaId" @saved="refresh" />
     <RutaPuebloCerrarModal v-model="cerrarOpen" :ruta-id="rutaActivaId" @saved="refresh" />
 
@@ -124,7 +142,7 @@
       :loading="iniciarMutation.isPending.value"
       @confirm="confirmarIniciar"
     >
-      Los cilindros pasarán a tránsito (EN_RUTA). ¿Continuar?
+      Los cilindros pasarán a tránsito ({{ labelEstado('EN_RUTA') }}). ¿Continuar?
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -136,7 +154,8 @@
       :loading="updateMutation.isPending.value"
       @confirm="confirmarCancelar"
     >
-      ¿Cancelar la ruta? Si está EN_RUTA, los cilindros sin retorno vuelven al almacén con las lb de salida restauradas.
+      ¿Cancelar la ruta? Si ya está {{ labelEstado('EN_RUTA').toLowerCase() }}, los cilindros sin
+      retorno vuelven al almacén con las lb de salida restauradas.
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -162,6 +181,7 @@ import {
 } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosMutations'
 import { useRutasPueblosQuery } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosQuery'
 import RutaPuebloCerrarModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloCerrarModal.vue'
+import RutaPuebloDetailModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloDetailModal.vue'
 import RutaPuebloFormModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloFormModal.vue'
 import RutaPuebloRetornoModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloRetornoModal.vue'
 import type { RutaPueblo } from '@/modules/balones/rutas-pueblos/interfaces/ruta-pueblo.interface'
@@ -179,6 +199,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const authStore = useAuthStore()
 
@@ -186,6 +207,7 @@ const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
 const formOpen = ref(false)
+const detailOpen = ref(false)
 const retornoOpen = ref(false)
 const cerrarOpen = ref(false)
 const iniciarOpen = ref(false)
@@ -249,6 +271,15 @@ const columns = [
 
 function refresh() {
   void query.refetch()
+}
+
+function labelEstado(codigo: string) {
+  return formatListaOpcionLabel(codigo)
+}
+
+function openDetail(row: RutaPueblo) {
+  rutaActivaId.value = row.id
+  detailOpen.value = true
 }
 
 function openRetorno(row: RutaPueblo) {
