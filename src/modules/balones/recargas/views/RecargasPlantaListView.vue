@@ -12,10 +12,20 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Número, GRE o proveedor..."
+          search-placeholder="Orden, lote, GRE, factura o proveedor..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <button
+              type="button"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              :disabled="exporting"
+              title="Exportar protocolo (ida, guías, factura, retorno, lote)"
+              @click="exportProtocolo"
+            >
+              <AppIcon :name="ICONS.download" :size="18" />
+              {{ exporting ? 'Exportando...' : 'Protocolo Excel' }}
+            </button>
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-balones-recargas-planta-nueva' }"
@@ -56,9 +66,29 @@
             GRE sal.: {{ formatDocumento(row.serie_guia_salida, row.numero_guia_salida) }}
           </p>
           <p class="whitespace-nowrap">
+            GRE ret.: {{ formatDocumento(row.serie_guia_ingreso, row.numero_guia_ingreso) }}
+          </p>
+          <p class="whitespace-nowrap">
             Fac.: {{ formatDocumento(row.serie_factura, row.numero_factura) }}
           </p>
         </div>
+      </template>
+
+      <template #cell-lote="{ row }">
+        <p class="font-medium text-gray-800 dark:text-white/90">
+          {{ row.lote || '—' }}
+        </p>
+        <p v-if="row.fecha_vencimiento_lote" class="text-xs text-gray-500 dark:text-gray-400">
+          vence {{ formatListDate(row.fecha_vencimiento_lote) }}
+        </p>
+        <AppBadge
+          v-else-if="row.fecha_llegada_almacen && !row.lote"
+          size="sm"
+          color="warning"
+          class="mt-1"
+        >
+          Sin protocolo
+        </AppBadge>
       </template>
 
       <template #cell-total_cilindros="{ value }">
@@ -144,7 +174,11 @@ import type {
   RecargaPlanta,
   RecargaPlantaListFilters,
 } from '@/modules/balones/recargas/interfaces/recarga-planta.interface'
+import { recargasPlantaService } from '@/modules/balones/recargas/services/recargas-planta.service'
+import { exportarProtocoloRecargaPlantaExcel } from '@/modules/balones/recargas/utils/exportarProtocoloRecargaPlantaExcel'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
@@ -156,7 +190,9 @@ import {
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { toastApiError } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
@@ -191,6 +227,11 @@ const ordenesQuery = useRecargasPlantaQuery(filters)
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
+const listaEstadoId = ref(ListaIds.ESTADO_RECARGA_PLANTA)
+const estadoQuery = useListaOpcionesQuery(listaEstadoId)
+
+const exporting = ref(false)
+
 const deleteModalOpen = ref(false)
 const ordenToDelete = ref<RecargaPlanta | null>(null)
 const deleteMutation = useDeleteRecargaPlantaMutation()
@@ -217,6 +258,7 @@ const columns: TableColumn[] = [
   { key: 'numero', label: 'Orden' },
   { key: 'nombre_estado', label: 'Estado' },
   { key: 'nombre_proveedor', label: 'Proveedor' },
+  { key: 'lote', label: 'Lote' },
   { key: 'total_cilindros', label: 'Cil.' },
   { key: 'documentos', label: 'Documentos' },
   { key: 'nombre_almacen', label: 'Almacén' },
@@ -225,6 +267,14 @@ const columns: TableColumn[] = [
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   { key: 'fechaDesde', label: 'Desde', type: 'date' },
   { key: 'fechaHasta', label: 'Hasta', type: 'date' },
+  {
+    key: 'idEstado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos los estados',
+    disabled: estadoQuery.isLoading.value,
+    options: toSelectOptions(estadoQuery.data.value),
+  },
   {
     key: 'idAlmacen',
     label: 'Almacén',
@@ -254,6 +304,7 @@ const syncFilters = () => {
     limite: limite.value,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
+    idEstado: active.idEstado != null ? Number(active.idEstado) : undefined,
     idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
   }
 }
@@ -274,6 +325,25 @@ watch(buscar, () => {
 watch([pagina, limite], () => {
   syncFilters()
 })
+
+const exportProtocolo = async () => {
+  exporting.value = true
+  try {
+    const rows = await recargasPlantaService.listarProtocolo({
+      buscar: filters.value.buscar,
+      idProveedor: filters.value.idProveedor,
+      idAlmacen: filters.value.idAlmacen,
+      idEstado: filters.value.idEstado,
+      fechaDesde: filters.value.fechaDesde,
+      fechaHasta: filters.value.fechaHasta,
+    })
+    await exportarProtocoloRecargaPlantaExcel(rows ?? [])
+  } catch (error) {
+    toastApiError(error, 'No se pudo exportar el protocolo')
+  } finally {
+    exporting.value = false
+  }
+}
 
 const goToEdit = (row: RecargaPlanta) => {
   void router.push({

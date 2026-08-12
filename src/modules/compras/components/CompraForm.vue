@@ -185,13 +185,21 @@
                 class="mt-3"
               />
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Márcalo solo si los cilindros ya llegaron. Registra el retorno físico (En almacén /
-                Lleno). Si aún están en planta, deja sin marcar: la factura queda vinculada y el
-                retorno se completa desde Recargas / planta.
+                Márcalo solo si los cilindros ya llegaron. Exige que la orden ya tenga lote,
+                vencimiento y P.H. (protocolo) en Recargas → Planta externa. Si aún están en
+                planta, deja sin marcar: la factura queda vinculada y el retorno se completa allá.
               </p>
 
               <div
-                v-if="guardarBalonesAlmacen"
+                v-if="guardarBalonesAlmacen && recargaPlantaProtocoloIncompleto"
+                class="mt-3 rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-sm text-error-800 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+              >
+                La orden seleccionada no tiene lote / vencimiento / P.H. Completa el protocolo en
+                Recargas → Planta externa antes de marcar el retorno desde Compras.
+              </div>
+
+              <div
+                v-else-if="guardarBalonesAlmacen"
                 class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
               >
                 Al guardar, los cilindros de la orden pasarán a
@@ -929,6 +937,12 @@ const idRecargaPlantaNum = computed(() =>
 const recargaPlantaDetalleQuery = useRecargaPlantaQuery(idRecargaPlantaNum)
 const recargaPlantaBalones = computed(() => recargaPlantaDetalleQuery.data.value?.detalles ?? [])
 
+const recargaPlantaProtocoloIncompleto = computed(() => {
+  const data = recargaPlantaDetalleQuery.data.value
+  if (!data || data.id !== idRecargaPlantaNum.value) return false
+  return !data.lote?.trim() || !data.fecha_vencimiento_lote || !data.fecha_prueba_hidrostatica
+})
+
 const suppressRecargaPlantaReset = ref(false)
 watch(idProveedor, (id) => {
   const idNum = id !== '' && id != null ? Number(id) : undefined
@@ -1377,6 +1391,17 @@ const onSubmit = handleSubmit(async (values) => {
       toastWarning(errorCantidad)
       return
     }
+  }
+
+  if (
+    toOptionalNumber(values.idRecargaPlanta) != null &&
+    Boolean(values.guardarBalonesAlmacen) &&
+    recargaPlantaProtocoloIncompleto.value
+  ) {
+    toastWarning(
+      'La orden de recarga no tiene lote, vencimiento y P.H. Complételos en Recargas → Planta externa antes de marcar el retorno.',
+    )
+    return
   }
 
   const detalles = lineas.map((l) => ({

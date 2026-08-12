@@ -216,6 +216,13 @@
           :icon="ICONS.calendar"
           help="Fecha de llegada = retorno físico (En almacén / Lleno). La compra es la factura de costo del proveedor (módulo Compras); se vincula aquí y no mueve stock de productos de gas. Cerrado solo con compra + retorno."
         >
+          <div
+            v-if="protocoloIncompleto"
+            class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          >
+            Esta orden tiene retorno registrado pero el protocolo está incompleto (lote, vencimiento
+            y/o P.H.). Completa los campos abajo y guarda para regularizar el historial.
+          </div>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <GuiaRemisionSelectField
               v-model="idGuiaRetorno"
@@ -235,6 +242,7 @@
               type="date"
               v-bind="fechaLlegadaAlmacenAttrs"
               :disabled="isSubmitting"
+              :error="errors.fechaLlegadaAlmacen"
             />
 
             <AppInput
@@ -285,18 +293,22 @@
 
             <AppInput
               v-model="lote"
-              label="Lote"
-              placeholder="Lote de recarga"
+              label="Nº lote"
+              placeholder="Lote del proveedor / protocolo"
+              help="Obligatorio con el retorno. Identifica el lote de llenado de la planta."
               v-bind="loteAttrs"
               :disabled="isSubmitting"
+              :error="errors.lote"
             />
 
             <AppInput
               v-model="fechaVencimientoLote"
               label="Vencimiento lote"
               type="date"
+              help="Obligatorio con el retorno."
               v-bind="fechaVencimientoLoteAttrs"
               :disabled="isSubmitting"
+              :error="errors.fechaVencimientoLote"
             />
 
             <AppInput
@@ -305,7 +317,8 @@
               type="date"
               v-bind="fechaPruebaHidrostaticaAttrs"
               :disabled="isSubmitting"
-              help="Referencia documental. La renovación vigente va en Mantenimientos."
+              :error="errors.fechaPruebaHidrostatica"
+              help="Obligatorio con el retorno. También se registra en el historial P.H. del cilindro."
             />
           </div>
         </DetailSectionCard>
@@ -430,6 +443,13 @@ const isSalidaLocked = computed(() => {
   return props.mode === 'edit' && estado != null && estado !== 'BORRADOR'
 })
 
+/** Órdenes históricas retornadas/cerradas sin lote/venc/P.H. */
+const protocoloIncompleto = computed(() => {
+  const data = recargaDetalle.value
+  if (!data?.fecha_llegada_almacen) return false
+  return !data.lote?.trim() || !data.fecha_vencimiento_lote || !data.fecha_prueba_hidrostatica
+})
+
 const detalles = ref<RecargaPlantaDetalle[]>([])
 const detalleError = ref('')
 const balonParaAgregar = ref<number | ''>('')
@@ -544,9 +564,35 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, setFieldValu
       serieFactura: optionalString().max(10, 'Máximo 10 caracteres'),
       numeroFactura: optionalString().max(15, 'Máximo 15 caracteres'),
       fechaLlegadaAlmacen: optionalString(),
-      lote: optionalString().max(50, 'Máximo 50 caracteres'),
-      fechaVencimientoLote: optionalString(),
-      fechaPruebaHidrostatica: optionalString(),
+      lote: optionalString()
+        .max(50, 'Máximo 50 caracteres')
+        .test(
+          'lote-requerido-retorno',
+          'El número de lote es obligatorio al registrar el retorno',
+          function (value) {
+            const llegada = this.parent.fechaLlegadaAlmacen
+            if (!llegada) return true
+            return Boolean(value && String(value).trim())
+          },
+        ),
+      fechaVencimientoLote: optionalString().test(
+        'venc-lote-requerido-retorno',
+        'El vencimiento del lote es obligatorio al registrar el retorno',
+        function (value) {
+          const llegada = this.parent.fechaLlegadaAlmacen
+          if (!llegada) return true
+          return Boolean(value && String(value).trim())
+        },
+      ),
+      fechaPruebaHidrostatica: optionalString().test(
+        'ph-requerido-retorno',
+        'La fecha de P.H. es obligatoria al registrar el retorno',
+        function (value) {
+          const llegada = this.parent.fechaLlegadaAlmacen
+          if (!llegada) return true
+          return Boolean(value && String(value).trim())
+        },
+      ),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
     }),
   ),
@@ -801,13 +847,13 @@ const onSubmit = handleSubmit(async (values) => {
         serieGuiaIngreso: values.serieGuiaIngreso || undefined,
         numeroGuiaIngreso: values.numeroGuiaIngreso || undefined,
         idComprobanteCompra: toOptionalNumber(idComprobanteCompra.value),
-        serieFactura: values.serieFactura || undefined,
-        numeroFactura: values.numeroFactura || undefined,
+        serieFactura: values.serieFactura ?? '',
+        numeroFactura: values.numeroFactura ?? '',
         fechaLlegadaAlmacen: values.fechaLlegadaAlmacen || undefined,
-        lote: values.lote || undefined,
+        lote: values.lote ?? '',
         fechaVencimientoLote: values.fechaVencimientoLote || undefined,
         fechaPruebaHidrostatica: values.fechaPruebaHidrostatica || undefined,
-        observacion: values.observacion || undefined,
+        observacion: values.observacion ?? '',
       },
     })
     emit('saved')

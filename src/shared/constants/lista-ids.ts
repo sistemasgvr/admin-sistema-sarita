@@ -78,6 +78,8 @@ export const ListaIds = {
   CATEGORIA_GASTO: 55, 
   /** gen_lista.nombre = Moneda (SOLES, DOLARES, etc.) */
   MONEDA: 56,
+  /** gen_lista.nombre = EstadoRecargaPlanta */
+  ESTADO_RECARGA_PLANTA: 60,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds

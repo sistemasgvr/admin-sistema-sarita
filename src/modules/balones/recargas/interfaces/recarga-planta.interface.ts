@@ -61,6 +61,38 @@ export interface RecargaPlantaListFilters {
   fechaHasta?: string
 }
 
+/** Fila aplanada del protocolo operativo (ida / GRE / factura / retorno / lote / cilindro). */
+export interface RecargaPlantaProtocoloFila {
+  id_recarga_planta: number
+  numero_orden?: string | null
+  fecha_salida?: string | null
+  id_proveedor?: number | null
+  nombre_proveedor?: string | null
+  id_almacen?: number | null
+  nombre_almacen?: string | null
+  serie_guia_salida?: string | null
+  numero_guia_salida?: string | null
+  serie_guia_ingreso?: string | null
+  numero_guia_ingreso?: string | null
+  serie_factura?: string | null
+  numero_factura?: string | null
+  fecha_llegada_almacen?: string | null
+  lote?: string | null
+  fecha_vencimiento_lote?: string | null
+  fecha_prueba_hidrostatica?: string | null
+  nombre_estado?: string | null
+  id_detalle?: number | null
+  id_balon?: number | null
+  codigo_balon?: string | null
+  id_producto?: number | null
+  nombre_producto?: string | null
+  codigo_producto?: string | null
+  capacidad?: number | null
+  nombre_unidad_medida?: string | null
+  observacion_detalle?: string | null
+  observacion_orden?: string | null
+}
+
 export interface RecargaPlantaDetallePayload {
   idBalon: number
   idProducto?: number

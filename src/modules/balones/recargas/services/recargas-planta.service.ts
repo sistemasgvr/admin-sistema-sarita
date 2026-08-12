@@ -3,12 +3,26 @@ import type {
   CreateRecargaPlantaPayload,
   RecargaPlanta,
   RecargaPlantaListFilters,
+  RecargaPlantaProtocoloFila,
   UpdateRecargaPlantaPayload,
 } from '@/modules/balones/recargas/interfaces/recarga-planta.interface'
 
 export const recargasPlantaService = {
   listar(filters: RecargaPlantaListFilters = {}) {
     return apiGetPaginated<RecargaPlanta>('/balones/recargas-planta', { params: filters })
+  },
+
+  listarProtocolo(filters: RecargaPlantaListFilters = {}) {
+    return apiGet<RecargaPlantaProtocoloFila[]>('/balones/recargas-planta/protocolo', {
+      params: {
+        buscar: filters.buscar,
+        idProveedor: filters.idProveedor,
+        idAlmacen: filters.idAlmacen,
+        idEstado: filters.idEstado,
+        fechaDesde: filters.fechaDesde,
+        fechaHasta: filters.fechaHasta,
+      },
+    })
   },
 
   obtenerPorId(id: number) {
