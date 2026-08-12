@@ -126,7 +126,7 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar orden"
-      subtitle="Solo borradores o enviados sin retorno."
+      subtitle="Solo si aún no hay compra ni retorno registrado."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -134,7 +134,7 @@
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ ordenToDelete?.numero || `RP-${ordenToDelete?.id}` }}
         </span>
-        ?
+        ? Los cilindros en recarga externa volverán a almacén.
       </p>
 
       <template #footer>
@@ -345,7 +345,18 @@ const openDeleteModal = (row: RecargaPlanta) => {
 
 function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
-  const blocked = row.nombre_estado === 'CERRADO' || row.nombre_estado === 'RETORNADO'
+  const blocked =
+    row.puede_eliminar === false ||
+    row.nombre_estado === 'CERRADO' ||
+    row.nombre_estado === 'RETORNADO' ||
+    Boolean(row.id_comprobante_compra)
+  const motivo =
+    row.motivo_bloqueo_eliminar ||
+    (row.id_comprobante_compra
+      ? 'tiene compra'
+      : row.nombre_estado === 'CERRADO' || row.nombre_estado === 'RETORNADO'
+        ? 'estado no permite'
+        : null)
 
   return [
     {
@@ -357,7 +368,7 @@ function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
     },
     {
       key: 'delete',
-      label: blocked ? 'Eliminar (estado no permite)' : 'Eliminar',
+      label: blocked && motivo ? `Eliminar (${motivo})` : 'Eliminar',
       icon: ICONS.trash,
       danger: !blocked,
       disabled: busy || blocked,
@@ -368,7 +379,15 @@ function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: RecargaPlanta) {
   if (key === 'edit') goToEdit(row)
-  if (key === 'delete') openDeleteModal(row)
+  if (key === 'delete') {
+    const blocked =
+      row.puede_eliminar === false ||
+      row.nombre_estado === 'CERRADO' ||
+      row.nombre_estado === 'RETORNADO' ||
+      Boolean(row.id_comprobante_compra)
+    if (blocked) return
+    openDeleteModal(row)
+  }
 }
 
 const confirmDelete = async () => {

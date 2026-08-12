@@ -45,6 +45,8 @@ export interface RecargaPlanta {
   total_cilindros?: number | null
   observacion?: string | null
   detalles?: RecargaPlantaDetalle[]
+  puede_eliminar?: boolean | null
+  motivo_bloqueo_eliminar?: string | null
   estado: number
   fecha_creacion: string
   fecha_modificacion?: string

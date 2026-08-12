@@ -182,7 +182,6 @@
     </template>
 
     <ComprobanteDetailModal v-model="ventaModalOpen" :comprobante-id="ventaId" />
-    <CompraDetailModal v-model="compraModalOpen" :compra-id="compraId" />
     <CuentaDetalleModal
       v-model="cuentaModalOpen"
       :cuenta-id="cuentaId"
@@ -212,7 +211,6 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
-import CompraDetailModal from '@/modules/compras/components/CompraDetailModal.vue'
 import CuentaDetalleModal from '@/modules/finanzas/components/CuentaDetalleModal.vue'
 import {
   useCrearCajaObservacionMutation,
@@ -279,8 +277,6 @@ const obsOpen = ref(true)
 
 const ventaModalOpen = ref(false)
 const ventaId = ref<number | null>(null)
-const compraModalOpen = ref(false)
-const compraId = ref<number | null>(null)
 const cuentaModalOpen = ref(false)
 const cuentaId = ref<number | null>(null)
 const pdfBusyId = ref<number | null>(null)
@@ -412,8 +408,10 @@ function gastoActionTitle(row: LibroDiarioGasto) {
 
 function onGastoAction(row: LibroDiarioGasto) {
   if (row.origen === 'COMPRA') {
-    compraId.value = row.id
-    compraModalOpen.value = true
+    void router.push({
+      name: 'admin-compras-detalle',
+      params: { id: String(row.id) },
+    })
     return
   }
   irACaja(row.fecha)

@@ -82,8 +82,6 @@
       </template>
     </AppTable>
 
-    <CompraDetailModal v-model="detailModalOpen" :compra-id="compraToViewId" />
-
     <AppModal v-model="anularModalOpen" title="Anular comprobante de compra" size="sm">
       <p class="text-sm text-gray-600 dark:text-gray-400">
         ¿Confirmas que deseas anular
@@ -124,7 +122,6 @@ import { useRouter } from 'vue-router'
 import { useComprasQuery } from '@/modules/compras/composables/useComprasQuery'
 import { useAnularCompraMutation } from '@/modules/compras/composables/useCompraMutations'
 import type { CompraListFilters, CompraListItem } from '@/modules/compras/interfaces/compra.interface'
-import CompraDetailModal from '@/modules/compras/components/CompraDetailModal.vue'
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -157,9 +154,6 @@ const filters = ref<CompraListFilters>({
 
 const comprasQuery = useComprasQuery(filters)
 const anularMutation = useAnularCompraMutation()
-
-const detailModalOpen = ref(false)
-const compraToViewId = ref<number | null>(null)
 
 const anularModalOpen = ref(false)
 const compraToAnular = ref<CompraListItem | null>(null)
@@ -269,8 +263,10 @@ function formatMoney(value: number) {
 }
 
 function openDetail(row: CompraListItem) {
-  compraToViewId.value = row.id
-  detailModalOpen.value = true
+  void router.push({
+    name: 'admin-compras-detalle',
+    params: { id: String(row.id) },
+  })
 }
 
 function openCreate() {

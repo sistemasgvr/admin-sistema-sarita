@@ -23,6 +23,16 @@ export const comprasRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'compras/:id(\\d+)',
+    name: 'admin-compras-detalle',
+    component: () => import('@/modules/compras/views/CompraDetailView.vue'),
+    meta: {
+      title: 'Detalle de compra',
+      module: 'compras',
+      permission: PermisoBanderas.COMPRAS_VER,
+    },
+  },
+  {
     path: 'compras/:id(\\d+)/editar',
     name: 'admin-compras-editar',
     component: () => import('@/modules/compras/views/CompraFormView.vue'),

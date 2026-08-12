@@ -635,9 +635,51 @@ const [observacion, observacionAttrs] = defineField('observacion')
 const toOptionalNumber = (value: string | number | undefined | null) =>
   value !== '' && value != null ? Number(value) : undefined
 
+async function enriquecerLineasBalon(
+  lineas: Array<{
+    id_balon: number
+    codigo_balon?: string | null
+    id_producto?: number | null
+    nombre_producto?: string | null
+    codigo_producto?: string | null
+    capacidad?: number | null
+    id_unidad_medida?: number | null
+    nombre_unidad_medida?: string | null
+    nombre_estado_balon?: string | null
+    nombre_estado_contenido?: string | null
+    observacion?: string | null
+  }>,
+) {
+  return Promise.all(
+    lineas.map(async (linea) => {
+      const completo =
+        linea.capacidad != null &&
+        linea.nombre_estado_balon &&
+        linea.nombre_estado_contenido
+      if (completo) return linea
+      try {
+        const balon = await balonesService.obtenerPorId(linea.id_balon)
+        return {
+          ...linea,
+          codigo_balon: linea.codigo_balon ?? balon.codigo_balon ?? null,
+          id_producto: linea.id_producto ?? balon.id_producto_gas ?? null,
+          nombre_producto: linea.nombre_producto ?? balon.nombre_producto_gas ?? null,
+          capacidad: linea.capacidad ?? balon.capacidad ?? null,
+          nombre_unidad_medida: linea.nombre_unidad_medida ?? balon.nombre_unidad_medida ?? null,
+          nombre_estado_balon: linea.nombre_estado_balon ?? balon.nombre_estado_balon ?? null,
+          nombre_estado_contenido:
+            linea.nombre_estado_contenido ?? balon.nombre_estado_contenido ?? null,
+        }
+      } catch {
+        return linea
+      }
+    }),
+  )
+}
+
 watch(
   () => guiaSalidaDetalleQuery.data.value,
-  (guia) => {
+  async (guia) => {
     if (props.mode !== 'create' || !guia || !idGuiaSalida.value) return
 
     cargandoGuiaSalida.value = false
@@ -661,17 +703,20 @@ watch(
         id_producto: d.id_producto ?? null,
         nombre_producto: d.nombre_producto ?? null,
         codigo_producto: d.codigo_producto ?? null,
-        capacidad: null,
+        capacidad: d.capacidad ?? d.capacidad_tipo_balon ?? null,
         id_unidad_medida: d.id_unidad_medida ?? null,
         nombre_unidad_medida: d.nombre_unidad_medida ?? null,
+        nombre_estado_balon: d.nombre_estado_balon ?? null,
+        nombre_estado_contenido: d.nombre_estado_contenido ?? null,
         observacion: d.glosa ?? null,
       }))
 
     if (lineas.length === 0) {
       toastWarning('La GRE no tiene líneas con cilindro (id_balon). Agregá manualmente.')
     } else {
+      const enriquecidas = await enriquecerLineasBalon(lineas)
       const mapa = new Map(detalles.value.map((d) => [d.id_balon, d]))
-      for (const linea of lineas) {
+      for (const linea of enriquecidas) {
         mapa.set(linea.id_balon, { ...mapa.get(linea.id_balon), ...linea })
       }
       detalles.value = Array.from(mapa.values())

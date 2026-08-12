@@ -63,7 +63,7 @@
             v-for="(option, index) in options"
             :key="String(option.value)"
             type="button"
-            class="flex w-full items-center justify-between px-3 py-2 text-left text-sm"
+            class="flex w-full flex-col items-start gap-1.5 px-3 py-2 text-left text-sm"
             :class="[
               index === highlightedIndex
                 ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400'
@@ -73,7 +73,29 @@
             @mousedown.prevent="selectOption(option)"
             @mouseenter="highlightedIndex = index"
           >
-            {{ option.label }}
+            <span class="font-medium text-gray-800 dark:text-white/90">
+              {{ optionTitle(option) }}
+            </span>
+            <div
+              v-if="option.badges?.length"
+              class="flex flex-wrap items-center gap-1"
+            >
+              <AppBadge
+                v-for="(badge, badgeIndex) in option.badges"
+                :key="`${option.value}-${badgeIndex}-${badge.label}`"
+                size="sm"
+                variant="light"
+                :color="badge.color ?? 'neutral'"
+              >
+                {{ badge.label }}
+              </AppBadge>
+            </div>
+            <span
+              v-else-if="option.title && option.title !== option.label"
+              class="text-theme-xs text-gray-500 dark:text-gray-400"
+            >
+              {{ option.label }}
+            </span>
           </button>
 
           <div
@@ -92,6 +114,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import AppBadge from '@/shared/components/ui/AppBadge.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
@@ -141,6 +164,11 @@ const highlightedIndex = ref(-1)
 
 const labelCache = new Map<string, string>()
 
+const optionTitle = (option: SelectOption) => option.title?.trim() || option.label
+
+const optionDisplayLabel = (option: SelectOption) =>
+  option.title?.trim() || option.label
+
 const displayPlaceholder = computed(() => props.placeholder)
 
 const setQueryFromSelection = () => {
@@ -173,7 +201,9 @@ const runSearch = async (term: string) => {
     const result = await props.searchFn(term)
     if (seq !== searchSeq) return
     options.value = result
-    result.forEach((option) => labelCache.set(String(option.value), option.label))
+    result.forEach((option) =>
+      labelCache.set(String(option.value), optionDisplayLabel(option)),
+    )
     highlightedIndex.value = result.length ? 0 : -1
   } catch {
     if (seq !== searchSeq) return
@@ -219,9 +249,10 @@ const closeMenu = () => {
 }
 
 const selectOption = (option: SelectOption) => {
-  labelCache.set(String(option.value), option.label)
+  const display = optionDisplayLabel(option)
+  labelCache.set(String(option.value), display)
   emit('update:modelValue', option.value)
-  query.value = option.label
+  query.value = display
   menuOpen.value = false
 }
 
