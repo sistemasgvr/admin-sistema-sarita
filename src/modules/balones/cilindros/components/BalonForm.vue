@@ -129,13 +129,6 @@
               v-bind="idReferenciaAttrs"
               :error="errors.idReferencia"
             />
-            <ClienteSelectField
-              v-model="idPlanta"
-              label="Planta"
-              placeholder="Opcional"
-              :disabled="isSubmitting"
-              :error="errors.idPlanta"
-            />
           </div>
         </DetailSectionCard>
 
@@ -174,6 +167,16 @@
               placeholder="Selecciona cliente"
               :disabled="isSubmitting"
               :error="errors.idClientePropietario"
+            />
+            <ClienteSelectField
+              v-if="requierePlantaPropietario"
+              v-model="idPlanta"
+              label="Proveedor (planta)"
+              placeholder="Ej. Swiss Gas"
+              help="Obligatorio cuando el propietario es planta: el proveedor concreto dueño del envase."
+              solo-proveedores
+              :disabled="isSubmitting"
+              :error="errors.idPlanta"
             />
           </div>
         </DetailSectionCard>
@@ -404,9 +407,35 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idAlmacen: optionalNumber(),
       idClienteUbicacion: optionalNumber(),
       idPropietario: optionalNumber(),
-      idClientePropietario: optionalNumber(),
+      idClientePropietario: optionalNumber().test(
+        'cliente-propietario-requerido',
+        'El cliente propietario es obligatorio',
+        function (value) {
+          const propId = this.parent.idPropietario
+          const prop = propietarioQuery.data.value?.find(
+            (opcion) => opcion.id === Number(propId),
+          )
+          if (prop?.nombre?.toUpperCase() === 'CLIENTE') {
+            return value != null
+          }
+          return true
+        },
+      ),
       idReferencia: optionalNumber(),
-      idPlanta: optionalNumber(),
+      idPlanta: optionalNumber().test(
+        'planta-requerida',
+        'El proveedor (planta) es obligatorio',
+        function (value) {
+          const propId = this.parent.idPropietario
+          const prop = propietarioQuery.data.value?.find(
+            (opcion) => opcion.id === Number(propId),
+          )
+          if (prop?.nombre?.toUpperCase() === 'PLANTA') {
+            return value != null
+          }
+          return true
+        },
+      ),
       idMarcaCilindro: optionalNumber(),
       idTipoBalon: requiredSelect('El tipo de balón'),
       idProductoGas: requiredSelect('El gas'),
@@ -479,6 +508,10 @@ const requiereClientePropietario = computed(
   () => propietarioSeleccionado.value?.nombre?.toUpperCase() === 'CLIENTE',
 )
 
+const requierePlantaPropietario = computed(
+  () => propietarioSeleccionado.value?.nombre?.toUpperCase() === 'PLANTA',
+)
+
 const tipoSeleccionado = computed(() => {
   const id = Number(idTipoBalon.value)
   if (!id) return undefined
@@ -519,6 +552,9 @@ const vencimientoPhEstimado = computed(() => {
 watch(idPropietario, () => {
   if (!requiereClientePropietario.value) {
     idClientePropietario.value = undefined
+  }
+  if (!requierePlantaPropietario.value) {
+    idPlanta.value = undefined
   }
 })
 
@@ -576,7 +612,7 @@ const buildPayload = (
     idPropietario: values.idPropietario,
     idClientePropietario: requiereClientePropietario.value ? values.idClientePropietario : undefined,
     idReferencia: values.idReferencia,
-    idPlanta: values.idPlanta,
+    idPlanta: requierePlantaPropietario.value ? values.idPlanta : undefined,
     idMarcaCilindro: values.idMarcaCilindro,
     idTipoBalon: Number(values.idTipoBalon),
     idProductoGas: Number(values.idProductoGas),

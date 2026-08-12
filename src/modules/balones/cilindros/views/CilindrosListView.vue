@@ -132,12 +132,42 @@
         </div>
       </template>
 
-      <template #cell-nombre_estado_balon="{ row }">
-        <BalonEstadoBadge :balon="row" />
+      <template #cell-propiedad="{ row }">
+        <p class="truncate font-medium text-gray-800 dark:text-white/90">
+          {{ formatListaOpcionLabel(row.nombre_propietario) || '—' }}
+        </p>
+        <div class="mt-1">
+          <AppBadge v-if="row.nombre_planta" size="sm" color="primary" :title="row.nombre_planta">
+            {{ row.nombre_planta }}
+          </AppBadge>
+          <AppBadge
+            v-else-if="row.nombre_cliente_propietario"
+            size="sm"
+            color="neutral"
+            :title="row.nombre_cliente_propietario"
+          >
+            {{ row.nombre_cliente_propietario }}
+          </AppBadge>
+          <span v-else class="text-theme-xs text-gray-400">—</span>
+        </div>
       </template>
 
-      <template #cell-nombre_estado_contenido="{ row }">
-        <BalonContenidoBadge :balon="row" />
+      <template #cell-estado_contenido="{ row }">
+        <div class="flex flex-col gap-1">
+          <BalonEstadoBadge :balon="row" />
+          <BalonContenidoBadge :balon="row" />
+        </div>
+      </template>
+
+      <template #cell-nombre_almacen="{ row }">
+        <span
+          v-if="row.nombre_almacen"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-[11px] font-semibold uppercase tracking-tight text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
+          :title="row.nombre_almacen"
+        >
+          {{ inicialesAlmacen(row.nombre_almacen) }}
+        </span>
+        <span v-else class="text-theme-xs text-gray-400" title="Sin almacén">—</span>
       </template>
 
       <template #cell-fecha_proxima_prueba_hidrostatica="{ row, value }">
@@ -314,6 +344,7 @@ import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQu
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
@@ -415,9 +446,11 @@ const activeFilterChips = computed(() => {
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
 const listaEstadoContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
+const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
 const estadoContenidoQuery = useListaOpcionesQuery(listaEstadoContenidoId)
 const marcaQuery = useListaOpcionesQuery(listaMarcaId)
+const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
 
 const deleteModalOpen = ref(false)
 const balonToDelete = ref<Balon | null>(null)
@@ -490,6 +523,21 @@ const phBadgeColor = (estado: EstadoPh): BadgeColor => {
   return 'success'
 }
 
+/** Iniciales del almacén para el avatar compacto (máx. 2 letras). */
+const inicialesAlmacen = (nombre: string) => {
+  const partes = nombre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[()[\]{}.,;:/\\|_+-]+/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (partes.length === 0) return '?'
+  if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase()
+  return `${partes[0][0] ?? ''}${partes[1][0] ?? ''}`.toUpperCase()
+}
+
 const estadoBalonNombre = (balon: Balon) => balon.nombre_estado_balon?.toUpperCase() ?? ''
 
 const puedeDarDeBaja = (balon: Balon) =>
@@ -557,6 +605,14 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     options: toSelectOptions(estadoContenidoQuery.data.value),
   },
   {
+    key: 'idPropietario',
+    label: 'Propietario',
+    type: 'select',
+    placeholder: 'Empresa / planta / cliente...',
+    disabled: propietarioQuery.isLoading.value,
+    options: toSelectOptions(propietarioQuery.data.value),
+  },
+  {
     key: 'phPorVencerDias',
     label: 'PH por vencer',
     type: 'select',
@@ -581,9 +637,9 @@ const columns = computed<TableColumn<Balon>[]>(() => [
   { key: 'codigo_balon', label: 'Código / Libro' },
   { key: 'tipo_gas', label: 'Tipo / Gas' },
   { key: 'capacidad_marca', label: 'Capacidad / Marca', cellClass: 'whitespace-nowrap' },
-  { key: 'nombre_estado_balon', label: 'Estado', cellClass: 'whitespace-nowrap' },
-  { key: 'nombre_estado_contenido', label: 'Contenido', cellClass: 'whitespace-nowrap' },
-  { key: 'nombre_almacen', label: 'Almacén' },
+  { key: 'propiedad', label: 'Propiedad' },
+  { key: 'estado_contenido', label: 'Estado / Contenido', cellClass: 'whitespace-nowrap' },
+  { key: 'nombre_almacen', label: 'Almacén', cellClass: 'w-16 text-center' },
   {
     key: 'fecha_proxima_prueba_hidrostatica',
     label: 'Próx. P.H.',
@@ -607,6 +663,7 @@ const syncFilters = () => {
     idEstadoBalon: active.idEstadoBalon != null ? Number(active.idEstadoBalon) : undefined,
     idEstadoContenido:
       active.idEstadoContenido != null ? Number(active.idEstadoContenido) : undefined,
+    idPropietario: active.idPropietario != null ? Number(active.idPropietario) : undefined,
     idProductoGas: idProductoGasFiltro.value ?? undefined,
     soloLlenosFuera: soloLlenosFueraFiltro.value ? true : undefined,
     phVencida: active.phVencida === true ? true : undefined,

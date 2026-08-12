@@ -597,7 +597,9 @@ const sections = computed<DetailSection[]>(() => {
       icon: ICONS.mapPin,
       items: [
         { label: 'Propietario', value: formatDetailListaOpcion(data.nombre_propietario) },
-        { label: 'Planta', value: data.nombre_planta },
+        ...(data.nombre_planta
+          ? [{ label: 'Proveedor (planta)', value: data.nombre_planta }]
+          : []),
         { label: 'Referencia', value: formatDetailListaOpcion(data.nombre_referencia) },
         { label: 'Almacén', value: data.nombre_almacen },
         { label: 'Cliente ubicación', value: data.nombre_cliente_ubicacion },
