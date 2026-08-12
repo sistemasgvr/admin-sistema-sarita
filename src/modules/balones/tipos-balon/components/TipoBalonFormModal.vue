@@ -17,7 +17,7 @@
             <AppInput
               v-model="nombre"
               label="Nombre"
-              placeholder="Oxígeno Industrial 10m³"
+              placeholder="Oxígeno Industrial D/E"
               required
               v-bind="nombreAttrs"
               :disabled="isSubmitting"
@@ -40,12 +40,12 @@
             <div class="grid gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="capacidad"
-                label="Capacidad (m³)"
+                :label="labelCapacidad"
                 type="number"
                 :min="NUMBER_MIN.measure"
-                :step="NUMBER_STEP.measure"
+                step="any"
                 placeholder="10"
-                help="Volumen nominal del cilindro."
+                :help="helpCapacidad"
                 v-bind="capacidadAttrs"
                 :disabled="isSubmitting"
                 :error="errors.capacidad"
@@ -56,9 +56,9 @@
                 label="Capacidad llena (lb)"
                 type="number"
                 :min="NUMBER_MIN.measure"
-                :step="NUMBER_STEP.measure"
+                step="any"
                 placeholder="31.5"
-                help="Peso del gas con el cilindro lleno. Se usa en ruta pueblos."
+                :help="helpCapacidadLb"
                 v-bind="capacidadLbAttrs"
                 :disabled="isSubmitting"
                 :error="errors.capacidadLb"
@@ -79,7 +79,7 @@
                 :disabled="isSubmitting || isLoadingUnidadMedida"
                 v-bind="idUnidadMedidaAttrs"
                 :error="errors.idUnidadMedida"
-                help="Normalmente m³. Las lb se registran aparte arriba."
+                :help="helpUnidadMedida"
               />
             </AppSelectWithCreate>
 
@@ -89,9 +89,9 @@
                 label="Peso tara (kg)"
                 type="number"
                 :min="NUMBER_MIN.measure"
-                :step="NUMBER_STEP.measure"
+                step="any"
                 placeholder="0"
-                help="Si no indicas tara en lb, se convierte automáticamente."
+                :help="helpPesoTaraKg"
                 v-bind="pesoAttrs"
                 :disabled="isSubmitting"
                 :error="errors.peso"
@@ -101,21 +101,39 @@
                 label="Peso tara (lb)"
                 type="number"
                 :min="NUMBER_MIN.measure"
-                :step="NUMBER_STEP.measure"
+                step="any"
                 placeholder="0"
-                help="Para báscula: bruto − tara = gas neto."
+                help="Misma tara en libras (kg × 2.20462). Bruto − tara = gas neto en báscula."
                 v-bind="pesoTaraLbAttrs"
                 :disabled="isSubmitting"
                 :error="errors.pesoTaraLb"
               />
             </div>
 
+            <p
+              v-if="taraReferencia"
+              class="rounded-lg border px-3 py-2 text-xs leading-relaxed"
+              :class="
+                taraFueraDeRango
+                  ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300'
+                  : 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-400'
+              "
+            >
+              <span class="font-medium">Referencia {{ taraReferencia.label }}:</span>
+              tara típica {{ taraReferencia.minKg }}–{{ taraReferencia.maxKg }} kg
+              ({{ taraReferencia.capacidadHint }}).
+              <template v-if="taraFueraDeRango">
+                El valor ingresado está fuera del rango usual; puedes guardarlo si es correcto
+                (material distinto, modelo especial, etc.).
+              </template>
+            </p>
+
             <AppInput
               v-model="presionLlenadoPsi"
               label="Presión de llenado (PSI)"
               type="number"
               :min="NUMBER_MIN.measure"
-              :step="1"
+              step="any"
               placeholder="2000"
               help="PSI a capacidad nominal. Se usa para estimar m³ desde presión."
               v-bind="presionLlenadoPsiAttrs"
@@ -217,7 +235,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -233,14 +251,33 @@ import type {
   TipoBalon,
   TipoBalonFormMode,
 } from '@/modules/balones/tipos-balon/interfaces/tipo-balon.interface'
+import {
+  capacidadFromLb,
+  canonicalToCapacidad,
+  capacidadToCanonical,
+  factoresDesdeProducto,
+  kgToLb,
+  labelCapacidadPorUnidad,
+  lbFromCapacidad,
+  lbToKg,
+  roundMeasure,
+  toNumberOrNull,
+  unidadSoportaConversionDual,
+} from '@/modules/balones/tipos-balon/utils/tipoBalonConversion'
+import {
+  taraDentroDeReferencia,
+  taraReferenciaPorCapacidadM3,
+  textoTaraReferencia,
+} from '@/modules/balones/tipos-balon/utils/taraReferencia'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
+import { useProductoDetailQuery } from '@/modules/productos/articulos/composables/useProductoDetailQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppSelectWithCreate } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { NUMBER_MIN } from '@/shared/constants/number-input'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalNumber, requiredString } from '@/shared/validation'
 
@@ -267,6 +304,9 @@ const vigenciaModalOpen = ref(false)
 const nuevaVigenciaAnios = ref<number | string>('')
 const vigenciaCustomError = ref('')
 const extraVigenciaOptions = ref<SelectOption[]>([])
+/** Evita bucles al sincronizar campos duales. */
+const syncing = ref(false)
+const suppressCapacidadWatch = ref(false)
 
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
@@ -274,6 +314,14 @@ const isLoadingUnidadMedida = computed(() => unidadMedidaQuery.isLoading.value)
 const canCreateUnidad = computed(() => Boolean(authStore.user?.id))
 
 const unidadMedidaOptions = computed(() => toSelectOptions(unidadMedidaQuery.data.value))
+
+const idUnidadMedidaMt3 = computed(
+  () =>
+    unidadMedidaQuery.data.value?.find((item) => {
+      const n = (item.nombre ?? '').toUpperCase()
+      return n === 'MT3' || n === 'M3'
+    })?.id ?? null,
+)
 
 const gasSelectedOptions = computed(() => {
   const id = props.tipoBalon?.id_gas
@@ -336,23 +384,113 @@ const [pesoTaraLb, pesoTaraLbAttrs] = defineField('pesoTaraLb')
 const [presionLlenadoPsi, presionLlenadoPsiAttrs] = defineField('presionLlenadoPsi')
 const [vigenciaPhAnios, vigenciaPhAniosAttrs] = defineField('vigenciaPhAnios')
 
+const idGasRef = computed(() => {
+  const id = Number(idGas.value)
+  return Number.isFinite(id) && id > 0 ? id : undefined
+})
+const gasQuery = useProductoDetailQuery(idGasRef, open)
+const factoresGas = computed(() => factoresDesdeProducto(gasQuery.data.value))
+
+const nombreUnidadActual = computed(() => {
+  const id = Number(idUnidadMedida.value)
+  if (!Number.isFinite(id)) return null
+  return unidadMedidaQuery.data.value?.find((item) => item.id === id)?.nombre ?? null
+})
+
+const labelCapacidad = computed(() => labelCapacidadPorUnidad(nombreUnidadActual.value))
+
+const helpCapacidad = computed(() => {
+  if (!unidadSoportaConversionDual(nombreUnidadActual.value)) {
+    return 'Usa MT3, L, kg o lb para sincronizar automáticamente con capacidad en lb.'
+  }
+  return 'Al cambiar este valor se actualiza la capacidad llena (lb) con el factor del gas.'
+})
+
+const helpCapacidadLb = computed(() => {
+  if (!unidadSoportaConversionDual(nombreUnidadActual.value)) {
+    return 'Peso del gas a cilindro lleno (ruta pueblos).'
+  }
+  return 'Al cambiar lb se actualiza la capacidad según la unidad elegida (factor del gas).'
+})
+
+const helpUnidadMedida = computed(() => {
+  if (!unidadSoportaConversionDual(nombreUnidadActual.value)) {
+    return 'Para conversión dual usa MT3, L, kg o lb. Otras unidades no se sincronizan con lb.'
+  }
+  return 'Cambia la unidad y la capacidad se recalcula; lb se mantiene coherente con el gas.'
+})
+
+/** Capacidad actual expresada en m³ (para banda de tara de referencia). */
+const capacidadM3Actual = computed(() => {
+  const cap = toNumberOrNull(capacidad.value)
+  const lb = toNumberOrNull(capacidadLb.value)
+  if (cap != null && unidadSoportaConversionDual(nombreUnidadActual.value)) {
+    const canonical = capacidadToCanonical(cap, nombreUnidadActual.value, factoresGas.value)
+    if (canonical) return canonical.m3
+  }
+  if (lb != null) return lb * factoresGas.value.factorM3PorLb
+  return null
+})
+
+const taraReferencia = computed(() => taraReferenciaPorCapacidadM3(capacidadM3Actual.value))
+
+const taraFueraDeRango = computed(() => {
+  const dentro = taraDentroDeReferencia(toNumberOrNull(peso.value), taraReferencia.value)
+  return dentro === false
+})
+
+const helpPesoTaraKg = computed(() => {
+  const base =
+    'Peso del cilindro vacío (envase). No se calcula desde la capacidad; se sincroniza con lb.'
+  if (!taraReferencia.value) return base
+  return `${base} ${textoTaraReferencia(taraReferencia.value)}`
+})
+
+async function withSync(fn: () => void) {
+  if (syncing.value) return
+  syncing.value = true
+  try {
+    fn()
+    await nextTick()
+  } finally {
+    syncing.value = false
+  }
+}
+
 const syncFormValues = () => {
   gasBuscar.value = ''
   extraVigenciaOptions.value = []
   vigenciaCustomError.value = ''
   nuevaVigenciaAnios.value = ''
+  suppressCapacidadWatch.value = true
+
+  const pesoKg = toNumberOrNull(props.tipoBalon?.peso)
+  const pesoLb = toNumberOrNull(props.tipoBalon?.peso_tara_lb)
+  const cap = toNumberOrNull(props.tipoBalon?.capacidad)
+  const capLb = toNumberOrNull(props.tipoBalon?.capacidad_lb)
+
   resetForm({
     values: {
       nombre: props.tipoBalon?.nombre ?? '',
       idGas: props.tipoBalon?.id_gas ?? undefined,
-      capacidad: props.tipoBalon?.capacidad ?? undefined,
-      capacidadLb: props.tipoBalon?.capacidad_lb ?? undefined,
-      idUnidadMedida: props.tipoBalon?.id_unidad_medida ?? undefined,
-      peso: props.tipoBalon?.peso ?? undefined,
-      pesoTaraLb: props.tipoBalon?.peso_tara_lb ?? undefined,
+      capacidad: cap == null ? undefined : roundMeasure(cap),
+      capacidadLb: capLb == null ? undefined : roundMeasure(capLb),
+      idUnidadMedida:
+        props.tipoBalon?.id_unidad_medida ?? idUnidadMedidaMt3.value ?? undefined,
+      // Tara: si solo hay kg, deriva lb (2 decimales); no depende de la capacidad de gas.
+      peso: pesoKg == null ? undefined : roundMeasure(pesoKg),
+      pesoTaraLb:
+        pesoLb != null
+          ? roundMeasure(pesoLb)
+          : pesoKg != null
+            ? kgToLb(pesoKg)
+            : undefined,
       presionLlenadoPsi: props.tipoBalon?.presion_llenado_psi ?? undefined,
       vigenciaPhAnios: props.tipoBalon?.vigencia_ph_anios ?? 5,
     },
+  })
+  void nextTick(() => {
+    suppressCapacidadWatch.value = false
   })
 }
 
@@ -444,5 +582,101 @@ watch(vigenciaModalOpen, (isOpen) => {
     nuevaVigenciaAnios.value = ''
     vigenciaCustomError.value = ''
   }
+})
+
+watch(capacidad, (value) => {
+  if (!open.value || syncing.value || suppressCapacidadWatch.value) return
+  const n = toNumberOrNull(value)
+  if (n == null) return
+  if (!unidadSoportaConversionDual(nombreUnidadActual.value)) return
+  const lb = lbFromCapacidad(n, nombreUnidadActual.value, factoresGas.value)
+  if (lb == null) return
+  void withSync(() => {
+    capacidadLb.value = lb
+  })
+})
+
+watch(capacidadLb, (value) => {
+  if (!open.value || syncing.value || suppressCapacidadWatch.value) return
+  const n = toNumberOrNull(value)
+  if (n == null) return
+  if (!unidadSoportaConversionDual(nombreUnidadActual.value)) return
+  const cap = capacidadFromLb(n, nombreUnidadActual.value, factoresGas.value)
+  if (cap == null) return
+  void withSync(() => {
+    capacidad.value = cap
+  })
+})
+
+watch(peso, (value) => {
+  if (!open.value || syncing.value || suppressCapacidadWatch.value) return
+  const n = toNumberOrNull(value)
+  if (n == null) return
+  void withSync(() => {
+    pesoTaraLb.value = kgToLb(n)
+  })
+})
+
+watch(pesoTaraLb, (value) => {
+  if (!open.value || syncing.value || suppressCapacidadWatch.value) return
+  const n = toNumberOrNull(value)
+  if (n == null) return
+  void withSync(() => {
+    peso.value = lbToKg(n)
+  })
+})
+
+watch(idUnidadMedida, (nextId, prevId) => {
+  if (!open.value || syncing.value || suppressCapacidadWatch.value) return
+  if (nextId == null || prevId == null || Number(nextId) === Number(prevId)) return
+
+  const prevNombre =
+    unidadMedidaQuery.data.value?.find((item) => item.id === Number(prevId))?.nombre ?? null
+  const nextNombre =
+    unidadMedidaQuery.data.value?.find((item) => item.id === Number(nextId))?.nombre ?? null
+
+  if (!unidadSoportaConversionDual(prevNombre) || !unidadSoportaConversionDual(nextNombre)) {
+    return
+  }
+
+  const factores = factoresGas.value
+  const cap = toNumberOrNull(capacidad.value)
+  const lb = toNumberOrNull(capacidadLb.value)
+
+  let canonical =
+    cap != null ? capacidadToCanonical(cap, prevNombre, factores) : null
+  if (!canonical && lb != null) {
+    canonical = { m3: lb * factores.factorM3PorLb, lb }
+  }
+  if (!canonical) return
+
+  const nuevaCap = canonicalToCapacidad(canonical, nextNombre, factores)
+  if (nuevaCap == null) return
+
+  void withSync(() => {
+    capacidad.value = roundMeasure(nuevaCap)
+    capacidadLb.value = roundMeasure(canonical!.lb)
+  })
+})
+
+watch(
+  () => [idGas.value, gasQuery.data.value?.factor_lb_m3, gasQuery.data.value?.factor_kg_m3] as const,
+  () => {
+    if (!open.value || syncing.value || suppressCapacidadWatch.value) return
+    if (!unidadSoportaConversionDual(nombreUnidadActual.value)) return
+    const cap = toNumberOrNull(capacidad.value)
+    if (cap == null) return
+    const lb = lbFromCapacidad(cap, nombreUnidadActual.value, factoresGas.value)
+    if (lb == null) return
+    void withSync(() => {
+      capacidadLb.value = lb
+    })
+  },
+)
+
+watch(idUnidadMedidaMt3, (id) => {
+  if (!open.value || props.mode !== 'create') return
+  if (idUnidadMedida.value != null) return
+  if (id != null) idUnidadMedida.value = id
 })
 </script>
