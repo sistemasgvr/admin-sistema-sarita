@@ -16,16 +16,11 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <button
-              type="button"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
-              :disabled="exporting"
+            <AppExportExcelButton
+              label="Protocolo Excel"
               title="Exportar protocolo (ida, guías, factura, retorno, lote)"
-              @click="exportProtocolo"
-            >
-              <AppIcon :name="ICONS.download" :size="18" />
-              {{ exporting ? 'Exportando...' : 'Protocolo Excel' }}
-            </button>
+              :on-export="exportProtocolo"
+            />
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-balones-recargas-planta-nueva' }"
@@ -184,13 +179,13 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { toastApiError } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -229,8 +224,6 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
 const listaEstadoId = ref(ListaIds.ESTADO_RECARGA_PLANTA)
 const estadoQuery = useListaOpcionesQuery(listaEstadoId)
-
-const exporting = ref(false)
 
 const deleteModalOpen = ref(false)
 const ordenToDelete = ref<RecargaPlanta | null>(null)
@@ -327,22 +320,15 @@ watch([pagina, limite], () => {
 })
 
 const exportProtocolo = async () => {
-  exporting.value = true
-  try {
-    const rows = await recargasPlantaService.listarProtocolo({
-      buscar: filters.value.buscar,
-      idProveedor: filters.value.idProveedor,
-      idAlmacen: filters.value.idAlmacen,
-      idEstado: filters.value.idEstado,
-      fechaDesde: filters.value.fechaDesde,
-      fechaHasta: filters.value.fechaHasta,
-    })
-    await exportarProtocoloRecargaPlantaExcel(rows ?? [])
-  } catch (error) {
-    toastApiError(error, 'No se pudo exportar el protocolo')
-  } finally {
-    exporting.value = false
-  }
+  const protocoloRows = await recargasPlantaService.listarProtocolo({
+    buscar: filters.value.buscar,
+    idProveedor: filters.value.idProveedor,
+    idAlmacen: filters.value.idAlmacen,
+    idEstado: filters.value.idEstado,
+    fechaDesde: filters.value.fechaDesde,
+    fechaHasta: filters.value.fechaHasta,
+  })
+  await exportarProtocoloRecargaPlantaExcel(protocoloRows ?? [])
 }
 
 const goToEdit = (row: RecargaPlanta) => {

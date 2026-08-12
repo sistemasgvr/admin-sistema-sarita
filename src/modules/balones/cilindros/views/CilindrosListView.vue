@@ -78,6 +78,11 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <AppExportExcelButton
+              label="Exportar Excel"
+              title="Exportar cilindros por propietario (resumen + detalle)"
+              :on-export="exportExcelFile"
+            />
             <button
               v-if="canCreate"
               type="button"
@@ -332,6 +337,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -351,6 +357,12 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
+import { balonesPropietarioService } from '@/modules/balones/propietario/services/balones-propietario.service'
+import type {
+  BalonPropietarioResumen,
+  TipoPropietarioBalon,
+} from '@/modules/balones/propietario/interfaces/balon-propietario.interface'
+import { exportarBalonesPropietarioExcel } from '@/modules/balones/propietario/utils/exportarBalonesPropietarioExcel'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 
 withDefaults(
@@ -819,6 +831,33 @@ onMounted(() => {
 
 const goToCreate = () => {
   router.push({ name: 'admin-balones-cilindros-nuevo' })
+}
+
+const resolveTipoPropietarioFiltro = (): TipoPropietarioBalon | undefined => {
+  const id = filters.value.idPropietario
+  if (id == null) return undefined
+  const nombre = (propietarioQuery.data.value ?? [])
+    .find((op) => op.id === id)
+    ?.nombre?.toUpperCase()
+  if (nombre === 'EMPRESA' || nombre === 'PLANTA' || nombre === 'CLIENTE') {
+    return nombre
+  }
+  return undefined
+}
+
+const exportExcelFile = async () => {
+  const result = await balonesPropietarioService.listar({
+    buscar: filters.value.buscar,
+    idAlmacen: filters.value.idAlmacen,
+    tipoPropietario: resolveTipoPropietarioFiltro(),
+    excluirBajas: filters.value.soloBajas !== true,
+    pagina: 1,
+    limite: 10000,
+  })
+  await exportarBalonesPropietarioExcel({
+    detalle: result.data ?? [],
+    resumen: (result.meta?.resumen ?? {}) as BalonPropietarioResumen,
+  })
 }
 
 const goToEdit = (balon: Balon) => {
