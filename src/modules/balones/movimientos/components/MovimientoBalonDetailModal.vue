@@ -36,7 +36,7 @@
 import { computed, toRef } from 'vue'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import { formatDetailDate, formatDetailDateTime } from '@/shared/components/detail/detailFormatters'
+import { formatDetailDate, formatDetailDateTime, formatDetailListaOpcion } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { useMovimientoBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
 import { AppModal, ListaOpcionBadge } from '@/shared/components'
@@ -58,14 +58,14 @@ const sections = computed<DetailSection[]>(() => {
   return [
     { title: 'Movimiento', icon: ICONS.arrowLeftRight, items: [
         { label: 'Cilindro', value: data.codigo_balon },
-        { label: 'Tipo', value: data.nombre_tipo_movimiento },
+        { label: 'Tipo', value: formatDetailListaOpcion(data.nombre_tipo_movimiento) },
         { label: 'Fecha', value: formatDetailDateTime(data.fecha_movimiento) },
         { label: 'Cliente / Proveedor', value: data.nombre_cliente },
       ],
     },
     { title: 'Documento referencia', icon: ICONS.fileKey, items: data.id_documento_ref
         ? [
-            { label: 'Tipo documento', value: data.nombre_tipo_documento_ref },
+            { label: 'Tipo documento', value: formatDetailListaOpcion(data.nombre_tipo_documento_ref) },
             { label: 'Número / código', value: data.documento_numero },
             { label: 'Fecha', value: formatDetailDate(data.documento_fecha) },
             { label: 'Cliente / Proveedor', value: data.documento_cliente },
