@@ -62,15 +62,18 @@
               return-id-param="idGuiaSalida"
               :loading="cargandoGuiaSalida"
               :disabled="isSubmitting"
-              hint="Autocompleta proveedor, almacén y cilindros. Usa + para emitir la GRE primero."
+              help="Autocompleta proveedor, almacén y cilindros. Usa + para emitir la GRE primero."
             />
 
             <ClienteSelectField
               v-model="idProveedor"
               label="Proveedor / planta"
-              placeholder="Opcional"
+              placeholder="Selecciona proveedor..."
+              search-placeholder="Razón social, documento o código..."
+              solo-proveedores
               :disabled="isSubmitting || isSalidaLocked"
               :error="errors.idProveedor"
+              help="Solo proveedores (o cliente/proveedor). No lista clientes finales."
             />
 
             <AlmacenSelectField
@@ -261,7 +264,7 @@
               :options="compraOptions"
               :loading="comprasQuery.isFetching.value"
               :disabled="isSubmitting"
-              hint="Factura de costo en Compras (productos/gas/gastos). No crea stock de gas."
+              help="Factura de costo en Compras (productos/gas/gastos). No crea stock de gas."
             />
 
             <AppInput
@@ -302,7 +305,7 @@
               type="date"
               v-bind="fechaPruebaHidrostaticaAttrs"
               :disabled="isSubmitting"
-              hint="Referencia documental. La renovación vigente va en Mantenimientos."
+              help="Referencia documental. La renovación vigente va en Mantenimientos."
             />
           </div>
         </DetailSectionCard>

@@ -1,7 +1,7 @@
 <template>
   <AppSelectWithCreate
     :can-create="canCreate"
-    create-title="Nuevo cliente"
+    :create-title="createTitle"
     :disabled="disabled"
     @create="modalOpen = true"
   >
@@ -14,11 +14,12 @@
       :placeholder="placeholder"
       :search-placeholder="searchPlaceholder"
       :options="mergedOptions"
-      :loading="loading || clientesQuery.isFetching.value"
+      :loading="loading || isFetching"
       :disabled="disabled"
       :required="required"
       :error="error"
       :hint="hint"
+      :help="help"
     />
     <AppSelect
       v-else
@@ -26,24 +27,33 @@
       :label="label"
       :placeholder="placeholder"
       :options="mergedOptions"
-      :disabled="disabled || loading || clientesQuery.isLoading.value"
+      :disabled="disabled || loading || isLoading"
       :required="required"
       :error="error"
       :hint="hint"
+      :help="help"
     />
   </AppSelectWithCreate>
 
-  <ClienteFormModal v-model="modalOpen" mode="create" @saved="onCreated" />
+  <ClienteFormModal
+    v-model="modalOpen"
+    mode="create"
+    :create-title="createTitle"
+    :create-subtitle="createSubtitle"
+    :default-id-tipo-cliente="resolvedDefaultTipoCliente"
+    @saved="onCreated"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
-import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
+import type { Cliente, ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppSelect, AppSelectSearch, AppSelectWithCreate } from '@/shared/components'
+import { TipoClienteIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
@@ -59,6 +69,17 @@ const props = withDefaults(
     searchPlaceholder?: string
     error?: string
     hint?: string
+    help?: string
+    /**
+     * Solo PROVEEDOR + CLIENTE/PROVEEDOR (como en Compras).
+     * Útil en planta externa / compras.
+     */
+    soloProveedores?: boolean
+    /** Filtro único por tipo (ignorado si soloProveedores). */
+    idTipoCliente?: number
+    createTitle?: string
+    createSubtitle?: string
+    defaultIdTipoCliente?: number
   }>(),
   {
     options: undefined,
@@ -69,6 +90,10 @@ const props = withDefaults(
     label: 'Cliente',
     placeholder: 'Selecciona cliente',
     searchPlaceholder: 'Razón social, documento o código...',
+    soloProveedores: false,
+    createTitle: undefined,
+    createSubtitle: undefined,
+    defaultIdTipoCliente: undefined,
   },
 )
 
@@ -85,28 +110,106 @@ const createdOption = ref<SelectOption | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 
-const clientesFilters = ref({
-  pagina: 1,
-  limite: 80,
-  soloActivos: 1 as number,
-  buscar: undefined as string | undefined,
-})
+const createTitle = computed(
+  () => props.createTitle ?? (props.soloProveedores ? 'Nuevo proveedor' : 'Nuevo cliente'),
+)
+const createSubtitle = computed(
+  () =>
+    props.createSubtitle ??
+    (props.soloProveedores
+      ? 'Registra un proveedor (planta / empresa a la que compras).'
+      : 'Registra un nuevo cliente en el sistema.'),
+)
+const resolvedDefaultTipoCliente = computed(
+  () =>
+    props.defaultIdTipoCliente ??
+    (props.soloProveedores ? TipoClienteIds.PROVEEDOR : undefined),
+)
+
+function baseFilters(extra: Partial<ClienteListFilters> = {}): ClienteListFilters {
+  return {
+    pagina: 1,
+    limite: 80,
+    soloActivos: 1,
+    buscar: search.value.trim() || undefined,
+    ...extra,
+  }
+}
+
+const clientesFilters = ref<ClienteListFilters>(
+  baseFilters(
+    props.soloProveedores
+      ? { idTipoCliente: TipoClienteIds.PROVEEDOR }
+      : props.idTipoCliente
+        ? { idTipoCliente: props.idTipoCliente }
+        : {},
+  ),
+)
+const clienteProveedoresFilters = ref<ClienteListFilters>(
+  baseFilters({ idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR }),
+)
+
 const clientesQuery = useClientesQuery(clientesFilters)
+const clienteProveedoresQuery = useClientesQuery(
+  clienteProveedoresFilters,
+  () => props.soloProveedores,
+)
 
 watch(search, (term) => {
   if (!props.searchable) return
-  clientesFilters.value = {
-    ...clientesFilters.value,
-    buscar: term.trim() || undefined,
+  const buscar = term.trim() || undefined
+  clientesFilters.value = { ...clientesFilters.value, buscar }
+  if (props.soloProveedores) {
+    clienteProveedoresFilters.value = { ...clienteProveedoresFilters.value, buscar }
   }
 })
 
-const queryOptions = computed<SelectOption[]>(() =>
-  (clientesQuery.data.value?.data ?? []).map((cliente) => ({
-    value: cliente.id,
-    label: getClienteOptionLabel(cliente),
-  })),
+watch(
+  () => [props.soloProveedores, props.idTipoCliente] as const,
+  ([soloProv, idTipo]) => {
+    clientesFilters.value = baseFilters(
+      soloProv
+        ? { idTipoCliente: TipoClienteIds.PROVEEDOR }
+        : idTipo
+          ? { idTipoCliente: idTipo }
+          : {},
+    )
+    if (soloProv) {
+      clienteProveedoresFilters.value = baseFilters({
+        idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR,
+      })
+    }
+  },
 )
+
+const isFetching = computed(
+  () =>
+    clientesQuery.isFetching.value ||
+    (props.soloProveedores && clienteProveedoresQuery.isFetching.value),
+)
+const isLoading = computed(
+  () =>
+    clientesQuery.isLoading.value ||
+    (props.soloProveedores && clienteProveedoresQuery.isLoading.value),
+)
+
+const queryOptions = computed<SelectOption[]>(() => {
+  const rows = props.soloProveedores
+    ? [
+        ...(clientesQuery.data.value?.data ?? []),
+        ...(clienteProveedoresQuery.data.value?.data ?? []),
+      ]
+    : (clientesQuery.data.value?.data ?? [])
+
+  const seen = new Set<number>()
+  const options: SelectOption[] = []
+  for (const cliente of rows) {
+    if (seen.has(cliente.id)) continue
+    seen.add(cliente.id)
+    options.push({ value: cliente.id, label: getClienteOptionLabel(cliente) })
+  }
+  return options
+})
 
 const mergedOptions = computed(() => {
   const base = props.options?.length ? props.options : queryOptions.value
@@ -124,6 +227,7 @@ function onCreated(cliente: Cliente) {
   }
   model.value = cliente.id
   void clientesQuery.refetch()
+  if (props.soloProveedores) void clienteProveedoresQuery.refetch()
   emit('created', cliente)
 }
 </script>

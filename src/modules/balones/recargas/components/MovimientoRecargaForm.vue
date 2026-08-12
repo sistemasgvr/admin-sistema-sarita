@@ -168,7 +168,7 @@
               v-bind="idComprobanteCompraAttrs"
               :disabled="isSubmitting"
               :error="errors.idComprobanteCompra"
-              hint="Vínculo a la compra del proveedor al retorno. No crea la compra."
+              help="Vínculo a la compra del proveedor al retorno. No crea la compra."
             />
           </div>
         </DetailSectionCard>
@@ -186,9 +186,12 @@
             <ClienteSelectField
               v-model="idProveedor"
               label="Proveedor / planta"
-              placeholder="Opcional"
+              placeholder="Selecciona proveedor..."
+              search-placeholder="Razón social, documento o código..."
+              solo-proveedores
               :disabled="isSubmitting"
               :error="errors.idProveedor"
+              help="Solo proveedores (o cliente/proveedor)."
             />
 
             <AppInput
@@ -214,7 +217,7 @@
               type="date"
               v-bind="fechaPruebaHidrostaticaAttrs"
               :disabled="isSubmitting"
-              hint="Referencia documental de la planta. La renovación vigente se registra en Mantenimientos."
+              help="Referencia documental de la planta. La renovación vigente se registra en Mantenimientos."
             />
           </div>
         </DetailSectionCard>
