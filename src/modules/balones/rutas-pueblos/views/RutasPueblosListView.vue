@@ -136,7 +136,7 @@
       :loading="updateMutation.isPending.value"
       @confirm="confirmarCancelar"
     >
-      ¿Marcar la ruta como CANCELADA?
+      ¿Cancelar la ruta? Si está EN_RUTA, los cilindros sin retorno vuelven al almacén con las lb de salida restauradas.
     </AppConfirmDialog>
 
     <AppConfirmDialog

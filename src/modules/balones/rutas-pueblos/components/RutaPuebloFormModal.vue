@@ -24,7 +24,7 @@
           <div class="flex items-center gap-1.5">
             <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros a enviar</p>
             <AppHelpTip
-              text="La conversión lb / m³ se toma del tipo de cada cilindro (capacidad m³ / capacidad lb). La tolerancia de cierre viene de Configuración / Empresa."
+              text="Al elegir el cilindro se sugiere lb desde residual o capacidad del tipo. No puede superar capacidad lb del tipo. La conversión lb/m³ usa capacidad m³ ÷ capacidad lb."
             />
           </div>
           <button
@@ -38,7 +38,7 @@
         <div
           v-for="(linea, index) in lineas"
           :key="linea.key"
-          class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-[1fr_120px_auto] dark:border-gray-800"
+          class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-[1fr_140px_auto] dark:border-gray-800"
         >
           <PosBalonSelectField
             v-model="linea.idBalon"
@@ -54,6 +54,7 @@
                 : 'Selecciona el almacén primero.'
             "
             required
+            @selected="(balon) => onBalonSelected(linea, balon)"
           />
           <AppInput
             v-model="linea.lbSalida"
@@ -61,6 +62,8 @@
             type="number"
             step="0.01"
             min="0"
+            :max="linea.capacidadLbMax ?? undefined"
+            :help="helpLbSalida(linea)"
             required
           />
           <button
@@ -124,8 +127,27 @@ const observacion = ref('')
 const choferOptions = ref<{ value: number; label: string }[]>([])
 const choferesLoading = ref(false)
 
-type Linea = { key: string; idBalon: number | ''; lbSalida: string }
-const lineas = ref<Linea[]>([{ key: crypto.randomUUID(), idBalon: '', lbSalida: '' }])
+type Linea = {
+  key: string
+  idBalon: number | ''
+  lbSalida: string
+  /** Tope = capacidad lb del tipo */
+  capacidadLbMax: number | null
+  /** De dónde salió la sugerencia */
+  sugerenciaOrigen: 'residual' | 'tipo' | null
+}
+
+function emptyLinea(): Linea {
+  return {
+    key: crypto.randomUUID(),
+    idBalon: '',
+    lbSalida: '',
+    capacidadLbMax: null,
+    sugerenciaOrigen: null,
+  }
+}
+
+const lineas = ref<Linea[]>([emptyLinea()])
 
 const estadoEnAlmacenId = computed(
   () => estadoBalonQuery.data.value?.find((item) => item.nombre === 'EN_ALMACEN')?.id,
@@ -148,7 +170,6 @@ function soloBalonEnviable(balon: Balon) {
 
 /** Excluye cilindros ya elegidos en otras líneas (evita duplicar el mismo código). */
 function filtroBalonLinea(lineaKey: string) {
-  // Dependencia explícita: al cambiar selecciones se regenera el filtro.
   const idsOcupados = new Set(
     lineas.value
       .filter((l) => l.key !== lineaKey && l.idBalon)
@@ -160,6 +181,57 @@ function filtroBalonLinea(lineaKey: string) {
   }
 }
 
+function roundLb(n: number) {
+  return Math.round(n * 100) / 100
+}
+
+function sugerirLbDesdeBalon(balon: Balon): {
+  lb: number | null
+  max: number | null
+  origen: Linea['sugerenciaOrigen']
+} {
+  const tipoLb = Number(balon.capacidad_lb)
+  const max = Number.isFinite(tipoLb) && tipoLb > 0 ? tipoLb : null
+  const residual = Number(balon.capacidad_restante_lb)
+
+  let lb: number | null = null
+  let origen: Linea['sugerenciaOrigen'] = null
+
+  if (Number.isFinite(residual) && residual > 0) {
+    lb = residual
+    origen = 'residual'
+  } else if (max != null) {
+    lb = max
+    origen = 'tipo'
+  }
+
+  if (lb != null && max != null) lb = Math.min(lb, max)
+  if (lb != null) lb = roundLb(lb)
+
+  return { lb, max, origen }
+}
+
+function onBalonSelected(linea: Linea, balon: Balon | null) {
+  if (!balon) {
+    linea.capacidadLbMax = null
+    linea.sugerenciaOrigen = null
+    linea.lbSalida = ''
+    return
+  }
+  const { lb, max, origen } = sugerirLbDesdeBalon(balon)
+  linea.capacidadLbMax = max
+  linea.sugerenciaOrigen = origen
+  linea.lbSalida = lb != null ? String(lb) : ''
+}
+
+function helpLbSalida(linea: Linea) {
+  if (linea.capacidadLbMax == null) return 'Máximo = capacidad lb del tipo.'
+  const tope = `Máx. ${linea.capacidadLbMax.toFixed(2)} lb (tipo)`
+  if (linea.sugerenciaOrigen === 'residual') return `${tope}. Sugerido desde residual.`
+  if (linea.sugerenciaOrigen === 'tipo') return `${tope}. Sugerido = capacidad llena.`
+  return tope
+}
+
 const saving = computed(() => createMutation.isPending.value)
 const canSave = computed(
   () =>
@@ -168,19 +240,21 @@ const canSave = computed(
 )
 
 function addLinea() {
-  lineas.value.push({ key: crypto.randomUUID(), idBalon: '', lbSalida: '' })
+  lineas.value.push(emptyLinea())
 }
 
 watch(idAlmacen, () => {
   for (const linea of lineas.value) {
     linea.idBalon = ''
+    linea.lbSalida = ''
+    linea.capacidadLbMax = null
+    linea.sugerenciaOrigen = null
   }
 })
 
 async function loadChoferes() {
   choferesLoading.value = true
   try {
-    // Solo flota propia de la empresa (Configuración / Choferes).
     const res = await choferesService.listar({
       pagina: 1,
       limite: 200,
@@ -201,7 +275,7 @@ watch(open, (v) => {
   idAlmacen.value = ''
   idChofer.value = ''
   observacion.value = ''
-  lineas.value = [{ key: crypto.randomUUID(), idBalon: '', lbSalida: '' }]
+  lineas.value = [emptyLinea()]
   void loadChoferes()
 })
 
@@ -214,10 +288,26 @@ async function guardar() {
     .map((l) => ({
       idBalon: Number(l.idBalon),
       lbSalida: Number(l.lbSalida),
+      capacidadLbMax: l.capacidadLbMax,
     }))
 
   if (detalles.length === 0) {
     toastWarning('Agrega al menos un cilindro')
+    return
+  }
+
+  if (detalles.some((d) => Number.isNaN(d.lbSalida) || d.lbSalida < 0)) {
+    toastWarning('Completa las libras de salida (≥ 0)')
+    return
+  }
+
+  const sobreTope = detalles.find(
+    (d) => d.capacidadLbMax != null && d.lbSalida > d.capacidadLbMax + 1e-9,
+  )
+  if (sobreTope) {
+    toastWarning(
+      `Las libras de salida no pueden superar la capacidad del tipo (${sobreTope.capacidadLbMax!.toFixed(2)} lb)`,
+    )
     return
   }
 
@@ -233,7 +323,7 @@ async function guardar() {
     idAlmacen: Number(idAlmacen.value),
     idChofer: idChofer.value ? Number(idChofer.value) : undefined,
     observacion: observacion.value.trim() || undefined,
-    detalles,
+    detalles: detalles.map(({ idBalon, lbSalida }) => ({ idBalon, lbSalida })),
   })
   open.value = false
   emit('saved')
