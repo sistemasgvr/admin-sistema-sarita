@@ -3,6 +3,8 @@
     <PosCajaEstadoBanner
       :mensaje="mensajeBloqueoCaja"
       :caja-cerrada="cajaCerrada"
+      :pendiente-cierre="hayPendienteCierre || sesionEsPendiente"
+      :fecha-pendiente="fechaCajaPendiente"
     />
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
@@ -466,11 +468,19 @@ const {
 } = usePosComprobanteForm()
 
 const {
-  cajaAbierta,
   cajaCerrada,
+  puedeOperar,
+  hayPendienteCierre,
+  sesionEsPendiente,
+  pendienteCierre,
   mensajeBloqueo: mensajeBloqueoCaja,
   assertCajaAbierta,
 } = useCajaAbiertaRequerida(fecha)
+
+const fechaCajaPendiente = computed(() => {
+  if (sesionEsPendiente.value) return String(fecha.value).slice(0, 10)
+  return pendienteCierre.value?.fecha ? String(pendienteCierre.value.fecha).slice(0, 10) : null
+})
 
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
@@ -612,7 +622,7 @@ const totales = computed(() => {
 
 const motivoNoGuardar = computed(() => {
   if (comprobanteGuardadoId.value) return null
-  if (!cajaAbierta.value) {
+  if (!puedeOperar.value) {
     return mensajeBloqueoCaja.value || 'Debes abrir la caja del día para vender'
   }
   const base = mensajeValidacionComprobante()

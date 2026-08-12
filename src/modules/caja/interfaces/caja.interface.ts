@@ -175,3 +175,24 @@ export interface LibroDiarioFilters {
   idCliente?: number | null
   idSucursal?: number | null
 }
+
+export interface CajaSesionesListFilters {
+  fechaDesde?: string
+  fechaHasta?: string
+  estadoCaja?: string
+  idSucursal?: number | null
+  pagina?: number
+  limite?: number
+}
+
+export interface CajaPendienteCierre {
+  id: number
+  fecha: string
+  idSucursal?: number | null
+  nombreSucursal?: string | null
+  estadoCaja?: string | null
+  montoInicial?: number
+  fechaApertura?: string | null
+  usuarioApertura?: string | null
+  diasAbierta?: number
+}

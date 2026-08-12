@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import {
   useMutation,
   useQuery,
@@ -9,6 +9,7 @@ import { cajaQueryKeys } from '@/modules/caja/constants/cajaQueryKeys'
 import { cajaService } from '@/modules/caja/services/caja.service'
 import type {
   AbrirCajaPayload,
+  CajaSesionesListFilters,
   CerrarCajaPayload,
   CrearCajaDepositoPayload,
   CrearCajaGastoPayload,
@@ -52,6 +53,36 @@ export function useAbrirCajaMutation() {
     mutationFn: (payload: AbrirCajaPayload) =>
       cajaService.abrir({ ...payload, idUsuarioAuditoria: auth.user?.id }),
     onSuccess: () => invalidateCajaQueries(queryClient),
+    onError: (error) => toastApiError(error, 'No se pudo abrir la caja'),
+  })
+}
+
+export function useCajaSesionesQuery(filters: Ref<CajaSesionesListFilters>) {
+  return useQuery({
+    queryKey: computed(() => cajaQueryKeys.sesiones(filters.value)),
+    queryFn: () =>
+      cajaService.listarSesiones({
+        fechaDesde: filters.value.fechaDesde || undefined,
+        fechaHasta: filters.value.fechaHasta || undefined,
+        estadoCaja: filters.value.estadoCaja || undefined,
+        idSucursal: filters.value.idSucursal ?? undefined,
+        pagina: filters.value.pagina ?? 1,
+        limite: filters.value.limite ?? 20,
+      }),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
+}
+
+export function useCajaPendienteCierreQuery(
+  idSucursal: Ref<number | null | undefined> = ref(null),
+) {
+  return useQuery({
+    queryKey: computed(() => cajaQueryKeys.pendienteCierre(idSucursal.value)),
+    queryFn: () => cajaService.listarPendienteCierre(idSucursal.value),
+    staleTime: 30_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 

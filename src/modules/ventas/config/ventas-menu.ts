@@ -9,6 +9,11 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.CAJA_VER,
   },
   {
+    name: 'Historial de caja',
+    path: '/admin/ventas/caja/historial',
+    permission: PermisoBanderas.CAJA_VER,
+  },
+  {
     name: 'Punto de venta',
     path: '/admin/ventas/pos',
     permission: PermisoBanderas.COMPROBANTES_CREAR,

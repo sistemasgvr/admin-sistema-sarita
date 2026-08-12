@@ -1,6 +1,7 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type {
   AbrirCajaPayload,
+  CajaPendienteCierre,
   CajaSesion,
   CerrarCajaPayload,
   CrearCajaDepositoPayload,
@@ -22,6 +23,12 @@ export const cajaService = {
 
   listarSesiones(filters: Record<string, unknown> = {}) {
     return apiGetPaginated<CajaSesion>('/caja/sesiones', { params: filters })
+  },
+
+  listarPendienteCierre(idSucursal?: number | null) {
+    return apiGetPaginated<CajaPendienteCierre>('/caja/pendiente-cierre', {
+      params: { idSucursal: idSucursal ?? undefined },
+    })
   },
 
   obtenerSesion(id: number) {
