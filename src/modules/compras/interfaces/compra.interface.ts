@@ -50,6 +50,7 @@ export interface CompraCabecera {
   estado: number
   id_comprobante_referencia: number | null
   id_recarga_planta: number | null
+  numero_recarga_planta: string | null
   tiene_movimientos_inventario: boolean
   puede_modificarse_parcial: boolean
   fecha_creacion: string | null
