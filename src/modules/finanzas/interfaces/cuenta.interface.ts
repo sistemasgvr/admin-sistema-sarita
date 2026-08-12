@@ -80,6 +80,32 @@ export interface ResumenCuentas {
   cantidadTerceros: number
 }
 
+export interface SaldoPorTercero {
+  id_tercero: number | null
+  tercero: string
+  documento_tercero: string | null
+  cantidad_cuentas: number
+  debe: number
+  abonado: number
+  saldo: number
+}
+
+export interface ResumenSaldosPorTercero {
+  fechaCorte?: string
+  totalDebe?: number
+  totalAbonado?: number
+  totalSaldo?: number
+  cantidadTerceros?: number
+}
+
+export interface SaldoPorTerceroFilters {
+  buscar?: string
+  fechaCorte?: string
+  soloPendientes?: number
+  pagina?: number
+  limite?: number
+}
+
 export interface MedioPago {
   id: number
   nombre: string

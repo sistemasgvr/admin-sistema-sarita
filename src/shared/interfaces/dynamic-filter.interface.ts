@@ -9,6 +9,9 @@ export interface DynamicFilterFieldDef {
   placeholder?: string
   options?: SelectOption[]
   disabled?: boolean
+  /** Si true y type=select, usa AppSelectSearch (lista filtrable). */
+  searchable?: boolean
+  searchPlaceholder?: string
 }
 
 export interface DynamicFilterRow {

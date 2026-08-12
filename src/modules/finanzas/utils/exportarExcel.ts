@@ -44,13 +44,23 @@ function fechaHoyISO(): string {
 /* ==================== Cuentas por Cobrar / Pagar ==================== */
 
 export async function exportarCuentasExcel(tipo: TipoCuenta, rango: RangoFechas) {
-  // Trae hasta 5000 registros filtrados por fecha (si aplica)
-  const { data: cuentas } = await finanzasService.listarCuentas(tipo, {
-    pagina: 1,
-    limite: 5000,
-  })
+  const fechaCorte = rango.hasta || fechaHoyISO()
+  const terceroLabel = tipo === 'COBRAR' ? 'Cliente' : 'Proveedor'
+  const titulo = tipo === 'COBRAR' ? 'Cuentas por Cobrar' : 'Cuentas por Pagar'
 
-  // Filtro cliente-side por rango (fecha_emision), si viene
+  const [{ data: saldos }, { data: cuentas }] = await Promise.all([
+    finanzasService.listarSaldosPorTercero(tipo, {
+      fechaCorte,
+      soloPendientes: 0,
+      pagina: 1,
+      limite: 5000,
+    }),
+    finanzasService.listarCuentas(tipo, {
+      pagina: 1,
+      limite: 5000,
+    }),
+  ])
+
   const filtradas = cuentas.filter((c) => {
     if (!c.fecha_emision) return !rango.desde && !rango.hasta
     if (rango.desde && c.fecha_emision < rango.desde) return false
@@ -62,19 +72,61 @@ export async function exportarCuentasExcel(tipo: TipoCuenta, rango: RangoFechas)
   wb.creator = 'Sistema Sarita'
   wb.created = new Date()
 
-  const titulo = tipo === 'COBRAR' ? 'Cuentas por Cobrar' : 'Cuentas por Pagar'
+  /* Hoja 1: Saldos por tercero (F1) */
+  const totales = wb.addWorksheet(`Saldos por ${terceroLabel.toLowerCase()}`)
+  totales.columns = [
+    { header: terceroLabel, key: 'tercero', width: 40 },
+    { header: 'Documento', key: 'documento', width: 14 },
+    { header: 'Cuentas', key: 'cantidad', width: 10 },
+    { header: 'Debe', key: 'debe', width: 16, style: { numFmt: '#,##0.00' } },
+    { header: 'Abonado', key: 'abonado', width: 16, style: { numFmt: '#,##0.00' } },
+    { header: 'Saldo', key: 'saldo', width: 16, style: { numFmt: '#,##0.00' } },
+  ]
 
-  /* Hoja 1: Detalle */
+  const saldosOrdenados = [...(saldos ?? [])].sort(
+    (a, b) => Number(b.saldo ?? 0) - Number(a.saldo ?? 0),
+  )
+  saldosOrdenados.forEach((row) => {
+    totales.addRow({
+      tercero: row.tercero,
+      documento: row.documento_tercero ?? '',
+      cantidad: row.cantidad_cuentas,
+      debe: Number(row.debe ?? 0),
+      abonado: Number(row.abonado ?? 0),
+      saldo: Number(row.saldo ?? 0),
+    })
+  })
+
+  const filaTotal = totales.addRow({
+    tercero: 'TOTAL',
+    documento: '',
+    cantidad: saldosOrdenados.reduce((s, r) => s + Number(r.cantidad_cuentas ?? 0), 0),
+    debe: saldosOrdenados.reduce((s, r) => s + Number(r.debe ?? 0), 0),
+    abonado: saldosOrdenados.reduce((s, r) => s + Number(r.abonado ?? 0), 0),
+    saldo: saldosOrdenados.reduce((s, r) => s + Number(r.saldo ?? 0), 0),
+  })
+  filaTotal.font = { bold: true }
+  filaTotal.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFECFDF5' },
+  }
+
+  estilarEncabezado(totales)
+  totales.views = [{ state: 'frozen', ySplit: 1 }]
+  totales.autoFilter = { from: 'A1', to: 'F1' }
+
+  /* Hoja 2: Detalle documentos */
   const detalle = wb.addWorksheet('Detalle')
   detalle.columns = [
     { header: 'ID', key: 'id', width: 8 },
-    { header: 'Tercero', key: 'tercero', width: 34 },
+    { header: terceroLabel, key: 'tercero', width: 34 },
     { header: 'Documento', key: 'documento', width: 14 },
     { header: 'Comprobante', key: 'comprobante', width: 16 },
     { header: 'Descripción', key: 'descripcion', width: 34 },
     { header: 'Emisión', key: 'emision', width: 12 },
     { header: 'Vencimiento', key: 'vencimiento', width: 12 },
-    { header: 'Monto', key: 'monto', width: 14, style: { numFmt: '#,##0.00' } },
+    { header: 'Debe', key: 'monto', width: 14, style: { numFmt: '#,##0.00' } },
     { header: 'Abonado', key: 'abonado', width: 14, style: { numFmt: '#,##0.00' } },
     { header: 'Saldo', key: 'saldo', width: 14, style: { numFmt: '#,##0.00' } },
     { header: 'Estado', key: 'estado', width: 12 },
@@ -103,68 +155,9 @@ export async function exportarCuentasExcel(tipo: TipoCuenta, rango: RangoFechas)
   detalle.autoFilter = { from: 'A1', to: 'M1' }
   detalle.views = [{ state: 'frozen', ySplit: 1 }]
 
-  /* Hoja 2: Totales por tercero */
-  const totales = wb.addWorksheet('Totales por tercero')
-  totales.columns = [
-    { header: 'Tercero', key: 'tercero', width: 40 },
-    { header: 'Documento', key: 'documento', width: 14 },
-    { header: 'Cuentas', key: 'cantidad', width: 10 },
-    { header: 'Monto original', key: 'monto', width: 16, style: { numFmt: '#,##0.00' } },
-    { header: 'Abonado', key: 'abonado', width: 16, style: { numFmt: '#,##0.00' } },
-    { header: 'Saldo', key: 'saldo', width: 16, style: { numFmt: '#,##0.00' } },
-  ]
-
-  const mapa = new Map<string, {
-    tercero: string
-    documento: string
-    cantidad: number
-    monto: number
-    abonado: number
-    saldo: number
-  }>()
-
-  for (const c of filtradas) {
-    const key = c.documento_tercero || c.tercero
-    const acc = mapa.get(key) ?? {
-      tercero: c.tercero,
-      documento: c.documento_tercero ?? '',
-      cantidad: 0,
-      monto: 0,
-      abonado: 0,
-      saldo: 0,
-    }
-    acc.cantidad += 1
-    acc.monto += Number(c.monto_pendiente ?? 0)
-    acc.abonado += Number(c.monto_abonado ?? 0)
-    acc.saldo += Number(c.saldo ?? 0)
-    mapa.set(key, acc)
-  }
-
-  const agrupados = Array.from(mapa.values()).sort((a, b) => b.saldo - a.saldo)
-  agrupados.forEach((row) => totales.addRow(row))
-
-  // Fila total al final
-  const filaTotal = totales.addRow({
-    tercero: 'TOTAL',
-    documento: '',
-    cantidad: agrupados.reduce((s, r) => s + r.cantidad, 0),
-    monto: agrupados.reduce((s, r) => s + r.monto, 0),
-    abonado: agrupados.reduce((s, r) => s + r.abonado, 0),
-    saldo: agrupados.reduce((s, r) => s + r.saldo, 0),
-  })
-  filaTotal.font = { bold: true }
-  filaTotal.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFECFDF5' },
-  }
-
-  estilarEncabezado(totales)
-  totales.views = [{ state: 'frozen', ySplit: 1 }]
-
-  const nombre = `${titulo.replace(/ /g, '-')}_${fechaHoyISO()}.xlsx`
+  const nombre = `${titulo.replace(/ /g, '-')}_${fechaCorte}.xlsx`
   await descargar(wb, nombre)
-  void formatListDate // por si se quiere usar en el futuro para formato humano
+  void formatListDate
 }
 
 /* ==================== Garantías ==================== */

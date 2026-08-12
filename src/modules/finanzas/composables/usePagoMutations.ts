@@ -16,6 +16,7 @@ function useInvalidateCuentas(tipo: TipoCuenta) {
   return () => {
     queryClient.invalidateQueries({ queryKey: finanzasQueryKeys.cuentas(tipo) })
     queryClient.invalidateQueries({ queryKey: finanzasQueryKeys.resumen(tipo) })
+    queryClient.invalidateQueries({ queryKey: finanzasQueryKeys.saldos(tipo) })
     void invalidateCajaQueries(queryClient)
   }
 }
