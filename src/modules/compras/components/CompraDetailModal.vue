@@ -122,6 +122,11 @@
         </div>
       </DetailSectionCard>
 
+      <RecargaPlantaBalonesCard
+        :id-recarga-planta="cabecera.id_recarga_planta"
+        :numero="cabecera.numero_recarga_planta"
+      />
+
       <DetailSectionCard title="Detalle" :icon="ICONS.clipboardList" :full-width="true">
         <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
           <table class="min-w-full text-sm">
@@ -167,6 +172,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
+import RecargaPlantaBalonesCard from '@/modules/compras/components/RecargaPlantaBalonesCard.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { AppBadge, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'

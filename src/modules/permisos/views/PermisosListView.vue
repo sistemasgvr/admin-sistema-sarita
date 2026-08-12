@@ -7,6 +7,7 @@
       :rows="rows"
       row-key="id"
       :loading="isLoading"
+      :show-actions="false"
     >
       <template #toolbar>
         <AppListToolbar
@@ -31,7 +32,7 @@
         <AppBadge color="neutral">{{ row.nombre }}</AppBadge>
       </template>
 
-      <template #actions="{ row }">
+      <!-- <template #actions="{ row }">
         <button
           v-if="canEdit"
           type="button"
@@ -40,7 +41,7 @@
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
-          <!-- Editar -->
+          
         </button>
 
         <button
@@ -51,9 +52,8 @@
           @click="openDeleteModal(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
-          <!-- Eliminar -->
         </button>
-      </template>
+      </template> -->
 
       <template #footer>
         <AppPagination
@@ -156,8 +156,8 @@ const deleteModalOpen = ref(false)
 const permisoToDelete = ref<Permiso | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PERMISOS_CREAR))
-const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PERMISOS_EDITAR))
-const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PERMISOS_ELIMINAR))
+// const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PERMISOS_EDITAR))
+// const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PERMISOS_ELIMINAR))
 
 const isLoading = computed(() => permisosQuery.isFetching.value)
 const rows = computed(() => permisosQuery.data.value?.data ?? [])
@@ -201,16 +201,16 @@ const openCreateModal = () => {
   formModalOpen.value = true
 }
 
-const openEditModal = (permiso: Permiso) => {
-  formMode.value = 'edit'
-  selectedPermiso.value = permiso
-  formModalOpen.value = true
-}
+// const openEditModal = (permiso: Permiso) => {
+//   formMode.value = 'edit'
+//   selectedPermiso.value = permiso
+//   formModalOpen.value = true
+// }
 
-const openDeleteModal = (permiso: Permiso) => {
-  permisoToDelete.value = permiso
-  deleteModalOpen.value = true
-}
+// const openDeleteModal = (permiso: Permiso) => {
+//   permisoToDelete.value = permiso
+//   deleteModalOpen.value = true
+// }
 
 const confirmDelete = async () => {
   if (!permisoToDelete.value) return

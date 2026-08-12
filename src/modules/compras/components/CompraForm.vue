@@ -461,6 +461,11 @@
             />
           </DetailSectionCard>
 
+          <RecargaPlantaBalonesCard
+            :id-recarga-planta="cabecera?.id_recarga_planta ?? null"
+            :numero="cabecera?.numero_recarga_planta"
+          />
+
           <DetailSectionCard
             title="Detalle de productos"
             :icon="ICONS.clipboardList"
@@ -656,6 +661,7 @@ import type {
   CompraLineaForm,
 } from '@/modules/compras/interfaces/compra.interface'
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
+import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type { Cliente, ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
@@ -1012,21 +1018,15 @@ watch(
 
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
-const almacenOptions = computed(() =>
-  (almacenesQuery.data.value?.data ?? []).map((a) => ({ value: a.id, label: a.nombre })),
-)
+const almacenOptions = computed(() => toSelectOptions(almacenesQuery.data.value?.data))
 
 const sucursalesFilters = ref({ pagina: 1, limite: 100 })
 const sucursalesQuery = useSucursalesQuery(sucursalesFilters)
-const sucursalOptions = computed(() =>
-  (sucursalesQuery.data.value?.data ?? []).map((s) => ({ value: s.id, label: s.nombre })),
-)
+const sucursalOptions = computed(() => toSelectOptions(sucursalesQuery.data.value?.data))
 
 const condicionesFilters = ref({ pagina: 1, limite: 100 })
 const condicionesQuery = useCondicionesPagoQuery(condicionesFilters)
-const condicionPagoOptions = computed(() =>
-  (condicionesQuery.data.value?.data ?? []).map((c) => ({ value: c.id, label: c.nombre })),
-)
+const condicionPagoOptions = computed(() => toSelectOptions(condicionesQuery.data.value?.data))
 
 const productosFilters = ref({
   pagina: 1,
