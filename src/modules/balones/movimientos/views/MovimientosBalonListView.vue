@@ -239,7 +239,7 @@ const columns: TableColumn[] = [
   { key: 'codigo_balon', label: 'Cilindro' },
   { key: 'nombre_tipo_movimiento', label: 'Tipo' },
   { key: 'almacenes', label: 'Origen / Destino' },
-  { key: 'nombre_cliente', label: 'Cliente' },
+  { key: 'nombre_cliente', label: 'Cliente / Proveedor' },
   // { key: 'observacion', label: 'Observación' },
 ]
 

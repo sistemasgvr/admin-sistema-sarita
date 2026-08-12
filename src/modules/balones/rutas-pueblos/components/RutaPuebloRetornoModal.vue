@@ -29,6 +29,7 @@
           type="number"
           step="0.01"
           min="0"
+          :max="Number(det.lb_salida)"
           required
         />
         <div class="flex items-end pb-1 text-xs text-gray-500">
@@ -135,6 +136,16 @@ async function guardar() {
 
   if (detalles.some((d) => Number.isNaN(d.lbRetorno) || d.lbRetorno < 0)) {
     toastWarning('Completa las libras de retorno (≥ 0)')
+    return
+  }
+
+  const sobreSalida = filas.value.find(
+    (f) => Number(f.lbRetorno) > Number(f.lb_salida) + 1e-9,
+  )
+  if (sobreSalida) {
+    toastWarning(
+      `Retorno no puede superar salida (${Number(sobreSalida.lb_salida).toFixed(2)} lb) en ${sobreSalida.codigo_balon || `#${sobreSalida.id_balon}`}`,
+    )
     return
   }
 

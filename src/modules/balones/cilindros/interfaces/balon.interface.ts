@@ -93,6 +93,8 @@ export interface Balon {
   id_tipo_balon?: number | null
   nombre_tipo_balon?: string | null
   capacidad?: number | null
+  /** Capacidad llena del tipo (lb de gas). */
+  capacidad_lb?: number | null
   peso_tipo_balon?: number | null
   nombre_unidad_medida?: string | null
   vigencia_ph_tipo_anios?: number | null

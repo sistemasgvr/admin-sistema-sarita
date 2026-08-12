@@ -18,6 +18,7 @@
       :required="required"
       :error="error"
       :hint="hint"
+      :help="help"
       clearable
     />
   </AppSelectWithCreate>
@@ -46,6 +47,7 @@ const props = withDefaults(
     loading?: boolean
     error?: string
     hint?: string
+    help?: string
     /** Ruta relativa a la que volver tras crear la GRE (ej. /admin/balones/recargas/planta/nueva). */
     returnTo?: string
     /** Contexto para preconfigurar la GRE (recarga-planta = vacíos EMPRESA). */
@@ -62,6 +64,7 @@ const props = withDefaults(
     disabled: false,
     loading: false,
     hint: undefined,
+    help: undefined,
     returnTo: undefined,
     origen: null,
     returnIdParam: 'idGuiaSalida',

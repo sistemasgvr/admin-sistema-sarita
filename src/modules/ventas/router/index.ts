@@ -93,6 +93,16 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'caja/historial',
+        name: 'admin-ventas-caja-historial',
+        component: () => import('@/modules/caja/views/HistorialCajaView.vue'),
+        meta: {
+          title: 'Historial de caja',
+          module: 'ventas',
+          permission: PermisoBanderas.CAJA_VER,
+        },
+      },
+      {
         path: 'caja',
         name: 'admin-ventas-caja',
         component: () => import('@/modules/caja/views/CajaView.vue'),

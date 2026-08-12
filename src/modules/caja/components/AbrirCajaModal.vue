@@ -2,10 +2,11 @@
   <AppModal v-model="open" title="Abrir caja" size="md">
     <div class="space-y-4">
       <p class="text-theme-sm text-gray-500 dark:text-gray-400">
-        Primer paso del día operativo. Indica el efectivo con el que inicia la caja (fondo).
+        Primer paso del día operativo. Indica el efectivo con el que inicia la caja (fondo). Solo
+        puede haber una sesión por fecha.
       </p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppFormField label="Fecha" required>
+        <AppFormField label="Fecha" required :error="errorFecha">
           <AppInput v-model="form.fecha" type="date" />
         </AppFormField>
         <AppFormField label="Monto inicial" required :error="errorMonto">
@@ -42,7 +43,10 @@ import { computed, reactive, ref, watch } from 'vue'
 import { AppInput, AppModal, AppTextarea } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useAbrirCajaMutation } from '@/modules/caja/composables/useCajaQuery'
+import { cajaService } from '@/modules/caja/services/caja.service'
 import { parseMoneyInput } from '@/shared/utils/currency'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { formatDateTime } from '@/shared/utils/date'
 
 const open = defineModel<boolean>({ default: false })
 const props = defineProps<{ fecha: string }>()
@@ -54,6 +58,7 @@ const form = reactive({
   observacion: '',
 })
 const errorMonto = ref('')
+const errorFecha = ref('')
 const mutation = useAbrirCajaMutation()
 const guardando = computed(() => mutation.isPending.value)
 
@@ -63,6 +68,7 @@ watch(open, (v) => {
     form.montoInicial = '0'
     form.observacion = ''
     errorMonto.value = ''
+    errorFecha.value = ''
   }
 })
 
@@ -72,13 +78,36 @@ async function submit() {
     errorMonto.value = 'Monto inválido'
     return
   }
+  if (!form.fecha) {
+    errorFecha.value = 'La fecha es obligatoria'
+    return
+  }
   errorMonto.value = ''
-  await mutation.mutateAsync({
-    fecha: form.fecha,
-    montoInicial: monto,
-    observacion: form.observacion || undefined,
-  })
-  open.value = false
-  emit('saved')
+  errorFecha.value = ''
+
+  try {
+    const existente = await cajaService.obtenerDia(form.fecha)
+    if (existente?.id) {
+      const cuando = existente.fechaApertura
+        ? formatDateTime(existente.fechaApertura)
+        : form.fecha
+      errorFecha.value = `Ya hay sesión el ${cuando}`
+      toastWarning(
+        `Ya existe una caja para esa fecha (apertura ${cuando}). No se puede repetir.`,
+      )
+      return
+    }
+
+    await mutation.mutateAsync({
+      fecha: form.fecha,
+      montoInicial: monto,
+      observacion: form.observacion || undefined,
+    })
+    toastSuccess('Caja abierta')
+    open.value = false
+    emit('saved')
+  } catch {
+    // toast en useAbrirCajaMutation.onError
+  }
 }
 </script>

@@ -16,7 +16,7 @@
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Tipo</p>
             <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ cabecera.tipo_comprobante ?? '—' }}
+              {{ formatCatalogo(cabecera.tipo_comprobante) }}
             </p>
           </div>
           <div>
@@ -34,13 +34,13 @@
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Tipo registro</p>
             <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ cabecera.tipo_registro ?? '—' }}
+              {{ formatCatalogo(cabecera.tipo_registro) }}
             </p>
           </div>
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Categoría gasto</p>
             <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ cabecera.categoria_gasto ?? '—' }}
+              {{ formatCatalogo(cabecera.categoria_gasto) }}
             </p>
           </div>
           <div>
@@ -58,7 +58,7 @@
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Moneda</p>
             <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ cabecera.moneda ?? '—' }}
+              {{ formatCatalogo(cabecera.moneda) }}
             </p>
           </div>
           <div>
@@ -119,6 +119,88 @@
           <AppBadge v-else color="neutral">
             Sin movimientos de inventario
           </AppBadge>
+          <AppBadge v-if="cuentaPorPagar" color="warning" :icon="ICONS.wallet">
+            CxP generada
+          </AppBadge>
+        </div>
+      </DetailSectionCard>
+
+      <DetailSectionCard
+        v-if="cuentaPorPagar"
+        title="Cuenta por pagar"
+        :icon="ICONS.wallet"
+        :full-width="true"
+      >
+        <div class="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ cuentaPorPagar.descripcion ?? 'Obligación vinculada a esta compra' }}
+            </p>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <RouterLink
+                class="text-brand-600 hover:underline dark:text-brand-400"
+                :to="`/admin/finanzas/pagar`"
+              >
+                Ver en Cuentas por pagar
+              </RouterLink>
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Saldo</p>
+            <p class="text-lg font-semibold tabular-nums text-gray-800 dark:text-white/90">
+              {{ formatMoney(cuentaPorPagar.saldo) }}
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-if="cuentaPorPagar.cuotas?.length"
+          class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800"
+        >
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-white/5">
+              <tr>
+                <th class="px-3 py-2 text-left">Cuota</th>
+                <th class="px-3 py-2 text-left">Vence</th>
+                <th class="px-3 py-2 text-right">Monto</th>
+                <th class="px-3 py-2 text-right">Abonado</th>
+                <th class="px-3 py-2 text-right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="cuota in cuentaPorPagar.cuotas"
+                :key="cuota.id"
+                class="border-t border-gray-100 dark:border-gray-800"
+              >
+                <td class="px-3 py-2">{{ cuota.numero_cuota }} / {{ cuentaPorPagar.numero_cuotas_total }}</td>
+                <td class="px-3 py-2">{{ cuota.fecha_vencimiento ?? '—' }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ formatMoney(cuota.monto_pendiente) }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ formatMoney(cuota.monto_abonado) }}</td>
+                <td class="px-3 py-2 text-right tabular-nums font-medium">{{ formatMoney(cuota.saldo) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div v-else class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Vencimiento</p>
+            <p class="font-medium text-gray-800 dark:text-white/90">
+              {{ cuentaPorPagar.fecha_vencimiento ?? '—' }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Pendiente</p>
+            <p class="font-medium tabular-nums text-gray-800 dark:text-white/90">
+              {{ formatMoney(cuentaPorPagar.monto_pendiente) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Abonado</p>
+            <p class="font-medium tabular-nums text-gray-800 dark:text-white/90">
+              {{ formatMoney(cuentaPorPagar.monto_abonado) }}
+            </p>
+          </div>
         </div>
       </DetailSectionCard>
 
@@ -171,11 +253,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/RecargaPlantaBalonesCard.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { AppBadge, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const props = defineProps<{
   compraId: number | null
@@ -188,11 +272,16 @@ const compraQuery = useCompraQuery(compraId)
 const compra = computed(() => compraQuery.data.value ?? null)
 const cabecera = computed(() => compra.value?.cabecera ?? null)
 const compraDetalle = computed(() => compra.value?.detalle ?? [])
+const cuentaPorPagar = computed(() => compra.value?.cuenta_por_pagar ?? null)
 
 const compraLabel = computed(() => {
   if (!cabecera.value) return undefined
   return `${cabecera.value.serie ?? '—'}-${cabecera.value.numero ?? '—'}`
 })
+
+function formatCatalogo(value?: string | null) {
+  return formatListaOpcionLabel(value) || '—'
+}
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)

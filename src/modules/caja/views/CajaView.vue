@@ -19,6 +19,12 @@
               {{ sesion.estadoCaja }}
             </AppBadge>
             <AppBadge v-else-if="!isLoading" color="neutral">SIN APERTURA</AppBadge>
+            <RouterLink
+              :to="{ name: 'admin-ventas-caja-historial' }"
+              class="text-theme-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+            >
+              Historial
+            </RouterLink>
           </div>
 
           <div class="flex flex-wrap items-end gap-2">
@@ -26,7 +32,7 @@
               <AppInput v-model="fecha" type="date" class="w-[160px]" />
             </AppFormField>
             <button
-              v-if="canAbrir && !sesion?.id"
+              v-if="canAbrir && !sesion?.id && !pendienteCierre"
               type="button"
               class="shrink-0 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
               @click="showAbrir = true"
@@ -76,6 +82,43 @@
             {{ formatCurrency(sesion.diferencia ?? 0) }}
           </span>
         </p>
+      </div>
+
+      <div
+        v-if="bannerPendiente"
+        class="flex flex-col gap-3 rounded-xl border border-error-200 bg-error-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between dark:border-error-500/30 dark:bg-error-500/10"
+      >
+        <div class="flex items-start gap-3">
+          <AppIcon
+            :name="ICONS.alertTriangle"
+            :size="18"
+            class="mt-0.5 shrink-0 text-error-600 dark:text-error-300"
+          />
+          <div>
+            <p class="text-sm font-semibold text-error-900 dark:text-error-200">
+              Cierre diario pendiente
+            </p>
+            <p class="mt-0.5 text-theme-sm text-error-800 dark:text-error-300">
+              {{ bannerPendiente }}
+            </p>
+          </div>
+        </div>
+        <button
+          v-if="fechaPendienteCerrar && fecha !== fechaPendienteCerrar"
+          type="button"
+          class="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          @click="fecha = fechaPendienteCerrar"
+        >
+          Ir a cerrar {{ formatListDate(fechaPendienteCerrar) }}
+        </button>
+        <button
+          v-else-if="canCerrar && sesion?.estadoCaja === 'ABIERTA' && esFechaPendiente"
+          type="button"
+          class="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          @click="showCerrar = true"
+        >
+          Cerrar ahora
+        </button>
       </div>
 
       <div v-if="isLoading" class="text-theme-sm text-gray-500">Cargando caja del día...</div>
@@ -290,7 +333,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import {
@@ -310,6 +353,7 @@ import RegistrarGastoCajaModal from '@/modules/caja/components/RegistrarGastoCaj
 import RegistrarDepositoCajaModal from '@/modules/caja/components/RegistrarDepositoCajaModal.vue'
 import {
   useCajaDiaQuery,
+  useCajaPendienteCierreQuery,
   useEliminarCajaDepositoMutation,
   useEliminarCajaGastoMutation,
 } from '@/modules/caja/composables/useCajaQuery'
@@ -321,6 +365,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
+import { formatListDate } from '@/shared/utils/date'
 import { toastWarning } from '@/shared/composables/useToast'
 
 const breadcrumbItems = ventasBreadcrumbItems('Caja')
@@ -366,12 +411,32 @@ const anularTipo = ref<'gasto' | 'deposito' | null>(null)
 const anularId = ref<number | null>(null)
 
 const query = useCajaDiaQuery(fecha, idSucursal)
+const pendienteQuery = useCajaPendienteCierreQuery(idSucursal)
 const eliminarGastoMutation = useEliminarCajaGastoMutation()
 const eliminarDepositoMutation = useEliminarCajaDepositoMutation()
 const sesion = computed(() => query.data.value)
 const isLoading = computed(() => query.isLoading.value)
 const isError = computed(() => query.isError.value)
 const cajaAbierta = computed(() => sesion.value?.estadoCaja === 'ABIERTA')
+
+const pendienteCierre = computed(() => pendienteQuery.data.value?.data?.[0] ?? null)
+const fechaPendienteCerrar = computed(() =>
+  pendienteCierre.value?.fecha
+    ? String(pendienteCierre.value.fecha).slice(0, 10)
+    : null,
+)
+const esFechaPendiente = computed(
+  () => Boolean(fechaPendienteCerrar.value) && fecha.value === fechaPendienteCerrar.value,
+)
+const bannerPendiente = computed(() => {
+  if (!pendienteCierre.value || !fechaPendienteCerrar.value) return null
+  const f = formatListDate(fechaPendienteCerrar.value)
+  const dias = pendienteCierre.value.diasAbierta ?? 1
+  if (esFechaPendiente.value) {
+    return `Esta caja del ${f} quedó abierta (${dias} día${dias === 1 ? '' : 's'}). Haz el arqueo y ciérrala para poder abrir la de hoy.`
+  }
+  return `Hay una caja sin cerrar del ${f} (${dias} día${dias === 1 ? '' : 's'}). Ciérrala antes de abrir u operar la de hoy.`
+})
 const anulando = computed(
   () =>
     eliminarGastoMutation.isPending.value || eliminarDepositoMutation.isPending.value,

@@ -79,9 +79,30 @@ export interface CompraDetalle {
   estado: number
 }
 
+export interface CompraCuotaPagar {
+  id: number
+  numero_cuota: number
+  fecha_vencimiento: string | null
+  monto_pendiente: number
+  monto_abonado: number
+  saldo: number
+}
+
+export interface CompraCuentaPorPagar {
+  id: number
+  descripcion: string | null
+  numero_cuotas_total: number | null
+  monto_pendiente: number
+  monto_abonado: number
+  saldo: number
+  fecha_vencimiento: string | null
+  cuotas: CompraCuotaPagar[]
+}
+
 export interface Compra {
   cabecera: CompraCabecera
   detalle: CompraDetalle[]
+  cuenta_por_pagar?: CompraCuentaPorPagar | null
 }
 
 export interface CompraListFilters {
