@@ -432,6 +432,15 @@ const idTipoPrestamoEmpresaCliente = computed(
     )?.id ?? null,
 )
 
+const listaEstadoPrestamoId = ref(ListaIds.ESTADO_PRESTAMO)
+const estadosPrestamoQuery = useListaOpcionesQuery(listaEstadoPrestamoId)
+const idEstadoPrestamoActivo = computed(
+  () =>
+    estadosPrestamoQuery.data.value?.find(
+      (item) => (item.nombre ?? '').toUpperCase() === 'ACTIVO',
+    )?.id ?? null,
+)
+
 async function onAlmacenCreated() {
   await almacenesQuery.refetch()
 }
@@ -743,6 +752,7 @@ async function registrarKit() {
           fechaSalida: fechaInicio.value,
           fechaRetornoPactada: fechaFinPactada.value || undefined,
           idComprobanteVenta: comprobante.id,
+          idEstado: idEstadoPrestamoActivo.value ?? undefined,
           titulo: `Préstamo kit medicinal · balón #${idBalon.value}`,
           observacion:
             observacion.value ||

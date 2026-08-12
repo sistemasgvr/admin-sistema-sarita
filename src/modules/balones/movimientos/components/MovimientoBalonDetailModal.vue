@@ -60,7 +60,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Cilindro', value: data.codigo_balon },
         { label: 'Tipo', value: data.nombre_tipo_movimiento },
         { label: 'Fecha', value: formatDetailDateTime(data.fecha_movimiento) },
-        { label: 'Cliente', value: data.nombre_cliente },
+        { label: 'Cliente / Proveedor', value: data.nombre_cliente },
       ],
     },
     { title: 'Documento referencia', icon: ICONS.fileKey, items: data.id_documento_ref
@@ -68,7 +68,7 @@ const sections = computed<DetailSection[]>(() => {
             { label: 'Tipo documento', value: data.nombre_tipo_documento_ref },
             { label: 'Número / código', value: data.documento_numero },
             { label: 'Fecha', value: formatDetailDate(data.documento_fecha) },
-            { label: 'Cliente', value: data.documento_cliente },
+            { label: 'Cliente / Proveedor', value: data.documento_cliente },
             { label: 'Lote', value: data.documento_lote },
             { label: 'Detalle', value: data.documento_detalle, fullWidth: true },
           ]

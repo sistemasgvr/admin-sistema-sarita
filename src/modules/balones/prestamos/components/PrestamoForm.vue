@@ -54,10 +54,12 @@
               <AppSelect
                 v-model="idEstado"
                 label="Estado"
-                placeholder="Opcional"
+                placeholder="Selecciona..."
+                required
                 v-bind="idEstadoAttrs"
                 :disabled="isSubmitting || estadosPrestamoQuery.isFetching.value"
                 :options="estadoPrestamoOptions"
+                :error="errors.idEstado"
               />
 
               <AlmacenSelectField
@@ -402,10 +404,14 @@ const estadosPrestamoQuery = useListaOpcionesQuery(listaEstadoPrestamoId)
 
 const tipoPrestamoOptions = computed(() => toSelectOptions(tiposPrestamoQuery.data.value))
 
-const estadoPrestamoOptions = computed(() => [
-  { value: '', label: 'Sin estado' },
-  ...toSelectOptions(estadosPrestamoQuery.data.value),
-])
+const estadoPrestamoOptions = computed(() => toSelectOptions(estadosPrestamoQuery.data.value))
+
+const idEstadoPrestamoActivo = computed(
+  () =>
+    estadosPrestamoQuery.data.value?.find(
+      (item) => (item.nombre ?? '').toUpperCase() === 'ACTIVO',
+    )?.id ?? '',
+)
 
 const canCreateDetalle = computed(() =>
   authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_CREAR),
@@ -491,7 +497,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idTipoPrestamo: requiredSelect('El tipo de préstamo'),
       numeroPrestamo: optionalString().max(30, 'Máximo 30 caracteres'),
       titulo: optionalString().max(200, 'Máximo 200 caracteres'),
-      idEstado: optionalSelectNumber(),
+      idEstado: requiredSelect('El estado'),
       idAlmacen: optionalSelectNumber(),
       idCliente: optionalSelectNumber(),
       idProveedor: optionalSelectNumber(),
@@ -596,7 +602,7 @@ const resetCreateForm = () => {
       idTipoPrestamo: '',
       numeroPrestamo: '',
       titulo: '',
-      idEstado: '',
+      idEstado: idEstadoPrestamoActivo.value || '',
       idAlmacen: '',
       idCliente: '',
       idProveedor: '',

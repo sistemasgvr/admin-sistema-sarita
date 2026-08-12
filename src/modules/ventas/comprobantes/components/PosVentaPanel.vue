@@ -495,6 +495,15 @@ const idTipoPrestamoEmpresaCliente = computed(
     )?.id ?? null,
 )
 
+const listaEstadoPrestamoId = ref(ListaIds.ESTADO_PRESTAMO)
+const estadosPrestamoQuery = useListaOpcionesQuery(listaEstadoPrestamoId)
+const idEstadoPrestamoActivo = computed(
+  () =>
+    estadosPrestamoQuery.data.value?.find(
+      (item) => (item.nombre ?? '').toUpperCase() === 'ACTIVO',
+    )?.id ?? null,
+)
+
 function esEntregarPrestamo(linea: PosLineItem) {
   return (
     linea.escenarioGas === 'entregar_prestamo' ||
@@ -1165,6 +1174,7 @@ try {
               fechaSalida: salida,
               fechaRetornoPactada: lineaPrestamo.fechaFinAlquiler || undefined,
               idComprobanteVenta: comprobante.id,
+              idEstado: idEstadoPrestamoActivo.value ?? undefined,
               titulo: `Préstamo POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
               observacion:
                 lineaPrestamo.observacionLinea ||
