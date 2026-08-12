@@ -255,7 +255,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
-import RecargaPlantaBalonesCard from '@/modules/compras/components/RecargaPlantaBalonesCard.vue'
+import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { AppBadge, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
