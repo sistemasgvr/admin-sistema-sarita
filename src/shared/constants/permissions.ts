@@ -269,7 +269,7 @@ export const PermisoBanderas = {
   COMPRAS_VER: 'compras.ver',
   COMPRAS_CREAR: 'compras.crear',
   COMPRAS_EDITAR: 'compras.editar',
-  COMPRAS_ELIMINAR: 'compras_eliminar',
+  COMPRAS_ELIMINAR: 'compras.eliminar',
 
   DASHBOARD_VER_CLIENTES: 'dashboard.ver_clientes',
   DASHBOARD_VER_BALONES: 'dashboard.ver_balones',

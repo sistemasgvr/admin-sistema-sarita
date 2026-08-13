@@ -749,7 +749,7 @@
               :disabled="saving"
               :error="errorPesoLinea(linea)"
               :help="helpPesoLinea(linea)"
-              @update:model-value="onPesoLineaEdit(index)"
+              @update:model-value="onPesoLineaEdit()"
             />
           </div>
           <SearchableSelect
@@ -1386,7 +1386,7 @@ function inferTipoLinea(detalle: {
   return 'libre'
 }
 
-function onPesoLineaEdit(_index: number) {
+function onPesoLineaEdit() {
   if (!pesoBultosManual.value) {
     aplicarPesoBultosDesdeItems()
   }

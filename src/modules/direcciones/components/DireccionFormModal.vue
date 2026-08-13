@@ -46,7 +46,7 @@
         />
 
         <AppInput
-          v-model="direccion"
+          v-model="direccionTexto"
           label="Dirección"
           placeholder="Calle Las Magnolias 145, Urb. El Recreo"
           required
@@ -329,8 +329,8 @@ async function onMapLocationConfirmed(location: MapaLocationConfirmed) {
   ubicacionHint.value = ''
   const address = location.address
   const textoDireccion = buildDireccionTexto(address, location.displayName)
-  if (textoDireccion && !String(direccion.value ?? '').trim()) {
-    direccion.value = textoDireccion
+  if (textoDireccion && !String(direccionTexto.value ?? '').trim()) {
+    direccionTexto.value = textoDireccion
   }
 
   const extraido = extractUbigeoDesdeNominatim(address, location.displayName)
@@ -436,7 +436,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 
 const [idCliente, idClienteAttrs] = defineField('idCliente')
 const [descripcion, descripcionAttrs] = defineField('descripcion')
-const [direccion, direccionAttrs] = defineField('direccion')
+const [direccionTexto, direccionAttrs] = defineField('direccion')
 const [idPais, idPaisAttrs] = defineField('idPais')
 const [idDepartamento, idDepartamentoAttrs] = defineField('idDepartamento')
 const [idProvincia, idProvinciaAttrs] = defineField('idProvincia')

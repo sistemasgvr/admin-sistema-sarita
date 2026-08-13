@@ -318,8 +318,9 @@ watch(activeTab, (tab) => {
     router.replace({ query: { ...route.query, tab: 'calendario' } })
     return
   }
-  const { tab: _tab, ...rest } = route.query
-  router.replace({ query: rest })
+  const query = { ...route.query }
+  delete query.tab
+  router.replace({ query })
 })
 
 watch(

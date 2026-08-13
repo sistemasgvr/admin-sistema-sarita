@@ -174,7 +174,7 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
-const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 const authStore = useAuthStore()
 const breadcrumbItems = balonesBreadcrumbItems('Recojos')
 
