@@ -60,7 +60,7 @@ const pageTitle = computed(() => {
 const pageHelpText = computed(() =>
   isEdit.value
     ? 'Puedes ajustar categoría, condición de pago, glosa y las líneas. Si cambias cantidades de productos con stock, se genera el movimiento diferencial.'
-    : 'Registra el comprobante del proveedor (productos, accesorios, gas o gastos). Solo ítems con “Ingresa stock” mueven inventario de productos; el gas de planta externa es costo + retorno de cilindros.',
+    : 'Registra el comprobante del proveedor (productos, accesorios, gas o gastos). Recarga externa solo si la factura es el costo de una orden en planta.',
 )
 
 const breadcrumbItems = computed(() => comprasFormBreadcrumbItems(pageTitle.value))

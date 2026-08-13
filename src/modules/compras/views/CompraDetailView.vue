@@ -46,9 +46,14 @@
         <AppBadge v-if="cabecera?.estado_pago" color="neutral" size="sm">
           {{ formatCatalogo(cabecera.estado_pago) }}
         </AppBadge>
-        <AppBadge v-if="cabecera?.declarar_sunat" color="primary" size="sm" :icon="ICONS.check">
-          Declarar SUNAT
-        </AppBadge>
+        <span v-if="cabecera?.declarar_sunat" class="inline-flex items-center gap-1">
+          <AppBadge color="primary" size="sm" :icon="ICONS.check">
+            Declarar SUNAT
+          </AppBadge>
+          <AppHelpTip
+            text="Marcada para el registro de compras SUNAT (PLE). No se envió por internet; solo queda clasificada para declarar."
+          />
+        </span>
         <AppBadge
           v-if="cabecera?.tiene_movimientos_inventario"
           color="warning"
@@ -402,7 +407,7 @@ import { comprasFormBreadcrumbItems } from '@/modules/compras/config/compras-bre
 import { useCuentaDetalleQuery } from '@/modules/finanzas/composables/useCuentaDetalleQuery'
 import type { EstadoCuenta } from '@/modules/finanzas/interfaces/cuenta.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge } from '@/shared/components'
+import { AppBadge, AppHelpTip } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -531,6 +536,7 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Categoría gasto', value: formatCatalogo(c.categoria_gasto) },
         { label: 'Condición de pago', value: c.condicion_pago ?? '—' },
         { label: 'Moneda', value: formatCatalogo(c.moneda) },
+        { label: 'Declarar SUNAT', value: c.declarar_sunat ? 'Sí (PLE)' : 'No' },
         {
           label: 'Creado',
           value: c.fecha_creacion ? formatDateTime(c.fecha_creacion) : '—',

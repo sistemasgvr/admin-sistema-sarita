@@ -9,6 +9,7 @@
           :required="required"
           :maxlength="maxLength"
           :sanitize="sanitizeInput"
+          :help="helpText"
           v-bind="inputAttrs"
           :disabled="disabled"
           :error="error"
@@ -44,9 +45,6 @@
         </button>
       </div>
     </div>
-    <p v-if="hint" class="mt-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
-      {{ hint }}
-    </p>
   </div>
 </template>
 
@@ -58,6 +56,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { toastInfo, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ApiError } from '@/shared/api/errors/api.error'
 import {
+  inferirTipoDocumentoPorNumero,
   maxLengthDocumento,
   placeholderNumeroDocumento,
   sanitizeNumeroDocumento,
@@ -73,6 +72,9 @@ interface ConsultaDocumentoInputProps {
   tipoDocumento?: string | null
   label?: string
   placeholder?: string
+  /** Tooltip junto al label. */
+  help?: string
+  /** @deprecated Usar `help` (tooltip). Se mantiene por compatibilidad. */
   hint?: string
   required?: boolean
   disabled?: boolean
@@ -81,9 +83,15 @@ interface ConsultaDocumentoInputProps {
 }
 
 const props = withDefaults(defineProps<ConsultaDocumentoInputProps>(), {
-  hint: 'Busca automáticamente en RENIEC (DNI) o SUNAT (RUC) según el tipo de documento.',
   inputAttrs: () => ({}),
 })
+
+const helpText = computed(
+  () =>
+    props.help?.trim() ||
+    props.hint?.trim() ||
+    'Busca automáticamente en RENIEC (DNI) o SUNAT (RUC) según el tipo de documento.',
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
@@ -91,20 +99,37 @@ const emit = defineEmits<{
   'antes-de-consultar': []
   'dni-encontrado': [data: ConsultaDniData]
   'ruc-encontrado': [data: ConsultaRucData]
+  'consulta-sin-resultado': []
 }>()
 
 const isConsultando = ref(false)
 
-const tipoNormalizado = computed(() => props.tipoDocumento?.trim().toUpperCase())
+const tipoNormalizado = computed(() => props.tipoDocumento?.trim().toUpperCase() || '')
+const sinTipoExplicito = computed(() => !tipoNormalizado.value)
+
+const tipoParaConsulta = computed(() => {
+  if (tipoNormalizado.value === 'DNI' || tipoNormalizado.value === 'RUC') {
+    return tipoNormalizado.value
+  }
+  if (tipoNormalizado.value) return tipoNormalizado.value
+  return inferirTipoDocumentoPorNumero(props.modelValue)
+})
 
 const localValue = computed({
   get: () => props.modelValue ?? '',
   set: (value: string) => emit('update:modelValue', value),
 })
 
-const maxLength = computed(() => maxLengthDocumento(tipoNormalizado.value))
-const placeholderPorDefecto = computed(() => placeholderNumeroDocumento(tipoNormalizado.value))
-const sanitizeInput = (raw: string) => sanitizeNumeroDocumento(tipoNormalizado.value, raw)
+const maxLength = computed(() =>
+  sinTipoExplicito.value ? 11 : maxLengthDocumento(tipoNormalizado.value),
+)
+const placeholderPorDefecto = computed(() =>
+  sinTipoExplicito.value ? '8 u 11 dígitos' : placeholderNumeroDocumento(tipoNormalizado.value),
+)
+const sanitizeInput = (raw: string) =>
+  sinTipoExplicito.value
+    ? raw.replace(/\D/g, '').slice(0, 11)
+    : sanitizeNumeroDocumento(tipoNormalizado.value, raw)
 const dniEncontrado = (data: ConsultaDniData | null | undefined) =>
   Boolean(data) && data?.success !== false && Boolean(data?.nombres)
 
@@ -136,9 +161,13 @@ const handleConsultar = async () => {
     return
   }
 
-  const tipo = tipoNormalizado.value
+  const tipo = tipoParaConsulta.value
   if (!tipo) {
-    toastWarning('Selecciona primero el tipo de documento')
+    toastWarning(
+      sinTipoExplicito.value
+        ? 'Ingresa un DNI (8 dígitos) o RUC (11 dígitos)'
+        : 'Selecciona primero el tipo de documento',
+    )
     return
   }
 
@@ -154,7 +183,8 @@ const handleConsultar = async () => {
     if (tipo === 'DNI') {
       const data = await consultasService.consultarDni(numero)
       if (!dniEncontrado(data)) {
-        toastWarning('No se encontraron datos en RENIEC para el DNI ingresado. Verifica el número.')
+        toastWarning('No se encontró en RENIEC. Puedes escribir el nombre a mano.')
+        emit('consulta-sin-resultado')
         return
       }
       if (data.dni) localValue.value = data.dni
@@ -163,7 +193,8 @@ const handleConsultar = async () => {
     } else {
       const data = await consultasService.consultarRuc(numero)
       if (!rucEncontrado(data)) {
-        toastWarning('No se encontraron datos en SUNAT para el RUC ingresado. Verifica el número.')
+        toastWarning('No se encontró en SUNAT. Puedes escribir el nombre a mano.')
+        emit('consulta-sin-resultado')
         return
       }
       if (data.ruc) localValue.value = data.ruc
@@ -172,6 +203,7 @@ const handleConsultar = async () => {
     }
   } catch (error) {
     toastWarning(mensajeErrorConsulta(error, tipo))
+    emit('consulta-sin-resultado')
   } finally {
     isConsultando.value = false
   }

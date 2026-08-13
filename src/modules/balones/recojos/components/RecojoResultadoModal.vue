@@ -292,8 +292,8 @@ const motivoOptions = [
 ]
 const contenidoOptions = [
   { value: 'VACIO', label: 'Vacío' },
-  { value: 'LLENO', label: 'Lleno (gas no usado)' },
-  { value: 'DESCONOCIDO', label: 'Parcial / desconocido' },
+  { value: 'LLENO', label: 'Lleno' },
+  { value: 'DESCONOCIDO', label: 'Desconocido' },
 ]
 
 const recojoLabel = computed(() => {

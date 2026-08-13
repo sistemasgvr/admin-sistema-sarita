@@ -375,8 +375,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     options: toSelectOptions(
       (catalogosQuery.data.value?.tiposComprobante ?? []).filter((tipo) => {
         const codigo = String(tipo.descripcion ?? '').toUpperCase()
-        const nombre = String(tipo.nombre ?? '').toUpperCase()
-        return !esVentaSinDocumentoTipo({ codigo, nombre })
+        return codigo === '01' || codigo === '03' || codigo === '07' || codigo === '08'
       }),
     ),
   },

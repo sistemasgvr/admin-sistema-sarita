@@ -8,7 +8,7 @@
       <FormCardsLayout>
         <!-- CREATE -->
         <template v-if="!isEdit">
-          <DetailSectionCard title="Proveedor" :icon="ICONS.building2" :full-width="true">
+          <DetailSectionCard title="Comprobante" :icon="ICONS.receipt" :full-width="true">
             <div
               v-if="props.referenciaCompraId"
               class="mb-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
@@ -18,7 +18,7 @@
               </template>
               <template v-else>
                 Esta compra corrige a la compra anulada
-                <span class="font-medium"   
+                <span class="font-medium"
                   >{{ referenciaCabecera?.serie ?? '—' }}-{{ referenciaCabecera?.numero ?? '—' }}</span
                 >. Los campos y líneas se prellenaron; ajústalos según corresponda.
               </template>
@@ -44,10 +44,8 @@
                 :error="errors.idProveedor"
               />
             </AppSelectWithCreate>
-          </DetailSectionCard>
 
-          <DetailSectionCard title="Comprobante" :icon="ICONS.receipt" :full-width="true">
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <AppInput
                 v-model="fecha"
                 label="Fecha"
@@ -62,6 +60,7 @@
                 label="Tipo comprobante"
                 placeholder="Seleccionar"
                 required
+                help="Catálogo SUNAT 01: factura, boleta, recibo por honorarios, ticket, servicios públicos, etc."
                 v-bind="idTipoComprobanteAttrs"
                 :options="tipoComprobanteOptions"
                 :disabled="saving"
@@ -86,10 +85,26 @@
                 :error="errors.numero"
               />
             </div>
+
+            <div class="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <AppSwitch
+                v-model="declararSunat"
+                label="Declarar SUNAT"
+                :help="DECLARAR_SUNAT_HELP"
+                :disabled="saving"
+              />
+            </div>
+
+            <AppTextarea
+              v-model="glosa"
+              label="Glosa"
+              placeholder="Opcional"
+              :disabled="saving"
+              class="mt-5"
+            />
           </DetailSectionCard>
 
-
-          <DetailSectionCard title="Clasificación y ubicación" :icon="ICONS.layers" :full-width="true">
+          <DetailSectionCard title="Clasificación" :icon="ICONS.layers" :full-width="true">
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <AppSelect
                 v-model="idTipoRegistro"
@@ -144,51 +159,62 @@
                 v-model="idCondicionPago"
                 label="Condición pago"
                 placeholder="Seleccionar"
+                help="Crédito o cuotas: verás un preview editable. Al guardar se crea la cuenta por pagar."
                 :options="condicionPagoOptions"
                 :loading="condicionesQuery.isFetching.value"
                 :disabled="saving"
               />
             </div>
-          </DetailSectionCard>
-
-          <DetailSectionCard title="Observaciones" :icon="ICONS.fileText" :full-width="true">
-            <AppTextarea v-model="glosa" label="Glosa" placeholder="Opcional" :disabled="saving" />
-            <AppCheckbox
-              v-model="declararSunat"
-              label="Declarar SUNAT"
+            <CompraPagoPreview
+              v-if="esPlanCuotas || esCreditoPago"
+              class="mt-5"
+              :modo="esPlanCuotas ? 'cuotas' : 'credito'"
+              v-model:cuotas="cuotasPlan"
+              v-model:fecha-vencimiento="fechaVencimientoCredito"
+              v-model:dia-mes-pago="diaMesPagoEditable"
+              :total="totalParaCuotas"
+              :dias-credito="Number(condicionPagoSeleccionada?.dias_credito ?? 0)"
               :disabled="saving"
-              class="mt-4"
             />
           </DetailSectionCard>
 
           <DetailSectionCard
-            title="Recarga en planta externa"
+            title="Recarga externa"
             :icon="ICONS.cylinder"
             :full-width="true"
-            help="Opcional. Vincula esta factura al costo de una orden de planta externa. Las líneas de gas se agrupan por producto para ponerles precio; el gas no ingresa a stock de productos (el inventario físico es el cilindro al retornar)."
+            help="La compra puede ser de cualquier producto o gasto. Activa recarga externa solo si esta factura es el costo de una orden en planta."
           >
+            <AppSwitch
+              v-model="desdeRecargaExterna"
+              label="A partir de recarga externa"
+              help="Vincula la factura a una orden de planta. El gas no entra a stock de productos; el inventario físico es el cilindro al retornar."
+              :disabled="saving"
+            />
+
+            <template v-if="desdeRecargaExterna">
+            <div class="mt-5">
             <AppSelectSearch
               v-model="idRecargaPlanta"
               label="Orden de recarga"
-              :placeholder="idProveedor ? 'Selecciona una orden (opcional)' : 'Selecciona el proveedor primero'"
+              :placeholder="idProveedor ? 'Selecciona una orden' : 'Selecciona el proveedor primero'"
               search-placeholder="Número de orden..."
               :options="recargaPlantaOptions"
               :loading="recargaPlantaQuery.isFetching.value"
               :disabled="saving || !idProveedor"
             />
+            </div>
 
             <template v-if="idRecargaPlantaNum">
-              <AppCheckbox
-                v-model="guardarBalonesAlmacen"
-                label="Registrar retorno de cilindros (ingreso al almacén)"
-                :disabled="saving"
-                class="mt-3"
-              />
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Márcalo si los cilindros ya llegaron. Genera el movimiento de ingreso
-                (ENTRADA_PLANTA_EXTERNA) y deja los balones en almacén. Si aún están en planta,
-                deja sin marcar: la factura queda vinculada y el retorno se completa después.
-              </p>
+              <div class="mt-3 flex items-start gap-1.5">
+                <AppCheckbox
+                  v-model="guardarBalonesAlmacen"
+                  label="Registrar retorno de cilindros"
+                  :disabled="saving"
+                />
+                <AppHelpTip
+                  text="Márcalo si los cilindros ya llegaron: ingresan al almacén (En almacén / Lleno). Si aún están en planta, déjalo apagado: la factura queda vinculada y el retorno se completa después."
+                />
+              </div>
 
               <div
                 v-if="guardarBalonesAlmacen"
@@ -256,13 +282,6 @@
                 />
               </div>
 
-              <div
-                v-if="guardarBalonesAlmacen"
-                class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-              >
-                Al guardar, los cilindros de la orden pasarán a
-                <strong>En almacén / Lleno</strong> y se registrará el movimiento de ingreso.
-              </div>
             </template>
 
             <div v-if="idRecargaPlantaNum" class="mt-4">
@@ -274,6 +293,7 @@
                 :loading="recargaPlantaDetalleQuery.isFetching.value"
               />
             </div>
+            </template>
           </DetailSectionCard>
 
           <DetailSectionCard
@@ -346,6 +366,54 @@
                           >
                             {{ lin.nombreUnidadMedida }}
                           </span>
+                          <AppBadge
+                            v-if="lin.esGas"
+                            size="sm"
+                            variant="light"
+                            color="primary"
+                          >
+                            Gas
+                          </AppBadge>
+                          <AppBadge
+                            v-if="lin.esServicio"
+                            size="sm"
+                            variant="light"
+                            color="neutral"
+                          >
+                            Servicio
+                          </AppBadge>
+                          <AppBadge
+                            v-if="lin.esAlquilable"
+                            size="sm"
+                            variant="light"
+                            color="warning"
+                          >
+                            Alquilable
+                          </AppBadge>
+                          <AppBadge
+                            v-if="lin.nombreCategoria"
+                            size="sm"
+                            variant="light"
+                            color="neutral"
+                          >
+                            {{ lin.nombreCategoria }}
+                          </AppBadge>
+                          <AppBadge
+                            v-if="lin.presentacion"
+                            size="sm"
+                            variant="light"
+                            color="neutral"
+                          >
+                            {{ lin.presentacion }}
+                          </AppBadge>
+                          <AppBadge
+                            v-if="lin.marca"
+                            size="sm"
+                            variant="light"
+                            color="neutral"
+                          >
+                            {{ lin.marca }}
+                          </AppBadge>
                           <AppBadge
                             v-if="lin.cilindrosRecarga"
                             size="sm"
@@ -472,15 +540,28 @@
                 v-model="idCondicionPago"
                 label="Condición pago"
                 placeholder="Seleccionar"
+                help="Crédito o cuotas: verás un preview editable. Al guardar se crea la cuenta por pagar."
                 :options="condicionPagoOptions"
                 :loading="condicionesQuery.isFetching.value"
                 :disabled="saving"
               />
             </div>
+            <CompraPagoPreview
+              v-if="esPlanCuotas || esCreditoPago"
+              class="mt-5"
+              :modo="esPlanCuotas ? 'cuotas' : 'credito'"
+              v-model:cuotas="cuotasPlan"
+              v-model:fecha-vencimiento="fechaVencimientoCredito"
+              v-model:dia-mes-pago="diaMesPagoEditable"
+              :total="totalParaCuotas"
+              :dias-credito="Number(condicionPagoSeleccionada?.dias_credito ?? 0)"
+              :disabled="saving"
+            />
             <AppTextarea v-model="glosa" label="Glosa" placeholder="Opcional" :disabled="saving" class="mt-5" />
-            <AppCheckbox
+            <AppSwitch
               v-model="declararSunat"
               label="Declarar SUNAT"
+              :help="DECLARAR_SUNAT_HELP"
               :disabled="saving"
               class="mt-4"
             />
@@ -686,6 +767,7 @@ import type {
   CompraFormMode,
   CompraLineaForm,
 } from '@/modules/compras/interfaces/compra.interface'
+import CompraPagoPreview from '@/modules/compras/components/CompraPagoPreview.vue'
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
 import CompraRecargaPlantaDetalle from '@/modules/compras/components/CompraRecargaPlantaDetalle.vue'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
@@ -716,6 +798,14 @@ import {
 } from '@/shared/utils/unidadMedidaCantidad'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import {
+  fechaVencimientoCredito as calcularVencimientoCredito,
+  previewCuotasCompra,
+  redistribuirMontos,
+  type CuotaPreviewItem,
+} from '@/modules/compras/utils/previewCuotasCompra'
+import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ListaIds, TipoClienteIds } from '@/shared/constants/lista-ids'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
@@ -724,10 +814,12 @@ import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import {
   AppBadge,
   AppCheckbox,
+  AppHelpTip,
   AppInput,
   AppSelect,
   AppSelectSearch,
   AppSelectWithCreate,
+  AppSwitch,
   AppTextarea,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -892,6 +984,7 @@ const [serie, serieAttrs] = defineField('serie')
 const [numero, numeroAttrs] = defineField('numero')
 const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
 const [idRecargaPlanta] = defineField('idRecargaPlanta')
+const desdeRecargaExterna = ref(false)
 const [guardarBalonesAlmacen] = defineField('guardarBalonesAlmacen')
 const [fechaLlegadaAlmacen] = defineField('fechaLlegadaAlmacen')
 const [lote] = defineField('lote')
@@ -909,6 +1002,8 @@ const [idMoneda, idMonedaAttrs] = defineField('idMoneda')
 const [idCondicionPago] = defineField('idCondicionPago')
 const [glosa] = defineField('glosa')
 const [declararSunat] = defineField('declararSunat')
+const DECLARAR_SUNAT_HELP =
+  'Marca la factura para el registro de compras SUNAT (PLE). No la envía por internet; solo la clasifica para declarar.'
 
 const lineas = reactive<CompraLineaForm[]>([])
 const lineasExistentes = computed(() => compraData.value?.detalle ?? [])
@@ -946,7 +1041,25 @@ const tipoRegistroQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_REG
 const categoriaGastoQuery = useListaOpcionesQuery(computed(() => ListaIds.CATEGORIA_GASTO))
 const monedaQuery = useListaOpcionesQuery(computed(() => ListaIds.MONEDA))
 
-const tipoComprobanteOptions = computed(() => toSelectOptions(tipoComprobanteQuery.data.value))
+const tipoComprobanteOptions = computed(() => {
+  const items = (tipoComprobanteQuery.data.value ?? []).filter(
+    (item) => !esVentaSinDocumentoTipo({ codigo: item.descripcion, nombre: item.nombre }),
+  )
+  const sorted = [...items].sort((a, b) => {
+    const ca = String(a.descripcion ?? '')
+    const cb = String(b.descripcion ?? '')
+    const aNum = /^\d+$/.test(ca)
+    const bNum = /^\d+$/.test(cb)
+    if (aNum && bNum) return ca.localeCompare(cb, undefined, { numeric: true })
+    if (aNum) return -1
+    if (bNum) return 1
+    return formatListaOpcionLabel(a.nombre, a.descripcion).localeCompare(
+      formatListaOpcionLabel(b.nombre, b.descripcion),
+      'es',
+    )
+  })
+  return toSelectOptions(sorted)
+})
 const tipoRegistroOptions = computed(() => toSelectOptions(tipoRegistroQuery.data.value))
 const categoriaGastoOptions = computed(() => toSelectOptions(categoriaGastoQuery.data.value))
 const monedaOptions = computed(() => toSelectOptions(monedaQuery.data.value))
@@ -1045,11 +1158,19 @@ watch(
     if (isEdit.value) return
     const id = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : NaN
     if (!Number.isFinite(id) || id <= 0) return
+    desdeRecargaExterna.value = true
     idGuiaRetorno.value = id
     guardarBalonesAlmacen.value = true
   },
   { immediate: true },
 )
+
+watch(desdeRecargaExterna, (on) => {
+  if (on || suppressRecargaPlantaReset.value) return
+  idRecargaPlanta.value = ''
+  resetRetornoFields()
+  quitarLineasDeRecargaPlanta()
+})
 
 watch(
   () => guiaRetornoDetalleQuery.data.value,
@@ -1168,13 +1289,106 @@ const sucursalOptions = computed(() => toSelectOptions(sucursalesQuery.data.valu
 
 const condicionesFilters = ref({ pagina: 1, limite: 100 })
 const condicionesQuery = useCondicionesPagoQuery(condicionesFilters)
-const condicionPagoOptions = computed(() => toSelectOptions(condicionesQuery.data.value?.data))
+const condicionPagoOptions = computed(() =>
+  (condicionesQuery.data.value?.data ?? []).map((item) => {
+    const cuotas = Number(item.numero_cuotas ?? 0)
+    const dias = Number(item.dias_credito ?? 0)
+    const nombre = item.nombre
+    const yaDetalla = /cuota|día|dias/i.test(nombre)
+    let extra = ''
+    if (!yaDetalla) {
+      if (cuotas > 1) extra = `${cuotas} cuotas · día ${item.dia_mes_pago ?? '—'}`
+      else if (dias > 0) extra = `${dias} días`
+    }
+    return { value: item.id, label: extra ? `${nombre} (${extra})` : nombre }
+  }),
+)
+const condicionPagoSeleccionada = computed(
+  () =>
+    (condicionesQuery.data.value?.data ?? []).find(
+      (item) => item.id === Number(idCondicionPago.value),
+    ) ?? null,
+)
+const numeroCuotasCondicion = computed(() =>
+  Number(condicionPagoSeleccionada.value?.numero_cuotas ?? 0),
+)
+const diaMesPagoCondicion = computed(() =>
+  Number(condicionPagoSeleccionada.value?.dia_mes_pago ?? 0),
+)
+const esPlanCuotas = computed(() => numeroCuotasCondicion.value > 1)
+const esCreditoPago = computed(
+  () =>
+    !esPlanCuotas.value && Number(condicionPagoSeleccionada.value?.dias_credito ?? 0) > 0,
+)
+const fechaParaCuotas = computed(() =>
+  isEdit.value ? (cabecera.value?.fecha ?? '').slice(0, 10) : String(fecha.value || ''),
+)
+const totalLineas = computed(() =>
+  lineas.reduce((acc, lin) => acc + (Number(lin.precioUnitario) || 0) * Number(lin.cantidad), 0),
+)
+const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value))
+const totalParaCuotas = computed(() => {
+  if (!isEdit.value) return totalesDetalle.value.total
+  const existentes = lineasExistentes.value
+  if (!existentes.length) return Number(cabecera.value?.total_importe ?? 0)
+  return existentes.reduce((acc, det) => {
+    const draft = lineasDraft[det.id]
+    const cantidad = draft?.cantidad ?? det.cantidad
+    const precio = draft?.precio ?? det.precio_unitario ?? 0
+    return acc + Number(cantidad) * Number(precio)
+  }, 0)
+})
+const cuotasPlan = ref<CuotaPreviewItem[]>([])
+const fechaVencimientoCredito = ref('')
+const diaMesPagoEditable = ref(0)
+
+watch(
+  () =>
+    [
+      Number(idCondicionPago.value) || 0,
+      fechaParaCuotas.value,
+      numeroCuotasCondicion.value,
+      Number(condicionPagoSeleccionada.value?.dias_credito ?? 0),
+      diaMesPagoCondicion.value,
+    ] as const,
+  () => {
+    diaMesPagoEditable.value = diaMesPagoCondicion.value
+    if (esPlanCuotas.value) {
+      cuotasPlan.value = previewCuotasCompra({
+        total: totalParaCuotas.value,
+        numeroCuotas: numeroCuotasCondicion.value,
+        fechaCompra: fechaParaCuotas.value,
+        diasCredito: Number(condicionPagoSeleccionada.value?.dias_credito ?? 0),
+        diaMesPago: diaMesPagoEditable.value,
+      })
+      fechaVencimientoCredito.value = ''
+      return
+    }
+    if (esCreditoPago.value) {
+      cuotasPlan.value = []
+      fechaVencimientoCredito.value = calcularVencimientoCredito(
+        fechaParaCuotas.value,
+        Number(condicionPagoSeleccionada.value?.dias_credito ?? 0),
+      )
+      return
+    }
+    cuotasPlan.value = []
+    fechaVencimientoCredito.value = ''
+  },
+)
+
+watch(totalParaCuotas, (total) => {
+  if (cuotasPlan.value.length > 1) {
+    cuotasPlan.value = redistribuirMontos(cuotasPlan.value, total)
+  }
+})
 
 const productosFilters = ref({
   pagina: 1,
   limite: 50,
   soloActivos: 1 as number,
   buscar: undefined as string | undefined,
+  idAlmacen: undefined as number | undefined,
 })
 const productosQuery = useProductosQuery(productosFilters)
 const lineaIdProducto = ref<number | ''>('')
@@ -1186,11 +1400,39 @@ watch(lineaProductoBuscar, (v) => {
     productosFilters.value = { ...productosFilters.value, buscar: v.trim() || undefined }
   }, 350)
 })
+watch(
+  () => (idAlmacen.value === '' || idAlmacen.value == null ? undefined : Number(idAlmacen.value)),
+  (id) => {
+    productosFilters.value = { ...productosFilters.value, idAlmacen: id }
+  },
+  { immediate: true },
+)
 const productoOptions = computed(() =>
-  (productosQuery.data.value?.data ?? []).map((p) => ({
-    value: p.id,
-    label: `${p.codigo} - ${p.nombre}${p.afecta_stock ? ' · Ingresa stock' : ' · Sin stock'}`,
-  })),
+  (productosQuery.data.value?.data ?? []).map((p) => {
+    const badges: NonNullable<SelectOption['badges']> = []
+    if (p.es_gas) badges.push({ label: 'Gas', color: 'primary' })
+    if (p.es_servicio) badges.push({ label: 'Servicio', color: 'neutral' })
+    if (p.es_alquilable) badges.push({ label: 'Alquilable', color: 'warning' })
+    if (p.nombre_categoria) badges.push({ label: p.nombre_categoria, color: 'neutral' })
+    if (p.nombre_sub_categoria) badges.push({ label: p.nombre_sub_categoria, color: 'neutral' })
+    if (p.nombre_unidad_medida) badges.push({ label: p.nombre_unidad_medida, color: 'neutral' })
+    if (p.presentacion) badges.push({ label: p.presentacion, color: 'neutral' })
+    if (p.marca) badges.push({ label: p.marca, color: 'neutral' })
+    if (p.afecta_stock) badges.push({ label: 'Ingresa stock', color: 'primary' })
+    else badges.push({ label: 'Sin stock', color: 'neutral' })
+    if (p.stock_actual != null) {
+      badges.push({
+        label: `Stock: ${p.stock_actual}`,
+        color: Number(p.stock_actual) <= 0 ? 'error' : 'success',
+      })
+    }
+    return {
+      value: p.id,
+      title: `${p.codigo} — ${p.nombre}`,
+      label: `${p.codigo} — ${p.nombre}`,
+      badges,
+    }
+  }),
 )
 
 watch(
@@ -1323,6 +1565,11 @@ async function agregarProducto(producto: Producto) {
     idUnidadMedida: producto.id_unidad_medida ?? null,
     nombreUnidadMedida: unidad,
     esGas,
+    esServicio: Boolean(producto.es_servicio),
+    esAlquilable: Boolean(producto.es_alquilable),
+    nombreCategoria: producto.nombre_categoria ?? null,
+    marca: producto.marca ?? null,
+    presentacion: producto.presentacion ?? null,
     afectaStock: Boolean(producto.afecta_stock),
   })
   toastSuccess(`${producto.nombre} agregado`)
@@ -1338,11 +1585,6 @@ async function eliminarLinea(idDetalle: number) {
     lineaEliminando.value = null
   }
 }
-
-const totalLineas = computed(() =>
-  lineas.reduce((acc, lin) => acc + (Number(lin.precioUnitario) || 0) * Number(lin.cantidad), 0),
-)
-const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value))
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
@@ -1378,6 +1620,7 @@ function resetCreateForm() {
   recargaRetornoPrefillFor.value = null
   recargaPlantaFilters.value = { pagina: 1, limite: 50 }
   recargaPlantaLineasSyncedFor.value = null
+  desdeRecargaExterna.value = false
   lineas.splice(0, lineas.length)
   proveedorBuscar.value = ''
   proveedorCreadoOption.value = null
@@ -1423,6 +1666,7 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
   }
 
   recargaPlantaLineasSyncedFor.value = c.id_recarga_planta ?? null
+  desdeRecargaExterna.value = Boolean(c.id_recarga_planta)
 
   proveedorBuscar.value = c.proveedor ?? ''
 
@@ -1515,6 +1759,13 @@ const onSubmit = handleSubmit(async (values) => {
         idCondicionPago: toOptionalNumber(values.idCondicionPago),
         idCategoriaGasto: toOptionalNumber(values.idCategoriaGasto),
         declararSunat: values.declararSunat,
+        fechaVencimiento: esCreditoPago.value
+          ? fechaVencimientoCredito.value || undefined
+          : undefined,
+        cuotas:
+          esPlanCuotas.value && cuotasPlan.value.length > 1
+            ? cuotasPlan.value.map((c) => ({ fechaPago: c.fechaPago, monto: c.monto }))
+            : undefined,
       },
     })
     emit('saved', updated.cabecera.id)
@@ -1565,7 +1816,8 @@ const onSubmit = handleSubmit(async (values) => {
     idUnidadMedida: l.idUnidadMedida ?? undefined,
   }))
 
-  const conRecarga = toOptionalNumber(values.idRecargaPlanta) != null
+  const conRecarga =
+    desdeRecargaExterna.value && toOptionalNumber(values.idRecargaPlanta) != null
   const registrarRetorno = conRecarga && Boolean(values.guardarBalonesAlmacen)
 
   const created = await createMutation.mutateAsync({
@@ -1604,6 +1856,13 @@ const onSubmit = handleSubmit(async (values) => {
     idComprobanteReferencia: props.referenciaCompraId ?? undefined,
     declararSunat: values.declararSunat,
     glosa: values.glosa?.trim() || undefined,
+    fechaVencimiento: esCreditoPago.value
+      ? fechaVencimientoCredito.value || undefined
+      : undefined,
+    cuotas:
+      esPlanCuotas.value && cuotasPlan.value.length > 1
+        ? cuotasPlan.value.map((c) => ({ fechaPago: c.fechaPago, monto: c.monto }))
+        : undefined,
     detalles,
   })
   emit('saved', created.cabecera.id)

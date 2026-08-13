@@ -8,6 +8,6 @@ export function useListaOpcionesQuery(idLista: Ref<number>) {
     queryKey: computed(() => catalogosQueryKeys.listaOpciones(idLista.value)),
     queryFn: () => catalogosService.listarListaOpciones(idLista.value),
     enabled: computed(() => idLista.value > 0),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
   })
 }

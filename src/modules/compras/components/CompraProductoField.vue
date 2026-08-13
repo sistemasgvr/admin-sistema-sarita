@@ -28,21 +28,15 @@
       v-if="canCreate"
       v-model="formModalOpen"
       mode="create"
-      :categorias="categorias"
-      :sub-categorias="subCategorias"
       @saved="onProductoSaved"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import ProductoFormModal from '@/modules/productos/articulos/components/ProductoFormModal.vue'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
-import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
-import { subCategoriasProductoService } from '@/modules/productos/sub-categorias/services/sub-categorias-producto.service'
-import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -79,24 +73,6 @@ const authStore = useAuthStore()
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_CREAR))
 
 const formModalOpen = ref(false)
-const categorias = ref<CategoriaProducto[]>([])
-const subCategorias = ref<SubCategoriaProducto[]>([])
-
-onMounted(async () => {
-  if (!canCreate.value) return
-
-  try {
-    const [categoriasResponse, subCategoriasResponse] = await Promise.all([
-      categoriasProductoService.listar({ pagina: 1, limite: 100 }),
-      subCategoriasProductoService.listar({ pagina: 1, limite: 500 }),
-    ])
-    categorias.value = categoriasResponse.data
-    subCategorias.value = subCategoriasResponse.data
-  } catch {
-    categorias.value = []
-    subCategorias.value = []
-  }
-})
 
 function onProductoSaved(producto?: Producto) {
   if (!producto) return

@@ -155,6 +155,7 @@ import {
   AppModal,
   AppPagination,
   AppTable,
+  ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'

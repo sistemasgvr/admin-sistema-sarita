@@ -196,22 +196,34 @@
         </div>
 
         <div v-else class="grid gap-3 sm:grid-cols-2">
-          <AppInput
-            v-model="remitenteNombreLibre"
-            label="Nombre / razón social"
-            placeholder="Nombre del remitente..."
-            required
-            :disabled="saving"
-            :error="remitenteLibreErrorNombre"
-          />
-          <AppInput
+          <ConsultaDocumentoInput
             v-model="remitenteDocumentoLibre"
             label="Documento (DNI / RUC)"
             placeholder="8 u 11 dígitos"
+            help="Primero el DNI o RUC. Si no aparece, escribe el nombre a mano."
             required
             :disabled="saving"
             :error="remitenteLibreErrorDocumento"
-            help="SUNAT exige documento del remitente en GRE transportista (31)."
+            @dni-encontrado="aplicarConsultaRemitenteDni"
+            @ruc-encontrado="aplicarConsultaRemitenteRuc"
+            @consulta-sin-resultado="permitirNombreRemitenteManual"
+          />
+          <AppInput
+            v-model="remitenteNombreLibre"
+            label="Nombre / razón social"
+            :placeholder="
+              remitenteNombreManual
+                ? 'Escribe el nombre si no apareció'
+                : 'Se completa al consultar el documento'
+            "
+            required
+            :disabled="saving || !remitenteNombreManual"
+            :error="remitenteLibreErrorNombre"
+            :help="
+              remitenteNombreManual
+                ? undefined
+                : 'Consulta el documento. Si no se encuentra, podrás escribirlo aquí.'
+            "
           />
         </div>
       </div>
@@ -271,22 +283,34 @@
         </div>
 
         <div v-else class="grid gap-3 sm:grid-cols-2">
-          <AppInput
-            v-model="destinatarioNombreLibre"
-            label="Nombre / razón social"
-            placeholder="Nombre del destinatario..."
-            required
-            :disabled="saving"
-            :error="destinatarioLibreErrorNombre"
-          />
-          <AppInput
+          <ConsultaDocumentoInput
             v-model="destinatarioDocumentoLibre"
             label="Documento (DNI / RUC)"
             placeholder="8 u 11 dígitos"
+            help="Primero el DNI o RUC. Si no aparece, escribe el nombre a mano."
             required
             :disabled="saving"
             :error="destinatarioLibreErrorDocumento"
-            help="SUNAT exige documento del destinatario aunque no esté en el sistema."
+            @dni-encontrado="aplicarConsultaDestinatarioDni"
+            @ruc-encontrado="aplicarConsultaDestinatarioRuc"
+            @consulta-sin-resultado="permitirNombreDestinatarioManual"
+          />
+          <AppInput
+            v-model="destinatarioNombreLibre"
+            label="Nombre / razón social"
+            :placeholder="
+              destinatarioNombreManual
+                ? 'Escribe el nombre si no apareció'
+                : 'Se completa al consultar el documento'
+            "
+            required
+            :disabled="saving || !destinatarioNombreManual"
+            :error="destinatarioLibreErrorNombre"
+            :help="
+              destinatarioNombreManual
+                ? undefined
+                : 'Consulta el documento. Si no se encuentra, podrás escribirlo aquí.'
+            "
           />
         </div>
       </div>
@@ -409,9 +433,7 @@
         <div class="space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-800">
           <div class="flex items-center gap-1.5">
             <p class="text-sm font-medium text-gray-800 dark:text-white/90">Punto de llegada</p>
-            <AppHelpTip
-              text="Si el destinatario no tiene direcciones, puedes completarlas manualmente o usar la ubicación del cliente."
-            />
+            <AppHelpTip :text="puntoLlegadaHelp" />
           </div>
           <div v-if="modoDestinatario === 'cliente'" class="flex items-end gap-2">
             <div class="min-w-0 flex-1">
@@ -440,12 +462,6 @@
               <AppIcon :name="ICONS.plus" :size="18" />
             </button>
           </div>
-          <p v-else class="text-xs text-gray-500 dark:text-gray-400">
-            Completa la dirección de llegada manualmente (destinatario no registrado).
-          </p>
-          <p v-if="llegadaHint" class="text-xs text-gray-500 dark:text-gray-400">
-            {{ llegadaHint }}
-          </p>
           <button
             v-if="puedeUsarUbicacionCliente"
             type="button"
@@ -797,6 +813,11 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import ConsultaDocumentoInput from '@/modules/consultas/components/ConsultaDocumentoInput.vue'
+import type {
+  ConsultaDniData,
+  ConsultaRucData,
+} from '@/modules/consultas/interfaces/consulta.interface'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import ChoferFormModal from '@/modules/choferes/components/ChoferFormModal.vue'
 import { choferesService } from '@/modules/choferes/services/choferes.service'
@@ -937,12 +958,14 @@ type ModoPersonaGuia = 'cliente' | 'libre'
 const modoDestinatario = ref<ModoPersonaGuia>('cliente')
 const destinatarioNombreLibre = ref('')
 const destinatarioDocumentoLibre = ref('')
+const destinatarioNombreManual = ref(false)
 const destinatarioLibreError = ref('')
 const destinatarioLibreErrorNombre = ref('')
 const destinatarioLibreErrorDocumento = ref('')
 const modoRemitente = ref<ModoPersonaGuia>('cliente')
 const remitenteNombreLibre = ref('')
 const remitenteDocumentoLibre = ref('')
+const remitenteNombreManual = ref(false)
 const remitenteLibreErrorNombre = ref('')
 const remitenteLibreErrorDocumento = ref('')
 const modoDestinatarioOptions = [
@@ -961,12 +984,52 @@ const itemsHelpText = computed(() =>
     : 'Cilindro = envase físico. Producto = accesorios/mercadería (sin gases ni servicios). Libre = descripción. El gas viaja con el cilindro.',
 )
 
+function nombreDesdeConsultaDni(data: ConsultaDniData): string {
+  return [data.nombres, data.apellidoPaterno, data.apellidoMaterno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+}
+
+function aplicarConsultaDestinatarioDni(data: ConsultaDniData) {
+  destinatarioNombreLibre.value = nombreDesdeConsultaDni(data)
+  destinatarioNombreManual.value = true
+  destinatarioLibreErrorNombre.value = ''
+}
+
+function aplicarConsultaDestinatarioRuc(data: ConsultaRucData) {
+  destinatarioNombreLibre.value = data.razonSocial?.trim() || ''
+  destinatarioNombreManual.value = true
+  destinatarioLibreErrorNombre.value = ''
+}
+
+function permitirNombreDestinatarioManual() {
+  destinatarioNombreManual.value = true
+}
+
+function aplicarConsultaRemitenteDni(data: ConsultaDniData) {
+  remitenteNombreLibre.value = nombreDesdeConsultaDni(data)
+  remitenteNombreManual.value = true
+  remitenteLibreErrorNombre.value = ''
+}
+
+function aplicarConsultaRemitenteRuc(data: ConsultaRucData) {
+  remitenteNombreLibre.value = data.razonSocial?.trim() || ''
+  remitenteNombreManual.value = true
+  remitenteLibreErrorNombre.value = ''
+}
+
+function permitirNombreRemitenteManual() {
+  remitenteNombreManual.value = true
+}
+
 function cambiarModoDestinatario(modo: ModoPersonaGuia) {
   if (modoDestinatario.value === modo) return
   modoDestinatario.value = modo
   destinatarioLibreError.value = ''
   destinatarioLibreErrorNombre.value = ''
   destinatarioLibreErrorDocumento.value = ''
+  destinatarioNombreManual.value = false
   if (modo === 'cliente') {
     destinatarioNombreLibre.value = ''
     destinatarioDocumentoLibre.value = ''
@@ -1013,6 +1076,7 @@ function cambiarModoRemitente(modo: ModoPersonaGuia) {
   remitenteError.value = ''
   remitenteLibreErrorNombre.value = ''
   remitenteLibreErrorDocumento.value = ''
+  remitenteNombreManual.value = false
   if (modo === 'cliente') {
     remitenteNombreLibre.value = ''
     remitenteDocumentoLibre.value = ''
@@ -1077,6 +1141,18 @@ const canCreateDireccion = computed(() =>
 )
 const llegadaHint = ref('')
 const origenHint = ref('')
+const puntoLlegadaHelp = computed(() => {
+  const parts: string[] = []
+  if (modoDestinatario.value === 'libre') {
+    parts.push('Completa la dirección de llegada manualmente (destinatario no registrado).')
+  } else {
+    parts.push(
+      'Si el destinatario no tiene direcciones, puedes completarlas manualmente o usar la ubicación del cliente.',
+    )
+  }
+  if (llegadaHint.value) parts.push(llegadaHint.value)
+  return parts.join(' ')
+})
 const puntoPartidaHelp = computed(() => {
   const parts: string[] = []
   if (esTipo31.value) {
@@ -2480,12 +2556,14 @@ function resetLocal() {
   modoDestinatario.value = 'cliente'
   destinatarioNombreLibre.value = ''
   destinatarioDocumentoLibre.value = ''
+  destinatarioNombreManual.value = false
   destinatarioLibreError.value = ''
   destinatarioLibreErrorNombre.value = ''
   destinatarioLibreErrorDocumento.value = ''
   modoRemitente.value = 'cliente'
   remitenteNombreLibre.value = ''
   remitenteDocumentoLibre.value = ''
+  remitenteNombreManual.value = false
   remitenteLibreErrorNombre.value = ''
   remitenteLibreErrorDocumento.value = ''
   idRemitente.value = ''
@@ -2597,11 +2675,13 @@ watch(
         destinatarioLabel.value = guia.nombre_destinatario ?? null
         destinatarioNombreLibre.value = ''
         destinatarioDocumentoLibre.value = ''
+        destinatarioNombreManual.value = false
       } else {
         modoDestinatario.value = 'libre'
         destinatarioLabel.value = null
         destinatarioNombreLibre.value = guia.nombre_destinatario ?? ''
         destinatarioDocumentoLibre.value = guia.documento_destinatario ?? ''
+        destinatarioNombreManual.value = Boolean(guia.nombre_destinatario)
       }
       choferLabel.value = guia.nombre_chofer ?? null
       vehiculoLabel.value = guia.placa_vehiculo ?? null
@@ -2613,18 +2693,21 @@ watch(
         remitenteLabel.value = guia.nombre_cliente ?? null
         remitenteNombreLibre.value = ''
         remitenteDocumentoLibre.value = ''
+        remitenteNombreManual.value = false
       } else if (guia.codigo_tipo_guia === '31' && (guia.nombre_cliente || guia.documento_cliente)) {
         modoRemitente.value = 'libre'
         idRemitente.value = ''
         remitenteLabel.value = null
         remitenteNombreLibre.value = guia.nombre_cliente ?? ''
         remitenteDocumentoLibre.value = guia.documento_cliente ?? ''
+        remitenteNombreManual.value = Boolean(guia.nombre_cliente)
       } else {
         modoRemitente.value = 'cliente'
         idRemitente.value = ''
         remitenteLabel.value = null
         remitenteNombreLibre.value = ''
         remitenteDocumentoLibre.value = ''
+        remitenteNombreManual.value = false
       }
 
       almacenesFilters.value = {
