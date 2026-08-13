@@ -1,3 +1,14 @@
+export interface ActividadItem {
+  id?: number
+  item?: number
+  id_producto?: number | null
+  nombre_producto?: string | null
+  descripcion?: string | null
+  cantidad: number
+  id_balon?: number | null
+  codigo_balon?: string | null
+}
+
 export interface Actividad {
   id: number
   titulo: string
@@ -12,8 +23,15 @@ export interface Actividad {
   nombre_prioridad?: string | null
   id_cliente?: number | null
   razon_social_cliente?: string | null
+  latitud_cliente?: number | null
+  longitud_cliente?: number | null
   id_usuario_responsable?: number | null
   nombre_usuario_responsable?: string | null
+  id_chofer_responsable?: number | null
+  nombre_chofer_responsable?: string | null
+  id_comprobante?: number | null
+  serie_comprobante?: string | null
+  numero_comprobante?: string | null
   id_estado_actividad: number
   nombre_estado_actividad?: string | null
   observaciones?: string | null
@@ -24,6 +42,8 @@ export interface Actividad {
   nombre_usuario_creacion?: string | null
   id_usuario_modificacion?: number | null
   nombre_usuario_modificacion?: string | null
+  items?: ActividadItem[]
+  en_curso?: boolean
 }
 
 /** Filtros soportados por GET /operativa/actividades */
@@ -34,6 +54,16 @@ export interface ActividadListFilters {
   fechaDesde?: string
   fechaHasta?: string
   idEstado?: number
+  idTipo?: number
+  idPrioridad?: number
+}
+
+export interface ActividadItemPayload {
+  item?: number
+  idProducto?: number
+  descripcion?: string
+  cantidad?: number
+  idBalon?: number
 }
 
 /** Body compartido por POST y PATCH /operativa/actividades */
@@ -49,6 +79,9 @@ export interface ActividadPayload {
   idPrioridad: number
   idCliente?: number
   idUsuarioResponsable?: number
+  idChoferResponsable?: number
+  idComprobante?: number
+  items?: ActividadItemPayload[]
   idEstadoActividad: number
   observaciones?: string
 }
@@ -63,7 +96,11 @@ export interface DeleteActividadResponse {
 
 export type ActividadFormMode = 'create' | 'edit'
 
-/** Respuesta cruda del backend para GET/POST/PATCH de un solo registro. */
-export interface ActividadRegistroRawData {
-  registro: Actividad
+/** Prefill al crear un reparto desde una venta. */
+export interface ActividadRepartoPrefill {
+  titulo?: string | null
+  clienteId?: number | null
+  clienteLabel?: string | null
+  idComprobante?: number | null
+  items?: ActividadItem[]
 }

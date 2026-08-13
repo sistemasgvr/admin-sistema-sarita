@@ -27,6 +27,12 @@ export interface ComprobanteListItem {
   numero_comprobante_destino?: string | null
   codigo_tipo_comprobante_destino?: string | null
   nombre_tipo_comprobante_destino?: string | null
+  id_actividad?: number | null
+  titulo_actividad?: string | null
+  nombre_tipo_actividad?: string | null
+  nombre_estado_actividad?: string | null
+  nombre_chofer_responsable?: string | null
+  tiene_actividad?: boolean | null
 }
 
 export interface ComprobanteDetalle {

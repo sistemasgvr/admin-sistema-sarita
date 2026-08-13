@@ -28,10 +28,19 @@
         <p class="font-medium text-gray-800 dark:text-white/90">
           {{ row.serie }}-{{ row.numero }}
         </p>
-        <div class="mt-1">
+        <div class="mt-1 flex flex-wrap items-center gap-1">
           <ListaOpcionBadge
             :value="row.nombre_tipo_comprobante ?? row.codigo_tipo_comprobante"
           />
+          <AppBadge
+            v-if="tieneActividadVigente(row)"
+            size="sm"
+            :color="esActividadRealizada(row.nombre_estado_actividad) ? 'success' : 'primary'"
+            :icon="ICONS.truck"
+            :title="row.titulo_actividad || row.nombre_estado_actividad || 'Con actividad'"
+          >
+            {{ esTipoRepartoNombre(row.nombre_tipo_actividad) ? 'Reparto' : 'Actividad' }}
+          </AppBadge>
         </div>
       </template>
 
@@ -100,7 +109,23 @@
       </template>
     </AppTable>
 
-    <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
+    <ComprobanteDetailModal
+      v-model="detailModalOpen"
+      :comprobante-id="comprobanteToViewId"
+      @agregar-reparto="openRepartoDesdeVenta"
+    />
+
+    <ActividadFormModal
+      v-model="repartoModalOpen"
+      mode="create"
+      lock-tipo-reparto
+      :default-fecha="repartoFechaHoy"
+      :default-titulo="repartoPrefill.titulo"
+      :default-cliente-id="repartoPrefill.clienteId"
+      :default-cliente-label="repartoPrefill.clienteLabel"
+      :default-id-comprobante="repartoPrefill.idComprobante"
+      :default-items="repartoPrefill.items"
+    />
 
     <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
 
@@ -177,6 +202,13 @@ import {
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import { CLIENTES_VARIOS_DOCUMENTO } from '@/modules/clientes/constants/clientesVarios'
 import { obtenerClientesVarios } from '@/modules/clientes/utils/clientesVarios'
+import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
+import type { ActividadItem, ActividadRepartoPrefill } from '@/modules/operativa/actividades/interfaces/actividad.interface'
+import {
+  esActividadRealizada,
+  esTipoRepartoNombre,
+  tieneActividadVigente,
+} from '@/modules/operativa/actividades/utils/actividadTipo'
 import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
@@ -187,6 +219,7 @@ import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue
 import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import type {
+  Comprobante,
   ComprobanteListFilters,
   ComprobanteListItem,
 } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
@@ -211,7 +244,15 @@ import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppActionMenu, AppListToolbar, AppModal, AppPagination, AppTable, ListaOpcionBadge } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+  ListaOpcionBadge,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
@@ -287,6 +328,19 @@ const canConsultarCdr = computed(() =>
   authStore.hasPermission(PermisoBanderas.COMPROBANTES_CONSULTAR_CDR),
 )
 const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
+const canAgregarReparto = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
+)
+
+const repartoModalOpen = ref(false)
+const repartoPrefill = ref<ActividadRepartoPrefill>({})
+const repartoFechaHoy = computed(() => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+})
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 
 const isLoading = computed(() => comprobantesQuery.isFetching.value)
@@ -507,6 +561,17 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !(canEmit.value && puedeEmitir(row)),
     },
     {
+      key: 'reparto',
+      label: 'Agregar a reparto',
+      icon: ICONS.truck,
+      disabled: busy,
+      hidden: !(
+        canAgregarReparto.value &&
+        Boolean(row.id_cliente) &&
+        !tieneActividadVigente(row)
+      ),
+    },
+    {
       key: 'nota-credito',
       label: 'Nota de crédito',
       icon: ICONS.fileText,
@@ -573,6 +638,9 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
       return
     case 'emit':
       return emitirComprobante(row)
+    case 'reparto':
+      openRepartoDesdeVenta(row)
+      return
     case 'nota-credito':
       openNotaCreditoModal(row)
       return
@@ -634,6 +702,35 @@ async function imprimirPdf(row: ComprobanteListItem, formato: ComprobantePdfForm
 function openDetailModal(row: ComprobanteListItem) {
   comprobanteToViewId.value = row.id
   detailModalOpen.value = true
+}
+
+function toRepartoItems(comprobante: Comprobante | ComprobanteListItem): ActividadItem[] {
+  if (!('detalles' in comprobante) || !Array.isArray(comprobante.detalles)) return []
+  return comprobante.detalles.map((d, idx) => ({
+    item: d.item ?? idx + 1,
+    id_producto: d.id_producto,
+    nombre_producto: d.nombre_producto,
+    descripcion: d.descripcion || d.nombre_producto || undefined,
+    cantidad: Number(d.cantidad) || 1,
+    id_balon: d.id_balon,
+    codigo_balon: d.codigo_balon,
+  }))
+}
+
+function openRepartoDesdeVenta(row: Comprobante | ComprobanteListItem) {
+  if (!row.id_cliente) {
+    toastWarning('El comprobante no tiene cliente para programar el reparto.')
+    return
+  }
+  detailModalOpen.value = false
+  repartoPrefill.value = {
+    titulo: `Reparto ${row.serie}-${row.numero}`,
+    clienteId: row.id_cliente,
+    clienteLabel: row.nombre_cliente ?? null,
+    idComprobante: row.id,
+    items: toRepartoItems(row),
+  }
+  repartoModalOpen.value = true
 }
 
 useOpenIdFromRouteQuery({

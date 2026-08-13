@@ -24,6 +24,57 @@
       </AppListToolbar>
     </div>
 
+    <div v-if="alertasProximas.length" class="mb-4 space-y-2">
+      <div
+        v-for="a in alertasProximas"
+        :key="`alerta-${a.id}`"
+        class="flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+        :class="
+          a.en_curso
+            ? 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10'
+            : 'border-brand-200 bg-brand-50 dark:border-brand-500/30 dark:bg-brand-500/10'
+        "
+      >
+        <div class="min-w-0">
+          <div class="mb-1 flex flex-wrap items-center gap-2">
+            <AppBadge :color="a.en_curso ? 'warning' : 'primary'" size="sm">
+              {{ a.en_curso ? 'En curso' : 'Próxima' }}
+            </AppBadge>
+            <ListaOpcionBadge v-if="a.nombre_tipo_actividad" :value="a.nombre_tipo_actividad" />
+          </div>
+          <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ a.titulo }}</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400">
+            {{ formatHoraRango(a.hora_inicio_estimada, a.hora_fin_estimada) }}
+            · {{ a.razon_social_cliente ?? 'Sin cliente' }}
+            <span v-if="a.nombre_chofer_responsable"> · {{ a.nombre_chofer_responsable }}</span>
+          </p>
+        </div>
+        <div class="flex shrink-0 flex-wrap gap-2">
+          <button
+            v-if="canView"
+            type="button"
+            class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            @click="openDetailModal(a)"
+          >
+            Ver
+          </button>
+          <button
+            v-if="
+              canEdit &&
+              !esActividadRealizada(a.nombre_estado_actividad) &&
+              !esActividadCancelada(a.nombre_estado_actividad)
+            "
+            type="button"
+            class="inline-flex items-center justify-center rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
+            :disabled="marcarMutation.isPending.value"
+            @click="marcarRealizada(a)"
+          >
+            Marcar realizada
+          </button>
+        </div>
+      </div>
+    </div>
+
     <AppTabs v-model="activeTab" :tabs="tabs" inline class="mb-4" />
 
     <div v-show="activeTab === 'lista'">
@@ -66,6 +117,24 @@
               —
             </span>
           </div>
+        </template>
+
+        <template #cell-tipo="{ row }">
+          <ListaOpcionBadge
+            v-if="row.nombre_tipo_actividad"
+            :value="row.nombre_tipo_actividad"
+          />
+          <span v-else class="text-gray-400">—</span>
+        </template>
+
+        <template #cell-responsable="{ row }">
+          <p v-if="row.nombre_chofer_responsable" class="truncate text-gray-800 dark:text-white/90">
+            {{ row.nombre_chofer_responsable }}
+          </p>
+          <p v-else-if="row.nombre_usuario_responsable" class="truncate text-gray-800 dark:text-white/90">
+            {{ row.nombre_usuario_responsable }}
+          </p>
+          <span v-else class="text-gray-400">—</span>
         </template>
 
         <template #cell-prioridad="{ row }">
@@ -178,13 +247,22 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import ActividadDetailModal from '@/modules/operativa/actividades/components/ActividadDetailModal.vue'
 import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
 import ActividadesCalendar from '@/modules/operativa/actividades/components/ActividadesCalendar.vue'
-import { useDeleteActividadMutation } from '@/modules/operativa/actividades/composables/useActividadMutations'
+import {
+  useCancelarActividadMutation,
+  useDeleteActividadMutation,
+  useMarcarActividadRealizadaMutation,
+} from '@/modules/operativa/actividades/composables/useActividadMutations'
+import { useActividadesProximasQuery } from '@/modules/operativa/actividades/composables/useActividadesProximasQuery'
 import { useActividadesQuery } from '@/modules/operativa/actividades/composables/useActividadesQuery'
 import type {
   Actividad,
   ActividadFormMode,
   ActividadListFilters,
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
+import {
+  esActividadCancelada,
+  esActividadRealizada,
+} from '@/modules/operativa/actividades/utils/actividadTipo'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
@@ -264,6 +342,10 @@ const dynamicFilters = ref<DynamicFilterValues>({})
 
 const listaEstadoActividadId = computed(() => ListaIds.ESTADO_ACTIVIDAD)
 const estadoActividadQuery = useListaOpcionesQuery(listaEstadoActividadId)
+const listaTipoActividadId = computed(() => ListaIds.TIPO_ACTIVIDAD)
+const tipoActividadQuery = useListaOpcionesQuery(listaTipoActividadId)
+const listaPrioridadId = computed(() => ListaIds.PRIORIDAD_ACTIVIDAD)
+const prioridadQuery = useListaOpcionesQuery(listaPrioridadId)
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
@@ -273,6 +355,22 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     placeholder: 'Todos los estados',
     disabled: estadoActividadQuery.isFetching.value,
     options: toSelectOptions(estadoActividadQuery.data.value),
+  },
+  {
+    key: 'idTipo',
+    label: 'Tipo',
+    type: 'select',
+    placeholder: 'Todos los tipos',
+    disabled: tipoActividadQuery.isFetching.value,
+    options: toSelectOptions(tipoActividadQuery.data.value),
+  },
+  {
+    key: 'idPrioridad',
+    label: 'Prioridad',
+    type: 'select',
+    placeholder: 'Todas las prioridades',
+    disabled: prioridadQuery.isFetching.value,
+    options: toSelectOptions(prioridadQuery.data.value),
   },
   { key: 'fechaDesde', label: 'Desde', type: 'date' },
   { key: 'fechaHasta', label: 'Hasta', type: 'date' },
@@ -298,6 +396,8 @@ const rows = computed(() => actividadesQuery.data.value?.data ?? [])
 const columns = computed<TableColumn<Actividad>[]>(() => [
   { key: 'actividad', label: 'Actividad' },
   { key: 'programacion', label: 'Programación' },
+  { key: 'tipo', label: 'Tipo' },
+  { key: 'responsable', label: 'Responsable' },
   { key: 'prioridad', label: 'Prioridad' },
   { key: 'estado', label: 'Estado' },
 ])
@@ -330,6 +430,8 @@ function syncListFilters() {
     pagina: pagina.value,
     limite: limite.value,
     idEstado: parseOptionalId(active.idEstado),
+    idTipo: parseOptionalId(active.idTipo),
+    idPrioridad: parseOptionalId(active.idPrioridad),
     fechaDesde: parseOptionalDate(active.fechaDesde),
     fechaHasta: parseOptionalDate(active.fechaHasta),
   }
@@ -340,6 +442,8 @@ function syncCalendarSharedFilters() {
     ...calendarFilters.value,
     buscar: buscar.value.trim() || undefined,
     idEstado: parseOptionalId(dynamicFilters.value.idEstado),
+    idTipo: parseOptionalId(dynamicFilters.value.idTipo),
+    idPrioridad: parseOptionalId(dynamicFilters.value.idPrioridad),
   }
 }
 
@@ -380,12 +484,18 @@ const onCalendarRangeChange = (range: { fechaDesde: string; fechaHasta: string }
     ...calendarFilters.value,
     buscar: buscar.value.trim() || undefined,
     idEstado: parseOptionalId(dynamicFilters.value.idEstado),
+    idTipo: parseOptionalId(dynamicFilters.value.idTipo),
+    idPrioridad: parseOptionalId(dynamicFilters.value.idPrioridad),
     fechaDesde: range.fechaDesde,
     fechaHasta: range.fechaHasta,
   }
 }
 
 const deleteMutation = useDeleteActividadMutation()
+const marcarMutation = useMarcarActividadRealizadaMutation()
+const cancelarMutation = useCancelarActividadMutation()
+const proximasQuery = useActividadesProximasQuery(60, computed(() => canView.value || canCreate.value))
+const alertasProximas = computed(() => proximasQuery.data.value ?? [])
 
 const formModalOpen = ref(false)
 const formMode = ref<ActividadFormMode>('create')
@@ -400,15 +510,35 @@ const actividadToDelete = ref<Actividad | null>(null)
 
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
-function actionItemsForRow(_row: Actividad): ActionMenuItem[] {
-  const busy = deleteMutation.isPending.value
+function actionItemsForRow(row: Actividad): ActionMenuItem[] {
+  const busy =
+    deleteMutation.isPending.value ||
+    marcarMutation.isPending.value ||
+    cancelarMutation.isPending.value
+  const cerrada =
+    esActividadRealizada(row.nombre_estado_actividad) ||
+    esActividadCancelada(row.nombre_estado_actividad)
   return [
     {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
       disabled: busy,
-      hidden: !canEdit.value,
+      hidden: !canEdit.value || cerrada,
+    },
+    {
+      key: 'realizada',
+      label: 'Marcar realizada',
+      icon: ICONS.check,
+      disabled: busy,
+      hidden: !canEdit.value || cerrada,
+    },
+    {
+      key: 'cancelar',
+      label: 'Cancelar',
+      icon: ICONS.ban,
+      disabled: busy,
+      hidden: !canEdit.value || cerrada,
     },
     {
       key: 'delete',
@@ -423,6 +553,8 @@ function actionItemsForRow(_row: Actividad): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: Actividad) {
   if (key === 'edit') openEditModal(row)
+  if (key === 'realizada') void marcarRealizada(row)
+  if (key === 'cancelar') void cancelarActividad(row)
   if (key === 'delete') openDeleteModal(row)
 }
 
@@ -453,6 +585,37 @@ const openDeleteModal = (actividad: Actividad) => {
 const onSelectDate = (fecha: string) => {
   if (!canCreate.value) return
   openCreateModal(fecha)
+}
+
+const marcarRealizada = async (actividad: Actividad) => {
+  if (!currentUserId.value) return
+  try {
+    await marcarMutation.mutateAsync({
+      id: actividad.id,
+      idUsuarioAuditoria: currentUserId.value,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+const cancelarActividad = async (actividad: Actividad) => {
+  if (!currentUserId.value) return
+  if (
+    !window.confirm(
+      '¿Cancelar esta actividad? Si viene de una venta, el comprobante quedará disponible para otro reparto.',
+    )
+  ) {
+    return
+  }
+  try {
+    await cancelarMutation.mutateAsync({
+      id: actividad.id,
+      idUsuarioAuditoria: currentUserId.value,
+    })
+  } catch {
+    // toast en mutation
+  }
 }
 
 const confirmDelete = async () => {

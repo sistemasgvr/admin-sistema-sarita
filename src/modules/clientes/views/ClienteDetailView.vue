@@ -108,7 +108,7 @@
               Direcciones, contactos y relacionados
             </h3>
             <AppHelpTip
-              text="Agrega o edita direcciones, contactos, choferes, vehículos y cuentas desde esta ficha."
+              text="Agrega o edita direcciones, contactos, choferes, vehículos, cuentas y revisa el historial de baja/reactivación."
             />
           </div>
           <ClienteRelatedTabs :id-cliente="cliente.id" />

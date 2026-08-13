@@ -5,6 +5,8 @@ export const actividadesQueryKeys = {
   lists: () => [...actividadesQueryKeys.all, 'list'] as const,
   list: (filters: ActividadListFilters) =>
     [...actividadesQueryKeys.lists(), filters] as const,
+  proximas: (minutos = 60) =>
+    [...actividadesQueryKeys.all, 'proximas', minutos] as const,
   details: () => [...actividadesQueryKeys.all, 'detail'] as const,
   detail: (id: number) => [...actividadesQueryKeys.details(), id] as const,
 }

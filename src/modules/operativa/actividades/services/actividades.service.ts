@@ -1,9 +1,8 @@
-import { apiClient, apiDelete, apiGetPaginated } from '@/shared/api/apiClient'
-import type { ApiResponse, PaginatedResult } from '@/shared/api/interfaces/api.interface'
+import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
+import type { PaginatedResult } from '@/shared/api/interfaces/api.interface'
 import type {
   Actividad,
   ActividadListFilters,
-  ActividadRegistroRawData,
   CreateActividadPayload,
   DeleteActividadResponse,
   UpdateActividadPayload,
@@ -14,32 +13,39 @@ export const actividadesService = {
     return apiGetPaginated<Actividad>('/operativa/actividades', { params: filters })
   },
 
-  async obtenerPorId(id: number): Promise<Actividad> {
-    const response = await apiClient.get<ApiResponse<ActividadRegistroRawData>>(
-      `/operativa/actividades/${id}`,
-    )
-    return response.data.data.registro
+  listarProximas(minutos = 60): Promise<Actividad[]> {
+    return apiGet<Actividad[]>('/operativa/actividades/proximas', {
+      params: { minutos },
+    })
   },
 
-  async crear(payload: CreateActividadPayload): Promise<Actividad> {
-    const response = await apiClient.post<ApiResponse<ActividadRegistroRawData>>(
-      '/operativa/actividades',
-      payload,
-    )
-    return response.data.data.registro
+  obtenerPorId(id: number): Promise<Actividad> {
+    return apiGet<Actividad>(`/operativa/actividades/${id}`)
   },
 
-  async actualizar(id: number, payload: UpdateActividadPayload): Promise<Actividad> {
-    const response = await apiClient.patch<ApiResponse<ActividadRegistroRawData>>(
-      `/operativa/actividades/${id}`,
-      payload,
-    )
-    return response.data.data.registro
+  crear(payload: CreateActividadPayload): Promise<Actividad> {
+    return apiPost<Actividad>('/operativa/actividades', payload)
+  },
+
+  actualizar(id: number, payload: UpdateActividadPayload): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}`, payload)
   },
 
   eliminar(id: number, idUsuarioAuditoria: number) {
     return apiDelete<DeleteActividadResponse>(`/operativa/actividades/${id}`, {
       data: { idUsuarioAuditoria },
+    })
+  },
+
+  marcarComoRealizada(id: number, idUsuarioAuditoria: number): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}/realizada`, {
+      idUsuarioAuditoria,
+    })
+  },
+
+  cancelar(id: number, idUsuarioAuditoria: number): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}/cancelar`, {
+      idUsuarioAuditoria,
     })
   },
 }
