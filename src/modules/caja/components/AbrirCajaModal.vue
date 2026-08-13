@@ -54,7 +54,7 @@ const emit = defineEmits<{ saved: [] }>()
 
 const form = reactive({
   fecha: props.fecha,
-  montoInicial: '0',
+  montoInicial: '',
   observacion: '',
 })
 const errorMonto = ref('')
@@ -65,7 +65,7 @@ const guardando = computed(() => mutation.isPending.value)
 watch(open, (v) => {
   if (v) {
     form.fecha = props.fecha
-    form.montoInicial = '0'
+    form.montoInicial = ''
     form.observacion = ''
     errorMonto.value = ''
     errorFecha.value = ''
