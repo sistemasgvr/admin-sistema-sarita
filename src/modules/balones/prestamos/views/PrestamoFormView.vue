@@ -51,7 +51,7 @@ const prestamoId = computed(() => {
 const pageTitle = computed(() => (isEdit.value ? 'Editar préstamo' : 'Nuevo préstamo'))
 const pageHelpText = computed(() =>
   isEdit.value
-    ? 'Puedes actualizar la cabecera y agregar o devolver cilindros en esta misma pantalla.'
+    ? 'Agregar, editar o devolver un cilindro actualiza el Libro y el stock. Para reingresar usa Devolver, no solo la fecha en el detalle.'
     : 'Primero se registra la cabecera; al crear, en esta misma pantalla podrás agregar los cilindros.',
 )
 const breadcrumbItems = computed(() => balonesPrestamosBreadcrumbItems(pageTitle.value))

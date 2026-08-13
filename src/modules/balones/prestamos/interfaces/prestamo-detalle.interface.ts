@@ -10,8 +10,12 @@ export interface PrestamoDetalle {
   nombre_cliente?: string | null
   /** Almacén del préstamo (para preseleccionar destino al devolver). */
   id_almacen?: number | null
+  nombre_almacen?: string | null
   id_producto?: number | null
   nombre_producto?: string | null
+  id_producto_gas?: number | null
+  nombre_producto_gas?: string | null
+  nombre_estado_balon?: string | null
   motivo_especifico?: string | null
   fecha_entregado?: string | null
   fecha_prestamo?: string | null

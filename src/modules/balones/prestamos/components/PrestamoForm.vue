@@ -60,6 +60,7 @@
                 :disabled="isSubmitting || estadosPrestamoQuery.isFetching.value"
                 :options="estadoPrestamoOptions"
                 :error="errors.idEstado"
+                hint="No lo cierres si aún hay cilindros pendientes; usa Devolver."
               />
 
               <AlmacenSelectField
