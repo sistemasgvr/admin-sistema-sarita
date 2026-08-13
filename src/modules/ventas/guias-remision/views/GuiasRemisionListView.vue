@@ -85,7 +85,7 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar guía de remisión"
-      subtitle="Solo se pueden eliminar guías no aceptadas por SUNAT."
+      subtitle="No se puede eliminar si está aceptada por SUNAT o vinculada a una orden de recarga."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -313,11 +313,31 @@ function puedeEmitir(row: GuiaRemisionListItem) {
 }
 
 function puedeEditar(row: GuiaRemisionListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO'
+  if (row.nombre_estado_sunat === 'ACEPTADO') return false
+  if (row.vinculada_recarga_planta === true) return false
+  return true
+}
+
+function motivoBloqueoEditar(row: GuiaRemisionListItem): string | null {
+  if (row.nombre_estado_sunat === 'ACEPTADO') return 'aceptada SUNAT'
+  if (row.vinculada_recarga_planta === true) {
+    return row.motivo_bloqueo_eliminar ?? 'vinculada a orden'
+  }
+  return null
 }
 
 function puedeEliminar(row: GuiaRemisionListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO'
+  if (row.puede_eliminar === false) return false
+  if (row.nombre_estado_sunat === 'ACEPTADO') return false
+  if (row.vinculada_recarga_planta === true) return false
+  return true
+}
+
+function motivoBloqueoEliminar(row: GuiaRemisionListItem): string | null {
+  if (row.motivo_bloqueo_eliminar) return row.motivo_bloqueo_eliminar
+  if (row.nombre_estado_sunat === 'ACEPTADO') return 'aceptada SUNAT'
+  if (row.vinculada_recarga_planta === true) return 'vinculada a orden'
+  return null
 }
 
 function puedeConsultar(row: GuiaRemisionListItem) {
@@ -326,14 +346,18 @@ function puedeConsultar(row: GuiaRemisionListItem) {
 
 function actionItemsForRow(row: GuiaRemisionListItem): ActionMenuItem[] {
   const busy = pdfBusyId.value !== null || emitMutation.isPending.value || consultarMutation.isPending.value
+  const editBlocked = !puedeEditar(row)
+  const deleteBlocked = !puedeEliminar(row)
+  const motivoEdit = motivoBloqueoEditar(row)
+  const motivoDelete = motivoBloqueoEliminar(row)
 
   return [
     {
       key: 'edit',
-      label: 'Editar',
+      label: editBlocked && motivoEdit ? `Editar (${motivoEdit})` : 'Editar',
       icon: ICONS.pencil,
-      disabled: busy,
-      hidden: !(canEdit.value && puedeEditar(row)),
+      disabled: busy || editBlocked,
+      hidden: !canEdit.value,
     },
     {
       key: 'pdf',
@@ -358,11 +382,11 @@ function actionItemsForRow(row: GuiaRemisionListItem): ActionMenuItem[] {
     },
     {
       key: 'delete',
-      label: 'Eliminar',
+      label: deleteBlocked && motivoDelete ? `Eliminar (${motivoDelete})` : 'Eliminar',
       icon: ICONS.trash,
-      danger: true,
-      disabled: busy,
-      hidden: !(canDelete.value && puedeEliminar(row)),
+      danger: !deleteBlocked,
+      disabled: busy || deleteBlocked,
+      hidden: !canDelete.value,
     },
   ]
 }
@@ -370,6 +394,7 @@ function actionItemsForRow(row: GuiaRemisionListItem): ActionMenuItem[] {
 function onActionSelect(key: string, row: GuiaRemisionListItem) {
   switch (key) {
     case 'edit':
+      if (!puedeEditar(row)) return
       openEdit(row)
       return
     case 'pdf':
@@ -379,6 +404,7 @@ function onActionSelect(key: string, row: GuiaRemisionListItem) {
     case 'status':
       return consultarEstado(row)
     case 'delete':
+      if (!puedeEliminar(row)) return
       guiaToDelete.value = row
       deleteModalOpen.value = true
       return

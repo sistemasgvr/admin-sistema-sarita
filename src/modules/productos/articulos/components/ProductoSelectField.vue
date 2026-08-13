@@ -214,6 +214,42 @@ function productoLabel(producto: Producto) {
   return `${base} (stock: ${producto.stock_actual})`
 }
 
+function productoToSelectOption(producto: Producto): SelectOption {
+  const badges: NonNullable<SelectOption['badges']> = []
+  if (producto.es_gas) badges.push({ label: 'Gas', color: 'primary' })
+  if (producto.es_servicio) badges.push({ label: 'Servicio', color: 'neutral' })
+  if (producto.es_alquilable) badges.push({ label: 'Alquilable', color: 'warning' })
+  if (producto.nombre_categoria) {
+    badges.push({ label: producto.nombre_categoria, color: 'neutral' })
+  }
+  if (producto.nombre_sub_categoria) {
+    badges.push({ label: producto.nombre_sub_categoria, color: 'neutral' })
+  }
+  if (producto.nombre_unidad_medida) {
+    badges.push({ label: producto.nombre_unidad_medida, color: 'neutral' })
+  }
+  if (producto.presentacion) {
+    badges.push({ label: producto.presentacion, color: 'neutral' })
+  }
+  if (producto.marca) {
+    badges.push({ label: producto.marca, color: 'neutral' })
+  }
+  if (producto.stock_actual != null) {
+    badges.push({
+      label: `Stock: ${producto.stock_actual}`,
+      color: Number(producto.stock_actual) <= 0 ? 'error' : 'success',
+    })
+  }
+
+  return {
+    value: producto.id,
+    title: `${producto.codigo} — ${producto.nombre}`,
+    label: productoLabel(producto),
+    badges,
+    disabled: productoBloqueadoPorStock(producto),
+  }
+}
+
 function productoBloqueadoPorStock(producto: Producto) {
   if (!props.bloquearSinStock) return false
   if (!Number(props.idAlmacen)) return false
@@ -230,11 +266,7 @@ const productosCatalogo = computed(() => {
 })
 
 const queryOptions = computed<SelectOption[]>(() =>
-  productosCatalogo.value.map((producto) => ({
-    value: producto.id,
-    label: productoLabel(producto),
-    disabled: productoBloqueadoPorStock(producto),
-  })),
+  productosCatalogo.value.map((producto) => productoToSelectOption(producto)),
 )
 
 watch(
@@ -291,10 +323,7 @@ function onCreated(producto?: Producto) {
     void productosQuery.refetch()
     return
   }
-  createdOption.value = {
-    value: producto.id,
-    label: productoLabel(producto),
-  }
+  createdOption.value = productoToSelectOption(producto)
   model.value = producto.id
   void productosQuery.refetch()
   emit('created', producto)

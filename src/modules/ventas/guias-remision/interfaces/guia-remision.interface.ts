@@ -20,6 +20,9 @@ export interface GuiaRemisionListItem {
   nombre_estado_sunat?: string | null
   ticket_sunat?: string | null
   total_detalles?: number | null
+  vinculada_recarga_planta?: boolean | null
+  puede_eliminar?: boolean | null
+  motivo_bloqueo_eliminar?: string | null
 }
 
 export interface GuiaRemisionDetalle {
@@ -34,6 +37,10 @@ export interface GuiaRemisionDetalle {
   cantidad: number
   id_balon?: number | null
   codigo_balon?: string | null
+  capacidad?: number | null
+  capacidad_tipo_balon?: number | null
+  nombre_estado_balon?: string | null
+  nombre_estado_contenido?: string | null
   glosa?: string | null
 }
 
@@ -137,7 +144,9 @@ export interface CreateGuiaRemisionPayload {
   numeroBultos?: number
   direccionOrigen?: string
   idDistritoOrigen: number
-  idDestinatario: number
+  idDestinatario?: number
+  destinatarioNombre?: string
+  destinatarioDocumento?: string
   direccionLlegada?: string
   idDistritoLlegada: number
   idModalidadTraslado: number

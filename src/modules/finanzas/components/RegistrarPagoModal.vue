@@ -89,7 +89,15 @@
 
   <AppConfirmDialog
     v-model="confirmDuplicadoOpen"
-    :title="duplicadoInfo?.severidad === 'alta' ? 'Posible pago duplicado (exacto)' : 'Posible pago duplicado'"
+    :title="
+      duplicadoInfo?.severidad === 'alta'
+        ? tipo === 'PAGAR'
+          ? 'Posible pago duplicado al proveedor'
+          : 'Posible pago/cobranza duplicado (exacto)'
+        : tipo === 'PAGAR'
+          ? 'Posible pago duplicado al proveedor'
+          : 'Posible pago/cobranza duplicado'
+    "
     :variant="duplicadoInfo?.severidad === 'alta' ? 'danger' : 'warning'"
     :confirm-label="canForzarDuplicado ? 'Sí, registrar de todas formas' : 'No tienes permiso para forzar'"
     :loading="mutation.isPending.value"
@@ -291,6 +299,10 @@ const submit = async () => {
       idCuenta: props.cuenta.id,
       fechaPago: form.fechaPago,
       monto: Math.round(monto * 100) / 100,
+      numeroComprobante:
+        props.cuenta.comprobante?.trim() ||
+        props.cuenta.numero_comprobante?.trim() ||
+        undefined,
     })
     if (info.duplicado) {
       duplicadoInfo.value = info

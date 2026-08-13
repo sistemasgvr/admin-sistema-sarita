@@ -105,22 +105,39 @@
           :error="errors.idAlmacen"
           @created="onAlmacenCreated"
         />
-        <AppInput
-          v-model="pesoBruto"
-          label="Peso bruto"
-          type="number"
-          step="0.01"
-          min="0.01"
-          required
-          :disabled="saving"
-          :error="errors.pesoBruto"
-        />
+        <div class="flex items-end gap-2">
+          <div class="min-w-0 flex-1">
+            <AppInput
+              v-model="pesoBruto"
+              label="Peso bruto"
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              :disabled="saving"
+              :error="errors.pesoBruto"
+              :help="pesoBrutoHelp"
+              @update:model-value="onPesoBultosManualEdit"
+            />
+          </div>
+          <button
+            type="button"
+            class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:hover:bg-white/5"
+            :disabled="saving || !pesoBultosCalculado.numeroBultos"
+            title="Recalcular peso y bultos desde los ítems"
+            @click="aplicarPesoBultosDesdeItems"
+          >
+            <AppIcon :name="ICONS.refreshCw" :size="16" />
+          </button>
+        </div>
         <AppInput
           v-model="numeroBultos"
           label="N° bultos"
           type="number"
           min="1"
           :disabled="saving"
+          :help="numeroBultosHelp"
+          @update:model-value="onPesoBultosManualEdit"
         />
       </div>
 
@@ -136,29 +153,79 @@
         :search-fn="searchClientes"
       />
 
-      <div class="flex items-end gap-2">
-        <div class="min-w-0 flex-1">
-          <SearchableSelect
-            v-model="idDestinatario"
-            label="Destinatario"
-            placeholder="Busca cliente..."
-            required
-            :model-label="destinatarioLabel"
+      <div>
+        <div class="mb-1.5 flex items-center justify-between">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Destinatario <span class="text-error-500">*</span>
+          </label>
+        </div>
+        <div
+          class="mb-2 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800"
+          role="tablist"
+        >
+          <button
+            v-for="opt in modoDestinatarioOptions"
+            :key="opt.value"
+            type="button"
+            role="tab"
+            :aria-selected="modoDestinatario === opt.value"
             :disabled="saving"
-            :error="errors.idDestinatario"
-            :search-fn="searchClientes"
+            :class="[
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition',
+              modoDestinatario === opt.value
+                ? 'bg-white text-brand-600 shadow-theme-xs dark:bg-gray-900 dark:text-brand-400'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+            ]"
+            @click="cambiarModoDestinatario(opt.value)"
+          >
+            <AppIcon :name="opt.icon" :size="14" />
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <div v-if="modoDestinatario === 'cliente'" class="flex items-end gap-2">
+          <div class="min-w-0 flex-1">
+            <SearchableSelect
+              v-model="idDestinatario"
+              placeholder="Busca cliente..."
+              required
+              :model-label="destinatarioLabel"
+              :disabled="saving"
+              :error="errors.idDestinatario || destinatarioLibreError"
+              :search-fn="searchClientes"
+            />
+          </div>
+          <button
+            v-if="canCreateCliente"
+            type="button"
+            title="Nuevo destinatario"
+            class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
+            :disabled="saving"
+            @click="clienteModalOpen = true"
+          >
+            <AppIcon :name="ICONS.plus" :size="18" />
+          </button>
+        </div>
+
+        <div v-else class="grid gap-3 sm:grid-cols-2">
+          <AppInput
+            v-model="destinatarioNombreLibre"
+            label="Nombre / razón social"
+            placeholder="Nombre del destinatario..."
+            required
+            :disabled="saving"
+            :error="destinatarioLibreErrorNombre"
+          />
+          <AppInput
+            v-model="destinatarioDocumentoLibre"
+            label="Documento (DNI / RUC)"
+            placeholder="8 u 11 dígitos"
+            required
+            :disabled="saving"
+            :error="destinatarioLibreErrorDocumento"
+            help="SUNAT exige documento del destinatario aunque no esté en el sistema."
           />
         </div>
-        <button
-          v-if="canCreateCliente"
-          type="button"
-          title="Nuevo destinatario"
-          class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
-          :disabled="saving"
-          @click="clienteModalOpen = true"
-        >
-          <AppIcon :name="ICONS.plus" :size="18" />
-        </button>
       </div>
 
       <ClienteFormModal
@@ -171,9 +238,7 @@
         <div class="space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-800">
           <div class="flex items-center gap-1.5">
             <p class="text-sm font-medium text-gray-800 dark:text-white/90">Punto de partida</p>
-            <AppHelpTip
-              text="Con varias sucursales, elige la que despacha: el origen se carga con su dirección y ubigeo. Si el bien sale de otro punto físico, edítalo aquí. Cada sucursal debe tener ubigeo en Configuración."
-            />
+            <AppHelpTip :text="puntoPartidaHelp" />
           </div>
           <p
             v-if="sucursalSeleccionadaNombre"
@@ -201,9 +266,6 @@
               }}
             </button>
           </div>
-          <p v-if="origenHint" class="text-xs text-amber-600 dark:text-amber-400">
-            {{ origenHint }}
-          </p>
           <AppInput
             v-model="direccionOrigen"
             label="Dirección origen"
@@ -243,7 +305,7 @@
               text="Si el destinatario no tiene direcciones, puedes completarlas manualmente o usar la ubicación del cliente."
             />
           </div>
-          <div class="flex items-end gap-2">
+          <div v-if="modoDestinatario === 'cliente'" class="flex items-end gap-2">
             <div class="min-w-0 flex-1">
               <AppSelect
                 v-model="idDireccionLlegada"
@@ -270,6 +332,9 @@
               <AppIcon :name="ICONS.plus" :size="18" />
             </button>
           </div>
+          <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+            Completa la dirección de llegada manualmente (destinatario no registrado).
+          </p>
           <p v-if="llegadaHint" class="text-xs text-gray-500 dark:text-gray-400">
             {{ llegadaHint }}
           </p>
@@ -469,14 +534,14 @@
           :key="linea.key"
           class="space-y-2 rounded-xl border border-gray-100 p-3 dark:border-gray-800"
         >
-          <div class="grid gap-2 sm:grid-cols-[1fr_100px_40px] sm:items-end">
+          <div class="grid gap-2 sm:grid-cols-[1fr_88px_100px_40px] sm:items-end">
             <SearchableSelect
               v-model="linea.idBalon"
               label="Cilindro / serie"
               placeholder="Código o serie del envase..."
               :model-label="linea.balonLabel"
               :disabled="saving"
-              :search-fn="searchBalones"
+              :search-fn="searchBalonesForLine(index)"
               @update:model-value="(v) => onBalonSelected(index, v)"
             />
             <AppInput
@@ -486,6 +551,18 @@
               min="0.01"
               step="0.01"
               :disabled="saving"
+            />
+            <AppInput
+              v-model="linea.pesoKg"
+              label="Peso kg"
+              type="number"
+              min="0.01"
+              step="0.01"
+              :required="lineaRequierePeso(linea)"
+              :disabled="saving"
+              :error="errorPesoLinea(linea)"
+              :help="helpPesoLinea(linea)"
+              @update:model-value="onPesoLineaEdit(index)"
             />
             <button
               type="button"
@@ -575,10 +652,15 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
 import type { Direccion } from '@/modules/direcciones/interfaces/direccion.interface'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import {
+  balonToSelectOption,
+} from '@/modules/ventas/comprobantes/composables/usePosBalonSelect'
 import {
   buildGuiaDetalleGlosa,
   labelBalonGuia,
 } from '@/modules/ventas/guias-remision/utils/buildGuiaDetalleGlosa'
+import { calcularPesoBultosGuia, pesoCatalogoBalonKg } from '@/modules/ventas/guias-remision/utils/calcularPesoBultosGuia'
 import {
   useCreateGuiaRemisionMutation,
   useUpdateGuiaRemisionMutation,
@@ -687,6 +769,64 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
 const destinatarioLabel = ref<string | null>(null)
 const remitenteLabel = ref<string | null>(null)
+type ModoDestinatario = 'cliente' | 'libre'
+const modoDestinatario = ref<ModoDestinatario>('cliente')
+const destinatarioNombreLibre = ref('')
+const destinatarioDocumentoLibre = ref('')
+const destinatarioLibreError = ref('')
+const destinatarioLibreErrorNombre = ref('')
+const destinatarioLibreErrorDocumento = ref('')
+const modoDestinatarioOptions = [
+  { value: 'cliente' as const, label: 'Cliente', icon: ICONS.users },
+  { value: 'libre' as const, label: 'Nombre libre', icon: ICONS.pencil },
+]
+
+function cambiarModoDestinatario(modo: ModoDestinatario) {
+  if (modoDestinatario.value === modo) return
+  modoDestinatario.value = modo
+  destinatarioLibreError.value = ''
+  destinatarioLibreErrorNombre.value = ''
+  destinatarioLibreErrorDocumento.value = ''
+  if (modo === 'cliente') {
+    destinatarioNombreLibre.value = ''
+    destinatarioDocumentoLibre.value = ''
+  } else {
+    idDestinatario.value = undefined
+    destinatarioLabel.value = null
+    idDireccionLlegada.value = ''
+    direccionesDestinatario.value = []
+    clienteUbicacionCache.value = null
+  }
+}
+
+function validarDestinatarioForm(): boolean {
+  destinatarioLibreError.value = ''
+  destinatarioLibreErrorNombre.value = ''
+  destinatarioLibreErrorDocumento.value = ''
+  if (modoDestinatario.value === 'cliente') {
+    if (!idDestinatario.value) {
+      destinatarioLibreError.value = 'Destinatario obligatorio'
+      toastWarning('Selecciona el destinatario')
+      return false
+    }
+    return true
+  }
+  const nombre = destinatarioNombreLibre.value.trim()
+  const doc = destinatarioDocumentoLibre.value.replace(/\D/g, '')
+  let ok = true
+  if (nombre.length < 2) {
+    destinatarioLibreErrorNombre.value = 'Ingresa el nombre o razón social'
+    ok = false
+  }
+  if (doc.length !== 8 && doc.length !== 11) {
+    destinatarioLibreErrorDocumento.value = 'Documento: DNI (8) o RUC (11)'
+    ok = false
+  }
+  if (!ok) toastWarning('Completa nombre y documento del destinatario')
+  else destinatarioDocumentoLibre.value = doc
+  return ok
+}
+
 const clienteModalOpen = ref(false)
 const transportistaModalOpen = ref(false)
 const choferModalOpen = ref(false)
@@ -706,6 +846,11 @@ const canCreateDireccion = computed(() =>
 )
 const llegadaHint = ref('')
 const origenHint = ref('')
+const puntoPartidaHelp = computed(() => {
+  const base =
+    'Con varias sucursales, elige la que despacha: el origen se carga con su dirección y ubigeo. Si el bien sale de otro punto físico, edítalo aquí. Cada sucursal debe tener ubigeo en Configuración.'
+  return origenHint.value ? `${base} ${origenHint.value}` : base
+})
 const clienteUbicacionCache = ref<Cliente | null>(null)
 const aplicandoUbicacionCliente = ref(false)
 const aplicandoOrigenSucursal = ref(false)
@@ -786,6 +931,8 @@ type LineaForm = {
   idProducto: number | ''
   productoLabel: string | null
   cantidad: number
+  /** Peso bruto del ítem en kg (catálogo o captura manual). */
+  pesoKg: number | ''
   idUnidadMedida?: number
   descripcion?: string
   glosa?: string
@@ -799,8 +946,98 @@ const lineas = reactive<LineaForm[]>([
     idProducto: '',
     productoLabel: null,
     cantidad: 1,
+    pesoKg: '',
   },
 ])
+
+/** Si true, no sobrescribe peso/bultos al cambiar ítems (edición manual o carga de guía). */
+const pesoBultosManual = ref(false)
+
+const pesoBultosCalculado = computed(() =>
+  calcularPesoBultosGuia(
+    lineas.map((l) => ({
+      idBalon: l.idBalon,
+      cantidad: l.cantidad,
+      pesoKg: l.pesoKg === '' ? null : Number(l.pesoKg),
+    })),
+    balonesCache,
+  ),
+)
+
+const pesoBrutoHelp = computed(() => {
+  const c = pesoBultosCalculado.value
+  const base =
+    'SUNAT: peso bruto total (KGM). Se acumula desde el peso de cada ítem. Si el cilindro no tiene tara en catálogo, ingresa el peso en la línea.'
+  if (!c.numeroBultos) return base
+  const partes: string[] = [`Acumulado: ${c.pesoBrutoKg || '—'} kg`]
+  if (c.conTaraCatalogo) partes.push(`${c.conTaraCatalogo} desde catálogo`)
+  if (c.conPesoManual) partes.push(`${c.conPesoManual} capturados`)
+  if (c.sinPeso) partes.push(`${c.sinPeso} sin peso`)
+  return `${base} ${partes.join(' · ')}.`
+})
+
+const numeroBultosHelp = computed(() => {
+  const n = pesoBultosCalculado.value.numeroBultos
+  const base = 'SUNAT: número de bultos. En cilindros: 1 envase = 1 bulto.'
+  return n ? `${base} Sugerido ahora: ${n}.` : base
+})
+
+function lineaRequierePeso(linea: LineaForm): boolean {
+  const tieneItem = Boolean(linea.idBalon) || Boolean(linea.idProducto)
+  if (!tieneItem) return false
+  const peso = Number(linea.pesoKg)
+  return !(Number.isFinite(peso) && peso > 0)
+}
+
+function errorPesoLinea(linea: LineaForm): string | undefined {
+  if (!lineaRequierePeso(linea)) return undefined
+  if (linea.idBalon) {
+    const balon = balonesCache.get(Number(linea.idBalon))
+    if (pesoCatalogoBalonKg(balon) == null) {
+      return 'Ingresa el peso (no hay tara en BD)'
+    }
+  }
+  return 'Ingresa el peso en kg'
+}
+
+function helpPesoLinea(linea: LineaForm): string {
+  if (linea.idBalon) {
+    const balon = balonesCache.get(Number(linea.idBalon))
+    const catalogo = pesoCatalogoBalonKg(balon)
+    if (catalogo != null) {
+      return `Tara de catálogo: ${catalogo} kg. Puedes ajustarla si el peso bruto real es distinto.`
+    }
+    return 'Este cilindro no tiene tara en el tipo de balón. Ingresa el peso bruto en kg para acumularlo en la guía.'
+  }
+  return 'Peso bruto del ítem en kg. Se suma al total de la guía.'
+}
+
+function onPesoLineaEdit(_index: number) {
+  if (!pesoBultosManual.value) {
+    aplicarPesoBultosDesdeItems()
+  }
+}
+
+function aplicarPesoBultosDesdeItems() {
+  const c = pesoBultosCalculado.value
+  pesoBultosManual.value = false
+  if (c.pesoBrutoKg > 0) pesoBruto.value = c.pesoBrutoKg
+  if (c.numeroBultos > 0) numeroBultos.value = c.numeroBultos
+}
+
+function onPesoBultosManualEdit() {
+  pesoBultosManual.value = true
+}
+
+watch(
+  pesoBultosCalculado,
+  (c) => {
+    if (pesoBultosManual.value || isEdit.value) return
+    if (c.pesoBrutoKg > 0) pesoBruto.value = c.pesoBrutoKg
+    if (c.numeroBultos > 0) numeroBultos.value = c.numeroBultos
+  },
+  { deep: true },
+)
 
 const idPais = ref<number | ''>('')
 const idDepartamentoOrigen = ref<number | ''>('')
@@ -859,15 +1096,18 @@ const modalidadOptions = computed(() =>
     codigo: t.descripcion ?? '',
   })),
 )
-const unidadPesoOptions = computed(() =>
-  toSelectOptions(
-    (catalogosQuery.data.value?.unidadesMedida ?? []).filter(
-      (u) =>
-        (u.nombre ?? '').toUpperCase().includes('KG') ||
-        (u.descripcion ?? '').toUpperCase().includes('KG'),
-    ),
-  ),
-)
+const unidadPesoOptions = computed(() => {
+  const units = catalogosQuery.data.value?.unidadesMedida ?? []
+  // SUNAT GRE exige código KGM; KG y KGM se mapean igual al XML, no mostrar ambos.
+  const kgm = units.find((u) => (u.nombre ?? '').toUpperCase() === 'KGM')
+  if (kgm) return toSelectOptions([kgm])
+  const kg = units.find(
+    (u) =>
+      (u.nombre ?? '').toUpperCase() === 'KG' ||
+      (u.descripcion ?? '').toUpperCase().includes('KILO'),
+  )
+  return kg ? toSelectOptions([kg]) : []
+})
 const sucursalOptions = computed(() =>
   (sucursalesQuery.data.value?.data ?? []).map((s) => ({ value: s.id, label: s.nombre })),
 )
@@ -889,7 +1129,7 @@ const { defineField, handleSubmit, resetForm, errors, setValues, values } = useF
       idAlmacen: yup.number().required('Almacén obligatorio'),
       pesoBruto: yup.number().typeError('Peso inválido').min(0.01, 'Peso > 0').required(),
       numeroBultos: yup.number().optional().nullable(),
-      idDestinatario: yup.number().required('Destinatario obligatorio'),
+      idDestinatario: yup.number().optional().nullable(),
       direccionOrigen: yup.string().required('Dirección origen obligatoria'),
       direccionLlegada: yup.string().required('Dirección llegada obligatoria'),
       idChofer: yup.number().optional().nullable(),
@@ -908,8 +1148,8 @@ const { defineField, handleSubmit, resetForm, errors, setValues, values } = useF
     idUnidadMedida: undefined as number | undefined,
     idSucursal: undefined as number | undefined,
     idAlmacen: undefined as number | undefined,
-    pesoBruto: 1,
-    numeroBultos: 1,
+    pesoBruto: undefined as number | undefined,
+    numeroBultos: undefined as number | undefined,
     idDestinatario: undefined as number | undefined,
     direccionOrigen: '',
     direccionLlegada: '',
@@ -1060,12 +1300,11 @@ function applyCatalogDefaults() {
       'Salida de cilindros vacíos EMPRESA a planta externa para recarga'
   }
   if (!values.idUnidadMedida) {
-    const kgm = cats.unidadesMedida.find(
-      (u) =>
-        (u.nombre ?? '').toUpperCase() === 'KGM' ||
-        (u.nombre ?? '').toUpperCase() === 'KG' ||
-        (u.descripcion ?? '').toUpperCase().includes('KILO'),
-    )
+    const units = cats.unidadesMedida
+    const kgm =
+      units.find((u) => (u.nombre ?? '').toUpperCase() === 'KGM') ??
+      units.find((u) => (u.nombre ?? '').toUpperCase() === 'KG') ??
+      units.find((u) => (u.descripcion ?? '').toUpperCase().includes('KILO'))
     if (kgm) idUnidadMedida.value = kgm.id
   }
 }
@@ -1538,26 +1777,58 @@ function resolveUnidadBotellasId(): number | undefined {
   return unid?.id
 }
 
-async function searchBalones(query: string): Promise<SelectOption[]> {
-  const response = await balonesService.listar({
-    buscar: query || undefined,
-    pagina: 1,
-    limite: 20,
-    soloBajas: false,
-    ...(origenRecargaPlanta.value
-      ? {
-          idPropietario: idPropietarioEmpresa.value,
-          idEstadoContenido: idContenidoVacio.value,
-        }
-      : {}),
-  })
-  return response.data.map((b) => {
-    balonesCache.set(b.id, b)
-    return {
-      value: b.id,
-      label: labelBalonGuia(b),
-    }
-  })
+function idsBalonesYaEnLineas(exceptIndex: number): Set<number> {
+  const ids = new Set<number>()
+  for (let i = 0; i < lineas.length; i++) {
+    if (i === exceptIndex) continue
+    const id = Number(lineas[i]?.idBalon)
+    if (Number.isFinite(id) && id > 0) ids.add(id)
+  }
+  return ids
+}
+
+function searchBalonesForLine(index: number) {
+  return async (query: string): Promise<SelectOption[]> => {
+    const yaUsados = idsBalonesYaEnLineas(index)
+    const response = await balonesService.listar({
+      buscar: query || undefined,
+      pagina: 1,
+      limite: 30,
+      soloBajas: false,
+      ...(origenRecargaPlanta.value
+        ? {
+            idPropietario: idPropietarioEmpresa.value,
+            idEstadoContenido: idContenidoVacio.value,
+          }
+        : {}),
+    })
+    return response.data
+      .filter((b) => !yaUsados.has(b.id))
+      .slice(0, 20)
+      .map((b) => {
+        balonesCache.set(b.id, b)
+        return balonToSelectOption(b)
+      })
+  }
+}
+
+function productoToSelectOption(p: Producto): SelectOption {
+  const badges: NonNullable<SelectOption['badges']> = []
+  if (p.es_gas) badges.push({ label: 'Gas', color: 'primary' })
+  if (p.es_servicio) badges.push({ label: 'Servicio', color: 'neutral' })
+  if (p.es_alquilable) badges.push({ label: 'Alquilable', color: 'warning' })
+  if (p.nombre_categoria) badges.push({ label: p.nombre_categoria, color: 'neutral' })
+  if (p.nombre_sub_categoria) badges.push({ label: p.nombre_sub_categoria, color: 'neutral' })
+  if (p.nombre_unidad_medida) badges.push({ label: p.nombre_unidad_medida, color: 'neutral' })
+  if (p.presentacion) badges.push({ label: p.presentacion, color: 'neutral' })
+  if (p.marca) badges.push({ label: p.marca, color: 'neutral' })
+
+  return {
+    value: p.id,
+    title: `${p.codigo} — ${p.nombre}`,
+    label: `${p.codigo} — ${p.nombre}`,
+    badges,
+  }
 }
 
 async function searchProductos(query: string): Promise<SelectOption[]> {
@@ -1572,10 +1843,7 @@ async function searchProductos(query: string): Promise<SelectOption[]> {
       nombre: p.nombre,
       codigo: p.codigo,
     })
-    return {
-      value: p.id,
-      label: `${p.codigo} — ${p.nombre}`,
-    }
+    return productoToSelectOption(p)
   })
 }
 
@@ -1587,6 +1855,8 @@ function onBalonSelected(index: number, value: number | string | null | undefine
     linea.idBalon = ''
     linea.balonLabel = null
     linea.glosa = undefined
+    linea.pesoKg = ''
+    if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
     return
   }
 
@@ -1600,14 +1870,27 @@ function onBalonSelected(index: number, value: number | string | null | undefine
   const duplicado = lineas.some((l, i) => i !== index && Number(l.idBalon) === id)
   if (duplicado) {
     toastWarning(`El cilindro ${balon.codigo_balon} ya está en otra línea`)
+    linea.idBalon = ''
+    linea.balonLabel = null
+    return
   }
 
   linea.idBalon = id
-  linea.balonLabel = labelBalonGuia(balon)
+  linea.balonLabel = balonToSelectOption(balon).title ?? labelBalonGuia(balon)
   linea.cantidad = 1
   linea.glosa = buildGuiaDetalleGlosa(balon)
   linea.descripcion = linea.glosa
   linea.idUnidadMedida = resolveUnidadBotellasId()
+
+  const tara = pesoCatalogoBalonKg(balon)
+  if (tara != null) {
+    linea.pesoKg = tara
+  } else {
+    linea.pesoKg = ''
+    toastWarning(
+      `El cilindro ${balon.codigo_balon} no tiene tara en catálogo. Ingresa su peso en kg.`,
+    )
+  }
 
   if (balon.id_producto_gas) {
     linea.idProducto = balon.id_producto_gas
@@ -1626,6 +1909,8 @@ function onBalonSelected(index: number, value: number | string | null | undefine
       `El cilindro ${balon.codigo_balon} no tiene gas/producto asociado; selecciónalo manualmente`,
     )
   }
+
+  if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
 }
 
 function onProductoSelected(index: number, value: number | string | null | undefined) {
@@ -1649,9 +1934,13 @@ function onProductoSelected(index: number, value: number | string | null | undef
     linea.idUnidadMedida = cached?.idUnidadMedida
     linea.descripcion = cached?.nombre
     linea.glosa = cached?.nombre
+    if (!linea.pesoKg) {
+      toastWarning('Ingresa el peso en kg de este producto para acumularlo en la guía.')
+    }
   } else if (!linea.glosa && cached?.nombre) {
     linea.descripcion = linea.glosa
   }
+  if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
 }
 
 function agregarLinea() {
@@ -1662,18 +1951,26 @@ function agregarLinea() {
     idProducto: '',
     productoLabel: null,
     cantidad: 1,
+    pesoKg: '',
   })
 }
 
 function quitarLinea(index: number) {
   if (lineas.length <= 1) return
   lineas.splice(index, 1)
+  if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
 }
 
 function resetLocal() {
   resetForm()
   destinatarioLabel.value = null
   remitenteLabel.value = null
+  modoDestinatario.value = 'cliente'
+  destinatarioNombreLibre.value = ''
+  destinatarioDocumentoLibre.value = ''
+  destinatarioLibreError.value = ''
+  destinatarioLibreErrorNombre.value = ''
+  destinatarioLibreErrorDocumento.value = ''
   idRemitente.value = ''
   remitenteError.value = ''
   choferLabel.value = null
@@ -1702,7 +1999,9 @@ function resetLocal() {
     idProducto: '',
     productoLabel: null,
     cantidad: 1,
+    pesoKg: '',
   })
+  pesoBultosManual.value = false
   detallesError.value = ''
   distritoOrigenError.value = ''
   distritoLlegadaError.value = ''
@@ -1777,9 +2076,20 @@ watch(
         idTransportista: guia.id_transportista ?? undefined,
         observaciones: guia.observaciones ?? '',
       })
+      pesoBultosManual.value = true
 
       numero.value = guia.numero
-      destinatarioLabel.value = guia.nombre_destinatario ?? null
+      if (guia.id_destinatario) {
+        modoDestinatario.value = 'cliente'
+        destinatarioLabel.value = guia.nombre_destinatario ?? null
+        destinatarioNombreLibre.value = ''
+        destinatarioDocumentoLibre.value = ''
+      } else {
+        modoDestinatario.value = 'libre'
+        destinatarioLabel.value = null
+        destinatarioNombreLibre.value = guia.nombre_destinatario ?? ''
+        destinatarioDocumentoLibre.value = guia.documento_destinatario ?? ''
+      }
       choferLabel.value = guia.nombre_chofer ?? null
       vehiculoLabel.value = guia.placa_vehiculo ?? null
       transportistaLabel.value = guia.nombre_transportista ?? null
@@ -1842,21 +2152,27 @@ watch(
         0,
         lineas.length,
         ...(guia.detalles?.length
-          ? guia.detalles.map((d) => ({
-              key: crypto.randomUUID(),
-              idBalon: (d.id_balon ?? '') as number | '',
-              balonLabel: d.codigo_balon
-                ? `${d.codigo_balon}${d.nombre_producto ? ` · ${d.nombre_producto}` : ''}`
-                : null,
-              idProducto: d.id_producto,
-              productoLabel: d.codigo_producto
-                ? `${d.codigo_producto} — ${d.nombre_producto ?? d.descripcion ?? ''}`
-                : (d.nombre_producto ?? d.descripcion ?? null),
-              cantidad: Number(d.cantidad),
-              idUnidadMedida: d.id_unidad_medida ?? undefined,
-              descripcion: d.glosa ?? d.descripcion ?? d.nombre_producto ?? undefined,
-              glosa: d.glosa ?? d.descripcion ?? d.nombre_producto ?? undefined,
-            }))
+          ? guia.detalles.map((d) => {
+              const idBalon = (d.id_balon ?? '') as number | ''
+              const balon = idBalon ? balonesCache.get(Number(idBalon)) : undefined
+              const tara = pesoCatalogoBalonKg(balon)
+              return {
+                key: crypto.randomUUID(),
+                idBalon,
+                balonLabel: d.codigo_balon
+                  ? `${d.codigo_balon}${d.nombre_producto ? ` · ${d.nombre_producto}` : ''}`
+                  : null,
+                idProducto: d.id_producto,
+                productoLabel: d.codigo_producto
+                  ? `${d.codigo_producto} — ${d.nombre_producto ?? d.descripcion ?? ''}`
+                  : (d.nombre_producto ?? d.descripcion ?? null),
+                cantidad: Number(d.cantidad),
+                pesoKg: (tara ?? '') as number | '',
+                idUnidadMedida: d.id_unidad_medida ?? undefined,
+                descripcion: d.glosa ?? d.descripcion ?? d.nombre_producto ?? undefined,
+                glosa: d.glosa ?? d.descripcion ?? d.nombre_producto ?? undefined,
+              }
+            })
           : [
               {
                 key: crypto.randomUUID(),
@@ -1865,6 +2181,7 @@ watch(
                 idProducto: '' as const,
                 productoLabel: null,
                 cantidad: 1,
+                pesoKg: '' as const,
               },
             ]),
       )
@@ -1893,6 +2210,8 @@ const onSubmit = handleSubmit(async (formValues) => {
     toastWarning('Selecciona el remitente de la mercancía')
     return
   }
+
+  if (!validarDestinatarioForm()) return
 
   if (!idDistritoOrigen.value || !idDistritoLlegada.value) {
     if (!idDistritoOrigen.value) distritoOrigenError.value = 'Selecciona distrito de origen'
@@ -1931,11 +2250,27 @@ const onSubmit = handleSubmit(async (formValues) => {
     toastWarning('Agrega al menos un cilindro/producto')
     return
   }
+
+  const lineaSinPeso = lineas.find(
+    (l) =>
+      (l.idBalon || l.idProducto) &&
+      !(Number.isFinite(Number(l.pesoKg)) && Number(l.pesoKg) > 0),
+  )
+  if (lineaSinPeso) {
+    detallesError.value = 'Cada ítem debe tener peso en kg'
+    toastWarning('Ingresa el peso (kg) de cada ítem antes de guardar')
+    return
+  }
   detallesError.value = ''
 
+  if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
+
+  const esLibre = modoDestinatario.value === 'libre'
   const idClientePayload = es31
     ? Number(idRemitente.value)
-    : Number(formValues.idDestinatario)
+    : esLibre
+      ? undefined
+      : Number(formValues.idDestinatario)
 
   const payloadBase = {
     fecha: formValues.fecha,
@@ -1945,11 +2280,18 @@ const onSubmit = handleSubmit(async (formValues) => {
     idCliente: idClientePayload,
     idMotivoTraslado: Number(formValues.idMotivoTraslado),
     idUnidadMedida: formValues.idUnidadMedida ? Number(formValues.idUnidadMedida) : undefined,
-    pesoBruto: Number(formValues.pesoBruto),
-    numeroBultos: formValues.numeroBultos ? Number(formValues.numeroBultos) : 1,
+    pesoBruto: Number(formValues.pesoBruto) || pesoBultosCalculado.value.pesoBrutoKg || 0,
+    numeroBultos:
+      formValues.numeroBultos != null && Number(formValues.numeroBultos) > 0
+        ? Number(formValues.numeroBultos)
+        : pesoBultosCalculado.value.numeroBultos || 1,
     direccionOrigen: formValues.direccionOrigen,
     idDistritoOrigen: Number(idDistritoOrigen.value),
-    idDestinatario: Number(formValues.idDestinatario),
+    idDestinatario: esLibre ? undefined : Number(formValues.idDestinatario),
+    destinatarioNombre: esLibre ? destinatarioNombreLibre.value.trim() : undefined,
+    destinatarioDocumento: esLibre
+      ? destinatarioDocumentoLibre.value.replace(/\D/g, '')
+      : undefined,
     direccionLlegada: formValues.direccionLlegada,
     idDistritoLlegada: Number(idDistritoLlegada.value),
     idModalidadTraslado: Number(formValues.idModalidadTraslado),

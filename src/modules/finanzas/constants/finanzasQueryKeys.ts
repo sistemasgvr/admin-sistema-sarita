@@ -9,6 +9,9 @@ export const finanzasQueryKeys = {
   cuentaDetalle: (tipo: TipoCuenta, id: number) =>
     [...finanzasQueryKeys.cuentas(tipo), 'detalle', id] as const,
   resumen: (tipo: TipoCuenta) => [...finanzasQueryKeys.all, 'resumen', tipo] as const,
+  saldos: (tipo: TipoCuenta) => [...finanzasQueryKeys.all, 'saldos', tipo] as const,
+  saldosList: (tipo: TipoCuenta, filters: unknown) =>
+    [...finanzasQueryKeys.saldos(tipo), 'list', filters] as const,
   mediosPago: () => [...finanzasQueryKeys.all, 'medios-pago'] as const,
   garantias: () => [...finanzasQueryKeys.all, 'garantias'] as const,
   garantiasList: (filters: GarantiaListFilters) =>

@@ -35,8 +35,21 @@
               <span class="truncate">{{ fieldDef(row.fieldKey)?.label ?? row.fieldKey }}</span>
             </div>
 
+            <AppSelectSearch
+              v-if="fieldDef(row.fieldKey)?.type === 'select' && fieldDef(row.fieldKey)?.searchable"
+              :model-value="asSelectValue(row.value)"
+              :options="fieldDef(row.fieldKey)?.options ?? []"
+              :placeholder="fieldDef(row.fieldKey)?.placeholder ?? 'Seleccionar'"
+              :search-placeholder="
+                fieldDef(row.fieldKey)?.searchPlaceholder ?? 'Buscar...'
+              "
+              :disabled="fieldDef(row.fieldKey)?.disabled"
+              :clearable="true"
+              @update:model-value="(value) => updateRowValue(row, value)"
+            />
+
             <AppSelect
-              v-if="fieldDef(row.fieldKey)?.type === 'select'"
+              v-else-if="fieldDef(row.fieldKey)?.type === 'select'"
               :model-value="asSelectValue(row.value)"
               :options="fieldDef(row.fieldKey)?.options ?? []"
               :placeholder="fieldDef(row.fieldKey)?.placeholder ?? 'Seleccionar'"
@@ -102,7 +115,7 @@
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, toRef, watch } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { AppCheckbox, AppInput, AppSelect } from '@/shared/components'
+import { AppCheckbox, AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import { useDynamicFilters } from '@/shared/composables/useDynamicFilters'
 import { ICONS } from '@/shared/constants/icons'
 import type {
@@ -230,7 +243,7 @@ const togglePanel = async () => {
 const handleDocumentPointerDown = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   if (rootRef.value?.contains(target) || panelRef.value?.contains(target)) return
-  if (target.closest('.app-select-dropdown, [role="listbox"]')) return
+  if (target.closest('.app-select-dropdown, .app-select-search-dropdown, [role="listbox"]')) return
   closePanel()
 }
 

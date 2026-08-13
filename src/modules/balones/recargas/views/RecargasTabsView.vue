@@ -74,7 +74,7 @@ const activeTab = ref(resolveTab(route.query.tab))
 
 const helpText = computed(() =>
   activeTab.value === 'planta'
-    ? 'Órdenes de envío de vacíos EMPRESA a planta externa: GRE / checklist / retorno / compra. La recarga de cliente en mostrador está en la pestaña Mostrador.'
+    ? 'Órdenes a planta externa: GRE / checklist / retorno / compra / lote. Exportá el protocolo Excel (ida, guías, factura, retorno, nº lote) desde el listado.'
     : 'Recargas de cliente en mostrador (POS). Los envíos de vacíos propios a planta externa están en la pestaña Planta externa.',
 )
 

@@ -12,10 +12,15 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Número, GRE o proveedor..."
+          search-placeholder="Orden, lote, GRE, factura o proveedor..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <AppExportExcelButton
+              label="Protocolo Excel"
+              title="Exportar protocolo (ida, guías, factura, retorno, lote)"
+              :on-export="exportProtocolo"
+            />
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-balones-recargas-planta-nueva' }"
@@ -56,9 +61,29 @@
             GRE sal.: {{ formatDocumento(row.serie_guia_salida, row.numero_guia_salida) }}
           </p>
           <p class="whitespace-nowrap">
+            GRE ret.: {{ formatDocumento(row.serie_guia_ingreso, row.numero_guia_ingreso) }}
+          </p>
+          <p class="whitespace-nowrap">
             Fac.: {{ formatDocumento(row.serie_factura, row.numero_factura) }}
           </p>
         </div>
+      </template>
+
+      <template #cell-lote="{ row }">
+        <p class="font-medium text-gray-800 dark:text-white/90">
+          {{ row.lote || '—' }}
+        </p>
+        <p v-if="row.fecha_vencimiento_lote" class="text-xs text-gray-500 dark:text-gray-400">
+          vence {{ formatListDate(row.fecha_vencimiento_lote) }}
+        </p>
+        <AppBadge
+          v-else-if="row.fecha_llegada_almacen && !row.lote"
+          size="sm"
+          color="warning"
+          class="mt-1"
+        >
+          Sin protocolo
+        </AppBadge>
       </template>
 
       <template #cell-total_cilindros="{ value }">
@@ -101,7 +126,7 @@
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar orden"
-      subtitle="Solo borradores o enviados sin retorno."
+      subtitle="Solo si aún no hay compra ni retorno registrado."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -109,7 +134,7 @@
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ ordenToDelete?.numero || `RP-${ordenToDelete?.id}` }}
         </span>
-        ?
+        ? Los cilindros en recarga externa volverán a almacén.
       </p>
 
       <template #footer>
@@ -144,12 +169,17 @@ import type {
   RecargaPlanta,
   RecargaPlantaListFilters,
 } from '@/modules/balones/recargas/interfaces/recarga-planta.interface'
+import { recargasPlantaService } from '@/modules/balones/recargas/services/recargas-planta.service'
+import { exportarProtocoloRecargaPlantaExcel } from '@/modules/balones/recargas/utils/exportarProtocoloRecargaPlantaExcel'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -157,6 +187,7 @@ import {
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
@@ -191,6 +222,9 @@ const ordenesQuery = useRecargasPlantaQuery(filters)
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
+const listaEstadoId = ref(ListaIds.ESTADO_RECARGA_PLANTA)
+const estadoQuery = useListaOpcionesQuery(listaEstadoId)
+
 const deleteModalOpen = ref(false)
 const ordenToDelete = ref<RecargaPlanta | null>(null)
 const deleteMutation = useDeleteRecargaPlantaMutation()
@@ -217,6 +251,7 @@ const columns: TableColumn[] = [
   { key: 'numero', label: 'Orden' },
   { key: 'nombre_estado', label: 'Estado' },
   { key: 'nombre_proveedor', label: 'Proveedor' },
+  { key: 'lote', label: 'Lote' },
   { key: 'total_cilindros', label: 'Cil.' },
   { key: 'documentos', label: 'Documentos' },
   { key: 'nombre_almacen', label: 'Almacén' },
@@ -225,6 +260,14 @@ const columns: TableColumn[] = [
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   { key: 'fechaDesde', label: 'Desde', type: 'date' },
   { key: 'fechaHasta', label: 'Hasta', type: 'date' },
+  {
+    key: 'idEstado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos los estados',
+    disabled: estadoQuery.isLoading.value,
+    options: toSelectOptions(estadoQuery.data.value),
+  },
   {
     key: 'idAlmacen',
     label: 'Almacén',
@@ -254,6 +297,7 @@ const syncFilters = () => {
     limite: limite.value,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
+    idEstado: active.idEstado != null ? Number(active.idEstado) : undefined,
     idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
   }
 }
@@ -275,6 +319,18 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
+const exportProtocolo = async () => {
+  const protocoloRows = await recargasPlantaService.listarProtocolo({
+    buscar: filters.value.buscar,
+    idProveedor: filters.value.idProveedor,
+    idAlmacen: filters.value.idAlmacen,
+    idEstado: filters.value.idEstado,
+    fechaDesde: filters.value.fechaDesde,
+    fechaHasta: filters.value.fechaHasta,
+  })
+  await exportarProtocoloRecargaPlantaExcel(protocoloRows ?? [])
+}
+
 const goToEdit = (row: RecargaPlanta) => {
   void router.push({
     name: 'admin-balones-recargas-planta-editar',
@@ -289,7 +345,18 @@ const openDeleteModal = (row: RecargaPlanta) => {
 
 function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
-  const blocked = row.nombre_estado === 'CERRADO' || row.nombre_estado === 'RETORNADO'
+  const blocked =
+    row.puede_eliminar === false ||
+    row.nombre_estado === 'CERRADO' ||
+    row.nombre_estado === 'RETORNADO' ||
+    Boolean(row.id_comprobante_compra)
+  const motivo =
+    row.motivo_bloqueo_eliminar ||
+    (row.id_comprobante_compra
+      ? 'tiene compra'
+      : row.nombre_estado === 'CERRADO' || row.nombre_estado === 'RETORNADO'
+        ? 'estado no permite'
+        : null)
 
   return [
     {
@@ -301,7 +368,7 @@ function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
     },
     {
       key: 'delete',
-      label: blocked ? 'Eliminar (estado no permite)' : 'Eliminar',
+      label: blocked && motivo ? `Eliminar (${motivo})` : 'Eliminar',
       icon: ICONS.trash,
       danger: !blocked,
       disabled: busy || blocked,
@@ -312,7 +379,15 @@ function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: RecargaPlanta) {
   if (key === 'edit') goToEdit(row)
-  if (key === 'delete') openDeleteModal(row)
+  if (key === 'delete') {
+    const blocked =
+      row.puede_eliminar === false ||
+      row.nombre_estado === 'CERRADO' ||
+      row.nombre_estado === 'RETORNADO' ||
+      Boolean(row.id_comprobante_compra)
+    if (blocked) return
+    openDeleteModal(row)
+  }
 }
 
 const confirmDelete = async () => {

@@ -212,7 +212,7 @@ const origenQuery = useComprobanteQuery(origenId)
 const serie = ref('')
 const fecha = ref(new Date().toISOString().slice(0, 10))
 const { assertCajaAbierta } = useCajaAbiertaRequerida(fecha)
-const emitirTrasCrear = ref(true)
+const emitirTrasCrear = ref(false)
 const observaciones = ref('')
 const lineas = ref<LineaItem[]>([])
 
@@ -347,7 +347,7 @@ watch(
   (isOpen) => {
     if (!isOpen) return
     fecha.value = new Date().toISOString().slice(0, 10)
-    emitirTrasCrear.value = true
+    emitirTrasCrear.value = false
     observaciones.value = ''
     serie.value = seriePorDefectoDesdeCodigo(props.codigoTipo, '')
   },

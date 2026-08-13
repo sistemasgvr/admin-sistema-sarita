@@ -180,85 +180,100 @@
             <template v-if="idRecargaPlantaNum">
               <AppCheckbox
                 v-model="guardarBalonesAlmacen"
-                label="Guardar los balones en el almacén y sucursal seleccionados"
+                label="Registrar retorno de cilindros (ingreso al almacén)"
                 :disabled="saving"
                 class="mt-3"
               />
               <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Márcalo solo si los cilindros ya llegaron. Registra el retorno físico (En almacén /
-                Lleno). Si aún están en planta, deja sin marcar: la factura queda vinculada y el
-                retorno se completa desde Recargas / planta.
+                Márcalo si los cilindros ya llegaron. Genera el movimiento de ingreso
+                (ENTRADA_PLANTA_EXTERNA) y deja los balones en almacén. Si aún están en planta,
+                deja sin marcar: la factura queda vinculada y el retorno se completa después.
               </p>
+
+              <div
+                v-if="guardarBalonesAlmacen"
+                class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
+              >
+                <GuiaRemisionSelectField
+                  v-model="idGuiaRetorno"
+                  label="GRE ingreso / retorno"
+                  placeholder="Opcional"
+                  create-title="Nueva GRE de retorno"
+                  origen="recarga-planta"
+                  return-to="/admin/compras/nuevo"
+                  return-id-param="idGuiaRetorno"
+                  :disabled="saving"
+                />
+
+                <AppInput
+                  v-model="fechaLlegadaAlmacen"
+                  label="Fecha llegada almacén"
+                  type="date"
+                  required
+                  :disabled="saving"
+                  :error="errors.fechaLlegadaAlmacen"
+                />
+
+                <AppInput
+                  v-model="serieGuiaIngreso"
+                  label="Serie GRE ingreso"
+                  placeholder="T001"
+                  :disabled="saving || Boolean(idGuiaRetorno)"
+                />
+
+                <AppInput
+                  v-model="numeroGuiaIngreso"
+                  label="Número GRE ingreso"
+                  placeholder="00000002"
+                  :disabled="saving || Boolean(idGuiaRetorno)"
+                />
+
+                <AppInput
+                  v-model="lote"
+                  label="Nº lote"
+                  placeholder="Lote del proveedor / protocolo"
+                  required
+                  :disabled="saving"
+                  :error="errors.lote"
+                />
+
+                <AppInput
+                  v-model="fechaVencimientoLote"
+                  label="Vencimiento lote"
+                  type="date"
+                  required
+                  :disabled="saving"
+                  :error="errors.fechaVencimientoLote"
+                />
+
+                <AppInput
+                  v-model="fechaPruebaHidrostatica"
+                  label="Prueba hidrostática (P.H.)"
+                  type="date"
+                  required
+                  :disabled="saving"
+                  :error="errors.fechaPruebaHidrostatica"
+                />
+              </div>
 
               <div
                 v-if="guardarBalonesAlmacen"
                 class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
               >
                 Al guardar, los cilindros de la orden pasarán a
-                <strong>En almacén / Lleno</strong> (fecha de llegada = fecha de la compra). Esto no
-                crea stock de producto de gas; solo actualiza el libro de cilindros.
+                <strong>En almacén / Lleno</strong> y se registrará el movimiento de ingreso.
               </div>
             </template>
 
-            <div v-if="recargaPlantaBalones.length" class="mt-4">
+            <div v-if="idRecargaPlantaNum" class="mt-4">
               <p class="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                Balones vacíos de esta orden ({{ recargaPlantaBalones.length }})
+                Detalle de la orden
               </p>
-              <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
-                <div class="overflow-x-auto">
-                  <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 dark:bg-white/5">
-                      <tr>
-                        <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
-                          Balón
-                        </th>
-                        <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
-                          Producto
-                        </th>
-                        <th class="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">
-                          Capacidad
-                        </th>
-                        <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
-                          Estado
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr
-                        v-for="balon in recargaPlantaBalones"
-                        :key="balon.id"
-                        class="border-t border-gray-100 dark:border-gray-800"
-                      >
-                        <td class="px-3 py-2 font-medium text-gray-800 dark:text-white/90">
-                          {{ balon.codigo_balon ?? '—' }}
-                        </td>
-                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400">
-                          {{
-                            balon.codigo_producto
-                              ? `${balon.codigo_producto} - ${balon.nombre_producto ?? ''}`
-                              : (balon.nombre_producto ?? '—')
-                          }}
-                        </td>
-                        <td class="px-3 py-2 text-right tabular-nums">{{ balon.capacidad ?? '—' }}</td>
-                        <td class="px-3 py-2 text-gray-600 dark:text-gray-400">
-                          {{ balon.nombre_estado_balon ?? '—' }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                La cantidad de cada gas en el detalle de productos de abajo es la suma de la capacidad de
-                estos balones agrupada por producto — no es una línea por balón.
-              </p>
+              <CompraRecargaPlantaDetalle
+                :recarga="recargaPlantaDetalleQuery.data.value ?? null"
+                :loading="recargaPlantaDetalleQuery.isFetching.value"
+              />
             </div>
-            <p
-              v-else-if="idRecargaPlantaNum && recargaPlantaDetalleQuery.isFetching.value"
-              class="mt-3 text-xs text-gray-500 dark:text-gray-400"
-            >
-              Cargando balones de la orden...
-            </p>
           </DetailSectionCard>
 
           <DetailSectionCard
@@ -331,6 +346,16 @@
                           >
                             {{ lin.nombreUnidadMedida }}
                           </span>
+                          <AppBadge
+                            v-if="lin.cilindrosRecarga"
+                            size="sm"
+                            variant="light"
+                            color="warning"
+                          >
+                            {{ lin.cilindrosRecarga }} cilindro{{
+                              lin.cilindrosRecarga === 1 ? '' : 's'
+                            }}
+                          </AppBadge>
                           <AppBadge
                             v-if="lin.afectaStock"
                             size="sm"
@@ -644,6 +669,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
+import { useRoute } from 'vue-router'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -661,7 +687,10 @@ import type {
   CompraLineaForm,
 } from '@/modules/compras/interfaces/compra.interface'
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
+import CompraRecargaPlantaDetalle from '@/modules/compras/components/CompraRecargaPlantaDetalle.vue'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
+import GuiaRemisionSelectField from '@/modules/ventas/guias-remision/components/GuiaRemisionSelectField.vue'
+import { useGuiaRemisionQuery } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type { Cliente, ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
@@ -729,6 +758,7 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const route = useRoute()
 const createMutation = useCreateCompraMutation()
 const updateCabeceraMutation = useActualizarCabeceraMutation()
 const crearDetalleMutation = useCrearDetalleMutation()
@@ -787,6 +817,40 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
       idProveedor: requiredOnCreate('El proveedor'),
       idRecargaPlanta: yup.mixed<string | number>().optional(),
       guardarBalonesAlmacen: yup.boolean().default(false),
+      fechaLlegadaAlmacen: optionalString().test(
+        'retorno-fecha',
+        'La fecha de llegada es obligatoria al registrar el retorno',
+        function (value) {
+          if (!this.parent.guardarBalonesAlmacen) return true
+          return Boolean(value)
+        },
+      ),
+      lote: optionalString().test(
+        'retorno-lote',
+        'El lote es obligatorio al registrar el retorno',
+        function (value) {
+          if (!this.parent.guardarBalonesAlmacen) return true
+          return Boolean(value?.trim())
+        },
+      ),
+      fechaVencimientoLote: optionalString().test(
+        'retorno-venc',
+        'El vencimiento del lote es obligatorio al registrar el retorno',
+        function (value) {
+          if (!this.parent.guardarBalonesAlmacen) return true
+          return Boolean(value)
+        },
+      ),
+      fechaPruebaHidrostatica: optionalString().test(
+        'retorno-ph',
+        'La P.H. es obligatoria al registrar el retorno',
+        function (value) {
+          if (!this.parent.guardarBalonesAlmacen) return true
+          return Boolean(value)
+        },
+      ),
+      serieGuiaIngreso: optionalString(),
+      numeroGuiaIngreso: optionalString(),
       idAlmacen: requiredOnCreate('El almacén'),
       idTipoComprobante: requiredOnCreate('El tipo de comprobante'),
       idTipoRegistro: requiredOnCreate('El tipo de registro'),
@@ -805,6 +869,12 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
     idProveedor: '' as string | number,
     idRecargaPlanta: '' as string | number,
     guardarBalonesAlmacen: false,
+    fechaLlegadaAlmacen: '',
+    lote: '',
+    fechaVencimientoLote: '',
+    fechaPruebaHidrostatica: '',
+    serieGuiaIngreso: '',
+    numeroGuiaIngreso: '',
     idAlmacen: '' as string | number,
     idTipoComprobante: '' as string | number,
     idTipoRegistro: '' as string | number,
@@ -823,7 +893,14 @@ const [numero, numeroAttrs] = defineField('numero')
 const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
 const [idRecargaPlanta] = defineField('idRecargaPlanta')
 const [guardarBalonesAlmacen] = defineField('guardarBalonesAlmacen')
+const [fechaLlegadaAlmacen] = defineField('fechaLlegadaAlmacen')
+const [lote] = defineField('lote')
+const [fechaVencimientoLote] = defineField('fechaVencimientoLote')
+const [fechaPruebaHidrostatica] = defineField('fechaPruebaHidrostatica')
+const [serieGuiaIngreso] = defineField('serieGuiaIngreso')
+const [numeroGuiaIngreso] = defineField('numeroGuiaIngreso')
 const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
+const idGuiaRetorno = ref<number | ''>('')
 const [idTipoComprobante, idTipoComprobanteAttrs] = defineField('idTipoComprobante')
 const [idTipoRegistro, idTipoRegistroAttrs] = defineField('idTipoRegistro')
 const [idCategoriaGasto, idCategoriaGastoAttrs] = defineField('idCategoriaGasto')
@@ -933,20 +1010,66 @@ const idRecargaPlantaNum = computed(() =>
   idRecargaPlanta.value !== '' && idRecargaPlanta.value != null ? Number(idRecargaPlanta.value) : null,
 )
 const recargaPlantaDetalleQuery = useRecargaPlantaQuery(idRecargaPlantaNum)
-const recargaPlantaBalones = computed(() => recargaPlantaDetalleQuery.data.value?.detalles ?? [])
+
+const toDateInput = (value?: string | null) => (value ? String(value).slice(0, 10) : '')
+
+const guiaRetornoIdRef = computed(() =>
+  idGuiaRetorno.value !== '' ? Number(idGuiaRetorno.value) : null,
+)
+const guiaRetornoDetalleQuery = useGuiaRemisionQuery(guiaRetornoIdRef)
 
 const suppressRecargaPlantaReset = ref(false)
+
+function resetRetornoFields() {
+  guardarBalonesAlmacen.value = false
+  fechaLlegadaAlmacen.value = ''
+  lote.value = ''
+  fechaVencimientoLote.value = ''
+  fechaPruebaHidrostatica.value = ''
+  serieGuiaIngreso.value = ''
+  numeroGuiaIngreso.value = ''
+  idGuiaRetorno.value = ''
+}
+
 watch(idProveedor, (id) => {
   const idNum = id !== '' && id != null ? Number(id) : undefined
   recargaPlantaFilters.value = { pagina: 1, limite: 50, idProveedor: idNum }
   if (suppressRecargaPlantaReset.value) return
   idRecargaPlanta.value = ''
-  guardarBalonesAlmacen.value = false
+  resetRetornoFields()
 })
 
+watch(
+  () => route.query.idGuiaRetorno,
+  (raw) => {
+    if (isEdit.value) return
+    const id = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : NaN
+    if (!Number.isFinite(id) || id <= 0) return
+    idGuiaRetorno.value = id
+    guardarBalonesAlmacen.value = true
+  },
+  { immediate: true },
+)
+
+watch(
+  () => guiaRetornoDetalleQuery.data.value,
+  (guia) => {
+    if (!guia || !idGuiaRetorno.value) return
+    serieGuiaIngreso.value = guia.serie ?? ''
+    numeroGuiaIngreso.value = guia.numero ?? ''
+  },
+)
+
+watch(guardarBalonesAlmacen, (on) => {
+  if (!on) return
+  if (!fechaLlegadaAlmacen.value) {
+    fechaLlegadaAlmacen.value = (fecha.value as string) || today()
+  }
+})
 
 const RECARGA_LINEA_PREFIX = 'recarga-planta-'
 const recargaPlantaLineasSyncedFor = ref<number | null>(null)
+const recargaRetornoPrefillFor = ref<number | null>(null)
 
 function quitarLineasDeRecargaPlanta() {
   for (let i = lineas.length - 1; i >= 0; i--) {
@@ -968,6 +1091,7 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
     const existente = grupos.get(balon.id_producto)
     if (existente) {
       existente.cantidad += cantidadBalon
+      existente.cilindrosRecarga = (existente.cilindrosRecarga ?? 0) + 1
       continue
     }
 
@@ -983,6 +1107,7 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
       nombreUnidadMedida: balon.nombre_unidad_medida ?? null,
       // Gas de planta: costo documental. No ingresa pro_stock (afecta_stock=false).
       afectaStock: false,
+      cilindrosRecarga: 1,
     })
   }
 
@@ -1005,10 +1130,27 @@ watch(
     if (!id) {
       quitarLineasDeRecargaPlanta()
       recargaPlantaLineasSyncedFor.value = null
+      recargaRetornoPrefillFor.value = null
+      resetRetornoFields()
       return
     }
 
     if (!data || data.id !== id) return
+
+    if (recargaRetornoPrefillFor.value !== id) {
+      recargaRetornoPrefillFor.value = id
+      lote.value = data.lote?.trim() || ''
+      fechaVencimientoLote.value = toDateInput(data.fecha_vencimiento_lote)
+      fechaPruebaHidrostatica.value = toDateInput(data.fecha_prueba_hidrostatica)
+      fechaLlegadaAlmacen.value = toDateInput(data.fecha_llegada_almacen)
+      serieGuiaIngreso.value = data.serie_guia_ingreso ?? ''
+      numeroGuiaIngreso.value = data.numero_guia_ingreso ?? ''
+      idGuiaRetorno.value = data.id_guia_retorno ?? ''
+      if (data.fecha_llegada_almacen) {
+        guardarBalonesAlmacen.value = true
+      }
+    }
+
     if (recargaPlantaLineasSyncedFor.value === id) return
 
     recargaPlantaLineasSyncedFor.value = id
@@ -1215,6 +1357,12 @@ function resetCreateForm() {
       idProveedor: '',
       idRecargaPlanta: '',
       guardarBalonesAlmacen: false,
+      fechaLlegadaAlmacen: '',
+      lote: '',
+      fechaVencimientoLote: '',
+      fechaPruebaHidrostatica: '',
+      serieGuiaIngreso: '',
+      numeroGuiaIngreso: '',
       idAlmacen: '',
       idTipoComprobante: '',
       idTipoRegistro: '',
@@ -1226,6 +1374,8 @@ function resetCreateForm() {
       declararSunat: false,
     },
   })
+  idGuiaRetorno.value = ''
+  recargaRetornoPrefillFor.value = null
   recargaPlantaFilters.value = { pagina: 1, limite: 50 }
   recargaPlantaLineasSyncedFor.value = null
   lineas.splice(0, lineas.length)
@@ -1248,6 +1398,12 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
       idProveedor: c.id_proveedor ?? '',
       idRecargaPlanta: c.id_recarga_planta ?? '',
       guardarBalonesAlmacen: false,
+      fechaLlegadaAlmacen: '',
+      lote: '',
+      fechaVencimientoLote: '',
+      fechaPruebaHidrostatica: '',
+      serieGuiaIngreso: '',
+      numeroGuiaIngreso: '',
       idAlmacen: c.id_almacen ?? '',
       idTipoComprobante: c.id_tipo_comprobante ?? '',
       idTipoRegistro: c.id_tipo_registro ?? '',
@@ -1323,6 +1479,12 @@ watch(
         idProveedor: '',
         idRecargaPlanta: '',
         guardarBalonesAlmacen: false,
+        fechaLlegadaAlmacen: '',
+        lote: '',
+        fechaVencimientoLote: '',
+        fechaPruebaHidrostatica: '',
+        serieGuiaIngreso: '',
+        numeroGuiaIngreso: '',
         idAlmacen: '',
         idTipoComprobante: '',
         idTipoRegistro: '',
@@ -1379,12 +1541,32 @@ const onSubmit = handleSubmit(async (values) => {
     }
   }
 
+  if (
+    toOptionalNumber(values.idRecargaPlanta) != null &&
+    Boolean(values.guardarBalonesAlmacen)
+  ) {
+    if (
+      !values.fechaLlegadaAlmacen ||
+      !String(values.lote ?? '').trim() ||
+      !values.fechaVencimientoLote ||
+      !values.fechaPruebaHidrostatica
+    ) {
+      toastWarning(
+        'Para registrar el retorno complete fecha de llegada, lote, vencimiento y P.H.',
+      )
+      return
+    }
+  }
+
   const detalles = lineas.map((l) => ({
     idProducto: l.idProducto,
     cantidad: Number(l.cantidad),
     precioUnitario: Number(l.precioUnitario) || undefined,
     idUnidadMedida: l.idUnidadMedida ?? undefined,
   }))
+
+  const conRecarga = toOptionalNumber(values.idRecargaPlanta) != null
+  const registrarRetorno = conRecarga && Boolean(values.guardarBalonesAlmacen)
 
   const created = await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
@@ -1393,7 +1575,25 @@ const onSubmit = handleSubmit(async (values) => {
     numero: String(values.numero ?? '').trim() || undefined,
     idProveedor: toOptionalNumber(values.idProveedor),
     idRecargaPlanta: toOptionalNumber(values.idRecargaPlanta),
-    guardarBalonesAlmacen: toOptionalNumber(values.idRecargaPlanta) != null ? Boolean(values.guardarBalonesAlmacen) : undefined,
+    guardarBalonesAlmacen: registrarRetorno || undefined,
+    fechaLlegadaAlmacen: registrarRetorno
+      ? String(values.fechaLlegadaAlmacen || '').trim() || undefined
+      : undefined,
+    lote: registrarRetorno ? String(values.lote ?? '').trim() || undefined : undefined,
+    fechaVencimientoLote: registrarRetorno
+      ? String(values.fechaVencimientoLote || '').trim() || undefined
+      : undefined,
+    fechaPruebaHidrostatica: registrarRetorno
+      ? String(values.fechaPruebaHidrostatica || '').trim() || undefined
+      : undefined,
+    idGuiaRetorno:
+      conRecarga && idGuiaRetorno.value !== '' ? Number(idGuiaRetorno.value) : undefined,
+    serieGuiaIngreso: conRecarga
+      ? String(values.serieGuiaIngreso ?? '').trim() || undefined
+      : undefined,
+    numeroGuiaIngreso: conRecarga
+      ? String(values.numeroGuiaIngreso ?? '').trim() || undefined
+      : undefined,
     idAlmacen: toOptionalNumber(values.idAlmacen),
     idTipoComprobante: toOptionalNumber(values.idTipoComprobante),
     idTipoRegistro: toOptionalNumber(values.idTipoRegistro),

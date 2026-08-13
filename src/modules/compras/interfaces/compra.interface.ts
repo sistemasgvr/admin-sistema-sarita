@@ -136,12 +136,15 @@ export interface CreateCompraPayload {
   idAlmacen?: number
   idComprobanteReferencia?: number
   idRecargaPlanta?: number
-  /** Solo aplica si idRecargaPlanta viene informado: si es true, ubica los
-   * balones de la orden en el almacén/sucursal de esta compra y genera su
-   * movimiento de ingreso. Si es false u omitido, la compra queda igual
-   * vinculada a la orden pero los balones se registran después desde el
-   * módulo de Recargas en planta. */
+  /** Si true (o si se envía fechaLlegadaAlmacen): registra retorno e ingreso ENTRADA_PLANTA_EXTERNA. */
   guardarBalonesAlmacen?: boolean
+  fechaLlegadaAlmacen?: string
+  lote?: string
+  fechaVencimientoLote?: string
+  fechaPruebaHidrostatica?: string
+  idGuiaRetorno?: number
+  serieGuiaIngreso?: string
+  numeroGuiaIngreso?: string
   idTipoRegistro?: number
   idCategoriaGasto?: number
   idSucursal?: number
@@ -193,4 +196,6 @@ export interface CompraLineaForm {
   esGas?: boolean
   /** Snapshot UI: si el producto genera ingreso al registrar la compra */
   afectaStock?: boolean
+  /** Cilindros de la orden de recarga que alimentan esta línea de gas. */
+  cilindrosRecarga?: number
 }

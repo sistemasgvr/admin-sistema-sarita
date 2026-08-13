@@ -1,6 +1,5 @@
 <template>
   <div class="space-y-5">
-    <!-- Resumen -->
     <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
       <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
         <p class="text-xs text-gray-500 dark:text-gray-400">Total pendiente</p>
@@ -34,43 +33,64 @@
       </div>
     </div>
 
+    <div
+      v-if="activeFilterChips.length"
+      class="flex flex-wrap items-center gap-2"
+    >
+      <span class="text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+        Filtros activos
+      </span>
+      <button
+        v-for="chip in activeFilterChips"
+        :key="chip.key"
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-200 dark:hover:bg-brand-500/20"
+        :title="`Quitar filtro ${chip.label}`"
+        @click="clearFilterChip(chip.key)"
+      >
+        <span>{{ chip.label }}: {{ chip.value }}</span>
+        <AppIcon :name="ICONS.x" :size="12" />
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition hover:text-brand-600 dark:text-gray-400 dark:hover:text-brand-400"
+        @click="clearAllFilters"
+      >
+        <AppIcon :name="ICONS.brushCleaning" :size="14" />
+        Limpiar filtros
+      </button>
+    </div>
+
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                :placeholder="`Buscar por ${terceroLabel.toLowerCase()}, documento o comprobante...`"
-              />
-            </div>
-            <div class="w-full sm:w-64">
-              <AppSelect v-model="filtroEstado" :options="filtroEstadoOptions" />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          :search-placeholder="`Buscar por ${terceroLabel.toLowerCase()}, documento o comprobante...`"
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
               v-if="canExportar"
               type="button"
               class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
               @click="exportarModalOpen = true"
             >
-              <AppIcon :name="ICONS.download" :size="16" />
+              <IconExcel class="h-[18px] w-[18px] shrink-0" />
               Exportar
             </button>
             <button
               v-if="canCrear"
               type="button"
-              class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="crearModalOpen = true"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               {{ ctaCrearLabel }}
             </button>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-tercero="{ row }">
@@ -101,6 +121,10 @@
         </div>
       </template>
 
+      <template #cell-monto_abonado="{ value }">
+        <span class="tabular-nums">{{ formatCurrency(Number(value ?? 0)) }}</span>
+      </template>
+
       <template #cell-saldo="{ row }">
         <span class="font-semibold text-rose-600 dark:text-rose-400">{{ formatCurrency(row.saldo) }}</span>
       </template>
@@ -124,16 +148,16 @@
           v-if="canRegistrarPago && !row.es_plan && row.saldo > 0"
           type="button"
           :title="ctaPagoLabel"
-          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
+          class="inline-flex items-center rounded-lg px-2 py-1.5 text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
           @click="openPago(row)"
         >
           <AppIcon :name="ICONS.banknote" :size="16" />
         </button>
         <button
-          v-if="canEditar"
+          v-if="canEditar && !row.es_plan"
           type="button"
-          title="Editar cuenta"
-          class="inline-flex items-center rounded-lg px-2 py-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+          title="Editar"
+          class="inline-flex items-center rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openEditar(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
@@ -141,8 +165,8 @@
         <button
           v-if="canEliminar"
           type="button"
-          title="Eliminar cuenta"
-          class="inline-flex items-center rounded-lg px-2 py-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10"
+          title="Eliminar"
+          class="inline-flex items-center rounded-lg px-2 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
           @click="openEliminar(row)"
         >
           <AppIcon :name="ICONS.trash" :size="16" />
@@ -209,12 +233,12 @@ import { computed, ref, watch } from 'vue'
 import {
   AppBadge,
   AppConfirmDialog,
-  AppInput,
+  AppListToolbar,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import IconExcel from '@/shared/components/IconExcel.vue'
 import RegistrarPagoModal from '@/modules/finanzas/components/RegistrarPagoModal.vue'
 import CuentaDetalleModal from '@/modules/finanzas/components/CuentaDetalleModal.vue'
 import CrearCuentaModal from '@/modules/finanzas/components/CrearCuentaModal.vue'
@@ -224,6 +248,8 @@ import { exportarCuentasExcel } from '@/modules/finanzas/utils/exportarExcel'
 import { useCuentasQuery } from '@/modules/finanzas/composables/useCuentasQuery'
 import { useResumenCuentasQuery } from '@/modules/finanzas/composables/useResumenCuentasQuery'
 import { useEliminarCuentaMutation } from '@/modules/finanzas/composables/usePagoMutations'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import type {
   CuentaFinanciera,
@@ -231,12 +257,17 @@ import type {
   EstadoCuenta,
   TipoCuenta,
 } from '@/modules/finanzas/interfaces/cuenta.interface'
+import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import { ICONS } from '@/shared/constants/icons'
+import { TipoClienteIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency, formatNumber } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
+import type {
+  DynamicFilterFieldDef,
+  DynamicFilterValues,
+} from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const props = defineProps<{ tipo: TipoCuenta }>()
@@ -281,19 +312,79 @@ const ctaCrearLabel = computed(() =>
 )
 
 const buscar = ref('')
-const filtroEstado = ref<'saldo' | 'todos' | 'VENCIDO' | 'PAGADO'>('saldo')
+const dynamicFilters = ref<DynamicFilterValues>({
+  estado: 'saldo',
+})
 const pagina = ref(1)
 const limite = ref(10)
 
-const filtroEstadoOptions: SelectOption[] = [
+const estadoFilterOptions = [
   { label: 'Con saldo pendiente', value: 'saldo' },
   { label: 'Vencidos', value: 'VENCIDO' },
   { label: 'Pagados', value: 'PAGADO' },
   { label: 'Todos', value: 'todos' },
 ]
 
-const buildEstadoFilter = (): Pick<CuentaListFilters, 'estado' | 'soloPendientes'> => {
-  switch (filtroEstado.value) {
+const clientesFilters = ref<ClienteListFilters>({
+  pagina: 1,
+  limite: 200,
+  soloActivos: 1,
+  ...(esCobrar.value ? {} : { idTipoCliente: TipoClienteIds.PROVEEDOR }),
+})
+const clientesQuery = useClientesQuery(clientesFilters)
+
+const clienteProveedoresFilters = ref<ClienteListFilters>({
+  pagina: 1,
+  limite: 200,
+  soloActivos: 1,
+  idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR,
+})
+const clienteProveedoresQuery = useClientesQuery(
+  clienteProveedoresFilters,
+  () => !esCobrar.value,
+)
+
+const terceroOptions = computed(() => {
+  const base = clientesQuery.data.value?.data ?? []
+  const extra = !esCobrar.value ? (clienteProveedoresQuery.data.value?.data ?? []) : []
+  const seen = new Set<number>()
+  return [...base, ...extra]
+    .filter((c) => {
+      if (seen.has(c.id)) return false
+      seen.add(c.id)
+      return true
+    })
+    .map((cliente) => ({
+      label: getClienteOptionLabel(cliente),
+      value: cliente.id,
+    }))
+})
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idTercero',
+    label: terceroLabel.value,
+    type: 'select',
+    searchable: true,
+    placeholder: `Todos los ${terceroLabelPlural.value.toLowerCase()}`,
+    searchPlaceholder: `Buscar ${terceroLabel.value.toLowerCase()}...`,
+    disabled: clientesQuery.isLoading.value || clienteProveedoresQuery.isLoading.value,
+    options: terceroOptions.value,
+  },
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar estado',
+    options: estadoFilterOptions,
+  },
+])
+
+const buildEstadoFilter = (
+  estadoRaw: string | number | boolean | null | undefined,
+): Pick<CuentaListFilters, 'estado' | 'soloPendientes'> => {
+  const estado = String(estadoRaw ?? 'saldo')
+  switch (estado) {
     case 'saldo':
       return { soloPendientes: 1 }
     case 'VENCIDO':
@@ -303,6 +394,13 @@ const buildEstadoFilter = (): Pick<CuentaListFilters, 'estado' | 'soloPendientes
     default:
       return {}
   }
+}
+
+const parseIdTercero = (): number | undefined => {
+  const raw = dynamicFilters.value.idTercero
+  if (raw === '' || raw == null) return undefined
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : undefined
 }
 
 const filters = ref<CuentaListFilters>({
@@ -325,10 +423,11 @@ const columns: TableColumn<CuentaFinanciera>[] = [
   { key: 'vencimiento', label: 'Vencimiento' },
   {
     key: 'monto_pendiente',
-    label: 'Monto',
+    label: 'Debe',
     align: 'right',
     formatter: (value) => formatCurrency(Number(value)),
   },
+  { key: 'monto_abonado', label: 'Abonado', align: 'right' },
   { key: 'saldo', label: 'Saldo', align: 'right' },
   { key: 'estado', label: 'Estado', align: 'center' },
 ]
@@ -346,30 +445,77 @@ const estadoColor = (estado: EstadoCuenta): BadgeColor => {
   }
 }
 
+const activeFilterChips = computed(() => {
+  const chips: { key: string; label: string; value: string }[] = []
+  const idTercero = parseIdTercero()
+  if (idTercero != null) {
+    const opt = terceroOptions.value.find((o) => Number(o.value) === idTercero)
+    chips.push({
+      key: 'idTercero',
+      label: terceroLabel.value,
+      value: opt?.label ?? String(idTercero),
+    })
+  }
+  const estado = dynamicFilters.value.estado
+  if (estado != null && estado !== '' && estado !== 'saldo') {
+    const opt = estadoFilterOptions.find((o) => o.value === estado)
+    chips.push({
+      key: 'estado',
+      label: 'Estado',
+      value: opt?.label ?? String(estado),
+    })
+  }
+  return chips
+})
+
+const syncFilters = (overrides: Partial<CuentaListFilters> = {}) => {
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    idTercero: parseIdTercero(),
+    estado: undefined,
+    soloPendientes: undefined,
+    ...buildEstadoFilter(dynamicFilters.value.estado),
+    ...overrides,
+  }
+}
+
+const onFiltersChange = () => {
+  pagina.value = 1
+  syncFilters({ pagina: 1 })
+}
+
+const clearFilterChip = (key: string) => {
+  if (key === 'idTercero') {
+    const { idTercero: _omit, ...rest } = dynamicFilters.value
+    dynamicFilters.value = rest
+  }
+  if (key === 'estado') {
+    dynamicFilters.value = { ...dynamicFilters.value, estado: 'saldo' }
+  }
+  pagina.value = 1
+  syncFilters({ pagina: 1 })
+}
+
+const clearAllFilters = () => {
+  dynamicFilters.value = { estado: 'saldo' }
+  pagina.value = 1
+  syncFilters({ pagina: 1 })
+}
+
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
-watch(buscar, (value) => {
+watch(buscar, () => {
   clearTimeout(buscarTimeout)
   buscarTimeout = setTimeout(() => {
     pagina.value = 1
-    filters.value = { ...filters.value, buscar: value.trim(), pagina: 1 }
+    syncFilters({ pagina: 1 })
   }, 350)
 })
 
-watch(filtroEstado, () => {
-  pagina.value = 1
-  filters.value = {
-    buscar: filters.value.buscar,
-    pagina: 1,
-    limite: limite.value,
-    estado: undefined,
-    soloPendientes: undefined,
-    ...buildEstadoFilter(),
-  }
-})
-
 watch([pagina, limite], () => {
-  filters.value = { ...filters.value, pagina: pagina.value, limite: limite.value }
+  syncFilters()
 })
 
 /* Modales */
@@ -381,10 +527,12 @@ const cuentaDetalleId = ref<number | null>(null)
 
 const crearModalOpen = ref(false)
 
-/* Exportar Excel */
 const exportarModalOpen = ref(false)
 const exportarCuentas = async (rango: { desde?: string; hasta?: string }) => {
-  await exportarCuentasExcel(props.tipo, rango)
+  await exportarCuentasExcel(props.tipo, {
+    desde: rango.desde,
+    hasta: rango.hasta,
+  })
 }
 
 const editarModalOpen = ref(false)
@@ -404,9 +552,6 @@ const openDetalle = (cuenta: CuentaFinanciera) => {
   detalleModalOpen.value = true
 }
 
-/** Recibe una cuota "proyectada" como CuentaFinanciera desde el detalle
- *  y abre el modal de pago encima. El modal de detalle queda abierto para
- *  ver el resultado tras cerrar el de pago. */
 const onPagarCuota = (cuota: CuentaFinanciera) => {
   cuentaSeleccionada.value = cuota
   pagoModalOpen.value = true
@@ -436,10 +581,8 @@ const confirmarEliminar = async () => {
       idUsuarioAuditoria: authStore.user?.id ?? undefined,
     })
   } catch {
-    // El toast con el mensaje del backend lo dispara la mutación.
+    // toast en la mutación
   } finally {
-    // Cerramos siempre para que el toast (éxito o error, ej. "tiene pagos aplicados")
-    // quede totalmente visible. El usuario puede reintentar si aplica.
     eliminarModalOpen.value = false
     cuentaAEliminar.value = null
   }

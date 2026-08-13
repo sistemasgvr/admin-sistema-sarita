@@ -9,6 +9,8 @@ import type {
   MedioPago,
   RegistrarPagoPayload,
   ResumenCuentas,
+  SaldoPorTercero,
+  SaldoPorTerceroFilters,
   TipoCuenta,
 } from '@/modules/finanzas/interfaces/cuenta.interface'
 import type {
@@ -27,6 +29,14 @@ const basePath = (tipo: TipoCuenta) =>
 export const finanzasService = {
   listarCuentas(tipo: TipoCuenta, filters: CuentaListFilters = {}) {
     return apiGetPaginated<CuentaFinanciera>(basePath(tipo), { params: filters })
+  },
+
+  listarSaldosPorTercero(tipo: TipoCuenta, filters: SaldoPorTerceroFilters = {}) {
+    const path =
+      tipo === 'COBRAR'
+        ? '/finanzas/cuentas-por-cobrar/saldos-por-cliente'
+        : '/finanzas/cuentas-por-pagar/saldos-por-proveedor'
+    return apiGetPaginated<SaldoPorTercero>(path, { params: filters })
   },
 
   obtenerCuenta(tipo: TipoCuenta, id: number) {
