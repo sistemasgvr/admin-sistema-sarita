@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { configuracionAccessPermissions } from '@/modules/configuracion/config/configuracion-menu'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
 export const configuracionRoutes: RouteRecordRaw[] = [
@@ -12,7 +13,7 @@ export const configuracionRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Configuración',
           module: 'configuracion',
-          permission: PermisoBanderas.CONFIGURACION_VER,
+          anyPermission: configuracionAccessPermissions,
         },
       },
       {

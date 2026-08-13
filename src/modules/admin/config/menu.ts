@@ -5,10 +5,13 @@ import { ventasMenuSubItems } from '@/modules/ventas/config/ventas-menu'
 import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/permissions'
 import { clientesMenuSubItems } from '@/modules/clientes/config/clientes-menu'
 import { finanzasMenuSubItems } from '@/modules/finanzas/config/finanzas-menu'
+import { configuracionMenuSubItems } from '@/modules/configuracion/config/configuracion-menu'
+
 export interface AdminMenuSubItem {
   name: string
   path: string
   permission?: PermissionBandera
+  anyPermission?: PermissionBandera[]
   icon?: string
 }
 
@@ -17,8 +20,9 @@ export interface AdminMenuItem {
   name: string
   path?: string
   permission?: PermissionBandera
-  /** Visible si el usuario tiene AL MENOS UNO de estos permisos (OR). */
+  /** Ítem hoja (o hub): visible si tiene AL MENOS UNO (OR). */
   anyPermission?: PermissionBandera[]
+  /** Si hay subItems, el padre se muestra con los hijos permitidos (o se aplana al hub). */
   subItems?: AdminMenuSubItem[]
 }
 
@@ -45,7 +49,6 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         icon: ICONS.creditCard,
         name: 'Ventas',
         path: '/admin/ventas/caja',
-        anyPermission: [PermisoBanderas.VENTAS_VER, PermisoBanderas.CAJA_VER],
         subItems: ventasMenuSubItems,
       },
       {
@@ -72,12 +75,6 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         name: 'Finanzas',
         path: '/admin/finanzas',
         subItems: finanzasMenuSubItems,
-        anyPermission: [
-          PermisoBanderas.FINANZAS_CXC_VER,
-          PermisoBanderas.FINANZAS_CXP_VER,
-          PermisoBanderas.FINANZAS_GARANTIAS_VER,
-          PermisoBanderas.CAJA_LIBRO_DIARIO,
-        ],
       },
       {
         icon: ICONS.shoppingcard,
@@ -102,6 +99,7 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         name: 'Configuración',
         path: '/admin/configuracion',
         permission: PermisoBanderas.CONFIGURACION_VER,
+        subItems: configuracionMenuSubItems,
       },
     ],
   },

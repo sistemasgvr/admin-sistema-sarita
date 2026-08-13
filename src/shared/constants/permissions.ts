@@ -309,3 +309,27 @@ export function hasPermissionFlag(permisos: string[], permission?: string): bool
   if (!permission) return true
   return permisos.includes(PermisoBanderas.AUTH_TODO) || permisos.includes(permission)
 }
+
+/**
+ * Acceso de menú o ruta.
+ * - `anyPermission`: basta con uno (OR)
+ * - `permission`: bandera única
+ * - sin banderas: visible (p. ej. Dashboard), salvo `requireExplicit`
+ */
+export function canAccessByPermissions(
+  permisos: string[],
+  options?: {
+    permission?: string | null
+    anyPermission?: string[] | null
+    requireExplicit?: boolean
+  },
+): boolean {
+  const permission = options?.permission ?? undefined
+  const anyPermission = options?.anyPermission?.filter(Boolean) ?? []
+
+  if (anyPermission.length > 0) {
+    return anyPermission.some((flag) => hasPermissionFlag(permisos, flag))
+  }
+  if (!permission) return !options?.requireExplicit
+  return hasPermissionFlag(permisos, permission)
+}

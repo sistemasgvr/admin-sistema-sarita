@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { balonesAccessPermissions } from '@/modules/balones/config/balones-menu'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
 export const balonesRoutes: RouteRecordRaw[] = [
@@ -255,7 +256,7 @@ export const balonesRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Balones',
           module: 'balones',
-          permission: PermisoBanderas.BALONES_HUB_VER,
+          anyPermission: balonesAccessPermissions,
         },
       },
     ],
