@@ -104,7 +104,7 @@
           <tbody>
             <tr
               v-for="detalle in guia.detalles"
-              :key="detalle.id ?? `${detalle.id_producto}-${detalle.item}`"
+              :key="detalle.id ?? `${detalle.item}-${detalle.id_balon ?? detalle.id_producto ?? 'libre'}`"
               class="border-t border-gray-100 dark:border-gray-800"
             >
               <td class="px-3 py-2">{{ detalle.item }}</td>
@@ -116,7 +116,7 @@
                   detalle.glosa ||
                   detalle.descripcion ||
                   detalle.nombre_producto ||
-                  detalle.id_producto
+                  (detalle.id_producto != null ? `#${detalle.id_producto}` : 'Ítem libre')
                 }}
               </td>
               <td class="px-3 py-2 text-right tabular-nums">{{ detalle.cantidad }}</td>

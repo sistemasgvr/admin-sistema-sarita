@@ -28,7 +28,7 @@ export interface GuiaRemisionListItem {
 export interface GuiaRemisionDetalle {
   id?: number
   item?: number
-  id_producto: number
+  id_producto?: number | null
   codigo_producto?: string | null
   nombre_producto?: string | null
   descripcion?: string | null
@@ -121,7 +121,7 @@ export interface GuiaRemisionCatalogos {
 
 export interface GuiaRemisionDetallePayload {
   item?: number
-  idProducto: number
+  idProducto?: number
   descripcion?: string
   idUnidadMedida?: number
   cantidad: number
@@ -138,6 +138,8 @@ export interface CreateGuiaRemisionPayload {
   idSucursal: number
   idAlmacen: number
   idCliente?: number
+  remitenteNombre?: string
+  remitenteDocumento?: string
   idMotivoTraslado: number
   idUnidadMedida?: number
   pesoBruto: number
