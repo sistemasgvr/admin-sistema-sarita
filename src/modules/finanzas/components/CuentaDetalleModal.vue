@@ -143,7 +143,7 @@
                 <td v-if="canRegistrarPago" class="px-3 py-2 text-right">
                   <div class="inline-flex items-center gap-1">
                     <button
-                      v-if="cuota.saldo > 0"
+                      v-if="tieneSaldoPendiente(cuota.saldo)"
                       type="button"
                       title="Registrar pago de esta cuota"
                       class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
@@ -277,7 +277,7 @@ import type {
   EstadoCuenta,
   TipoCuenta,
 } from '@/modules/finanzas/interfaces/cuenta.interface'
-import { formatCurrency } from '@/shared/utils/currency'
+import { formatCurrency, tieneSaldoPendiente } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import { ICONS } from '@/shared/constants/icons'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'

@@ -145,7 +145,7 @@
           <AppIcon :name="ICONS.eye" :size="16" />
         </button>
         <button
-          v-if="canRegistrarPago && !row.es_plan && row.saldo > 0"
+          v-if="canRegistrarPago && !row.es_plan && tieneSaldoPendiente(row.saldo)"
           type="button"
           :title="ctaPagoLabel"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
@@ -261,7 +261,7 @@ import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.i
 import { ICONS } from '@/shared/constants/icons'
 import { TipoClienteIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { formatCurrency, formatNumber } from '@/shared/utils/currency'
+import { formatCurrency, formatNumber, tieneSaldoPendiente } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type {

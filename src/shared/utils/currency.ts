@@ -19,6 +19,17 @@ export function formatNumber(value?: number | string | null): string {
   return numberFormatter.format(numeric)
 }
 
+/** Redondea a céntimos (2 decimales) para comparar montos de cuentas/cuotas. */
+export function roundMoney(value?: number | string | null): number {
+  const numeric = typeof value === 'string' ? Number(value) : Number(value ?? 0)
+  if (!Number.isFinite(numeric)) return 0
+  return Math.round((numeric + Number.EPSILON) * 100) / 100
+}
+
+export function tieneSaldoPendiente(value?: number | string | null): boolean {
+  return roundMoney(value) >= 0.01
+}
+
 /**
  * Parsea un texto de monto tolerando el formato que la propia app usa para
  * mostrar cifras (ej. "1,234.56", "S/ 1,234.56", "3,200"). La coma SIEMPRE
