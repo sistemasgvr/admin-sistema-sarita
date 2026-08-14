@@ -16,32 +16,27 @@
     >
       <FormCardsLayout>
         <DetailSectionCard
-          v-if="mode === 'edit' && movimiento"
-          title="Movimiento"
+          title="Datos"
           :icon="ICONS.arrowLeftRight"
-          :full-width="true"
-          help="Almacén, producto, tipo y cantidad no se modifican. Solo fecha, documento de referencia y glosa."
+          :help="cardHelp"
         >
-          <div class="text-sm">
+          <div
+            v-if="mode === 'edit' && movimiento"
+            class="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm dark:border-gray-800 dark:bg-white/[0.03] sm:grid-cols-3"
+          >
             <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) }} —
-              {{ formatCantidad(movimiento.cantidad) }}
+              {{ formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) }}
+              · {{ formatCantidad(movimiento.cantidad) }}
             </p>
-            <p class="mt-1 text-gray-600 dark:text-gray-400">
+            <p class="text-gray-600 dark:text-gray-400">
               {{ movimiento.codigo_producto }} — {{ movimiento.nombre_producto }}
             </p>
             <p class="text-gray-500 dark:text-gray-400">
               {{ movimiento.nombre_almacen }}
             </p>
           </div>
-        </DetailSectionCard>
 
-        <DetailSectionCard
-          title="Datos del movimiento"
-          :icon="ICONS.arrowLeftRight"
-          help="Ingresos, salidas o ajustes de accesorios en almacén. No aplica a gases."
-        >
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AppInput
               v-model="fecha"
               label="Fecha"
@@ -60,6 +55,17 @@
                 :error="errors.idAlmacen"
               />
 
+              <AppSelect
+                v-model="idTipoMovimiento"
+                label="Tipo de movimiento"
+                placeholder="Selecciona tipo"
+                required
+                v-bind="idTipoMovimientoAttrs"
+                :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
+                :error="errors.idTipoMovimiento"
+                :options="tipoMovimientoOptions"
+              />
+
               <ProductoSelectField
                 v-model="idProducto"
                 v-model:search="productoBuscar"
@@ -72,18 +78,7 @@
                 class="sm:col-span-2"
                 :disabled="isSubmitting"
                 :error="errors.idProducto"
-                hint="Solo accesorios. El gas se controla en Balones / Stock de gas."
-              />
-
-              <AppSelect
-                v-model="idTipoMovimiento"
-                label="Tipo de movimiento"
-                placeholder="Selecciona tipo"
-                required
-                v-bind="idTipoMovimientoAttrs"
-                :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
-                :error="errors.idTipoMovimiento"
-                :options="tipoMovimientoOptions"
+                help="Solo accesorios. El gas se controla en Balones / Stock de gas."
               />
 
               <AppInput
@@ -99,20 +94,13 @@
                 :hint="hintCantidad"
               />
             </template>
-          </div>
-        </DetailSectionCard>
 
-        <DetailSectionCard
-          title="Referencia"
-          :icon="ICONS.clipboardList"
-          help="Opcional. Vincula el movimiento a un documento de origen si aplica."
-        >
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppSelect
               v-model="idTipoDocumentoRef"
               label="Documento origen"
               placeholder="Opcional"
               optional
+              :help="helpDocumentoOrigen"
               v-bind="idTipoDocumentoRefAttrs"
               :disabled="isSubmitting || tiposDocumentoQuery.isFetching.value"
               :options="tipoDocumentoOptions"
@@ -129,18 +117,16 @@
               v-bind="idDocumentoRefAttrs"
               :disabled="isSubmitting"
             />
-          </div>
-        </DetailSectionCard>
 
-        <DetailSectionCard title="Glosa" :icon="ICONS.messageSquare" :full-width="true">
-          <AppInput
-            v-model="glosa"
-            label="Glosa"
-            placeholder="Detalle del movimiento"
-            optional
-            v-bind="glosaAttrs"
-            :disabled="isSubmitting"
-          />
+            <AppInput
+              v-model="glosa"
+              label="Glosa"
+              placeholder="Detalle del movimiento"
+              optional
+              v-bind="glosaAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
         </DetailSectionCard>
       </FormCardsLayout>
 
@@ -276,6 +262,15 @@ const hintCantidad = computed(() =>
     ? 'UNID / piezas: solo números enteros'
     : undefined,
 )
+
+const cardHelp = computed(() =>
+  props.mode === 'edit'
+    ? 'Almacén, producto, tipo y cantidad no se modifican. Solo fecha, documento de referencia y glosa.'
+    : 'Ingresos, salidas o ajustes de accesorios en almacén. No aplica a gases.',
+)
+
+const helpDocumentoOrigen =
+  'Opcional. Vincula el movimiento a un documento de origen si aplica.'
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
