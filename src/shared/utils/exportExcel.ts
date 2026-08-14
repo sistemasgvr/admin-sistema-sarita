@@ -1,3 +1,5 @@
+import type { PaginatedResult } from '@/shared/api/interfaces/api.interface'
+
 export type ExcelColumn<T> = {
   key: string
   header: string
@@ -9,10 +11,6 @@ export interface ExcelSheetSpec<T> {
   name: string
   columns: ExcelColumn<T>[]
   rows: T[]
-  /** Fila de título arriba del encabezado (ej. "Direcciones — Total: 128 registros"). */
-  title?: string
-  /** Color de acento de la hoja (ARGB, ej. 'FF2563EB'). Sin esto, el encabezado queda en blanco y negrita simple. */
-  accentColor?: string
   /**
    * Nivel de agrupado (0 = fila "resumen"/visible, 1+ = fila de detalle
    * colapsable). Si se define, las filas con nivel > 0 se agregan ya
@@ -51,9 +49,7 @@ const THIN_BORDER = {
 }
 
 function addSheet<T>(workbook: import('exceljs').Workbook, spec: ExcelSheetSpec<T>) {
-  const hasTitle = Boolean(spec.title)
-  const headerRowNumber = hasTitle ? 2 : 1
-  const acento = spec.accentColor ?? REPORT_COLORS.acento
+  const headerRowNumber = 1
 
   const sheet = workbook.addWorksheet(spec.name, {
     views: [{ state: 'frozen', ySplit: headerRowNumber }],
@@ -69,18 +65,6 @@ function addSheet<T>(workbook: import('exceljs').Workbook, spec: ExcelSheetSpec<
     width: column.width ?? Math.max(12, column.header.length + 2),
   }))
 
-  if (hasTitle) {
-    sheet.mergeCells(1, 1, 1, spec.columns.length)
-    const titleCell = sheet.getCell(1, 1)
-    titleCell.value = spec.title
-    titleCell.font = { name: REPORT_FONT, bold: true, size: 13, color: { argb: REPORT_COLORS.textoClaro } }
-    titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: acento } }
-    sheet.getRow(1).height = 26
-  }
-
-  // Encabezado de columnas: minimalista (blanco + texto gris), sin competir
-  // visualmente con la barra de título de arriba.
   const headerRow = sheet.getRow(headerRowNumber)
   spec.columns.forEach((column, index) => {
     const cell = headerRow.getCell(index + 1)
@@ -145,6 +129,23 @@ export async function downloadExcelWorkbook(options: {
 }
 
 /** Atajo para exportar una sola hoja sin título ni color (uso simple). */
+export async function fetchAllPages<F extends { pagina?: number; limite?: number }, X>(
+  listar: (filters: F) => Promise<PaginatedResult<X[]>>,
+  baseFilters: F,
+  pageSize = 500,
+): Promise<X[]> {
+  const primera = await listar({ ...baseFilters, pagina: 1, limite: pageSize })
+  const registros = [...primera.data]
+  const totalPaginas = Math.ceil((primera.meta.total || registros.length) / pageSize)
+
+  for (let pagina = 2; pagina <= totalPaginas; pagina++) {
+    const siguiente = await listar({ ...baseFilters, pagina, limite: pageSize })
+    registros.push(...siguiente.data)
+  }
+
+  return registros
+}
+
 export async function downloadExcel<T>(options: {
   filename: string
   sheetName?: string

@@ -23,6 +23,7 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <AppExportExcelButton :on-export="exportarExcel" />
             <div class="w-full sm:w-40">
               <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
             </div>
@@ -226,6 +227,7 @@ import {
 } from '@/modules/productos/stock/composables/useStockMutations'
 import { useStockQuery } from '@/modules/productos/stock/composables/useStockQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
+import { exportarStockExcel } from '@/modules/productos/stock/utils/exportarStockExcel'
 import type {
   Stock,
   StockListFilters,
@@ -234,6 +236,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -392,6 +395,8 @@ let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const formatCantidad = (value: unknown, nombreUnidad?: string | null) =>
   formatCantidadPorUnidad(value, nombreUnidad)
+
+const exportarExcel = () => exportarStockExcel(filters.value)
 
 const loadCatalogos = async () => {
   isLoadingAlmacenes.value = true
