@@ -8,6 +8,8 @@ export interface MovimientoInventario {
   nombre_unidad_medida?: string | null
   id_almacen: number
   nombre_almacen: string
+  id_almacen_destino?: number | null
+  nombre_almacen_destino?: string | null
   id_tipo_movimiento: number
   nombre_tipo_movimiento: string
   cantidad: number
@@ -44,6 +46,7 @@ export interface CreateMovimientoInventarioPayload {
   cantidad: number
   idDocumentoRef?: number
   idTipoDocumentoRef?: number
+  idAlmacenDestino?: number
   glosa?: string
 }
 

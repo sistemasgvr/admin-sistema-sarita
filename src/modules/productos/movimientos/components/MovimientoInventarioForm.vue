@@ -50,9 +50,19 @@
             <template v-if="mode === 'create'">
               <AlmacenSelectField
                 v-model="idAlmacen"
+                :label="esTraslado ? 'Almacén origen' : 'Almacén'"
                 required
                 :disabled="isSubmitting"
                 :error="errors.idAlmacen"
+              />
+
+              <AlmacenSelectField
+                v-if="esTraslado"
+                v-model="idAlmacenDestino"
+                label="Almacén destino"
+                required
+                :disabled="isSubmitting"
+                :error="errors.idAlmacenDestino"
               />
 
               <AppSelect
@@ -266,7 +276,7 @@ const hintCantidad = computed(() =>
 const cardHelp = computed(() =>
   props.mode === 'edit'
     ? 'Almacén, producto, tipo y cantidad no se modifican. Solo fecha, documento de referencia y glosa.'
-    : 'Ingresos, salidas o ajustes de accesorios en almacén. No aplica a gases.',
+    : 'Ingresos, salidas, traslados o ajustes de accesorios. Un traslado resta origen y suma destino.',
 )
 
 const helpDocumentoOrigen =
@@ -277,6 +287,21 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     yup.object({
       fecha: requiredString('La fecha'),
       idAlmacen: requiredSelect('El almacén'),
+      idAlmacenDestino: yup.mixed<string | number>().when([], {
+        is: () => esTraslado.value,
+        then: (schema) =>
+          schema
+            .transform((value) => (value === '' ? undefined : value))
+            .required('El almacén de destino es obligatorio')
+            .test(
+              'distinto',
+              'El destino debe ser distinto al origen',
+              function (value) {
+                return Number(value) !== Number(this.parent.idAlmacen)
+              },
+            ),
+        otherwise: (schema) => schema.optional(),
+      }),
       idProducto: requiredSelect('El producto'),
       idTipoMovimiento: requiredSelect('El tipo de movimiento'),
       cantidad: yup
@@ -309,6 +334,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   initialValues: {
     fecha: today(),
     idAlmacen: '' as string | number,
+    idAlmacenDestino: '' as string | number,
     idProducto: '' as string | number,
     idTipoMovimiento: '' as string | number,
     cantidad: undefined as number | undefined,
@@ -320,12 +346,20 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 
 const [fecha, fechaAttrs] = defineField('fecha')
 const [idAlmacen] = defineField('idAlmacen')
+const [idAlmacenDestino] = defineField('idAlmacenDestino')
 const [idProducto] = defineField('idProducto')
 const [idTipoMovimiento, idTipoMovimientoAttrs] = defineField('idTipoMovimiento')
 const [cantidad, cantidadAttrs] = defineField('cantidad')
 const [idTipoDocumentoRef, idTipoDocumentoRefAttrs] = defineField('idTipoDocumentoRef')
 const [idDocumentoRef, idDocumentoRefAttrs] = defineField('idDocumentoRef')
 const [glosa, glosaAttrs] = defineField('glosa')
+
+const esTraslado = computed(() => {
+  const id = Number(idTipoMovimiento.value)
+  if (!Number.isFinite(id) || id <= 0) return false
+  const opcion = tiposMovimientoQuery.data.value?.find((item) => item.id === id)
+  return String(opcion?.nombre ?? '').toUpperCase() === 'TRASLADO'
+})
 
 watch(
   () => [props.active, props.mode, idProducto.value] as const,
@@ -355,6 +389,7 @@ const syncFormValues = () => {
       fecha: data?.fecha?.slice(0, 10) ?? today(),
       // Hidden in edit; keep values so requiredSelect still validates on save.
       idAlmacen: data?.id_almacen ?? '',
+      idAlmacenDestino: data?.id_almacen_destino ?? '',
       idProducto: data?.id_producto ?? '',
       idTipoMovimiento: data?.id_tipo_movimiento ?? '',
       cantidad: data?.cantidad ?? 1,
@@ -376,6 +411,7 @@ watch(
         values: {
           fecha: today(),
           idAlmacen: props.initialIdAlmacen ?? '',
+          idAlmacenDestino: '',
           idProducto: props.initialIdProducto ?? '',
           idTipoMovimiento: '',
           cantidad: undefined,
@@ -411,6 +447,9 @@ const onSubmit = handleSubmit(async (values) => {
       await createMutation.mutateAsync({
         fecha: values.fecha,
         idAlmacen: Number(values.idAlmacen),
+        idAlmacenDestino: esTraslado.value
+          ? Number(values.idAlmacenDestino)
+          : undefined,
         idProducto: Number(values.idProducto),
         idTipoMovimiento: Number(values.idTipoMovimiento),
         cantidad: Number(values.cantidad),
