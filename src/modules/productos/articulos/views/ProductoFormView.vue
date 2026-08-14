@@ -47,7 +47,7 @@ const pageTitle = computed(() => (isEdit.value ? 'Editar producto' : 'Nuevo prod
 const pageHelpText = computed(() =>
   isEdit.value
     ? 'Producto = físico/gas; servicio = flete, mantenimiento o regulador alquilable. El tipo define filtros en POS y alquileres. Las imágenes se gestionan en la sección Imágenes.'
-    : 'Puedes adjuntar imágenes al crear. Si afecta stock, se crea saldo 0 en cada almacén; luego usa Movimientos para ingresar cantidad.',
+    : 'Producto o servicio. El tipo define POS y alquileres. Si afecta stock, se crea saldo 0; luego usa Movimientos.',
 )
 const breadcrumbItems = computed(() => productosArticulosBreadcrumbItems(pageTitle.value))
 

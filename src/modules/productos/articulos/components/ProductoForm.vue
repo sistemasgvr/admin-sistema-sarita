@@ -30,62 +30,46 @@
 
     <FormCardsLayout>
       <DetailSectionCard
-        title="Tipo de ítem"
-        :icon="ICONS.layers"
-        help="Producto: accesorio con stock, o gas solo con precio (cantidad en Balones / Stock de gas). Servicio: flete, mantenimiento o alquiler de regulador."
+        title="Datos"
+        :icon="ICONS.package"
+        help="Producto: accesorio o gas. Servicio: flete, mantenimiento o regulador alquilable. El tipo define filtros en POS y alquileres."
       >
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            class="rounded-xl border px-4 py-4 text-left transition"
-            :class="tipoItemCardClass('producto')"
-            :disabled="isSubmitting"
-            @click="setTipoItem('producto')"
-          >
-            <p class="text-sm font-semibold text-gray-900 dark:text-white">Producto</p>
-            <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              Accesorio, gas, envase o descartable. Puede afectar stock y usarse en ventas /
-              recargas / garantías.
-            </p>
-          </button>
-
-          <button
-            type="button"
-            class="rounded-xl border px-4 py-4 text-left transition"
-            :class="tipoItemCardClass('servicio')"
-            :disabled="isSubmitting"
-            @click="setTipoItem('servicio')"
-          >
-            <p class="text-sm font-semibold text-gray-900 dark:text-white">Servicio</p>
-            <p class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-              No maneja stock (flete, mantenimiento). Marca “Alquilable” solo si es un
-              regulador u otro servicio de alquiler.
-            </p>
-          </button>
-        </div>
-      </DetailSectionCard>
-
-      <DetailSectionCard title="Identificación" :icon="ICONS.package">
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput
-              v-model="codigo"
-              label="Código"
-              placeholder="GAS-OX-001"
-              required
-              v-bind="codigoAttrs"
-              :disabled="isSubmitting"
-              :error="errors.codigo"
-            />
-
-            <AppInput
-              v-model="codigoBarra"
-              label="Código de barras"
-              placeholder="Opcional"
-              v-bind="codigoBarraAttrs"
-              :disabled="isSubmitting"
-            />
+        <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="sm:col-span-2 lg:col-span-1">
+            <p class="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition"
+                :class="tipoItemCardClass('producto')"
+                :disabled="isSubmitting"
+                @click="setTipoItem('producto')"
+              >
+                <AppIcon :name="ICONS.package" :size="16" />
+                Producto
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition"
+                :class="tipoItemCardClass('servicio')"
+                :disabled="isSubmitting"
+                @click="setTipoItem('servicio')"
+              >
+                <AppIcon :name="ICONS.wrench" :size="16" />
+                Servicio
+              </button>
+            </div>
           </div>
+
+          <AppInput
+            v-model="codigo"
+            label="Código"
+            placeholder="GAS-OX-001"
+            required
+            v-bind="codigoAttrs"
+            :disabled="isSubmitting"
+            :error="errors.codigo"
+          />
 
           <AppInput
             v-model="nombre"
@@ -97,86 +81,92 @@
             :error="errors.nombre"
           />
 
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput
-              v-model="marca"
-              label="Marca"
-              placeholder="Opcional"
-              v-bind="marcaAttrs"
-              :disabled="isSubmitting"
-            />
+          <AppInput
+            v-model="codigoBarra"
+            label="Código de barras"
+            optional
+            placeholder="Opcional"
+            v-bind="codigoBarraAttrs"
+            :disabled="isSubmitting"
+          />
 
-            <AppInput
-              v-model="presentacion"
-              label="Presentación"
-              placeholder="Ej. Cilindro 10 m³"
-              v-bind="presentacionAttrs"
-              :disabled="isSubmitting"
-            />
-          </div>
+          <AppInput
+            v-model="marca"
+            label="Marca"
+            optional
+            placeholder="Opcional"
+            v-bind="marcaAttrs"
+            :disabled="isSubmitting"
+          />
 
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-            <AppInput
-              v-model="codigoUbicacion"
-              label="Código de ubicación"
-              placeholder="Ej. ARO-GEN-01"
-              v-bind="codigoUbicacionAttrs"
-              :disabled="isSubmitting || isGeneratingUbicacion || tipoItem === 'servicio'"
-            />
+          <AppInput
+            v-model="presentacion"
+            label="Presentación"
+            optional
+            placeholder="Ej. Cilindro 10 m³"
+            v-bind="presentacionAttrs"
+            :disabled="isSubmitting"
+          />
+
+          <div class="flex min-w-0 items-start gap-2">
+            <div class="min-w-0 flex-1">
+              <AppInput
+                v-model="codigoUbicacion"
+                label="Código de ubicación"
+                optional
+                placeholder="Ej. ARO-GEN-01"
+                :help="
+                  tipoItem === 'servicio'
+                    ? 'Los servicios no usan ubicación en almacén.'
+                    : 'Iniciales de nombre y marca (ej. ARO-GEN-01). En edición se guarda al generar.'
+                "
+                v-bind="codigoUbicacionAttrs"
+                :disabled="isSubmitting || isGeneratingUbicacion || tipoItem === 'servicio'"
+              />
+            </div>
             <button
               type="button"
-              class="inline-flex h-[42px] items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              class="mt-[1.625rem] inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-brand-500 px-3.5 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="isSubmitting || isGeneratingUbicacion || tipoItem === 'servicio'"
               @click="generarCodigoUbicacion"
             >
-              {{ isGeneratingUbicacion ? 'Generando...' : 'Generar' }}
+              {{ isGeneratingUbicacion ? '…' : 'Generar' }}
             </button>
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">
-            {{
-              tipoItem === 'servicio'
-                ? 'Los servicios no usan código de ubicación en almacén.'
-                : 'Genera iniciales del nombre y marca (ej. ARO-GEN-01). En edición se guarda de inmediato.'
-            }}
-          </p>
-        </div>
-      </DetailSectionCard>
 
-      <DetailSectionCard title="Clasificación" :icon="ICONS.tags">
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppSelectWithCreate
-              :can-create="canCreateCategoria"
-              create-title="Nueva categoría"
+          <AppSelectWithCreate
+            :can-create="canCreateCategoria"
+            create-title="Nueva categoría"
+            :disabled="isSubmitting"
+            @create="categoriaModalOpen = true"
+          >
+            <AppSelect
+              v-model="idCategoria"
+              label="Categoría"
+              optional
+              placeholder="Selecciona categoría"
+              v-bind="idCategoriaAttrs"
               :disabled="isSubmitting"
-              @create="categoriaModalOpen = true"
-            >
-              <AppSelect
-                v-model="idCategoria"
-                label="Categoría"
-                placeholder="Selecciona categoría"
-                v-bind="idCategoriaAttrs"
-                :disabled="isSubmitting"
-                :options="categoriaOptions"
-              />
-            </AppSelectWithCreate>
+              :options="categoriaOptions"
+            />
+          </AppSelectWithCreate>
 
-            <AppSelectWithCreate
-              :can-create="canCreateSubCategoria"
-              create-title="Nueva subcategoría"
+          <AppSelectWithCreate
+            :can-create="canCreateSubCategoria"
+            create-title="Nueva subcategoría"
+            :disabled="isSubmitting || !idCategoria"
+            @create="subCategoriaModalOpen = true"
+          >
+            <AppSelect
+              v-model="idSubCategoria"
+              label="Subcategoría"
+              optional
+              placeholder="Selecciona subcategoría"
+              v-bind="idSubCategoriaAttrs"
               :disabled="isSubmitting || !idCategoria"
-              @create="subCategoriaModalOpen = true"
-            >
-              <AppSelect
-                v-model="idSubCategoria"
-                label="Subcategoría"
-                placeholder="Selecciona subcategoría"
-                v-bind="idSubCategoriaAttrs"
-                :disabled="isSubmitting || !idCategoria"
-                :options="subCategoriaOptions"
-              />
-            </AppSelectWithCreate>
-          </div>
+              :options="subCategoriaOptions"
+            />
+          </AppSelectWithCreate>
 
           <AppSelectWithCreate
             :can-create="canCreateUnidad"
@@ -187,6 +177,7 @@
             <AppSelect
               v-model="idUnidadMedida"
               label="Unidad de medida"
+              optional
               placeholder="Selecciona unidad"
               v-bind="idUnidadMedidaAttrs"
               :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
@@ -196,29 +187,24 @@
         </div>
       </DetailSectionCard>
 
-      <DetailSectionCard title="Comercial" :icon="ICONS.creditCard">
-        <div class="space-y-4">
-          <div
-            class="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-3 dark:border-gray-800 dark:bg-white/[0.02]"
-          >
-            <p class="mb-3 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Características
-            </p>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <DetailSectionCard
+        title="Comercial"
+        :icon="ICONS.creditCard"
+        :help="ayudaCaracteristicas"
+      >
+        <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div class="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-3">
+            <div class="flex flex-wrap gap-x-5 gap-y-2">
               <AppCheckbox
                 v-if="tipoItem === 'producto'"
                 v-model="esGas"
                 :disabled="isSubmitting"
-                label="Es gas (recarga / contenido)"
+                label="Es gas"
               />
               <AppCheckbox
                 v-model="esAlquilable"
                 :disabled="isSubmitting"
-                :label="
-                  tipoItem === 'servicio'
-                    ? 'Es alquilable (ej. regulador medicinal)'
-                    : 'Es alquilable'
-                "
+                label="Alquilable"
               />
               <AppCheckbox
                 v-if="tipoItem === 'producto' && !esGas"
@@ -226,75 +212,62 @@
                 :disabled="isSubmitting"
                 label="Afecta stock"
               />
-              <p
-                v-else-if="tipoItem === 'producto' && esGas"
-                class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2"
-              >
-                Los gases no usan Productos / Stock accesorios; la cantidad sale de los cilindros.
-              </p>
             </div>
-            <div
-              v-if="tipoItem === 'producto' && esGas"
-              class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
-            >
-              <AppInput
-                v-model="factorKgM3"
-                label="Factor kg / m³"
-                type="number"
-                min="0"
-                step="0.000001"
-                placeholder="Ej. 0.75"
-                help="m³ de gas por 1 kg (ficha técnica)."
-                :disabled="isSubmitting"
-                :error="errors.factorKgM3"
-              />
-              <AppInput
-                v-model="factorLbM3"
-                label="Factor lb / m³"
-                type="number"
-                min="0"
-                step="0.000001"
-                placeholder="Ej. 0.3174"
-                help="m³ de gas por 1 lb. Fallback si el tipo no tiene capacidad lb."
-                :disabled="isSubmitting"
-                :error="errors.factorLbM3"
-              />
-            </div>
-            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-              {{ ayudaCaracteristicas }}
-            </p>
           </div>
 
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput
-              v-model="precio"
-              label="Precio de venta"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              v-bind="precioAttrs"
-              :disabled="isSubmitting"
-              :error="errors.precio"
-            />
+          <AppInput
+            v-if="tipoItem === 'producto' && esGas"
+            v-model="factorKgM3"
+            label="Factor kg / m³"
+            type="number"
+            min="0"
+            step="0.000001"
+            placeholder="Ej. 0.75"
+            help="m³ de gas por 1 kg (ficha técnica)."
+            :disabled="isSubmitting"
+            :error="errors.factorKgM3"
+          />
+          <AppInput
+            v-if="tipoItem === 'producto' && esGas"
+            v-model="factorLbM3"
+            label="Factor lb / m³"
+            type="number"
+            min="0"
+            step="0.000001"
+            placeholder="Ej. 0.3174"
+            help="m³ de gas por 1 lb. Fallback si el tipo no tiene capacidad lb."
+            :disabled="isSubmitting"
+            :error="errors.factorLbM3"
+          />
 
-            <AppInput
-              v-model="precioCompra"
-              label="Precio de compra"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              v-bind="precioCompraAttrs"
-              :disabled="isSubmitting || tipoItem === 'servicio'"
-              :error="errors.precioCompra"
-            />
-          </div>
+          <AppInput
+            v-model="precio"
+            label="Precio de venta"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            v-bind="precioAttrs"
+            :disabled="isSubmitting"
+            :error="errors.precio"
+          />
+
+          <AppInput
+            v-model="precioCompra"
+            label="Precio de compra"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            v-bind="precioCompraAttrs"
+            :disabled="isSubmitting || tipoItem === 'servicio'"
+            :error="errors.precioCompra"
+          />
 
           <AppInput
             v-if="esAlquilable || tipoItem === 'producto'"
             v-model="precioGarantia"
-            label="Precio de garantía / depósito"
+            label="Garantía / depósito"
             type="number"
             min="0"
             step="0.01"
@@ -302,7 +275,7 @@
             v-bind="precioGarantiaAttrs"
             :disabled="isSubmitting"
             :error="errors.precioGarantia"
-            help="Depósito reembolsable al prestar cilindro (industrial) o alquilar. Prefill en POS; se puede dejar en 0."
+            help="Depósito reembolsable al prestar o alquilar. Prefill en POS; se puede dejar en 0."
           />
         </div>
       </DetailSectionCard>
@@ -314,19 +287,17 @@
           editable
         />
 
-        <div v-else class="space-y-3">
-          <AppDropzone
-            v-model="pendingImages"
-            label="Imágenes iniciales"
-            title="Arrastra y suelta tus imágenes"
-            description="PNG, JPG, WEBP o GIF. Arrástralas aquí o selecciónalas desde tu equipo."
-            accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif"
-            multiple
-            :max-files="20"
-            :max-filesize="10"
-            :disabled="isSubmitting"
-          />
-        </div>
+        <AppDropzone
+          v-else
+          v-model="pendingImages"
+          title="Arrastra imágenes o selecciónalas"
+          description="PNG, JPG, WEBP o GIF. Hasta 20 archivos."
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.jpg,.jpeg,.png,.webp,.gif,.avif"
+          multiple
+          :max-files="20"
+          :max-filesize="10"
+          :disabled="isSubmitting"
+        />
       </DetailSectionCard>
     </FormCardsLayout>
 
@@ -415,6 +386,7 @@ import {
   AppSelect,
   AppSelectWithCreate,
 } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
