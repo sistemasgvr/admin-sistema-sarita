@@ -1,18 +1,8 @@
 <template>
-  <AppModal
-    v-model="open"
-    :title="mode === 'create' ? 'Nuevo movimiento' : 'Editar movimiento'"
-    :subtitle="
-      mode === 'create'
-        ? 'Elige el tipo de movimiento; luego se listan solo los cilindros válidos.'
-        : 'Actualiza los datos del movimiento seleccionado.'
-    "
-    size="lg"
-    @close="handleClose"
-  >
+  <div>
     <div
       v-if="isLoadingMovimiento"
-      class="py-8 text-center text-sm text-gray-500 dark:text-gray-400"
+      class="rounded-2xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400"
     >
       Cargando movimiento...
     </div>
@@ -20,33 +10,23 @@
     <form
       v-else
       id="movimiento-balon-form"
+      class="space-y-5"
       autocomplete="off"
       @submit="onSubmit"
     >
       <FormCardsLayout>
-        <DetailSectionCard
-          v-if="mode === 'edit' && movimientoDetalle"
-          title="Movimiento"
-          :icon="ICONS.cylinder"
-          :full-width="true"
-        >
-          <div class="text-sm">
-            <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ movimientoDetalle.codigo_balon }}
-              <span v-if="movimientoDetalle.nombre_tipo_movimiento">
-                — {{ movimientoDetalle.nombre_tipo_movimiento }}
-              </span>
-            </p>
-            <p v-if="movimientoDetalle.nombre_cliente" class="mt-1 text-gray-600 dark:text-gray-400">
-              Cliente: {{ movimientoDetalle.nombre_cliente }}
-            </p>
-          </div>
-        </DetailSectionCard>
+        <DetailSectionCard title="Datos" :icon="ICONS.arrowLeftRight" :help="cardHelp">
+          <BalonFichaResumen
+            v-if="mode === 'edit'"
+            class="mb-4"
+            :balon="balonSeleccionado"
+            :codigo-fallback="movimientoDetalle?.codigo_balon"
+            :tipo-movimiento="movimientoDetalle?.nombre_tipo_movimiento"
+            :snapshot="fichaSnapshot"
+          />
 
-        <DetailSectionCard title="Datos del movimiento" :icon="ICONS.arrowLeftRight">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AppSelectWithCreate
-              class="sm:col-span-2"
               :can-create="canCreateListaOpcion"
               create-title="Nuevo tipo de movimiento"
               :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
@@ -61,11 +41,21 @@
                 :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
                 :error="errors.idTipoMovimiento"
                 :options="tipoMovimientoOptions"
-                :hint="selectRule.hint"
+                :hint="mode === 'create' ? selectRule.hint : undefined"
               />
             </AppSelectWithCreate>
 
-            <div v-if="mode === 'create'" class="sm:col-span-2 space-y-2">
+            <AppInput
+              v-model="fechaMovimiento"
+              label="Fecha"
+              type="date"
+              required
+              v-bind="fechaMovimientoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.fechaMovimiento"
+            />
+
+            <div v-if="mode === 'create'" class="sm:col-span-2 lg:col-span-3 space-y-2">
               <PosBalonSelectField
                 v-model="idBalonAsModel"
                 mode="general"
@@ -82,7 +72,6 @@
                 :extra-filters="balonExtraFilters"
                 :client-filter="balonClientFilter"
                 :error="errors.idBalon"
-                :hint="selectRule.hint"
                 :empty-text="
                   hasTipoMovimiento
                     ? 'No hay cilindros que cumplan el estado para este movimiento.'
@@ -90,56 +79,8 @@
                 "
               />
 
-              <div
-                v-if="balonSeleccionado"
-                class="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-white/[0.03]"
-              >
-                <div class="flex flex-wrap items-start justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="font-medium text-gray-800 dark:text-white/90">
-                      {{ balonSeleccionado.codigo_balon }}
-                      <span
-                        v-if="balonSeleccionado.nombre_tipo_balon"
-                        class="font-normal text-gray-500 dark:text-gray-400"
-                      >
-                        · {{ balonSeleccionado.nombre_tipo_balon }}
-                      </span>
-                    </p>
-                    <p class="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
-                      <template v-if="balonSeleccionado.nombre_producto_gas">
-                        {{ balonSeleccionado.nombre_producto_gas }}
-                      </template>
-                      <template v-if="balonSeleccionado.capacidad != null">
-                        <span v-if="balonSeleccionado.nombre_producto_gas"> · </span>
-                        {{ balonSeleccionado.capacidad
-                        }}{{
-                          balonSeleccionado.nombre_unidad_medida
-                            ? ` ${balonSeleccionado.nombre_unidad_medida}`
-                            : ''
-                        }}
-                      </template>
-                      <template v-if="balonSeleccionado.nombre_almacen">
-                        · {{ balonSeleccionado.nombre_almacen }}
-                      </template>
-                    </p>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-1.5">
-                    <BalonEstadoBadge :balon="balonSeleccionado" />
-                    <BalonContenidoBadge :balon="balonSeleccionado" />
-                  </div>
-                </div>
-              </div>
+              <BalonFichaResumen v-if="balonSeleccionado" :balon="balonSeleccionado" />
             </div>
-
-            <AppInput
-              v-model="fechaMovimiento"
-              label="Fecha"
-              type="date"
-              required
-              v-bind="fechaMovimientoAttrs"
-              :disabled="isSubmitting"
-              :error="errors.fechaMovimiento"
-            />
 
             <ClienteSelectField
               v-if="selectRule.cliente !== 'hidden'"
@@ -174,11 +115,7 @@
               :disabled="isSubmitting"
               :error="errors.idAlmacenDestino"
             />
-          </div>
-        </DetailSectionCard>
 
-        <DetailSectionCard title="Referencia" :icon="ICONS.clipboardList">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppSelectWithCreate
               :can-create="canCreateListaOpcion"
               create-title="Nuevo documento origen"
@@ -189,6 +126,7 @@
                 v-model="idTipoDocumentoRef"
                 label="Documento origen"
                 placeholder="Opcional"
+                optional
                 v-bind="idTipoDocumentoRefAttrs"
                 :disabled="isSubmitting || tiposDocumentoQuery.isFetching.value"
                 :options="tipoDocumentoOptions"
@@ -201,70 +139,68 @@
               type="number"
               min="1"
               step="1"
+              optional
               placeholder="Opcional"
               v-bind="idDocumentoRefAttrs"
               :disabled="isSubmitting"
             />
+
+            <AppInput
+              v-model="observacion"
+              label="Observación"
+              optional
+              placeholder="Detalle del movimiento"
+              v-bind="observacionAttrs"
+              :disabled="isSubmitting"
+              :error="errors.observacion"
+            />
           </div>
         </DetailSectionCard>
-
-        <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
-          <AppTextarea
-            v-model="observacion"
-            label="Observación"
-            placeholder="Detalle del movimiento"
-            :rows="3"
-            v-bind="observacionAttrs"
-            :disabled="isSubmitting"
-            :error="errors.observacion"
-          />
-        </DetailSectionCard>
       </FormCardsLayout>
+
+      <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+          :disabled="isSubmitting || isLoadingMovimiento"
+          @click="emit('cancel')"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+          :disabled="isSubmitting || isLoadingMovimiento"
+        >
+          {{
+            isSubmitting
+              ? 'Guardando...'
+              : mode === 'create'
+                ? 'Registrar movimiento'
+                : 'Guardar cambios'
+          }}
+        </button>
+      </div>
     </form>
 
-    <template #footer>
-      <button
-        type="button"
-        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
-        :disabled="isSubmitting || isLoadingMovimiento"
-        @click="handleClose"
-      >
-        Cancelar
-      </button>
-      <button
-        type="submit"
-        form="movimiento-balon-form"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="isSubmitting || isLoadingMovimiento"
-      >
-        {{
-          isSubmitting
-            ? 'Guardando...'
-            : mode === 'create'
-              ? 'Registrar movimiento'
-              : 'Guardar cambios'
-        }}
-      </button>
-    </template>
-  </AppModal>
+    <ListaOpcionFormModal
+      v-model="tipoMovModalOpen"
+      :id-lista="ListaIds.TIPO_MOV_BALON"
+      title="Nuevo tipo de movimiento"
+      subtitle="Quedará disponible al registrar movimientos de cilindros."
+      nombre-placeholder="Ej. TRASLADO_ALMACEN"
+      @saved="onTipoMovimientoCreated"
+    />
 
-  <ListaOpcionFormModal
-    v-model="tipoMovModalOpen"
-    :id-lista="ListaIds.TIPO_MOV_BALON"
-    title="Nuevo tipo de movimiento"
-    subtitle="Quedará disponible al registrar movimientos de cilindros."
-    nombre-placeholder="Ej. TRASLADO_ALMACEN"
-    @saved="onTipoMovimientoCreated"
-  />
-
-  <ListaOpcionFormModal
-    v-model="tipoDocModalOpen"
-    :id-lista="ListaIds.TIPO_DOCUMENTO_REF"
-    title="Nuevo documento origen"
-    subtitle="Quedará disponible como referencia del movimiento."
-    nombre-placeholder="Ej. GUIA_REMISION"
-    @saved="onTipoDocumentoCreated"
-  />
+    <ListaOpcionFormModal
+      v-model="tipoDocModalOpen"
+      :id-lista="ListaIds.TIPO_DOCUMENTO_REF"
+      title="Nuevo documento origen"
+      subtitle="Quedará disponible como referencia del movimiento."
+      nombre-placeholder="Ej. GUIA_REMISION"
+      @saved="onTipoDocumentoCreated"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -278,8 +214,7 @@ import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.in
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
-import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
-import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
+import BalonFichaResumen from '@/modules/balones/components/BalonFichaResumen.vue'
 import type {
   Balon,
   BalonListFilters,
@@ -294,13 +229,7 @@ import { useMovimientoBalonQuery } from '@/modules/balones/movimientos/composabl
 import type { MovimientoBalonFormMode } from '@/modules/balones/movimientos/interfaces/movimiento-balon.interface'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import {
-  AppInput,
-  AppModal,
-  AppSelect,
-  AppSelectWithCreate,
-  AppTextarea,
-} from '@/shared/components'
+import { AppInput, AppSelect, AppSelectWithCreate } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -309,17 +238,20 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { normalizeListaOpcionCode } from '@/shared/utils/listaOpcionBadge'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
-interface MovimientoBalonFormModalProps {
+interface MovimientoBalonFormProps {
   mode: MovimientoBalonFormMode
   movimientoId?: number | null
+  active?: boolean
 }
 
-const props = defineProps<MovimientoBalonFormModalProps>()
-
-const open = defineModel<boolean>({ default: false })
+const props = withDefaults(defineProps<MovimientoBalonFormProps>(), {
+  movimientoId: null,
+  active: true,
+})
 
 const emit = defineEmits<{
   saved: []
+  cancel: []
 }>()
 
 const authStore = useAuthStore()
@@ -336,9 +268,20 @@ const canCreateListaOpcion = computed(() =>
 const movimientoIdRef = computed(() => (props.mode === 'edit' ? props.movimientoId : null))
 const movimientoQuery = useMovimientoBalonQuery(movimientoIdRef)
 const isLoadingMovimiento = computed(
-  () => props.mode === 'edit' && open.value && movimientoQuery.isFetching.value,
+  () => props.mode === 'edit' && props.active && movimientoQuery.isFetching.value,
 )
 const movimientoDetalle = computed(() => movimientoQuery.data.value ?? null)
+
+const fichaSnapshot = computed(() => {
+  const data = movimientoDetalle.value
+  if (!data) return null
+  return {
+    nombre_estado_balon: data.nombre_estado_balon,
+    nombre_estado_contenido: data.nombre_estado_contenido,
+    nombre_almacen_ubicacion: data.nombre_almacen_ubicacion,
+    nombre_cliente_ubicacion: data.nombre_cliente_ubicacion,
+  }
+})
 
 const listaTipoMovId = ref(ListaIds.TIPO_MOV_BALON)
 const listaTipoDocId = ref(ListaIds.TIPO_DOCUMENTO_REF)
@@ -429,6 +372,12 @@ const tipoMovimientoCodigo = computed(() => {
 
 const selectRule = computed(() => getMovimientoBalonSelectRule(tipoMovimientoCodigo.value))
 
+const cardHelp = computed(() =>
+  props.mode === 'edit'
+    ? 'El cilindro no se cambia. Puedes actualizar tipo, fecha, almacenes, cliente y observación.'
+    : selectRule.value.hint,
+)
+
 const resolveListaId = (items: ListaOpcion[] | undefined, code: string) =>
   items?.find((item) => normalizeListaOpcionCode(item.nombre) === code)?.id
 
@@ -509,7 +458,6 @@ const toOptionalNumber = (value: string | number | undefined) =>
 watch(idTipoMovimiento, () => {
   if (props.mode !== 'create') return
   idBalon.value = ''
-  // Limpiar campos ocultos por la nueva regla
   if (selectRule.value.cliente === 'hidden') idCliente.value = ''
   if (selectRule.value.almacenOrigen === 'hidden') idAlmacenOrigen.value = ''
   if (selectRule.value.almacenDestino === 'hidden') idAlmacenDestino.value = ''
@@ -546,10 +494,6 @@ const resetCreateForm = () => {
       observacion: '',
     },
   })
-}
-
-const handleClose = () => {
-  open.value = false
 }
 
 function onTipoMovimientoCreated(opcion: ListaOpcion) {
@@ -611,12 +555,9 @@ const onSubmit = handleSubmit(async (values) => {
         idUsuarioAuditoria: currentUserId,
         idBalon: idBalonValue,
         idTipoMovimiento: toOptionalNumber(values.idTipoMovimiento),
-        idCliente:
-          rule.cliente === 'hidden' ? undefined : toOptionalNumber(values.idCliente),
+        idCliente: rule.cliente === 'hidden' ? undefined : toOptionalNumber(values.idCliente),
         idAlmacenOrigen:
-          rule.almacenOrigen === 'hidden'
-            ? undefined
-            : toOptionalNumber(values.idAlmacenOrigen),
+          rule.almacenOrigen === 'hidden' ? undefined : toOptionalNumber(values.idAlmacenOrigen),
         idAlmacenDestino:
           rule.almacenDestino === 'hidden'
             ? undefined
@@ -646,23 +587,26 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     emit('saved')
-    open.value = false
   } catch {
     // toast en mutation
   }
 })
 
 watch(
-  () => open.value,
-  (isOpen) => {
-    if (isOpen && props.mode === 'create') {
+  () => [props.active, props.mode] as const,
+  ([isActive, mode]) => {
+    if (!isActive) return
+    if (mode === 'create') {
       resetCreateForm()
+    } else {
+      syncFormValues()
     }
   },
+  { immediate: true },
 )
 
 watch(movimientoDetalle, () => {
-  if (open.value && props.mode === 'edit') {
+  if (props.active && props.mode === 'edit') {
     syncFormValues()
   }
 })

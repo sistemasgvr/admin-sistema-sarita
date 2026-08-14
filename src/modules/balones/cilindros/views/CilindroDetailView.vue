@@ -111,9 +111,12 @@
           <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
             Salidas, entradas y recargas (incl. planta externa) registradas para este cilindro.
           </p>
-          <div v-if="movimientoHistorialRows.length" class="overflow-x-auto">
+          <div
+            v-if="movimientoHistorialRows.length"
+            class="custom-scrollbar max-h-72 overflow-auto"
+          >
             <table class="min-w-full text-sm">
-              <thead>
+              <thead class="sticky top-0 z-10 bg-white dark:bg-gray-900">
                 <tr
                   class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800"
                 >
@@ -169,9 +172,12 @@
           <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
             Custodia del envase (comodato / garantía). El cilindro se presta; no se alquila.
           </p>
-          <div v-if="prestamoHistorialRows.length" class="overflow-x-auto">
+          <div
+            v-if="prestamoHistorialRows.length"
+            class="custom-scrollbar max-h-72 overflow-auto"
+          >
             <table class="min-w-full text-sm">
-              <thead>
+              <thead class="sticky top-0 z-10 bg-white dark:bg-gray-900">
                 <tr
                   class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800"
                 >
@@ -235,9 +241,9 @@
             Vínculos antiguos donde el cilindro figuraba en un detalle de alquiler. Hoy el regulador
             se alquila aparte y el envase va por préstamo.
           </p>
-          <div class="overflow-x-auto">
+          <div class="custom-scrollbar max-h-72 overflow-auto">
             <table class="min-w-full text-sm">
-              <thead>
+              <thead class="sticky top-0 z-10 bg-white dark:bg-gray-900">
                 <tr
                   class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800"
                 >
@@ -298,9 +304,12 @@
           <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
             Registro de solicitudes, aprobaciones, rechazos y reactivaciones del cilindro.
           </p>
-          <div v-if="estadoHistorialRows.length" class="overflow-x-auto">
+          <div
+            v-if="estadoHistorialRows.length"
+            class="custom-scrollbar max-h-72 overflow-auto"
+          >
             <table class="min-w-full text-sm">
-              <thead>
+              <thead class="sticky top-0 z-10 bg-white dark:bg-gray-900">
                 <tr
                   class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800"
                 >
@@ -374,9 +383,12 @@
             Las renovaciones se registran con tipo <strong>Prueba hidrostática</strong> o
             <strong>Recertificación</strong> y fecha de salida.
           </p>
-          <div v-if="phHistorialRows.length" class="overflow-x-auto">
+          <div
+            v-if="phHistorialRows.length"
+            class="custom-scrollbar max-h-72 overflow-auto"
+          >
             <table class="min-w-full text-sm">
-              <thead>
+              <thead class="sticky top-0 z-10 bg-white dark:bg-gray-900">
                 <tr
                   class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800"
                 >

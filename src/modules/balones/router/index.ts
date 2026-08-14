@@ -67,6 +67,39 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'movimientos/nuevo',
+        name: 'admin-balones-movimientos-nuevo',
+        component: () =>
+          import('@/modules/balones/movimientos/views/MovimientoBalonFormView.vue'),
+        meta: {
+          title: 'Nuevo movimiento',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_BALON_CREAR,
+        },
+      },
+      {
+        path: 'movimientos/:id(\\d+)/editar',
+        name: 'admin-balones-movimientos-editar',
+        component: () =>
+          import('@/modules/balones/movimientos/views/MovimientoBalonFormView.vue'),
+        meta: {
+          title: 'Editar movimiento',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_BALON_EDITAR,
+        },
+      },
+      {
+        path: 'movimientos/:id(\\d+)',
+        name: 'admin-balones-movimientos-detalle',
+        component: () =>
+          import('@/modules/balones/movimientos/views/MovimientoBalonDetailView.vue'),
+        meta: {
+          title: 'Detalle del movimiento',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_BALON_VER,
+        },
+      },
+      {
         path: 'movimientos',
         name: 'admin-balones-movimientos',
         component: () =>

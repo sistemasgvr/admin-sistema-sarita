@@ -2,6 +2,7 @@ import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 
 export const BALONES_HUB_PATH = '/admin/balones'
 export const BALONES_CILINDROS_PATH = '/admin/balones/cilindros'
+export const BALONES_MOVIMIENTOS_PATH = '/admin/balones/movimientos'
 export const BALONES_PRESTAMOS_PATH = '/admin/balones/prestamos'
 export const BALONES_RECOJOS_PATH = '/admin/balones/recojos'
 export const BALONES_ALQUILERES_PATH = '/admin/balones/alquileres'
@@ -27,6 +28,10 @@ export function balonesSectionBreadcrumbItems(
 
 export function balonesCilindrosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return balonesSectionBreadcrumbItems('Libro de cilindros', BALONES_CILINDROS_PATH, pageTitle)
+}
+
+export function balonesMovimientosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
+  return balonesSectionBreadcrumbItems('Movimientos', BALONES_MOVIMIENTOS_PATH, pageTitle)
 }
 
 export function balonesPrestamosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
