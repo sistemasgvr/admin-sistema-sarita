@@ -8,77 +8,75 @@
       @submit="onSubmit"
     >
       <FormCardsLayout>
-        <DetailSectionCard title="Identificación" :icon="ICONS.idCard" :full-width="true">
-          <div class="space-y-5">
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <AppInput
-                v-model="codigoBalon"
-                label="Código de balón"
-                placeholder="20K650076"
-                required
-                v-bind="codigoBalonAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.codigoBalon"
-              />
-              <AppInput
-                v-model="numeroSerie"
-                label="Número de serie"
-                placeholder="Igual al código si no difiere"
-                v-bind="numeroSerieAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.numeroSerie"
-              />
-            </div>
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <AppSelect
-                v-model="idMarcaCilindro"
-                label="Marca"
-                :placeholder="marcaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-                :options="marcaOptions"
-                :disabled="isSubmitting || marcaQuery.isLoading.value"
-                v-bind="idMarcaCilindroAttrs"
-                :error="errors.idMarcaCilindro"
-              />
-              <AppInput
-                v-model="numeroRecepcion"
-                label="Número de recepción"
-                v-bind="numeroRecepcionAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.numeroRecepcion"
-              />
-            </div>
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-3 lg:grid-cols-3">
-              <AppInput
-                v-model="libroCilindro"
-                label="Libro cilindro"
-                placeholder="LIBRO 1"
-                v-bind="libroCilindroAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.libroCilindro"
-              />
-              <AppInput
-                v-model="paginaLibro"
-                label="Página"
-                type="number"
-                min="0"
-                v-bind="paginaLibroAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.paginaLibro"
-              />
-              <AppInput
-                v-model="fechaRegistro"
-                label="Fecha registro"
-                type="date"
-                v-bind="fechaRegistroAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.fechaRegistro"
-              />
-            </div>
-          </div>
-        </DetailSectionCard>
-
-        <DetailSectionCard title="Clasificación" :icon="ICONS.layers" :full-width="true">
-          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <DetailSectionCard
+          title="Datos"
+          :icon="ICONS.idCard"
+          help="Código interno del cilindro. Si no hay serie distinta, se copia el código. El tipo sugiere el gas y define la vigencia de P.H."
+        >
+          <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <AppInput
+              v-model="codigoBalon"
+              label="Código de balón"
+              placeholder="20K650076"
+              required
+              v-bind="codigoBalonAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.codigoBalon"
+            />
+            <AppInput
+              v-model="numeroSerie"
+              label="Número de serie"
+              optional
+              placeholder="Igual al código si no difiere"
+              v-bind="numeroSerieAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.numeroSerie"
+            />
+            <AppSelect
+              v-model="idMarcaCilindro"
+              label="Marca"
+              optional
+              :placeholder="marcaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="marcaOptions"
+              :disabled="isSubmitting || marcaQuery.isLoading.value"
+              v-bind="idMarcaCilindroAttrs"
+              :error="errors.idMarcaCilindro"
+            />
+            <AppInput
+              v-model="numeroRecepcion"
+              label="Número de recepción"
+              optional
+              v-bind="numeroRecepcionAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.numeroRecepcion"
+            />
+            <AppInput
+              v-model="libroCilindro"
+              label="Libro cilindro"
+              optional
+              placeholder="LIBRO 1"
+              v-bind="libroCilindroAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.libroCilindro"
+            />
+            <AppInput
+              v-model="paginaLibro"
+              label="Página"
+              optional
+              type="number"
+              min="0"
+              v-bind="paginaLibroAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.paginaLibro"
+            />
+            <AppInput
+              v-model="fechaRegistro"
+              label="Fecha registro"
+              type="date"
+              v-bind="fechaRegistroAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.fechaRegistro"
+            />
             <TipoBalonSelectField
               v-model="idTipoBalon"
               label="Tipo de balón"
@@ -112,6 +110,7 @@
             <AppSelect
               v-model="idEstadoContenido"
               label="Contenido"
+              optional
               :placeholder="
                 estadoContenidoQuery.isLoading.value ? 'Cargando...' : 'Lleno / vacío...'
               "
@@ -123,6 +122,7 @@
             <AppSelect
               v-model="idReferencia"
               label="Referencia"
+              optional
               :placeholder="referenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
               :options="referenciaOptions"
               :disabled="isSubmitting || referenciaQuery.isLoading.value"
@@ -132,39 +132,37 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Ubicación" :icon="ICONS.mapPin" :full-width="true">
-          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <AlmacenSelectField
-              v-model="idAlmacen"
-              :disabled="isSubmitting"
-              :error="errors.idAlmacen"
-            />
-            <ClienteSelectField
-              v-model="idClienteUbicacion"
-              label="Cliente (ubicación actual)"
-              placeholder="Opcional"
-              :disabled="isSubmitting"
-              :error="errors.idClienteUbicacion"
-            />
-          </div>
-        </DetailSectionCard>
-
-        <DetailSectionCard title="Propiedad del envase" :icon="ICONS.building" :full-width="true">
-          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <DetailSectionCard
+          title="Ubicación y propiedad"
+          :icon="ICONS.mapPin"
+          help="Primero el dueño del envase: empresa usa almacén; cliente pide un cliente (no proveedor); planta pide el proveedor."
+        >
+          <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AppSelect
               v-model="idPropietario"
               label="Propietario"
+              required
               :placeholder="propietarioQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
               :options="propietarioOptions"
               :disabled="isSubmitting || propietarioQuery.isLoading.value"
               v-bind="idPropietarioAttrs"
               :error="errors.idPropietario"
             />
+            <AlmacenSelectField
+              v-if="muestraAlmacen"
+              v-model="idAlmacen"
+              :required="requiereAlmacen"
+              :disabled="isSubmitting"
+              :error="errors.idAlmacen"
+            />
             <ClienteSelectField
               v-if="requiereClientePropietario"
               v-model="idClientePropietario"
-              label="Cliente propietario"
+              label="Cliente"
               placeholder="Selecciona cliente"
+              help="Solo clientes. No aparecen proveedores."
+              required
+              solo-clientes
               :disabled="isSubmitting"
               :error="errors.idClientePropietario"
             />
@@ -173,7 +171,8 @@
               v-model="idPlanta"
               label="Proveedor (planta)"
               placeholder="Ej. Swiss Gas"
-              help="Obligatorio cuando el propietario es planta: el proveedor concreto dueño del envase."
+              help="Proveedor dueño del envase."
+              required
               solo-proveedores
               :disabled="isSubmitting"
               :error="errors.idPlanta"
@@ -184,82 +183,84 @@
         <DetailSectionCard
           title="P.H. y datos técnicos"
           :icon="ICONS.gauge"
-          :full-width="true"
-          help="Ingrese el mes y año grabados en el lomo; el sistema calcula el vencimiento según la vigencia del tipo (5 u 10 años). Las renovaciones se registran en Mantenimientos (P.H. / Recertificación)."
+          help="Mes y año del lomo: el vencimiento se calcula con la vigencia del tipo (5 u 10 años). Las renovaciones van en Mantenimientos (P.H. / Recertificación)."
         >
-          <div class="space-y-5">
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              <AppSelect
-                v-model="mesFabricacion"
-                label="Mes fabricación (pH)"
-                placeholder="Mes del lomo"
-                :options="mesOptions"
-                :disabled="isSubmitting || isLoadingBalon"
-                v-bind="mesFabricacionAttrs"
-                :error="errors.mesFabricacion"
-              />
-              <AppInput
-                v-model="anioFabricacion"
-                label="Año fabricación (pH)"
-                type="number"
-                min="1900"
-                max="2100"
-                placeholder="Ej. 2021"
-                v-bind="anioFabricacionAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.anioFabricacion"
-              />
-              <AppInput
-                v-model="presionActual"
-                label="Presión actual (PSI)"
-                type="number"
-                min="0"
-                step="1"
-                help="Estado de llenado. No confundir con libras de masa (báscula)."
-                v-bind="presionActualAttrs"
-                :disabled="isSubmitting || isLoadingBalon"
-                :error="errors.presionActual"
-              />
-              <div
-                class="flex flex-col justify-end rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/[0.03]"
-              >
-                <span class="text-theme-xs text-gray-500 dark:text-gray-400">
-                  Vencimiento pH estimado
-                </span>
-                <span class="font-medium text-gray-800 dark:text-white/90">
-                  {{ vencimientoPhEstimado }}
-                </span>
-                <span v-if="vigenciaTipoAnios" class="text-theme-xs text-gray-500">
-                  Vigencia tipo: {{ vigenciaTipoAnios }} años
-                </span>
-              </div>
-            </div>
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <AppSelect
-                v-model="idOrganoInspector"
-                label="Órgano inspector"
-                :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-                :options="organoInspectorOptions"
-                :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
-                v-bind="idOrganoInspectorAttrs"
-                :error="errors.idOrganoInspector"
-              />
-              <div class="flex items-end pb-2">
-                <AppCheckbox
-                  v-model="organoInspectorNoAplica"
-                  label="Sin órgano inspector"
-                  :disabled="isSubmitting"
-                />
-              </div>
-            </div>
-            <AppTextarea
-              v-model="observacion"
-              label="Observación"
-              placeholder="Notas adicionales"
-              v-bind="observacionAttrs"
+          <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <AppSelect
+              v-model="mesFabricacion"
+              label="Mes fabricación (pH)"
+              optional
+              placeholder="Mes del lomo"
+              :options="mesOptions"
               :disabled="isSubmitting || isLoadingBalon"
-              :error="errors.observacion"
+              v-bind="mesFabricacionAttrs"
+              :error="errors.mesFabricacion"
             />
+            <AppInput
+              v-model="anioFabricacion"
+              label="Año fabricación (pH)"
+              optional
+              type="number"
+              min="1900"
+              max="2100"
+              placeholder="Ej. 2021"
+              v-bind="anioFabricacionAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.anioFabricacion"
+            />
+            <div
+              class="flex min-h-11 flex-col justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/[0.03] sm:mt-[1.625rem]"
+            >
+              <span class="text-theme-xs text-gray-500 dark:text-gray-400">
+                Vencimiento pH estimado
+              </span>
+              <span class="font-medium text-gray-800 dark:text-white/90">
+                {{ vencimientoPhEstimado }}
+              </span>
+              <span v-if="vigenciaTipoAnios" class="text-theme-xs text-gray-500">
+                Vigencia tipo: {{ vigenciaTipoAnios }} años
+              </span>
+            </div>
+            <AppInput
+              v-model="presionActual"
+              label="Presión actual (PSI)"
+              optional
+              type="number"
+              min="0"
+              step="1"
+              help="Estado de llenado. No confundir con libras de masa (báscula)."
+              v-bind="presionActualAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.presionActual"
+            />
+            <AppSelect
+              v-model="idOrganoInspector"
+              label="Órgano inspector"
+              optional
+              :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              :options="organoInspectorOptions"
+              :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
+              v-bind="idOrganoInspectorAttrs"
+              :error="errors.idOrganoInspector"
+            />
+            <div class="flex items-end pb-2">
+              <AppCheckbox
+                v-model="organoInspectorNoAplica"
+                label="Sin órgano inspector"
+                :disabled="isSubmitting"
+              />
+            </div>
+            <div class="sm:col-span-2 lg:col-span-3">
+              <AppTextarea
+                v-model="observacion"
+                label="Observación"
+                optional
+                placeholder="Notas adicionales"
+                v-bind="observacionAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.observacion"
+              />
+            </div>
           </div>
         </DetailSectionCard>
       </FormCardsLayout>
@@ -297,6 +298,7 @@ import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import {
   useCreateBalonMutation,
@@ -380,10 +382,21 @@ const marcaQuery = useListaOpcionesQuery(listaMarcaId)
 const organoInspectorQuery = useListaOpcionesQuery(listaOrganoInspectorId)
 const mesOptions = MES_FABRICACION_OPTIONS
 
+const almacenesFilters = ref({ pagina: 1, limite: 200 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+
 const estadoBalonOptions = computed(() => toSelectOptions(estadoBalonQuery.data.value))
 const estadoContenidoOptions = computed(() => toSelectOptions(estadoContenidoQuery.data.value))
 const referenciaOptions = computed(() => toSelectOptions(referenciaQuery.data.value))
-const propietarioOptions = computed(() => toSelectOptions(propietarioQuery.data.value))
+const propietarioOptions = computed(() => {
+  const visibles = (propietarioQuery.data.value ?? []).filter((opcion) => {
+    const nombre = opcion.nombre?.toUpperCase()
+    if (nombre === 'EMPRESA' || nombre === 'CLIENTE' || nombre === 'PLANTA') return true
+    if (nombre === 'PROPIA' && Number(idPropietario.value) === opcion.id) return true
+    return false
+  })
+  return toSelectOptions(visibles)
+})
 const marcaOptions = computed(() => toSelectOptions(marcaQuery.data.value))
 const organoInspectorOptions = computed(() =>
   toSelectOptions(
@@ -392,6 +405,21 @@ const organoInspectorOptions = computed(() =>
     ),
   ),
 )
+
+function idOpcionLista(
+  opciones: { id: number; nombre: string }[] | undefined,
+  nombre: string,
+): number | undefined {
+  return opciones?.find((opcion) => opcion.nombre?.toUpperCase() === nombre)?.id
+}
+
+function nombrePropietario(id: unknown): string {
+  return (
+    propietarioQuery.data.value
+      ?.find((opcion) => opcion.id === Number(id))
+      ?.nombre?.toUpperCase() ?? ''
+  )
+}
 
 const toDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '')
 
@@ -404,18 +432,24 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       paginaLibro: optionalNumber(),
       fechaRegistro: optionalString(),
       numeroRecepcion: optionalString().max(30, 'Máximo 30 caracteres'),
-      idAlmacen: optionalNumber(),
+      idAlmacen: optionalNumber().test(
+        'almacen-requerido',
+        'El almacén es obligatorio',
+        function (value) {
+          const nombre = nombrePropietario(this.parent.idPropietario)
+          if (nombre === 'EMPRESA' || nombre === 'PROPIA') {
+            return value != null
+          }
+          return true
+        },
+      ),
       idClienteUbicacion: optionalNumber(),
-      idPropietario: optionalNumber(),
+      idPropietario: requiredSelect('El propietario'),
       idClientePropietario: optionalNumber().test(
         'cliente-propietario-requerido',
-        'El cliente propietario es obligatorio',
+        'El cliente es obligatorio',
         function (value) {
-          const propId = this.parent.idPropietario
-          const prop = propietarioQuery.data.value?.find(
-            (opcion) => opcion.id === Number(propId),
-          )
-          if (prop?.nombre?.toUpperCase() === 'CLIENTE') {
+          if (nombrePropietario(this.parent.idPropietario) === 'CLIENTE') {
             return value != null
           }
           return true
@@ -426,11 +460,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
         'planta-requerida',
         'El proveedor (planta) es obligatorio',
         function (value) {
-          const propId = this.parent.idPropietario
-          const prop = propietarioQuery.data.value?.find(
-            (opcion) => opcion.id === Number(propId),
-          )
-          if (prop?.nombre?.toUpperCase() === 'PLANTA') {
+          if (nombrePropietario(this.parent.idPropietario) === 'PLANTA') {
             return value != null
           }
           return true
@@ -500,17 +530,26 @@ const [anioFabricacion, anioFabricacionAttrs] = defineField('anioFabricacion')
 const [presionActual, presionActualAttrs] = defineField('presionActual')
 const [observacion, observacionAttrs] = defineField('observacion')
 
-const propietarioSeleccionado = computed(() =>
-  propietarioQuery.data.value?.find((opcion) => opcion.id === Number(idPropietario.value)),
-)
+const propietarioSeleccionadoNombre = computed(() => nombrePropietario(idPropietario.value))
+
+const esPropietarioEmpresa = computed(() => {
+  const nombre = propietarioSeleccionadoNombre.value
+  return nombre === 'EMPRESA' || nombre === 'PROPIA'
+})
 
 const requiereClientePropietario = computed(
-  () => propietarioSeleccionado.value?.nombre?.toUpperCase() === 'CLIENTE',
+  () => propietarioSeleccionadoNombre.value === 'CLIENTE',
 )
 
 const requierePlantaPropietario = computed(
-  () => propietarioSeleccionado.value?.nombre?.toUpperCase() === 'PLANTA',
+  () => propietarioSeleccionadoNombre.value === 'PLANTA',
 )
+
+const muestraAlmacen = computed(
+  () => esPropietarioEmpresa.value || requierePlantaPropietario.value,
+)
+
+const requiereAlmacen = computed(() => esPropietarioEmpresa.value)
 
 const tipoSeleccionado = computed(() => {
   const id = Number(idTipoBalon.value)
@@ -549,12 +588,34 @@ const vencimientoPhEstimado = computed(() => {
   return formatMonthYear(null, next.mes, next.anio)
 })
 
-watch(idPropietario, () => {
-  if (!requiereClientePropietario.value) {
-    idClientePropietario.value = undefined
-  }
-  if (!requierePlantaPropietario.value) {
+watch(idPropietario, (nuevo, anterior) => {
+  if (nuevo === anterior) return
+  if (anterior == null) return
+
+  if (requiereClientePropietario.value) {
+    idAlmacen.value = undefined
     idPlanta.value = undefined
+    idClienteUbicacion.value = idClientePropietario.value
+  } else if (requierePlantaPropietario.value) {
+    idClientePropietario.value = undefined
+    idClienteUbicacion.value = undefined
+  } else {
+    idClientePropietario.value = undefined
+    idPlanta.value = undefined
+    idClienteUbicacion.value = undefined
+    if (props.mode === 'create' && !idAlmacen.value) {
+      aplicarAlmacenPorDefecto()
+    }
+  }
+
+  if (props.mode === 'create') {
+    aplicarEstadoSegunPropietario()
+  }
+})
+
+watch(idClientePropietario, (id) => {
+  if (requiereClientePropietario.value) {
+    idClienteUbicacion.value = id
   }
 })
 
@@ -607,8 +668,12 @@ const buildPayload = (
     paginaLibro: values.paginaLibro,
     fechaRegistro: values.fechaRegistro || undefined,
     numeroRecepcion: values.numeroRecepcion || undefined,
-    idAlmacen: values.idAlmacen,
-    idClienteUbicacion: values.idClienteUbicacion,
+    idAlmacen: esPropietarioEmpresa.value || requierePlantaPropietario.value
+      ? values.idAlmacen
+      : undefined,
+    idClienteUbicacion: requiereClientePropietario.value
+      ? values.idClientePropietario
+      : undefined,
     idPropietario: values.idPropietario,
     idClientePropietario: requiereClientePropietario.value ? values.idClientePropietario : undefined,
     idReferencia: values.idReferencia,
@@ -664,6 +729,55 @@ const syncFormValues = () => {
   })
 }
 
+function aplicarAlmacenPorDefecto() {
+  if (idAlmacen.value || props.preset?.idAlmacen) return
+  const almacenes = almacenesQuery.data.value?.data ?? []
+  if (!almacenes.length) return
+  const principal = almacenes.find((almacen) =>
+    almacen.nombre.toLowerCase().includes('principal'),
+  )
+  idAlmacen.value = (principal ?? almacenes[0]).id
+}
+
+function aplicarEstadoSegunPropietario() {
+  if (requiereClientePropietario.value) {
+    const enCliente = idOpcionLista(estadoBalonQuery.data.value, 'EN_PODER_CLIENTE')
+    if (enCliente) idEstadoBalon.value = enCliente
+    const refCliente = idOpcionLista(referenciaQuery.data.value, 'CLIENTE')
+    if (refCliente) idReferencia.value = refCliente
+    return
+  }
+  const enAlmacen = idOpcionLista(estadoBalonQuery.data.value, 'EN_ALMACEN')
+  if (enAlmacen) idEstadoBalon.value = enAlmacen
+  const refAlmacen = idOpcionLista(referenciaQuery.data.value, 'ALMACEN')
+  if (refAlmacen) idReferencia.value = refAlmacen
+}
+
+function aplicarDefaultsCreacion() {
+  if (props.mode !== 'create' || !props.active) return
+
+  if (!idPropietario.value) {
+    idPropietario.value =
+      props.preset?.idPropietario ?? idOpcionLista(propietarioQuery.data.value, 'EMPRESA')
+  }
+  if (!idEstadoBalon.value) {
+    idEstadoBalon.value =
+      props.preset?.idEstadoBalon ?? idOpcionLista(estadoBalonQuery.data.value, 'EN_ALMACEN')
+  }
+  if (!idEstadoContenido.value) {
+    idEstadoContenido.value = idOpcionLista(estadoContenidoQuery.data.value, 'VACIO')
+  }
+  if (!idMarcaCilindro.value) {
+    idMarcaCilindro.value = idOpcionLista(marcaQuery.data.value, 'BTIC-JP')
+  }
+  if (!idReferencia.value) {
+    idReferencia.value = idOpcionLista(referenciaQuery.data.value, 'ALMACEN')
+  }
+  if (esPropietarioEmpresa.value || !idPropietario.value) {
+    aplicarAlmacenPorDefecto()
+  }
+}
+
 const applyCreateForm = () => {
   resetForm({
     values: {
@@ -692,6 +806,7 @@ const applyCreateForm = () => {
       observacion: '',
     },
   })
+  aplicarDefaultsCreacion()
 }
 
 const onSubmit = handleSubmit(async (values) => {
@@ -700,12 +815,14 @@ const onSubmit = handleSubmit(async (values) => {
 
   if (values.idTipoBalon == null || values.idTipoBalon === '') return
   if (values.idProductoGas == null || values.idProductoGas === '') return
+  if (values.idPropietario == null || values.idPropietario === '') return
 
   const payload = buildPayload(
     {
       ...values,
       idTipoBalon: values.idTipoBalon,
       idProductoGas: values.idProductoGas,
+      idPropietario: Number(values.idPropietario),
       numeroSerie: values.numeroSerie ?? '',
       libroCilindro: values.libroCilindro ?? '',
       fechaRegistro: values.fechaRegistro ?? '',
@@ -753,4 +870,18 @@ watch(balonDetalle, () => {
     syncFormValues()
   }
 })
+
+watch(
+  [
+    () => propietarioQuery.data.value,
+    () => estadoBalonQuery.data.value,
+    () => estadoContenidoQuery.data.value,
+    () => marcaQuery.data.value,
+    () => referenciaQuery.data.value,
+    () => almacenesQuery.data.value,
+  ],
+  () => {
+    aplicarDefaultsCreacion()
+  },
+)
 </script>
