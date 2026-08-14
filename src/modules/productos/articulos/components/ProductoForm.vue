@@ -178,14 +178,21 @@
             </AppSelectWithCreate>
           </div>
 
-          <AppSelect
-            v-model="idUnidadMedida"
-            label="Unidad de medida"
-            placeholder="Selecciona unidad"
-            v-bind="idUnidadMedidaAttrs"
+          <AppSelectWithCreate
+            :can-create="canCreateUnidad"
+            create-title="Nueva unidad de medida"
             :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
-            :options="unidadMedidaOptions"
-          />
+            @create="unidadModalOpen = true"
+          >
+            <AppSelect
+              v-model="idUnidadMedida"
+              label="Unidad de medida"
+              placeholder="Selecciona unidad"
+              v-bind="idUnidadMedidaAttrs"
+              :disabled="isSubmitting || unidadesMedidaQuery.isFetching.value"
+              :options="unidadMedidaOptions"
+            />
+          </AppSelectWithCreate>
         </div>
       </DetailSectionCard>
 
@@ -356,6 +363,15 @@
     lock-categoria
     @saved="onSubCategoriaCreated"
   />
+
+  <ListaOpcionFormModal
+    v-model="unidadModalOpen"
+    :id-lista="ListaIds.UNIDAD_MEDIDA"
+    title="Nueva unidad de medida"
+    subtitle="Quedará disponible en productos y tipos de balón."
+    nombre-placeholder="Ej. m³, L, kg, UNID"
+    @saved="onUnidadCreated"
+  />
 </template>
 
 <script setup lang="ts">
@@ -364,7 +380,9 @@ import { useQueryClient } from '@tanstack/vue-query'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
+import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useProductoDetailQuery } from '@/modules/productos/articulos/composables/useProductoDetailQuery'
 import {
@@ -441,6 +459,7 @@ const isGeneratingUbicacion = ref(false)
 const formHydrated = ref(false)
 const categoriaModalOpen = ref(false)
 const subCategoriaModalOpen = ref(false)
+const unidadModalOpen = ref(false)
 
 const canCreateCategoria = computed(() =>
   authStore.hasPermission(PermisoBanderas.CATEGORIAS_CREAR),
@@ -448,6 +467,7 @@ const canCreateCategoria = computed(() =>
 const canCreateSubCategoria = computed(() =>
   authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_CREAR),
 )
+const canCreateUnidad = computed(() => Boolean(authStore.user?.id))
 
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadesMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
@@ -636,6 +656,10 @@ function onSubCategoriaCreated(subCategoria: SubCategoriaProducto) {
     idCategoria.value = subCategoria.id_categoria
   }
   idSubCategoria.value = subCategoria.id
+}
+
+function onUnidadCreated(opcion: ListaOpcion) {
+  idUnidadMedida.value = opcion.id
 }
 
 const generarCodigoUbicacion = async () => {
