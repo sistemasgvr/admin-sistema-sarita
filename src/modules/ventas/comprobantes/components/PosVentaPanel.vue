@@ -537,7 +537,7 @@ const lineaEditando = ref<PosLineItem | null>(null)
 const productoEdicion = ref<Producto | null>(null)
 /** Productos de líneas (para editar sin depender del catálogo visible). */
 const productosPorId = ref<Map<number, Producto>>(new Map())
-const inicioPreferidoAnadir = ref<'gas' | null>(null)
+const inicioPreferidoAnadir = ref<'gas' | 'alquiler' | null>(null)
 
 const glosa = ref('')
 const generarGre = ref(false)
@@ -555,6 +555,12 @@ onMounted(() => {
 
   if (String(route.query.tab ?? '') === 'recarga') {
     inicioPreferidoAnadir.value = 'gas'
+    anadirOpen.value = true
+    const nextQuery = { ...route.query }
+    delete nextQuery.tab
+    void router.replace({ query: nextQuery })
+  } else if (String(route.query.tab ?? '') === 'alquiler') {
+    inicioPreferidoAnadir.value = 'alquiler'
     anadirOpen.value = true
     const nextQuery = { ...route.query }
     delete nextQuery.tab

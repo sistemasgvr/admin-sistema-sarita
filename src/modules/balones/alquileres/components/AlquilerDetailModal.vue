@@ -8,7 +8,7 @@
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
         <ListaOpcionBadge v-if="alquiler?.nombre_estado" :value="alquiler.nombre_estado" />
-        <AppBadge color="neutral">{{ detalleRows.length }} cilindros</AppBadge>
+        <AppBadge color="neutral">{{ detalleRows.length }} cilindros (legado)</AppBadge>
         <AppBadge color="primary">{{ periodoRows.length }} periodos</AppBadge>
       </template>
 

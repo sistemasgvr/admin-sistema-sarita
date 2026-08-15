@@ -207,7 +207,8 @@ export const balonesRoutes: RouteRecordRaw[] = [
       {
         path: 'alquileres/nuevo',
         name: 'admin-balones-alquileres-nuevo',
-        component: () => import('@/modules/balones/alquileres/views/AlquilerFormView.vue'),
+        component: () =>
+          import('@/modules/balones/alquileres/views/AlquilerNuevoRedirectView.vue'),
         meta: {
           title: 'Nuevo alquiler',
           module: 'balones',

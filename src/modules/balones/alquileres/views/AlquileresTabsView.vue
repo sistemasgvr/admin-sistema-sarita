@@ -2,7 +2,6 @@
   <div>
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90">Alquileres</h2>
-
       <nav class="shrink-0">
         <ol class="flex items-center gap-1.5">
           <li>

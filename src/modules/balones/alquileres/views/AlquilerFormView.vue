@@ -51,8 +51,8 @@ const alquilerId = computed(() => {
 const pageTitle = computed(() => (isEdit.value ? 'Editar alquiler' : 'Nuevo alquiler'))
 const pageHelpText = computed(() =>
   isEdit.value
-    ? 'Puedes actualizar la cabecera y agregar o devolver cilindros en esta misma pantalla.'
-    : 'Primero se registra la cabecera; al crear, en esta misma pantalla podrás agregar los cilindros.',
+    ? 'Alquiler del accesorio (regulador). El cilindro no se alquila: si se entregó, está en Préstamos.'
+    : 'El cobro se hace en el POS. El cilindro no se alquila.',
 )
 const breadcrumbItems = computed(() => balonesAlquileresBreadcrumbItems(pageTitle.value))
 

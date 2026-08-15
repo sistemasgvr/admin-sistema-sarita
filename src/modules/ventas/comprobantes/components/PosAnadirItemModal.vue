@@ -607,7 +607,7 @@ const props = withDefaults(
     linea?: PosLineItem | null
     productoEdicion?: Producto | null
     /** Deep-link desde ?tab=recarga: abre catálogo de gas. */
-    inicioPreferido?: 'gas' | null
+    inicioPreferido?: 'gas' | 'alquiler' | null
   }>(),
   {
     idCliente: '',
@@ -1797,6 +1797,8 @@ watch(
 
     if (props.inicioPreferido === 'gas') {
       elegirTipo('gas')
+    } else if (props.inicioPreferido === 'alquiler') {
+      elegirTipo('alquiler')
     }
   },
 )
