@@ -179,6 +179,12 @@ const sections = computed<DetailSection[]>(() => {
         },
         { label: 'Es alquilable', value: formatDetailYesNo(data.es_alquilable) },
         {
+          label: 'Entra a taller',
+          value: data.es_servicio
+            ? formatDetailYesNo(Boolean(data.es_mantenimiento))
+            : undefined,
+        },
+        {
           label: 'Inventario',
           value: data.es_gas
             ? 'Balones / Stock de gas'

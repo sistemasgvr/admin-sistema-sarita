@@ -7,6 +7,7 @@ import { toastInfo } from '@/shared/composables/useToast'
 import { downloadExcelWorkbook, fetchAllPages } from '@/shared/utils/exportExcel'
 
 function tipoItem(producto: Producto) {
+  if (producto.es_mantenimiento) return 'Taller'
   if (producto.es_servicio) return 'Servicio'
   if (producto.es_gas) return 'Gas'
   return 'Accesorio'

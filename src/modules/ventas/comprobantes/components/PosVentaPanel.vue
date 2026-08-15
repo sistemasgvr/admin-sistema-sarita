@@ -676,6 +676,7 @@ const puedeGuardar = computed(
 
 function badgeLabel(linea: PosLineItem) {
   if (linea.esMantenimiento || linea.tipoPos === 'mantenimiento') return 'Mantenimiento'
+  if (linea.esServicio || linea.tipoPos === 'servicio') return 'Servicio'
   if (linea.esGas || linea.tipoPos === 'gas') return 'Gas'
   if (linea.esAlquilable || linea.tipoPos === 'alquiler') return 'Alquiler'
   return 'Producto'
@@ -684,6 +685,9 @@ function badgeLabel(linea: PosLineItem) {
 function badgeClass(linea: PosLineItem) {
   if (linea.esMantenimiento || linea.tipoPos === 'mantenimiento') {
     return 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+  }
+  if (linea.esServicio || linea.tipoPos === 'servicio') {
+    return 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
   }
   if (linea.esGas || linea.tipoPos === 'gas') {
     return 'bg-sky-500/10 text-sky-600 dark:text-sky-400'
@@ -823,6 +827,8 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.observacionLinea = payload.observacionLinea
   linea.tipoPos = payload.tipo
   linea.esMantenimiento = payload.tipo === 'mantenimiento'
+  linea.esServicio =
+    payload.tipo === 'servicio' || payload.tipo === 'mantenimiento' || Boolean(linea.esServicio)
   linea.esGas = payload.tipo === 'gas'
   linea.esAlquilable = payload.tipo === 'alquiler'
   linea.escenarioGas = payload.escenarioGas

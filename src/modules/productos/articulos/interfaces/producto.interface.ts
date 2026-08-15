@@ -15,6 +15,8 @@ export interface Producto {
   es_gas: boolean
   es_servicio: boolean
   es_alquilable: boolean
+  /** Taller de cilindro (P.H., válvula). Distinto de flete u otros servicios. */
+  es_mantenimiento?: boolean | null
   afecta_stock: boolean
   precio: number
   precio_compra?: number | null
@@ -42,6 +44,7 @@ export interface ProductoListFilters {
   esGas?: boolean
   esServicio?: boolean
   esAlquilable?: boolean
+  esMantenimiento?: boolean
   afectaStock?: boolean
   soloActivos?: number | null
   idAlmacen?: number
@@ -61,6 +64,7 @@ export interface CreateProductoPayload {
   esGas?: boolean
   esServicio?: boolean
   esAlquilable?: boolean
+  esMantenimiento?: boolean
   afectaStock?: boolean
   precio?: number
   precioCompra?: number
@@ -81,6 +85,7 @@ export interface UpdateProductoPayload {
   esGas?: boolean
   esServicio?: boolean
   esAlquilable?: boolean
+  esMantenimiento?: boolean
   afectaStock?: boolean
   precio?: number
   precioCompra?: number

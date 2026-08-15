@@ -144,6 +144,7 @@ import { computed, ref } from 'vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { productoEsMantenimientoTaller } from '@/modules/productos/articulos/utils/productoEsMantenimientoTaller'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
@@ -210,7 +211,13 @@ const queryClient = useQueryClient()
 const emitMutation = useEmitirComprobanteMutation()
 const imprimiendoTicket = ref(false)
 
-const productosFilters = ref({ pagina: 1, limite: 200, esServicio: true, soloActivos: 1 })
+const productosFilters = ref({
+  pagina: 1,
+  limite: 200,
+  esServicio: true,
+  esMantenimiento: true,
+  soloActivos: 1,
+})
 const productosQuery = useProductosQuery(productosFilters)
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
@@ -233,7 +240,9 @@ const comprobanteGuardadoNumero = ref<string | null>(null)
 
 const tipoMantenimientoOptions = computed(() => toSelectOptions(tiposMantenimientoQuery.data.value))
 
-const serviciosMantenimiento = computed(() => productosQuery.data.value?.data ?? [])
+const serviciosMantenimiento = computed(() =>
+  (productosQuery.data.value?.data ?? []).filter(productoEsMantenimientoTaller),
+)
 
 const servicioOptions = computed(() =>
   serviciosMantenimiento.value.map((producto) => ({

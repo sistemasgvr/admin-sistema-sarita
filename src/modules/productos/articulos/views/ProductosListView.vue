@@ -150,6 +150,14 @@
             Servicio
           </AppBadge>
           <AppBadge
+            v-if="row.es_mantenimiento"
+            variant="light"
+            color="error"
+            title="Entra a taller de cilindro"
+          >
+            Taller
+          </AppBadge>
+          <AppBadge
             v-else-if="row.es_gas"
             color="success"
             variant="light"

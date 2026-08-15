@@ -49,11 +49,19 @@
 
     <!-- Paso 3: configurar -->
     <div v-else-if="paso === 'config' && producto" class="space-y-4">
-      <p v-if="tipo !== 'gas' && tipo !== 'alquiler'" class="text-sm text-gray-500 dark:text-gray-400">{{ ayudaConfig }}</p>
+      <p
+        v-if="tipo !== 'gas' && tipo !== 'alquiler'"
+        class="text-sm text-gray-500 dark:text-gray-400"
+      >
+        {{ ayudaConfig }}
+      </p>
 
-      <div v-if="tipo !== 'gas' && tipo !== 'alquiler'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div
+        v-if="tipo !== 'gas' && tipo !== 'alquiler'"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+      >
         <CantidadUnidadInput
-          v-if="tipo !== 'mantenimiento'"
+          v-if="!esTallerProducto"
           v-model="cantidad"
           name="pos-anadir-cantidad"
           :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
@@ -62,12 +70,12 @@
         />
         <AppInput
           v-model="precioUnitario"
-          :label="tipo === 'mantenimiento' ? 'Costo / importe' : 'Precio unitario'"
+          :label="esTallerProducto ? 'Costo / importe' : 'Precio unitario'"
           type="number"
           :min="NUMBER_MIN.money"
           :step="NUMBER_STEP.money"
           required
-          :class="tipo === 'mantenimiento' ? 'sm:col-span-2' : ''"
+          :class="esTallerProducto ? 'sm:col-span-2' : ''"
         />
       </div>
 
@@ -441,7 +449,7 @@
         </div>
       </template>
 
-      <template v-else-if="tipo === 'mantenimiento'">
+      <template v-else-if="tipo === 'servicio' && esTallerProducto">
         <p
           v-if="esClientesVarios"
           class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
@@ -521,6 +529,7 @@ import { useProductosQuery } from '@/modules/productos/articulos/composables/use
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
+import { productoEsMantenimientoTaller } from '@/modules/productos/articulos/utils/productoEsMantenimientoTaller'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
 import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
 import type { StockGasListFilters } from '@/modules/balones/stock-gas/interfaces/stock-gas.interface'
@@ -557,7 +566,7 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { hoyIsoLima } from '@/shared/utils/date'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
-export type PosAnadirTipo = 'accesorio' | 'gas' | 'alquiler' | 'mantenimiento'
+export type PosAnadirTipo = 'accesorio' | 'gas' | 'alquiler' | 'servicio'
 export type EscenarioGas =
   | 'balon_cliente'
   | 'entregar_prestamo'
@@ -565,7 +574,7 @@ export type EscenarioGas =
 type Paso = 'tipo' | 'catalogo' | 'config'
 
 export interface PosLineaConfirmada {
-  tipo: PosAnadirTipo
+  tipo: PosAnadirTipo | 'mantenimiento'
   producto: Producto
   cantidad: number
   precioUnitario: number
@@ -627,6 +636,9 @@ const authStore = useAuthStore()
 const paso = ref<Paso>('tipo')
 const tipo = ref<PosAnadirTipo | null>(null)
 const producto = ref<Producto | null>(null)
+const esTallerProducto = computed(() =>
+  Boolean(producto.value && productoEsMantenimientoTaller(producto.value)),
+)
 const extraFiltersProductoGas = computed(() =>
   producto.value?.id ? { idProductoGas: producto.value.id } : undefined,
 )
@@ -819,7 +831,7 @@ async function refrescarOrigenesRecarga() {
 }
 
 const importeGas = computed(() => {
-  if (tipo.value === 'mantenimiento') return Number(precioUnitario.value || 0)
+  if (esTallerProducto.value) return Number(precioUnitario.value || 0)
   return Number(cantidad.value || 0) * Number(precioUnitario.value || 0)
 })
 
@@ -1092,12 +1104,15 @@ const tiposDisponibles = computed(() => {
     })
   }
 
-  if (authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR)) {
+  if (
+    authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR) ||
+    authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR)
+  ) {
     opciones.push({
-      key: 'mantenimiento',
-      label: 'Mantenimiento',
-      help: 'Prueba hidráulica, válvula u otro trabajo de taller.',
-      icon: ICONS.construction,
+      key: 'servicio',
+      label: 'Servicio',
+      help: 'Flete, mantenimiento de cilindro u otro cobro sin stock.',
+      icon: ICONS.clipboardList,
     })
   }
 
@@ -1263,7 +1278,7 @@ const titulo = computed(() => {
     if (continuarConPrestamoGas.value) return 'Elegir gas del cilindro a prestar'
     if (tipo.value === 'gas') return 'Elegir gas'
     if (tipo.value === 'alquiler') return 'Elegir alquiler'
-    if (tipo.value === 'mantenimiento') return 'Elegir servicio'
+    if (tipo.value === 'servicio') return 'Elegir servicio'
     return 'Elegir producto'
   }
   return producto.value?.nombre || 'Configurar ítem'
@@ -1277,6 +1292,9 @@ const subtitulo = computed(() => {
         : 'Elige qué hace el cliente con el cilindro'
     }
     if (tipo.value === 'alquiler') return 'Solo se alquila el accesorio'
+    if (tipo.value === 'servicio' && esTallerProducto.value) {
+      return 'Queda en taller hasta finalizarlo'
+    }
     return producto.value.codigo
   }
   if (paso.value === 'catalogo') {
@@ -1291,8 +1309,11 @@ const ayudaConfig = computed(() => {
   if (tipo.value === 'alquiler') {
     return 'Indica fechas y, si aplica, la garantía.'
   }
-  if (tipo.value === 'mantenimiento') {
-    return 'Queda en taller hasta que lo finalicen en Balones → Mantenimientos.'
+  if (tipo.value === 'servicio' && esTallerProducto.value) {
+    return 'El cilindro entra a taller. Se finaliza después en Balones → Mantenimientos.'
+  }
+  if (tipo.value === 'servicio') {
+    return 'Cobro de servicio (flete u otro). No descuenta stock ni entra a taller.'
   }
   return 'Ajusta cantidad y precio.'
 })
@@ -1300,7 +1321,7 @@ const ayudaConfig = computed(() => {
 const puedeConfirmar = computed(() => {
   if (!producto.value || !tipo.value) return false
   if (Number(precioUnitario.value) < 0) return false
-  if (tipo.value === 'mantenimiento') {
+  if (tipo.value === 'servicio' && esTallerProducto.value) {
     return (
       Boolean(props.idCliente) &&
       !props.esClientesVarios &&
@@ -1369,6 +1390,7 @@ function filtrosPorTipo(t: PosAnadirTipo): Partial<ProductoListFilters> {
   if (t === 'gas') return { esGas: true }
   if (t === 'accesorio') return { esGas: false, esServicio: false }
   if (t === 'alquiler') return { esAlquilable: true }
+  if (t === 'servicio') return { esServicio: true, esAlquilable: false }
   return { esServicio: true, esAlquilable: false }
 }
 
@@ -1508,18 +1530,13 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
 }
 
 function elegirTipo(t: PosAnadirTipo) {
-  if (t !== 'accesorio' && t !== 'mantenimiento' && !props.idAlmacen) {
-    // alquiler necesita almacén; gas también para stock
-    if (t === 'alquiler' || t === 'gas') {
-      toastWarning('Selecciona un almacén en el comprobante antes de añadir')
-      return
-    }
+  if ((t === 'alquiler' || t === 'gas') && !props.idAlmacen) {
+    toastWarning('Selecciona un almacén en el comprobante antes de añadir')
+    return
   }
-  if ((t === 'alquiler' || t === 'mantenimiento') && props.esClientesVarios) {
+  if (t === 'alquiler' && props.esClientesVarios) {
     toastWarning(
-      t === 'alquiler'
-        ? 'No se puede registrar un alquiler a Clientes Varios. Selecciona un cliente identificado.'
-        : 'No se puede registrar un mantenimiento a Clientes Varios. Selecciona un cliente identificado.',
+      'No se puede registrar un alquiler a Clientes Varios. Selecciona un cliente identificado.',
     )
     return
   }
@@ -1536,6 +1553,14 @@ function elegirTipo(t: PosAnadirTipo) {
 function elegirProducto(p: Producto) {
   if (productoSinStockParaVenta(p)) {
     toastWarning(`${p.nombre} no tiene stock disponible`)
+    return
+  }
+  if (
+    tipo.value === 'servicio' &&
+    productoEsMantenimientoTaller(p) &&
+    !authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR)
+  ) {
+    toastWarning('No tienes permiso para registrar mantenimientos de cilindro')
     return
   }
   producto.value = p
@@ -1574,7 +1599,7 @@ function formatMoney(value: number | null | undefined) {
 async function confirmar() {
   if (!producto.value || !tipo.value || !puedeConfirmar.value) return
 
-  const cant = tipo.value === 'mantenimiento' ? 1 : Number(cantidad.value)
+  const cant = esTallerProducto.value ? 1 : Number(cantidad.value)
   const errorCantidad = validarCantidadSegunUnidad(
     cant,
     producto.value.nombre_unidad_medida ?? 'UNID',
@@ -1650,7 +1675,7 @@ async function confirmar() {
     )
     return
   }
-  if (tipo.value === 'mantenimiento' && props.esClientesVarios) {
+  if (esTallerProducto.value && props.esClientesVarios) {
     toastWarning(
       'No se puede registrar un mantenimiento a Clientes Varios. Selecciona un cliente identificado.',
     )
@@ -1667,14 +1692,14 @@ async function confirmar() {
   }
 
   const payload: PosLineaConfirmada = {
-    tipo: tipo.value,
+    tipo: esTallerProducto.value ? 'mantenimiento' : tipo.value,
     producto: producto.value,
     cantidad: cant,
     precioUnitario: Number(precioUnitario.value || 0),
     observacionLinea: observacion.value.trim() || undefined,
   }
 
-  if (idBalon.value && tipo.value !== 'alquiler') {
+  if (idBalon.value && (tipo.value === 'gas' || esTallerProducto.value)) {
     payload.idBalon = Number(idBalon.value)
     payload.etiquetaBalon = etiquetaBalon.value.trim() || undefined
   }
@@ -1716,7 +1741,7 @@ async function confirmar() {
     }
   }
 
-  if (tipo.value === 'mantenimiento') {
+  if (esTallerProducto.value) {
     payload.fechaIngresoMantenimiento = fechaIngreso.value
     payload.descripcionMantenimiento =
       descripcionMantenimiento.value.trim() || producto.value.nombre
@@ -1746,15 +1771,17 @@ watch(
     if (!isOpen) return
 
     if (props.linea && props.productoEdicion) {
-      const t =
-        props.linea.tipoPos ||
-        (props.linea.esMantenimiento
-          ? 'mantenimiento'
-          : props.linea.esGas
+      const t: PosAnadirTipo =
+        props.linea.tipoPos === 'servicio' ||
+        props.linea.tipoPos === 'mantenimiento' ||
+        props.linea.esMantenimiento ||
+        (props.productoEdicion && productoEsMantenimientoTaller(props.productoEdicion))
+          ? 'servicio'
+          : props.linea.tipoPos === 'gas' || props.linea.esGas
             ? 'gas'
-            : props.linea.esAlquilable
+            : props.linea.tipoPos === 'alquiler' || props.linea.esAlquilable
               ? 'alquiler'
-              : 'accesorio')
+              : 'accesorio'
       tipo.value = t
       producto.value = props.productoEdicion
       resetConfig(props.productoEdicion, props.linea)

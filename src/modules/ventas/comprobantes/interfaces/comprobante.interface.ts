@@ -386,7 +386,7 @@ export interface PosLineItem {
   esServicio?: boolean
   esAlquilable?: boolean
   /** Origen del flujo Añadir en POS. */
-  tipoPos?: 'accesorio' | 'gas' | 'alquiler' | 'mantenimiento'
+  tipoPos?: 'accesorio' | 'gas' | 'alquiler' | 'servicio' | 'mantenimiento'
   /** Balón vinculado (recarga, entrega de cilindro o mantenimiento). */
   idBalon?: number
   /** Balón EMPRESA origen que surte la recarga cliente. */

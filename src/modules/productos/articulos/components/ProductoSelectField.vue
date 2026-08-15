@@ -82,6 +82,7 @@ const props = withDefaults(
     esGas?: boolean
     esServicio?: boolean
     esAlquilable?: boolean
+    esMantenimiento?: boolean
     afectaStock?: boolean
     soloActivos?: number | null
     /** Si se envía, el listado incluye stock_actual de ese almacén */
@@ -105,6 +106,7 @@ const props = withDefaults(
     esGas: undefined,
     esServicio: undefined,
     esAlquilable: undefined,
+    esMantenimiento: undefined,
     afectaStock: undefined,
     soloActivos: 1,
     idAlmacen: undefined,
@@ -152,6 +154,7 @@ function buildFilters(buscar?: string): ProductoListFilters {
   if (props.esGas !== undefined) filters.esGas = props.esGas
   if (props.esServicio !== undefined) filters.esServicio = props.esServicio
   if (props.esAlquilable !== undefined) filters.esAlquilable = props.esAlquilable
+  if (props.esMantenimiento !== undefined) filters.esMantenimiento = props.esMantenimiento
   if (props.afectaStock !== undefined) filters.afectaStock = props.afectaStock
 
   const idAlmacen = Number(props.idAlmacen)
@@ -187,6 +190,7 @@ watch(
       props.esGas,
       props.esServicio,
       props.esAlquilable,
+      props.esMantenimiento,
       props.afectaStock,
       props.soloActivos,
       props.idAlmacen,
@@ -218,6 +222,7 @@ function productoToSelectOption(producto: Producto): SelectOption {
   const badges: NonNullable<SelectOption['badges']> = []
   if (producto.es_gas) badges.push({ label: 'Gas', color: 'primary' })
   if (producto.es_servicio) badges.push({ label: 'Servicio', color: 'neutral' })
+  if (producto.es_mantenimiento) badges.push({ label: 'Taller', color: 'error' })
   if (producto.es_alquilable) badges.push({ label: 'Alquilable', color: 'warning' })
   if (producto.nombre_categoria) {
     badges.push({ label: producto.nombre_categoria, color: 'neutral' })

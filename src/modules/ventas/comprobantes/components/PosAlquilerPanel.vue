@@ -412,6 +412,7 @@ const serviciosFleteFilters = ref({
   limite: 100,
   esServicio: true,
   esAlquilable: false,
+  esMantenimiento: false,
   soloActivos: 1,
   buscar: undefined as string | undefined,
 })

@@ -32,7 +32,7 @@
       <DetailSectionCard
         title="Datos"
         :icon="ICONS.package"
-        help="Producto: accesorio o gas. Servicio: flete, mantenimiento o regulador alquilable. El tipo define filtros en POS y alquileres."
+        help="Producto: accesorio o gas. Servicio: cobro (flete, etc.), taller de cilindro, o regulador alquilable."
       >
         <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div class="sm:col-span-2 lg:col-span-1">
@@ -205,6 +205,12 @@
                 v-model="esAlquilable"
                 :disabled="isSubmitting"
                 label="Alquilable"
+              />
+              <AppCheckbox
+                v-if="tipoItem === 'servicio' && !esAlquilable"
+                v-model="esMantenimiento"
+                :disabled="isSubmitting"
+                label="Entra a taller (mantenimiento de cilindro)"
               />
               <AppCheckbox
                 v-if="tipoItem === 'producto' && !esGas"
@@ -462,9 +468,13 @@ const unidadMedidaOptions = computed(() =>
 
 const ayudaCaracteristicas = computed(() => {
   if (tipoItem.value === 'servicio') {
-    return esAlquilable.value
-      ? 'Servicio alquilable: aparecerá en POS Medicinal (regulador) y en el formulario de alquileres.'
-      : 'Servicio no alquilable: útil para flete o mantenimiento. No aparece en selectores de alquiler.'
+    if (esAlquilable.value) {
+      return 'Servicio alquilable: aparecerá en POS Medicinal (regulador) y en el formulario de alquileres.'
+    }
+    if (esMantenimiento.value) {
+      return 'Taller: en el POS pide cilindro y crea el mantenimiento en Balones. El resto de servicios no.'
+    }
+    return 'Solo cobro: flete u otro servicio. Entra al comprobante y no crea nada en taller.'
   }
   if (esGas.value) {
     return 'Gas: solo precio para vender. La cantidad disponible está en Balones / Stock de gas.'
@@ -488,6 +498,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
         esGas: yup.boolean().default(false),
         esServicio: yup.boolean().default(false),
         esAlquilable: yup.boolean().default(false),
+        esMantenimiento: yup.boolean().default(false),
         afectaStock: yup.boolean().default(true),
         precio: optionalNumber().min(0, 'El precio de venta no puede ser negativo'),
         precioCompra: optionalNumber().min(0, 'El precio de compra no puede ser negativo'),
@@ -509,6 +520,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
       esGas: false,
       esServicio: false,
       esAlquilable: false,
+      esMantenimiento: false,
       afectaStock: true,
       precio: undefined as number | undefined,
       precioCompra: undefined as number | undefined,
@@ -530,6 +542,7 @@ const [presentacion, presentacionAttrs] = defineField('presentacion')
 const [esGas] = defineField('esGas')
 defineField('esServicio')
 const [esAlquilable] = defineField('esAlquilable')
+const [esMantenimiento] = defineField('esMantenimiento')
 const [afectaStock] = defineField('afectaStock')
 const [precio, precioAttrs] = defineField('precio')
 const [precioCompra, precioCompraAttrs] = defineField('precioCompra')
@@ -564,6 +577,7 @@ function setTipoItem(tipo: TipoItem) {
     setFieldValue('precioCompra', undefined)
   } else {
     setFieldValue('esServicio', false)
+    setFieldValue('esMantenimiento', false)
     setFieldValue('afectaStock', true)
   }
 }
@@ -587,6 +601,7 @@ function syncFormFromProducto() {
       esGas: data.es_gas ?? false,
       esServicio: data.es_servicio ?? false,
       esAlquilable: data.es_alquilable ?? false,
+      esMantenimiento: Boolean(data.es_mantenimiento),
       afectaStock:
         data.es_servicio || data.es_gas ? false : (data.afecta_stock ?? true),
       precio: data.precio ?? undefined,
@@ -723,6 +738,10 @@ const onSubmit = handleSubmit(async (formValues) => {
       esGas: esServicioValue ? false : Boolean(formValues.esGas),
       esServicio: esServicioValue,
       esAlquilable: Boolean(formValues.esAlquilable),
+      esMantenimiento:
+        esServicioValue && !formValues.esAlquilable
+          ? Boolean(formValues.esMantenimiento)
+          : false,
       afectaStock:
         esServicioValue || Boolean(formValues.esGas)
           ? false
@@ -792,6 +811,10 @@ watch(
 
 watch(esGas, (esGasValue) => {
   if (esGasValue) setFieldValue('afectaStock', false)
+})
+
+watch(esAlquilable, (alquilable) => {
+  if (alquilable) setFieldValue('esMantenimiento', false)
 })
 
 watch(idCategoria, (categoriaId, previousCategoriaId) => {
