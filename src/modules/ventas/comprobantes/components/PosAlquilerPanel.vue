@@ -302,6 +302,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
+import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
@@ -425,11 +426,8 @@ const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmac
 
 const listaTipoPrestamoId = ref(ListaIds.TIPO_PRESTAMO)
 const tiposPrestamoQuery = useListaOpcionesQuery(listaTipoPrestamoId)
-const idTipoPrestamoEmpresaCliente = computed(
-  () =>
-    tiposPrestamoQuery.data.value?.find(
-      (item) => (item.nombre ?? '').toUpperCase() === 'ENVASE_EMPRESA_A_CLIENTE',
-    )?.id ?? null,
+const idTipoPrestamoEmpresaCliente = computed(() =>
+  idTipoPrestamoPermitePos(tiposPrestamoQuery.data.value),
 )
 
 const listaEstadoPrestamoId = ref(ListaIds.ESTADO_PRESTAMO)
@@ -671,7 +669,7 @@ async function registrarKit() {
     return
   }
   if (!idTipoPrestamoEmpresaCliente.value) {
-    toastWarning('No se encontró el tipo de préstamo ENVASE_EMPRESA_A_CLIENTE')
+    toastWarning('No se encontró el tipo de préstamo para cobro de envase')
     return
   }
 

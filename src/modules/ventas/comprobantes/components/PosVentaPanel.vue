@@ -386,6 +386,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
@@ -496,11 +497,8 @@ const idMotivoVendido = computed(
 
 const listaTipoPrestamoId = ref(ListaIds.TIPO_PRESTAMO)
 const tiposPrestamoQuery = useListaOpcionesQuery(listaTipoPrestamoId)
-const idTipoPrestamoEmpresaCliente = computed(
-  () =>
-    tiposPrestamoQuery.data.value?.find(
-      (item) => (item.nombre ?? '').toUpperCase() === 'ENVASE_EMPRESA_A_CLIENTE',
-    )?.id ?? null,
+const idTipoPrestamoEmpresaCliente = computed(() =>
+  idTipoPrestamoPermitePos(tiposPrestamoQuery.data.value),
 )
 
 const listaEstadoPrestamoId = ref(ListaIds.ESTADO_PRESTAMO)
@@ -1086,7 +1084,7 @@ async function guardarComprobante() {
     return
   }
   if (lineasPrestamo.length > 0 && !idTipoPrestamoEmpresaCliente.value) {
-    toastWarning('No se encontró el tipo de préstamo ENVASE_EMPRESA_A_CLIENTE')
+    toastWarning('No se encontró el tipo de préstamo para cobro de envase')
     return
   }
   if (lineasCompraBalon.length > 0 && !idMotivoVendido.value) {

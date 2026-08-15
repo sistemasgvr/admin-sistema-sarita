@@ -16,42 +16,81 @@
       >
         <FormCardsLayout>
           <DetailSectionCard
-            title="Datos generales"
+            title="Tipo"
             :icon="ICONS.clipboardList"
-            help="Industrial: préstamo de envase. Los cilindros se agregan después de crear la cabecera."
+          >
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <button
+                v-for="opcion in tipoPrestamoCards"
+                :key="opcion.id"
+                type="button"
+                class="flex items-start gap-3 rounded-xl border p-3 text-left transition"
+                :class="tipoPrestamoCardClass(opcion.id)"
+                :disabled="isSubmitting || !isCreateMode"
+                @click="seleccionarTipoPrestamo(opcion.id)"
+              >
+                <span
+                  class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
+                >
+                  <AppIcon :name="opcion.icon" :size="18" />
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-semibold text-gray-800 dark:text-white/90">
+                    {{ opcion.label }}
+                  </span>
+                </span>
+              </button>
+            </div>
+            <p v-if="errors.idTipoPrestamo" class="mt-2 text-sm text-error-500">
+              {{ errors.idTipoPrestamo }}
+            </p>
+          </DetailSectionCard>
+
+          <DetailSectionCard
+            v-if="idTipoPrestamo"
+            title="Datos"
+            :icon="ICONS.users"
           >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <AppSelect
-                v-model="idTipoPrestamo"
-                label="Tipo de préstamo"
-                placeholder="Selecciona tipo"
-                required
-                v-bind="idTipoPrestamoAttrs"
-                :disabled="isSubmitting || tiposPrestamoQuery.isFetching.value"
-                :error="errors.idTipoPrestamo"
-                :options="tipoPrestamoOptions"
+              <ClienteSelectField
+                v-if="muestraCliente"
+                v-model="idCliente"
+                :required="requiereCliente"
+                solo-clientes
+                :disabled="isSubmitting"
+                :error="errors.idCliente"
+              />
+
+              <ClienteSelectField
+                v-if="muestraProveedor"
+                v-model="idProveedor"
+                label="Proveedor"
+                placeholder="Selecciona proveedor"
+                :required="requiereProveedor"
+                solo-proveedores
+                :disabled="isSubmitting"
+                :error="errors.idProveedor"
+              />
+
+              <AlmacenSelectField
+                v-model="idAlmacen"
+                :required="requiereAlmacen"
+                :disabled="isSubmitting"
+                :error="errors.idAlmacen"
               />
 
               <AppInput
+                v-if="!isCreateMode"
                 v-model="numeroPrestamo"
-                label="Número de préstamo"
+                label="Número"
                 placeholder="Opcional"
                 v-bind="numeroPrestamoAttrs"
                 :disabled="isSubmitting"
                 :error="errors.numeroPrestamo"
               />
 
-              <AppInput
-                v-model="titulo"
-                label="Título"
-                placeholder="Referencia o descripción breve"
-                class="sm:col-span-2"
-                v-bind="tituloAttrs"
-                :disabled="isSubmitting"
-                :error="errors.titulo"
-              />
-
               <AppSelect
+                v-if="!isCreateMode"
                 v-model="idEstado"
                 label="Estado"
                 placeholder="Selecciona..."
@@ -63,37 +102,9 @@
                 hint="No lo cierres si aún hay cilindros pendientes; usa Devolver."
               />
 
-              <AlmacenSelectField
-                v-model="idAlmacen"
-                :disabled="isSubmitting"
-                :error="errors.idAlmacen"
-              />
-            </div>
-          </DetailSectionCard>
-
-          <DetailSectionCard title="Partes involucradas" :icon="ICONS.users">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <ClienteSelectField
-                v-model="idCliente"
-                :disabled="isSubmitting"
-                :error="errors.idCliente"
-              />
-
-              <ClienteSelectField
-                v-model="idProveedor"
-                label="Proveedor / tercero"
-                placeholder="Opcional"
-                :disabled="isSubmitting"
-                :error="errors.idProveedor"
-              />
-            </div>
-          </DetailSectionCard>
-
-          <DetailSectionCard title="Fechas" :icon="ICONS.calendar">
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <AppInput
                 v-model="fechaSalida"
-                label="Fecha salida"
+                :label="labelFechaMovimiento"
                 type="date"
                 v-bind="fechaSalidaAttrs"
                 :disabled="isSubmitting"
@@ -108,16 +119,31 @@
               />
 
               <AppInput
+                v-if="!isCreateMode"
                 v-model="fechaRetornoReal"
                 label="Retorno real"
                 type="date"
                 v-bind="fechaRetornoRealAttrs"
                 :disabled="isSubmitting"
               />
+
+              <AppInput
+                v-model="titulo"
+                label="Título"
+                placeholder="Opcional"
+                class="sm:col-span-2"
+                v-bind="tituloAttrs"
+                :disabled="isSubmitting"
+                :error="errors.titulo"
+              />
             </div>
           </DetailSectionCard>
 
-          <DetailSectionCard title="Comprobantes" :icon="ICONS.creditCard">
+          <DetailSectionCard
+            v-if="!isCreateMode"
+            title="Comprobantes"
+            :icon="ICONS.creditCard"
+          >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="idComprobanteVenta"
@@ -143,11 +169,16 @@
             </div>
           </DetailSectionCard>
 
-          <DetailSectionCard title="Observación" :icon="ICONS.messageSquare" :full-width="true">
+          <DetailSectionCard
+            v-if="idTipoPrestamo"
+            title="Observación"
+            :icon="ICONS.messageSquare"
+            :full-width="true"
+          >
             <AppTextarea
               v-model="observacion"
               label="Observación"
-              placeholder="Notas adicionales del préstamo"
+              placeholder="Notas adicionales"
               :rows="3"
               v-bind="observacionAttrs"
               :disabled="isSubmitting"
@@ -250,7 +281,7 @@
         title="Cilindros del préstamo"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="Paso 1: completa la cabecera y pulsa Crear préstamo. Luego podrás agregar los cilindros en esta misma pantalla."
+        help="Después de crear la cabecera puedes agregar cilindros."
       >
         <p class="text-center text-sm text-gray-400 dark:text-gray-500">Sin cilindros aún</p>
       </DetailSectionCard>
@@ -351,6 +382,10 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { optionalNumber, optionalString, requiredSelect } from '@/shared/validation'
+import { toastWarning } from '@/shared/composables/useToast'
+import { hoyIsoLima } from '@/shared/utils/date'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { reglaTipoPrestamo } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 
 export type PrestamoFormSavedPayload = { id: number; idCliente?: number | null }
 
@@ -403,9 +438,59 @@ const listaEstadoPrestamoId = ref(ListaIds.ESTADO_PRESTAMO)
 const tiposPrestamoQuery = useListaOpcionesQuery(listaTipoPrestamoId)
 const estadosPrestamoQuery = useListaOpcionesQuery(listaEstadoPrestamoId)
 
-const tipoPrestamoOptions = computed(() => toSelectOptions(tiposPrestamoQuery.data.value))
-
 const estadoPrestamoOptions = computed(() => toSelectOptions(estadosPrestamoQuery.data.value))
+
+const tipoPrestamoCards = computed(() => {
+  const items = [...(tiposPrestamoQuery.data.value ?? [])]
+  items.sort((a, b) => reglaTipoPrestamo(a.nombre).orden - reglaTipoPrestamo(b.nombre).orden)
+  return items.map((item) => {
+    const regla = reglaTipoPrestamo(item.nombre)
+    return {
+      id: item.id,
+      codigo: item.nombre,
+      label: formatListaOpcionLabel(item.nombre, item.descripcion),
+      icon: ICONS[regla.icon],
+    }
+  })
+})
+
+const codigoTipoPrestamo = computed(() => {
+  const id = Number(idTipoPrestamo.value)
+  if (!Number.isFinite(id) || id <= 0) return ''
+  return tiposPrestamoQuery.data.value?.find((item) => item.id === id)?.nombre ?? ''
+})
+
+const reglaTipoActual = computed(() => reglaTipoPrestamo(codigoTipoPrestamo.value))
+const requiereCliente = computed(() => reglaTipoActual.value.requiereCliente)
+const requiereProveedor = computed(() => reglaTipoActual.value.requiereProveedor)
+const requiereAlmacen = computed(() => reglaTipoActual.value.requiereAlmacen)
+const muestraCliente = computed(
+  () =>
+    reglaTipoActual.value.contraparte === 'cliente' ||
+    reglaTipoActual.value.contraparte === 'ambos',
+)
+const muestraProveedor = computed(
+  () =>
+    reglaTipoActual.value.contraparte === 'proveedor' ||
+    reglaTipoActual.value.contraparte === 'ambos',
+)
+const labelFechaMovimiento = computed(() => {
+  if (reglaTipoActual.value.sentido === 'entrada') return 'Fecha recepción'
+  if (reglaTipoActual.value.sentido === 'envio') return 'Fecha envío'
+  return 'Fecha salida'
+})
+
+function tipoPrestamoCardClass(id: number) {
+  const active = Number(idTipoPrestamo.value) === id
+  return active
+    ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-500 dark:border-brand-400 dark:bg-brand-500/10'
+    : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-800 dark:bg-white/[0.03] dark:hover:border-gray-700'
+}
+
+function seleccionarTipoPrestamo(id: number) {
+  if (!isCreateMode.value) return
+  setFieldValue('idTipoPrestamo', id)
+}
 
 const idEstadoPrestamoActivo = computed(
   () =>
@@ -492,13 +577,13 @@ const optionalSelectNumber = () =>
     .transform((value) => (value === '' ? undefined : value))
     .optional()
 
-const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+const { defineField, handleSubmit, resetForm, errors, isSubmitting, setFieldValue } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       idTipoPrestamo: requiredSelect('El tipo de préstamo'),
       numeroPrestamo: optionalString().max(30, 'Máximo 30 caracteres'),
       titulo: optionalString().max(200, 'Máximo 200 caracteres'),
-      idEstado: requiredSelect('El estado'),
+      idEstado: optionalSelectNumber(),
       idAlmacen: optionalSelectNumber(),
       idCliente: optionalSelectNumber(),
       idProveedor: optionalSelectNumber(),
@@ -527,7 +612,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   },
 })
 
-const [idTipoPrestamo, idTipoPrestamoAttrs] = defineField('idTipoPrestamo')
+const [idTipoPrestamo] = defineField('idTipoPrestamo')
 const [numeroPrestamo, numeroPrestamoAttrs] = defineField('numeroPrestamo')
 const [titulo, tituloAttrs] = defineField('titulo')
 const [idEstado, idEstadoAttrs] = defineField('idEstado')
@@ -558,21 +643,32 @@ const buildPayloadFields = (values: {
   idComprobanteVenta?: number
   idComprobanteCompra?: number
   observacion?: string
-}) => ({
-  idTipoPrestamo: toOptionalNumber(values.idTipoPrestamo),
-  numeroPrestamo: values.numeroPrestamo || undefined,
-  titulo: values.titulo || undefined,
-  idEstado: toOptionalNumber(values.idEstado),
-  idAlmacen: toOptionalNumber(values.idAlmacen),
-  idCliente: toOptionalNumber(values.idCliente),
-  idProveedor: toOptionalNumber(values.idProveedor),
-  fechaSalida: values.fechaSalida || undefined,
-  fechaRetornoPactada: values.fechaRetornoPactada || undefined,
-  fechaRetornoReal: values.fechaRetornoReal || undefined,
-  idComprobanteVenta: values.idComprobanteVenta ? Number(values.idComprobanteVenta) : undefined,
-  idComprobanteCompra: values.idComprobanteCompra ? Number(values.idComprobanteCompra) : undefined,
-  observacion: values.observacion || undefined,
-})
+}) => {
+  const codigo = tiposPrestamoQuery.data.value?.find(
+    (item) => item.id === toOptionalNumber(values.idTipoPrestamo),
+  )?.nombre
+  const regla = reglaTipoPrestamo(codigo)
+  const enviaCliente =
+    regla.contraparte === 'cliente' || regla.contraparte === 'ambos'
+  const enviaProveedor =
+    regla.contraparte === 'proveedor' || regla.contraparte === 'ambos'
+
+  return {
+    idTipoPrestamo: toOptionalNumber(values.idTipoPrestamo),
+    numeroPrestamo: values.numeroPrestamo || undefined,
+    titulo: values.titulo || undefined,
+    idEstado: toOptionalNumber(values.idEstado),
+    idAlmacen: toOptionalNumber(values.idAlmacen),
+    idCliente: enviaCliente ? toOptionalNumber(values.idCliente) : undefined,
+    idProveedor: enviaProveedor ? toOptionalNumber(values.idProveedor) : undefined,
+    fechaSalida: values.fechaSalida || undefined,
+    fechaRetornoPactada: values.fechaRetornoPactada || undefined,
+    fechaRetornoReal: values.fechaRetornoReal || undefined,
+    idComprobanteVenta: values.idComprobanteVenta ? Number(values.idComprobanteVenta) : undefined,
+    idComprobanteCompra: values.idComprobanteCompra ? Number(values.idComprobanteCompra) : undefined,
+    observacion: values.observacion || undefined,
+  }
+}
 
 const syncFormValues = () => {
   const data = prestamoQuery.data.value
@@ -607,7 +703,7 @@ const resetCreateForm = () => {
       idAlmacen: '',
       idCliente: '',
       idProveedor: '',
-      fechaSalida: '',
+      fechaSalida: hoyIsoLima(),
       fechaRetornoPactada: '',
       fechaRetornoReal: '',
       idComprobanteVenta: undefined,
@@ -632,6 +728,30 @@ const onSubmit = handleSubmit(async (values) => {
   if (!currentUserId) return
 
   const fields = buildPayloadFields(values)
+
+  if (!fields.idTipoPrestamo) {
+    toastWarning('Selecciona el tipo de préstamo')
+    return
+  }
+  if (requiereCliente.value && !fields.idCliente) {
+    toastWarning('Selecciona el cliente')
+    return
+  }
+  if (requiereProveedor.value && !fields.idProveedor) {
+    toastWarning('Selecciona el proveedor')
+    return
+  }
+  if (requiereAlmacen.value && !fields.idAlmacen) {
+    toastWarning('Selecciona el almacén')
+    return
+  }
+
+  if (isCreateMode.value) {
+    fields.idEstado = toOptionalNumber(idEstadoPrestamoActivo.value) || fields.idEstado
+    fields.fechaRetornoReal = undefined
+    fields.idComprobanteVenta = undefined
+    fields.idComprobanteCompra = undefined
+  }
 
   try {
     if (isCreateMode.value) {
@@ -771,4 +891,17 @@ watch(
     }
   },
 )
+
+watch(idTipoPrestamo, (tipoId, tipoAnterior) => {
+  if (!isCreateMode.value) return
+  if (tipoId === tipoAnterior) return
+  if (!muestraProveedor.value) setFieldValue('idProveedor', '')
+  if (!muestraCliente.value) setFieldValue('idCliente', '')
+})
+
+watch(idEstadoPrestamoActivo, (estadoId) => {
+  if (isCreateMode.value && estadoId && !idEstado.value) {
+    setFieldValue('idEstado', estadoId)
+  }
+})
 </script>
