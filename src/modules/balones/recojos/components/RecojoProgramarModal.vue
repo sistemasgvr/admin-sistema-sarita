@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Programar recojo"
-    subtitle="Agenda una visita para recoger cilindros o reguladores en préstamo o alquiler."
+    subtitle="Envases en préstamo o accesorios en alquiler"
     size="lg"
   >
     <template #header>
@@ -17,7 +17,7 @@
             Programar recojo
           </h4>
           <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-            Agenda una visita para recoger cilindros o reguladores en préstamo o alquiler.
+            Envases en préstamo o accesorios en alquiler.
           </p>
         </div>
       </div>
@@ -95,9 +95,9 @@
         >
           Cargando...
         </p>
-        <ul v-else-if="pendientes.length > 0 || esSoloRegulador" class="space-y-2">
+        <ul v-else-if="pendientes.length > 0 || mostrarAccesorio" class="space-y-2">
           <li
-            v-if="esSoloRegulador"
+            v-if="mostrarAccesorio"
             class="flex items-start gap-3 rounded-xl border border-gray-200 px-3 py-2.5 dark:border-gray-700"
           >
             <input
@@ -111,7 +111,7 @@
                 {{ etiquetaRegulador }}
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Regulador / accesorio · sin cilindro asociado
+                Accesorio de alquiler
                 <template v-if="alquilerSeleccionado?.fecha_fin_pactada">
                   · Retorno {{ alquilerSeleccionado.fecha_fin_pactada.slice(0, 10) }}
                 </template>
@@ -183,8 +183,6 @@ import {
   useAlquilerQuery,
   useAlquileresQuery,
 } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
-import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
-import type { AlquilerDetalleListFilters } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -192,6 +190,7 @@ import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/compone
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { hoyIsoLima } from '@/shared/utils/date'
 
 const props = defineProps<{
   idCliente?: number | null
@@ -200,6 +199,8 @@ const props = defineProps<{
   tipoOrigen?: 'PRESTAMO' | 'ALQUILER' | null
   /** Etiqueta del préstamo/alquiler prefijado (p. ej. desde pendientes) */
   numeroOrigen?: string | null
+  idDetalle?: number | null
+  tipoItem?: 'CILINDRO' | 'REGULADOR' | string | null
 }>()
 
 const open = defineModel<boolean>({ default: false })
@@ -212,7 +213,7 @@ const clienteId = ref<number | ''>('')
 const prestamoId = ref<number | ''>('')
 const alquilerId = ref<number | ''>('')
 const origenTipo = ref<'PRESTAMO' | 'ALQUILER'>('PRESTAMO')
-const fechaProgramada = ref(new Date().toISOString().slice(0, 10))
+const fechaProgramada = ref(hoyIsoLima())
 const horaEstimada = ref('')
 const observacion = ref('')
 const idsSeleccionados = ref<number[]>([])
@@ -242,8 +243,6 @@ const detallesFilters = ref<PrestamoDetalleListFilters>({
   idPrestamo: undefined,
 })
 const detallesQuery = usePrestamosDetalleQuery(detallesFilters)
-const alquilerDetallesFilters = ref<AlquilerDetalleListFilters>({ pagina: 1, limite: 100, idAlquiler: undefined })
-const alquilerDetallesQuery = useAlquileresDetalleQuery(alquilerDetallesFilters)
 const alquilerIdRef = computed(() =>
   origenTipo.value === 'ALQUILER' && alquilerId.value ? Number(alquilerId.value) : null,
 )
@@ -290,20 +289,18 @@ const alquilerOptions = computed(() => {
 const pendientes = computed(() =>
   origenTipo.value === 'PRESTAMO'
     ? (detallesQuery.data.value?.data ?? []).filter((d) => !d.fecha_devolucion)
-    : (alquilerDetallesQuery.data.value?.data ?? []).filter((d) => !d.fecha_devolucion),
+    : [],
 )
 const idOrigen = computed(() => origenTipo.value === 'PRESTAMO' ? prestamoId.value : alquilerId.value)
 const tipoOrigenOptions = [{ value: 'PRESTAMO', label: 'Préstamo' }, { value: 'ALQUILER', label: 'Alquiler' }]
 const cargandoItems = computed(
   () =>
-    detallesQuery.isFetching.value ||
-    alquilerDetallesQuery.isFetching.value ||
+    (origenTipo.value === 'PRESTAMO' && detallesQuery.isFetching.value) ||
     (origenTipo.value === 'ALQUILER' && alquilerQuery.isFetching.value),
 )
-const esSoloRegulador = computed(() => {
+const mostrarAccesorio = computed(() => {
   if (origenTipo.value !== 'ALQUILER' || !alquilerId.value) return false
   if (cargandoItems.value) return false
-  if (pendientes.value.length > 0) return false
   const alq = alquilerSeleccionado.value
   return Boolean(alq?.id_producto_regulador || alq?.id_producto_stock)
 })
@@ -320,7 +317,7 @@ const puedeGuardar = computed(
     Boolean(clienteId.value) &&
     Boolean(idOrigen.value) &&
     Boolean(fechaProgramada.value) &&
-    (idsSeleccionados.value.length > 0 || (esSoloRegulador.value && incluirRegulador.value)),
+    (idsSeleccionados.value.length > 0 || (mostrarAccesorio.value && incluirRegulador.value)),
 )
 
 watch(clienteBuscar, (term) => {
@@ -354,39 +351,37 @@ watch(prestamoId, (value) => {
   }
   idsSeleccionados.value = []
 })
-watch(alquilerId, (value) => {
-  alquilerDetallesFilters.value = { ...alquilerDetallesFilters.value, idAlquiler: value ? Number(value) : undefined }
+watch(alquilerId, () => {
   idsSeleccionados.value = []
-  incluirRegulador.value = false
+  if (!prefillAccesorio()) incluirRegulador.value = false
 })
 watch(origenTipo, () => {
   idsSeleccionados.value = []
-  incluirRegulador.value = false
+  if (!prefillAccesorio()) incluirRegulador.value = false
 })
 
-watch(pendientes, (rows) => {
+watch([pendientes, () => open.value], () => {
   if (!open.value || idsSeleccionados.value.length > 0) return
-  idsSeleccionados.value = rows.map((r) => r.id)
-})
-
-watch(esSoloRegulador, (solo) => {
-  if (!open.value) return
-  if (solo) incluirRegulador.value = true
+  const prefijado = Number(props.idDetalle ?? 0)
+  if (prefijado > 0 && pendientes.value.some((d) => d.id === prefijado)) {
+    idsSeleccionados.value = [prefijado]
+  }
 })
 
 watch(
-  () => [open.value, props.idCliente, props.idPrestamo] as const,
+  () =>
+    [open.value, props.idCliente, props.idPrestamo, props.idAlquiler, props.idDetalle, props.tipoItem] as const,
   ([isOpen]) => {
     if (!isOpen) return
     clienteId.value = props.idCliente ?? ''
     origenTipo.value = props.tipoOrigen ?? (props.idAlquiler ? 'ALQUILER' : 'PRESTAMO')
     prestamoId.value = props.idPrestamo ?? ''
     alquilerId.value = props.idAlquiler ?? ''
-    fechaProgramada.value = new Date().toISOString().slice(0, 10)
+    fechaProgramada.value = hoyIsoLima()
     horaEstimada.value = ''
     observacion.value = ''
     idsSeleccionados.value = []
-    incluirRegulador.value = false
+    incluirRegulador.value = prefillAccesorio()
     if (props.idCliente) {
       const idClientePrefijo = Number(props.idCliente)
       prestamosFilters.value = {
@@ -404,11 +399,14 @@ watch(
         idPrestamo: Number(props.idPrestamo),
       }
     }
-    if (props.idAlquiler) {
-      alquilerDetallesFilters.value = { ...alquilerDetallesFilters.value, idAlquiler: Number(props.idAlquiler) }
-    }
   },
 )
+
+function prefillAccesorio() {
+  if (props.tipoItem === 'REGULADOR') return true
+  if (props.idAlquiler && props.idDetalle === 0) return true
+  return false
+}
 
 async function confirmar() {
   const userId = authStore.user?.id
@@ -431,11 +429,9 @@ async function confirmar() {
         : undefined,
       observacion: observacion.value.trim() || undefined,
       detalles:
-        esSoloRegulador.value && incluirRegulador.value
+        origenTipo.value === 'ALQUILER'
           ? []
-          : idsSeleccionados.value.map((id) =>
-              origenTipo.value === 'PRESTAMO' ? { idPrestamoDetalle: id } : { idAlquilerDetalle: id },
-            ),
+          : idsSeleccionados.value.map((id) => ({ idPrestamoDetalle: id })),
     })
     open.value = false
     emit('saved')

@@ -41,8 +41,16 @@
       </div>
       <AppInput v-model="observacion" label="Observación de la visita" />
 
-      <div v-if="tieneRegulador" class="space-y-3">
-        <p class="text-sm font-medium text-gray-800 dark:text-white/90">Regulador / accesorio</p>
+      <label
+        v-if="puedeOptarAccesorio"
+        class="flex items-center gap-2 text-sm text-gray-800 dark:text-white/90"
+      >
+        <input v-model="incluirAccesorio" type="checkbox" class="rounded" />
+        Recoger accesorio
+      </label>
+
+      <div v-if="mostrarAccesorio" class="space-y-3">
+        <p class="text-sm font-medium text-gray-800 dark:text-white/90">Accesorio</p>
         <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
           <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -51,13 +59,13 @@
               </p>
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ recojo.numero_alquiler || (recojo.id_alquiler ? `#${recojo.id_alquiler}` : 'Alquiler') }}
-                · independiente de cilindros
               </p>
             </div>
             <AppSelect
               v-model="resultadoRegulador"
               label="Resultado"
               :options="resultadoOptions"
+              :disabled="accesorioResuelto"
               class="min-w-[180px]"
             />
           </div>
@@ -79,12 +87,14 @@
                 v-model="condicionRegulador"
                 :options="condicionOptions"
                 required
+                :disabled="accesorioResuelto"
               />
             </div>
             <AppInput
               v-model="observacionRegulador"
               label="Observación"
               placeholder="Daño, fuga, pieza faltante, etc."
+              :disabled="accesorioResuelto"
             />
           </div>
           <AppInput
@@ -94,12 +104,14 @@
             type="date"
             required
             hint="Por defecto: visita + 1 día"
+            :disabled="accesorioResuelto"
           />
           <AppInput
             v-else
             v-model="observacionRegulador"
             label="Observación"
             placeholder="Detalle del intento"
+            :disabled="accesorioResuelto"
           />
         </div>
       </div>
@@ -108,7 +120,7 @@
         <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros</p>
         <div
           v-for="linea in lineas"
-          :key="linea.idPrestamoDetalle ?? linea.idAlquilerDetalle"
+          :key="linea.id"
           class="rounded-xl border border-gray-200 p-3 dark:border-gray-700"
         >
           <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -138,6 +150,7 @@
               v-model="linea.resultado"
               label="Resultado"
               :options="resultadoOptions"
+              :disabled="linea.resuelto"
               class="min-w-[180px]"
             />
           </div>
@@ -150,6 +163,7 @@
               v-model="linea.nombreEstadoContenido"
               label="Contenido al recojo"
               :options="contenidoOptions"
+              :disabled="linea.resuelto"
               @update:model-value="onContenidoChange(linea)"
             />
             <AppInput
@@ -161,12 +175,14 @@
               :max="linea.capacidad ?? undefined"
               :hint="hintCantidad(linea)"
               placeholder="Ej. mitad del cilindro"
+              :disabled="linea.resuelto"
             />
             <AlmacenSelectField
               v-model="linea.idAlmacenDestino"
               label="Almacén destino"
               searchable
               required
+              :disabled="linea.resuelto"
               class="sm:col-span-2"
             />
           </div>
@@ -181,11 +197,13 @@
               type="date"
               required
               hint="Por defecto: visita + 1 día"
+              :disabled="linea.resuelto"
             />
             <AppInput
               v-model="linea.observacion"
               label="Motivo extensión"
               placeholder="Ej. gas sin usar, cliente pide un día más"
+              :disabled="linea.resuelto"
             />
           </div>
 
@@ -195,6 +213,7 @@
             label="Observación"
             placeholder="Detalle del intento"
             class="mt-1"
+            :disabled="linea.resuelto"
           />
         </div>
       </div>
@@ -224,7 +243,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
-import { useRegistrarResultadoRecojoMutation } from '@/modules/balones/recojos/composables/useRecojoMutations'
+import { useRegistrarResultadoRecojoMutation, useUpdateRecojoMutation } from '@/modules/balones/recojos/composables/useRecojoMutations'
 import { useRecojoQuery } from '@/modules/balones/recojos/composables/useRecojosQuery'
 import {
   CONDICIONES_REGULADOR,
@@ -238,6 +257,8 @@ import { AppHelpTip, AppInput, AppModal, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import { hoyIsoLima } from '@/shared/utils/date'
 import {
   abrirRutaGoogleMaps,
   clienteTieneCoordenadas,
@@ -245,6 +266,8 @@ import {
 import { stepInputCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
 
 interface LineaResultado {
+  id: number
+  resuelto: boolean
   idPrestamoDetalle?: number
   idAlquilerDetalle?: number
   codigoBalon: string
@@ -271,14 +294,16 @@ const emit = defineEmits<{ saved: [] }>()
 
 const authStore = useAuthStore()
 const mutation = useRegistrarResultadoRecojoMutation()
+const updateMutation = useUpdateRecojoMutation()
 const recojoIdRef = computed(() => (open.value ? props.recojoId : null))
 const recojoQuery = useRecojoQuery(recojoIdRef)
 const recojo = computed(() => recojoQuery.data.value ?? null)
 
-const fechaVisita = ref(new Date().toISOString().slice(0, 10))
+const fechaVisita = ref(hoyIsoLima())
 const motivoFalloNombre = ref<string | ''>('')
 const observacion = ref('')
 const lineas = ref<LineaResultado[]>([])
+const incluirAccesorio = ref(false)
 const resultadoRegulador = ref<ResultadoRecojoNombre>('RECOGIDO')
 const condicionRegulador = ref<CondicionReguladorNombre | ''>('BUENO')
 const nuevaFechaRegulador = ref('')
@@ -307,14 +332,27 @@ const puedeIniciarRuta = computed(() =>
   clienteTieneCoordenadas(recojo.value?.latitud, recojo.value?.longitud),
 )
 
-const tieneRegulador = computed(() => {
+const recojoIncluyeAccesorio = computed(() => {
   if (!recojo.value) return false
   if (recojo.value.tiene_regulador || recojo.value.es_solo_regulador) return true
+  return Boolean(recojo.value.id_alquiler && (recojo.value.detalles ?? []).length === 0)
+})
+
+const puedeOptarAccesorio = computed(() => {
+  if (!recojo.value || recojoIncluyeAccesorio.value) return false
   return Boolean(
     recojo.value.id_alquiler &&
       (recojo.value.id_producto_alquiler || recojo.value.nombre_producto_alquiler),
   )
 })
+
+const mostrarAccesorio = computed(
+  () => recojoIncluyeAccesorio.value || incluirAccesorio.value,
+)
+
+const accesorioResuelto = computed(() =>
+  Boolean(recojo.value?.nombre_resultado_regulador),
+)
 
 const etiquetaRegulador = computed(() => {
   const r = recojo.value
@@ -326,7 +364,7 @@ const etiquetaRegulador = computed(() => {
 })
 
 const reguladorValido = computed(() => {
-  if (!tieneRegulador.value) return true
+  if (!mostrarAccesorio.value) return true
   if (resultadoRegulador.value === 'EXTENDIDO') return Boolean(nuevaFechaRegulador.value)
   if (resultadoRegulador.value === 'RECOGIDO') return Boolean(condicionRegulador.value)
   return true
@@ -335,7 +373,7 @@ const reguladorValido = computed(() => {
 const puedeGuardar = computed(() => {
   if (!fechaVisita.value || !reguladorValido.value) return false
   if (lineas.value.length > 0) return lineas.value.every(validarLinea)
-  return tieneRegulador.value
+  return mostrarAccesorio.value
 })
 
 function addDaysIso(iso: string, days: number) {
@@ -369,6 +407,7 @@ function onContenidoChange(linea: LineaResultado) {
 }
 
 function validarLinea(linea: LineaResultado) {
+  if (linea.resuelto) return true
   if (linea.resultado === 'RECOGIDO') {
     if (!linea.idAlmacenDestino) return false
     const cantidad = parseCantidad(linea.cantidadRestante)
@@ -381,53 +420,79 @@ function validarLinea(linea: LineaResultado) {
   return true
 }
 
-function iniciarRuta() {
+async function iniciarRuta() {
   const lat = Number(recojo.value?.latitud)
   const lng = Number(recojo.value?.longitud)
   if (!clienteTieneCoordenadas(lat, lng)) return
   abrirRutaGoogleMaps(lat, lng)
+  const userId = authStore.user?.id
+  if (
+    authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_EDITAR) &&
+    userId &&
+    recojo.value &&
+    (recojo.value.nombre_estado ?? '').toUpperCase() === 'PROGRAMADO'
+  ) {
+    await updateMutation.mutateAsync({
+      id: recojo.value.id,
+      payload: { idUsuarioAuditoria: userId, estadoNombre: 'EN_RUTA' },
+    })
+  }
 }
 
 watch(
   () => [open.value, recojo.value?.id] as const,
   ([isOpen]) => {
     if (!isOpen || !recojo.value) return
-    fechaVisita.value = new Date().toISOString().slice(0, 10)
-    motivoFalloNombre.value = ''
-    observacion.value = ''
-    resultadoRegulador.value = 'RECOGIDO'
-    condicionRegulador.value = 'BUENO'
-    observacionRegulador.value = ''
+    fechaVisita.value = hoyIsoLima()
+    motivoFalloNombre.value = recojo.value.nombre_motivo_fallo || ''
+    observacion.value = recojo.value.observacion || ''
+    incluirAccesorio.value = recojoIncluyeAccesorio.value
+    const resultadoAcc = asResultado(recojo.value.nombre_resultado_regulador)
+    resultadoRegulador.value = resultadoAcc ?? 'RECOGIDO'
+    condicionRegulador.value =
+      (recojo.value.nombre_condicion_regulador as CondicionReguladorNombre | null) || 'BUENO'
+    observacionRegulador.value = recojo.value.observacion_regulador || ''
     const manana = addDaysIso(fechaVisita.value, 1)
-    nuevaFechaRegulador.value = manana
-    lineas.value = (recojo.value.detalles ?? [])
-      .filter((d) => !d.fecha_devolucion && !d.nombre_resultado)
-      .map((d) => {
-        const capacidad =
-          d.capacidad != null && d.capacidad !== '' ? Number(d.capacidad) : null
-        return {
-          idPrestamoDetalle: d.id_prestamo_detalle ?? undefined,
-          idAlquilerDetalle: d.id_alquiler_detalle ?? undefined,
-          codigoBalon: d.codigo_balon || (d.id_balon ? `#${d.id_balon}` : `Detalle #${d.id}`),
-          numeroPrestamo: d.numero_origen || d.numero_prestamo || '',
-          numeroAlquiler: d.origen === 'ALQUILER' ? (d.numero_origen || d.numero_alquiler || '') : '',
-          nombreProductoGas: d.nombre_producto_gas || '',
-          fechaVencimiento: d.fecha_vencimiento?.slice(0, 10) || '',
-          capacidad: Number.isFinite(capacidad as number) ? (capacidad as number) : null,
-          nombreUnidad: d.nombre_unidad_medida || d.descripcion_unidad_medida || '',
-          resultado: 'RECOGIDO' as ResultadoRecojoNombre,
-          nombreEstadoContenido: 'VACIO',
-          cantidadRestante: '0',
-          nuevaFechaRetorno: manana,
-          idAlmacenDestino: '' as number | '',
-          observacion: '',
-        }
-      })
+    nuevaFechaRegulador.value =
+      recojo.value.nueva_fecha_retorno_regulador?.slice(0, 10) || manana
+    lineas.value = (recojo.value.detalles ?? []).map((d) => {
+      const capacidad =
+        d.capacidad != null && d.capacidad !== '' ? Number(d.capacidad) : null
+      const resuelto = Boolean(d.nombre_resultado)
+      return {
+        id: d.id,
+        resuelto,
+        idPrestamoDetalle: d.id_prestamo_detalle ?? undefined,
+        idAlquilerDetalle: d.id_alquiler_detalle ?? undefined,
+        codigoBalon: d.codigo_balon || (d.id_balon ? `#${d.id_balon}` : `Detalle #${d.id}`),
+        numeroPrestamo: d.numero_origen || d.numero_prestamo || '',
+        numeroAlquiler: d.origen === 'ALQUILER' ? (d.numero_origen || d.numero_alquiler || '') : '',
+        nombreProductoGas: d.nombre_producto_gas || '',
+        fechaVencimiento: d.fecha_vencimiento?.slice(0, 10) || '',
+        capacidad: Number.isFinite(capacidad as number) ? (capacidad as number) : null,
+        nombreUnidad: d.nombre_unidad_medida || d.descripcion_unidad_medida || '',
+        resultado: asResultado(d.nombre_resultado) ?? ('RECOGIDO' as ResultadoRecojoNombre),
+        nombreEstadoContenido: d.nombre_estado_contenido || 'VACIO',
+        cantidadRestante:
+          d.cantidad_restante != null && d.cantidad_restante !== ''
+            ? String(d.cantidad_restante)
+            : '0',
+        nuevaFechaRetorno: d.nueva_fecha_retorno?.slice(0, 10) || manana,
+        idAlmacenDestino: (d.id_almacen_destino ?? '') as number | '',
+        observacion: d.observacion || '',
+      }
+    })
   },
 )
 
+function asResultado(nombre?: string | null): ResultadoRecojoNombre | null {
+  const u = (nombre ?? '').toUpperCase()
+  if (u === 'RECOGIDO' || u === 'NO_RECOGIDO' || u === 'EXTENDIDO') return u
+  return null
+}
+
 watch(fechaVisita, (fecha) => {
-  const manana = addDaysIso(fecha || new Date().toISOString().slice(0, 10), 1)
+  const manana = addDaysIso(fecha || hoyIsoLima(), 1)
   for (const linea of lineas.value) {
     if (linea.resultado === 'EXTENDIDO' && !linea.nuevaFechaRetorno) {
       linea.nuevaFechaRetorno = manana
@@ -447,10 +512,10 @@ async function confirmar() {
 
   const cilindrosNoRecogidos =
     lineas.value.length > 0 && lineas.value.every((l) => l.resultado === 'NO_RECOGIDO')
-  const reguladorNoRecogido = tieneRegulador.value && resultadoRegulador.value === 'NO_RECOGIDO'
+  const reguladorNoRecogido = mostrarAccesorio.value && resultadoRegulador.value === 'NO_RECOGIDO'
   const todoFallo =
     (lineas.value.length === 0 || cilindrosNoRecogidos) &&
-    (!tieneRegulador.value || reguladorNoRecogido)
+    (!mostrarAccesorio.value || reguladorNoRecogido)
 
   if (todoFallo && !motivoFalloNombre.value) {
     toastWarning('Indica el motivo cuando no se recoge ningún ítem')
@@ -495,7 +560,7 @@ async function confirmar() {
             observacion: l.observacion.trim() || undefined,
           }
         }),
-        regulador: tieneRegulador.value
+        regulador: mostrarAccesorio.value
           ? {
               resultado: resultadoRegulador.value,
               condicion:

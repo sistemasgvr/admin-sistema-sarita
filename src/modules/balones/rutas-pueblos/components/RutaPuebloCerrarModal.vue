@@ -5,7 +5,10 @@
     subtitle="Compara el gas calculado por libras con lo que reportó el repartidor."
     size="md"
   >
-    <div v-if="ruta" class="space-y-4">
+    <div v-if="rutaQuery.isPending.value" class="py-8 text-center text-sm text-gray-500">
+      Cargando…
+    </div>
+    <div v-else-if="ruta" class="space-y-4">
       <div class="rounded-lg bg-gray-50 p-3 text-sm dark:bg-white/5">
         <div class="flex justify-between">
           <span class="text-gray-500">Gas calculado (por libras)</span>
@@ -30,7 +33,7 @@
         Diferencia: {{ previewDescuadre.toFixed(3) }} m³
         {{
           Math.abs(previewDescuadre) > Number(ruta.tolerancia_m3 ?? 0.5)
-            ? '(fuera del margen)'
+            ? '(aviso: fuera del margen; igual se puede cerrar)'
             : '(dentro del margen)'
         }}
       </p>
@@ -47,7 +50,7 @@
       <button
         type="button"
         class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-        :disabled="cerrarMutation.isPending.value || m3Reportado === ''"
+        :disabled="cerrarMutation.isPending.value || rutaQuery.isPending.value || !ruta || m3Reportado === ''"
         @click="guardar"
       >
         Cerrar ruta
@@ -62,6 +65,7 @@ import { useRutaPuebloQuery } from '@/modules/balones/rutas-pueblos/composables/
 import { useCerrarRutaPuebloMutation } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosMutations'
 import { AppInput, AppModal } from '@/shared/components'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { toastWarning } from '@/shared/composables/useToast'
 
 const open = defineModel<boolean>({ default: false })
 const props = defineProps<{ rutaId: number | null }>()
@@ -83,16 +87,26 @@ watch(open, (v) => {
   observacion.value = ''
 })
 
+watch(
+  () => rutaQuery.data.value,
+  (data) => {
+    if (!open.value || m3Reportado.value !== '') return
+    if (data?.m3_reportado_ventas != null) m3Reportado.value = String(data.m3_reportado_ventas)
+  },
+)
+
 const previewDescuadre = computed(() => {
   if (m3Reportado.value === '' || !ruta.value) return null
-  return Number(ruta.value.m3_calculado ?? 0) - Number(m3Reportado.value)
+  const n = Number(m3Reportado.value)
+  if (!Number.isFinite(n)) return null
+  return Number(ruta.value.m3_calculado ?? 0) - n
 })
 
 const alertaClass = computed(() => {
   const d = previewDescuadre.value
   if (d === null) return 'text-gray-500'
   return Math.abs(d) > Number(ruta.value?.tolerancia_m3 ?? 0.5)
-    ? 'font-medium text-error-600'
+    ? 'font-medium text-warning-600'
     : 'text-success-600'
 })
 
@@ -100,11 +114,19 @@ async function guardar() {
   const userId = authStore.user?.id
   const id = props.rutaId
   if (!userId || !id) return
+  if (rutaQuery.isPending.value || !ruta.value) return
+
+  const n = Number(m3Reportado.value)
+  if (!Number.isFinite(n) || n < 0) {
+    toastWarning('Indica los m³ reportados (≥ 0)')
+    return
+  }
+
   await cerrarMutation.mutateAsync({
     id,
     payload: {
       idUsuarioAuditoria: userId,
-      m3ReportadoVentas: Number(m3Reportado.value),
+      m3ReportadoVentas: n,
       observacion: observacion.value.trim() || undefined,
     },
   })

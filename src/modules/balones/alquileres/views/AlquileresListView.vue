@@ -112,6 +112,7 @@
       :id-alquiler="alquilerToRecojo?.id"
       :numero-origen="alquilerToRecojo?.numero_alquiler"
       tipo-origen="ALQUILER"
+      tipo-item="REGULADOR"
       @saved="onDevolucionDesdeLista"
     />
 
@@ -378,6 +379,7 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
   const blockedDelete = row.puede_eliminar === false
   const activo = isAlquilerActivo(row)
   const tieneCilindros = Number(row.total_detalles ?? 0) > 0
+  const tieneAccesorio = Boolean(row.id_producto_regulador || row.id_producto_stock)
 
   return [
     {
@@ -392,7 +394,10 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
       label: 'Programar recojo',
       icon: ICONS.truck,
       disabled: busy,
-      hidden: !authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR) || !activo || !tieneCilindros,
+      hidden:
+        !authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR) ||
+        !activo ||
+        !tieneAccesorio,
     },
     {
       key: 'edit',

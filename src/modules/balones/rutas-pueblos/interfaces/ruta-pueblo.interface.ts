@@ -83,6 +83,13 @@ export interface RegistrarRetornoRutaPuebloPayload {
   detalles: { idBalon: number; lbRetorno: number; observacion?: string }[]
 }
 
+export const ESTADOS_RUTA_PUEBLO_FILTRO: { value: EstadoRutaPuebloNombre; label: string }[] = [
+  { value: 'ABIERTA', label: 'Abierta' },
+  { value: 'EN_RUTA', label: 'En ruta' },
+  { value: 'CERRADA', label: 'Cerrada' },
+  { value: 'CANCELADA', label: 'Cancelada' },
+]
+
 export interface CerrarRutaPuebloPayload {
   idUsuarioAuditoria: number
   m3ReportadoVentas: number

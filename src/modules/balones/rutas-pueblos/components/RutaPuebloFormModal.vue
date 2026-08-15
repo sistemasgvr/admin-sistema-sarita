@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Nueva ruta pueblos"
-    subtitle="Registra la salida de cilindros con libras. Al retorno se calcula el gas usado en m³."
+    subtitle="Lb de salida mayor a 0, sin superar la capacidad del tipo."
     size="lg"
   >
     <div class="space-y-4">
@@ -14,19 +14,14 @@
           label="Chofer / repartidor"
           placeholder="Opcional"
           :options="choferOptions"
-          :loading="choferesLoading"
+          :loading="choferesQuery.isFetching.value"
         />
         <AppInput v-model="observacion" label="Observación" placeholder="Zona, pueblos, etc." />
       </div>
 
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-1.5">
-            <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros a enviar</p>
-            <AppHelpTip
-              text="Al elegir el cilindro se sugiere lb desde residual o capacidad del tipo. No puede superar capacidad lb del tipo. La conversión lb/m³ usa capacidad m³ ÷ capacidad lb."
-            />
-          </div>
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros a enviar</p>
           <button
             type="button"
             class="text-xs font-medium text-brand-600 hover:underline"
@@ -61,9 +56,8 @@
             label="Libras al salir"
             type="number"
             step="0.01"
-            min="0"
+            min="0.01"
             :max="linea.capacidadLbMax ?? undefined"
-            :help="helpLbSalida(linea)"
             required
           />
           <button
@@ -103,15 +97,17 @@ import { computed, ref, watch } from 'vue'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import type { Balon, BalonListFilters } from '@/modules/balones/cilindros/interfaces/balon.interface'
-import { choferesService } from '@/modules/choferes/services/choferes.service'
+import { useChoferesQuery } from '@/modules/choferes/composables/useChoferesQuery'
+import type { ChoferListFilters } from '@/modules/choferes/interfaces/chofer.interface'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useCreateRutaPuebloMutation } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosMutations'
-import { AppHelpTip, AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
+import { hoyIsoLima } from '@/shared/utils/date'
 
 const open = defineModel<boolean>({ default: false })
 const emit = defineEmits<{ saved: [] }>()
@@ -120,12 +116,23 @@ const authStore = useAuthStore()
 const createMutation = useCreateRutaPuebloMutation()
 const estadoBalonQuery = useListaOpcionesQuery(ref(ListaIds.ESTADO_BALON))
 
-const fecha = ref(new Date().toISOString().slice(0, 10))
+const fecha = ref(hoyIsoLima())
 const idAlmacen = ref<number | ''>('')
 const idChofer = ref<number | ''>('')
 const observacion = ref('')
-const choferOptions = ref<{ value: number; label: string }[]>([])
-const choferesLoading = ref(false)
+const choferesFilters = ref<ChoferListFilters>({
+  pagina: 1,
+  limite: 100,
+  isActivos: 1,
+  idCliente: -1,
+})
+const choferesQuery = useChoferesQuery(choferesFilters, open)
+const choferOptions = computed(() =>
+  (choferesQuery.data.value?.data ?? []).map((c) => ({
+    value: c.id,
+    label: [c.nombres, c.apellido_paterno, c.apellido_materno].filter(Boolean).join(' '),
+  })),
+)
 
 type Linea = {
   key: string
@@ -224,19 +231,17 @@ function onBalonSelected(linea: Linea, balon: Balon | null) {
   linea.lbSalida = lb != null ? String(lb) : ''
 }
 
-function helpLbSalida(linea: Linea) {
-  if (linea.capacidadLbMax == null) return 'Máximo = capacidad lb del tipo.'
-  const tope = `Máx. ${linea.capacidadLbMax.toFixed(2)} lb (tipo)`
-  if (linea.sugerenciaOrigen === 'residual') return `${tope}. Sugerido desde residual.`
-  if (linea.sugerenciaOrigen === 'tipo') return `${tope}. Sugerido = capacidad llena.`
-  return tope
+function lbSalidaValida(value: string) {
+  if (value === '') return false
+  const n = Number(value)
+  return Number.isFinite(n) && n > 0
 }
 
 const saving = computed(() => createMutation.isPending.value)
 const canSave = computed(
   () =>
     Boolean(idAlmacen.value) &&
-    lineas.value.some((l) => l.idBalon && Number(l.lbSalida) >= 0),
+    lineas.value.some((l) => l.idBalon && lbSalidaValida(l.lbSalida)),
 )
 
 function addLinea() {
@@ -252,31 +257,13 @@ watch(idAlmacen, () => {
   }
 })
 
-async function loadChoferes() {
-  choferesLoading.value = true
-  try {
-    const res = await choferesService.listar({
-      pagina: 1,
-      limite: 200,
-      idCliente: -1,
-    })
-    choferOptions.value = (res.data ?? []).map((c) => ({
-      value: c.id,
-      label: [c.nombres, c.apellido_paterno, c.apellido_materno].filter(Boolean).join(' '),
-    }))
-  } finally {
-    choferesLoading.value = false
-  }
-}
-
 watch(open, (v) => {
   if (!v) return
-  fecha.value = new Date().toISOString().slice(0, 10)
+  fecha.value = hoyIsoLima()
   idAlmacen.value = ''
   idChofer.value = ''
   observacion.value = ''
   lineas.value = [emptyLinea()]
-  void loadChoferes()
 })
 
 async function guardar() {
@@ -296,8 +283,8 @@ async function guardar() {
     return
   }
 
-  if (detalles.some((d) => Number.isNaN(d.lbSalida) || d.lbSalida < 0)) {
-    toastWarning('Completa las libras de salida (≥ 0)')
+  if (detalles.some((d) => !lbSalidaValida(String(d.lbSalida)) || Number.isNaN(d.lbSalida))) {
+    toastWarning('Completa las libras de salida (> 0)')
     return
   }
 
@@ -319,6 +306,7 @@ async function guardar() {
 
   await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
+    idUsuarioResponsable: userId,
     fecha: fecha.value,
     idAlmacen: Number(idAlmacen.value),
     idChofer: idChofer.value ? Number(idChofer.value) : undefined,

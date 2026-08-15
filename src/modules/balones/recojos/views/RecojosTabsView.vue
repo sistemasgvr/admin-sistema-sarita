@@ -13,7 +13,7 @@
         v-model:search="buscar"
         v-model:filters="dynamicFilters"
         :filter-fields="filterFields"
-        search-placeholder="Cliente, número o cilindro..."
+        search-placeholder="Cliente, préstamo, alquiler o cilindro..."
         @filter-change="onFiltersChange"
       />
       <AppTable
@@ -45,6 +45,9 @@
           </span>
         </template>
         <template #cell-fecha_retorno="{ value }">{{ String(value ?? '').slice(0, 10) || '—' }}</template>
+        <template #cell-dias_pendientes="{ value }">
+          {{ value == null || value === '' ? '—' : value }}
+        </template>
         <template #cell-programado="{ row }">
           <span
             v-if="row.tiene_recojo_programado"
@@ -84,6 +87,8 @@
       :id-alquiler="pendiente?.origen === 'ALQUILER' ? pendiente.id_origen : undefined"
       :tipo-origen="pendiente?.origen"
       :numero-origen="pendiente?.numero_origen"
+      :id-detalle="pendiente?.id_detalle"
+      :tipo-item="pendiente?.tipo_item"
       @saved="onProgramado"
     />
   </div>
@@ -102,6 +107,8 @@ import type {
   PendienteRecojoFilters,
 } from '@/modules/balones/recojos/interfaces/recojo.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import {
   AppListToolbar,
   AppPagination,
@@ -172,9 +179,23 @@ const columns: TableColumn[] = [
   { key: 'origen_numero', label: 'N° préstamo / alquiler' },
   { key: 'cilindro', label: 'Cilindro / producto' },
   { key: 'fecha_retorno', label: 'Fecha retorno' },
+  { key: 'dias_pendientes', label: 'Días' },
   { key: 'programado', label: 'Recojo' },
 ]
+const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
+const clientesQuery = useClientesQuery(clientesFilters)
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    placeholder: 'Seleccionar cliente',
+    disabled: clientesQuery.isLoading.value,
+    options: (clientesQuery.data.value?.data ?? []).map((c) => ({
+      value: c.id,
+      label: getClienteOptionLabel(c),
+    })),
+  },
   {
     key: 'tipoOrigen',
     label: 'Origen',
@@ -184,6 +205,11 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
       { value: 'PRESTAMO', label: 'Préstamo' },
       { value: 'ALQUILER', label: 'Alquiler' },
     ],
+  },
+  {
+    key: 'fechaHasta',
+    label: 'Hasta',
+    type: 'date',
   },
 ])
 
@@ -195,10 +221,12 @@ function syncFilters() {
     buscar: buscar.value.trim() || undefined,
     pagina: pagina.value,
     limite: limite.value,
+    idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
     tipoOrigen:
       active.tipoOrigen === 'PRESTAMO' || active.tipoOrigen === 'ALQUILER'
         ? active.tipoOrigen
         : undefined,
+    fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
   }
 }
 
