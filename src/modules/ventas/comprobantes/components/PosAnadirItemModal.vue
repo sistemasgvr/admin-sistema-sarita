@@ -126,6 +126,7 @@
             v-model:etiqueta="etiquetaBalon"
             mode="cliente"
             :id-cliente="idCliente"
+            :extra-filters="extraFiltersProductoGas"
             label="Balón del cliente"
             placeholder="Prestado o propio del cliente"
             register-label="Registrar balón propio del cliente"
@@ -203,6 +204,7 @@
             v-model:etiqueta="etiquetaBalon"
             mode="alquiler"
             :id-almacen="idAlmacen"
+            :extra-filters="extraFiltersProductoGas"
             label="Cilindro empresa a prestar"
             placeholder="Cilindro en almacén"
             empty-text="Sin cilindros disponibles en almacén."
@@ -264,6 +266,7 @@
             v-model:etiqueta="etiquetaBalon"
             mode="alquiler"
             :id-almacen="idAlmacen"
+            :extra-filters="extraFiltersProductoGas"
             label="Cilindro a vender"
             placeholder="Solo cilindros de la empresa en almacén"
             empty-text="Sin cilindros de empresa disponibles."
@@ -539,6 +542,9 @@ const authStore = useAuthStore()
 const paso = ref<Paso>('tipo')
 const tipo = ref<PosAnadirTipo | null>(null)
 const producto = ref<Producto | null>(null)
+const extraFiltersProductoGas = computed(() =>
+  producto.value?.id ? { idProductoGas: producto.value.id } : undefined,
+)
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
 const categorias = ref<CategoriaProducto[]>([])

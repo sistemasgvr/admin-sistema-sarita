@@ -28,12 +28,14 @@
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <PosBalonSelectField
               v-model="idBalonAsModel"
-              mode="general"
+              mode="alquiler"
+              :id-almacen="idAlmacenPrestamo"
+              :extra-filters="extraFiltersProductoGas"
               label="Cilindro"
               placeholder="Selecciona cilindro"
-              hint="Al agregarlo sale del almacén (prestado). El gas se toma del cilindro."
+              hint="Al agregarlo sale del almacén (prestado). Solo cilindros del gas elegido, o todos si aún no hay gas."
               :disabled="isSubmitting || detalleYaDevuelto"
-              empty-text="Sin cilindros. Registra uno nuevo."
+              empty-text="Sin cilindros de empresa en almacén para este filtro."
             />
 
             <ProductoSelectField
@@ -185,6 +187,7 @@ import {
   useUpdatePrestamoDetalleMutation,
 } from '@/modules/balones/prestamos/composables/usePrestamoDetalleMutations'
 import { usePrestamoDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
+import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import type { PrestamoDetalleFormMode } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
@@ -216,6 +219,12 @@ const updateMutation = useUpdatePrestamoDetalleMutation()
 
 const detalleIdRef = computed(() => (props.mode === 'edit' ? props.detalleId : null))
 const detalleQuery = usePrestamoDetalleQuery(detalleIdRef)
+const prestamoQuery = usePrestamoQuery(computed(() => props.prestamoId))
+const idAlmacenPrestamo = computed(() => prestamoQuery.data.value?.id_almacen ?? '')
+const extraFiltersProductoGas = computed(() => {
+  const id = Number(idProducto.value)
+  return Number.isFinite(id) && id > 0 ? { idProductoGas: id } : undefined
+})
 const isLoadingDetalle = computed(
   () => props.mode === 'edit' && open.value && detalleQuery.isFetching.value,
 )

@@ -173,6 +173,16 @@ watch(
   },
 )
 
+watch(
+  () => props.extraFilters,
+  () => {
+    model.value = ''
+    etiqueta.value = ''
+    syncBalonFilters()
+  },
+  { deep: true },
+)
+
 // Si el valor ya no está en el listado filtrado (p. ej. era propio del cliente), limpiarlo.
 // No limpiar mientras carga: la lista puede venir vacía de forma temporal.
 watch(balonOptions, (options) => {

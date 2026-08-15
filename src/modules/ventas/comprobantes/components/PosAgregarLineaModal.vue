@@ -32,6 +32,7 @@
           v-model="idBalon"
           mode="cliente"
           :id-cliente="idCliente"
+          :extra-filters="extraFiltersProductoGas"
           label="Balón del cliente"
           placeholder="Prestado o propio (opcional)"
           register-label="Registrar balón propio del cliente"
@@ -156,6 +157,9 @@ const fechaFin = ref('')
 const observacion = ref('')
 
 const esGas = computed(() => Boolean(props.producto?.es_gas))
+const extraFiltersProductoGas = computed(() =>
+  props.producto?.id ? { idProductoGas: props.producto.id } : undefined,
+)
 const esAlquilable = computed(() => Boolean(props.producto?.es_alquilable))
 const modoEdicion = computed(() => Boolean(props.linea))
 

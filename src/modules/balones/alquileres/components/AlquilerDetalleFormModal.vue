@@ -28,12 +28,13 @@
           <PosBalonSelectField
             v-model="idBalonAsModel"
             mode="alquiler"
+            :id-almacen="idAlmacenAlquiler"
             label="Cilindro"
             placeholder="Selecciona cilindro"
             required
             :disabled="isSubmitting"
             :error="errors.idBalon"
-            empty-text="Sin cilindros. Registra uno nuevo."
+            empty-text="Sin cilindros de empresa en este almacén."
           />
         </DetailSectionCard>
       </FormCardsLayout>
@@ -76,6 +77,7 @@ import {
   useUpdateAlquilerDetalleMutation,
 } from '@/modules/balones/alquileres/composables/useAlquilerDetalleMutations'
 import { useAlquilerDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
+import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
 import type { AlquilerDetalleFormMode } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -105,6 +107,8 @@ const updateMutation = useUpdateAlquilerDetalleMutation()
 
 const detalleIdRef = computed(() => (props.mode === 'edit' ? props.detalleId : null))
 const detalleQuery = useAlquilerDetalleQuery(detalleIdRef)
+const alquilerQuery = useAlquilerQuery(computed(() => props.alquilerId))
+const idAlmacenAlquiler = computed(() => alquilerQuery.data.value?.id_almacen ?? '')
 const isLoadingDetalle = computed(
   () => props.mode === 'edit' && open.value && detalleQuery.isFetching.value,
 )

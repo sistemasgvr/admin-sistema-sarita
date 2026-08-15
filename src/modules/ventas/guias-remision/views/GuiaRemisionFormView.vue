@@ -2369,6 +2369,7 @@ function searchBalonesForLine(index: number) {
       pagina: 1,
       limite: 30,
       soloBajas: false,
+      idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
       ...(origenRecargaPlanta.value
         ? {
             idPropietario: idPropietarioEmpresa.value,

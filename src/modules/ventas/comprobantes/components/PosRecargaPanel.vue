@@ -68,6 +68,7 @@
               v-model="idBalon"
               mode="cliente"
               :id-cliente="idCliente"
+              :extra-filters="extraFiltersProductoGas"
               label="Balón del cliente"
               placeholder="Prestado o propio del cliente"
               register-label="Registrar balón propio del cliente"
@@ -281,6 +282,9 @@ const cargandoOrigenes = ref(false)
 const errorOrigenes = ref('')
 const sugerenciaOrigenLabel = ref('')
 const idProducto = ref<number | ''>('')
+const extraFiltersProductoGas = computed(() =>
+  idProducto.value ? { idProductoGas: Number(idProducto.value) } : undefined,
+)
 const gasBuscar = ref('')
 const cantidad = ref(1)
 const capacidad = ref<number | ''>('')
