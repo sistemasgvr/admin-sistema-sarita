@@ -74,7 +74,9 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         icon: ICONS.banknote,
         name: 'Finanzas',
         path: '/admin/finanzas',
-        subItems: finanzasMenuSubItems,
+        anyPermission: finanzasMenuSubItems.flatMap((item) =>
+          item.permission ? [item.permission] : (item.anyPermission ?? []),
+        ),
       },
       {
         icon: ICONS.shoppingcard,

@@ -1,19 +1,13 @@
 <template>
   <div>
     <PageBreadcrumb page-title="Recojos" :items="breadcrumbItems" />
-    <div class="mb-5 flex gap-2 border-b border-gray-200 dark:border-gray-800">
-      <button
-        v-for="item in tabs"
-        :key="item.value"
-        type="button"
-        class="inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium"
-        :class="tab === item.value ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500'"
-        @click="tab = item.value"
-      >
-        <AppIcon :name="item.icon" :size="16" />
-        {{ item.label }}
-      </button>
-    </div>
+    <AppTabs
+      v-model="tab"
+      :tabs="tabs"
+      inline
+      aria-label="Recojos"
+      class="mb-5"
+    />
     <section v-if="tab === 'pendientes'" class="space-y-4">
       <AppListToolbar
         v-model:search="buscar"
@@ -112,12 +106,14 @@ import {
   AppListToolbar,
   AppPagination,
   AppTable,
+  AppTabs,
   ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
+import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const route = useRoute()
@@ -128,10 +124,10 @@ const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]) => {
   return value === 'visitas' ? 'visitas' : 'pendientes'
 }
 
-const tab = ref<'pendientes' | 'visitas'>(resolveTab(route.query.tab))
-const tabs = [
-  { value: 'pendientes' as const, label: 'Pendientes', icon: ICONS.clipboardList },
-  { value: 'visitas' as const, label: 'Visitas', icon: ICONS.truck },
+const tab = ref(resolveTab(route.query.tab))
+const tabs: AppTabItem[] = [
+  { key: 'pendientes', label: 'Pendientes', icon: ICONS.clipboardList },
+  { key: 'visitas', label: 'Visitas', icon: ICONS.truck },
 ]
 
 watch(tab, (value) => {

@@ -214,6 +214,8 @@ export interface EfectosPosPayload {
   alquileres?: EfectoPosAlquilerPayload[]
   mantenimientos?: EfectoPosMantenimientoPayload[]
   bajas?: EfectoPosBajaPayload[]
+  /** Opt-in: generar GRE remitente junto al préstamo de cilindro. */
+  generarGre?: boolean
 }
 
 export interface UpdateComprobantePayload {

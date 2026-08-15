@@ -11,18 +11,16 @@
           />
         </div>
 
-        <div class="flex flex-wrap items-end gap-2">
-          <AppFormField label="Desde" class="!w-auto min-w-[150px] shrink-0">
-            <AppInput v-model="filters.fechaDesde" type="date" class="w-[160px]" />
-          </AppFormField>
-          <AppFormField label="Hasta" class="!w-auto min-w-[150px] shrink-0">
-            <AppInput v-model="filters.fechaHasta" type="date" class="w-[160px]" />
-          </AppFormField>
-          <div class="min-w-[220px] shrink-0">
-            <ClienteSelectField v-model="idClienteSelect" label="Cliente" />
-          </div>
-          <AppExportExcelButton :disabled="!libro" :on-export="exportarExcel" />
-        </div>
+        <AppListToolbar
+          :show-search="false"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          class="w-full lg:w-auto"
+        >
+          <template #actions>
+            <AppExportExcelButton :disabled="!libro" :on-export="exportarExcel" />
+          </template>
+        </AppListToolbar>
       </div>
 
       <div
@@ -193,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AppActionMenu,
@@ -201,6 +199,7 @@ import {
   AppExportExcelButton,
   AppHelpTip,
   AppInput,
+  AppListToolbar,
   AppSummaryCards,
   AppTable,
 } from '@/shared/components'
@@ -209,7 +208,10 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
-import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import CuentaDetalleModal from '@/modules/finanzas/components/CuentaDetalleModal.vue'
 import {
@@ -246,19 +248,53 @@ function esClienteVariosNombre(nombre?: string | null): boolean {
 
 const auth = useAuthStore()
 const router = useRouter()
-const filters = reactive<LibroDiarioFilters>({
-  fechaDesde: hoyLocal(),
-  fechaHasta: hoyLocal(),
+const hoy = hoyLocal()
+const dynamicFilters = ref<DynamicFilterValues>({
+  fechaDesde: hoy,
+  fechaHasta: hoy,
 })
-const idClienteSelect = ref<string | number | undefined>(undefined)
-watch(idClienteSelect, (v) => {
-  filters.idCliente = v === '' || v == null ? undefined : Number(v)
+
+const clientesFilters = ref<ClienteListFilters>({
+  pagina: 1,
+  limite: 200,
+  soloActivos: 1,
 })
-const filtersRef = computed(() => ({
-  fechaDesde: filters.fechaDesde,
-  fechaHasta: filters.fechaHasta || undefined,
-  idCliente: filters.idCliente,
+const clientesQuery = useClientesQuery(clientesFilters)
+const clienteOptions = computed(() =>
+  (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+    label: getClienteOptionLabel(cliente),
+    value: cliente.id,
+  })),
+)
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  { key: 'fechaDesde', label: 'Desde', type: 'date' },
+  { key: 'fechaHasta', label: 'Hasta', type: 'date' },
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    searchable: true,
+    placeholder: 'Todos los clientes',
+    searchPlaceholder: 'Buscar cliente...',
+    disabled: clientesQuery.isLoading.value,
+    options: clienteOptions.value,
+  },
+])
+
+function parseIdCliente(): number | undefined {
+  const raw = dynamicFilters.value.idCliente
+  if (raw === '' || raw == null) return undefined
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? n : undefined
+}
+
+const filtersRef = computed<LibroDiarioFilters>(() => ({
+  fechaDesde: String(dynamicFilters.value.fechaDesde || hoyLocal()),
+  fechaHasta: String(dynamicFilters.value.fechaHasta || '') || undefined,
+  idCliente: parseIdCliente(),
 }))
+const fechaObservacion = computed(() => filtersRef.value.fechaDesde)
 const query = useLibroDiarioQuery(filtersRef)
 const libro = computed(() => query.data.value)
 const isLoading = computed(() => query.isLoading.value)
@@ -283,7 +319,7 @@ const pdfBusyId = ref<number | null>(null)
 async function agregarObservacion() {
   const texto = nuevaObs.value.trim()
   if (!texto) return
-  await crearObs.mutateAsync({ fecha: filters.fechaDesde, texto })
+  await crearObs.mutateAsync({ fecha: fechaObservacion.value, texto })
   nuevaObs.value = ''
 }
 

@@ -269,6 +269,8 @@
         v-model:glosa="observacion"
         v-model:id-condicion-pago="idCondicionPago"
         v-model:id-medio-pago="idMedioPago"
+        v-model:generar-gre="generarGre"
+        :mostrar-generar-gre="Boolean(idBalon)"
         :totales="totales"
         :condicion-pago-options="condicionPagoOptions"
         :medio-pago-options="medioPagoOptions"
@@ -451,6 +453,7 @@ const idMedioPagoGarantia = ref<string | number>('')
 const observacionGarantia = ref('')
 const origenMontoGarantia = ref('')
 const observacion = ref('')
+const generarGre = ref(false)
 const guardando = ref(false)
 
 const kitLineas = reactive<KitMedicinalLinea[]>(crearKitMedicinalInicial())
@@ -775,6 +778,7 @@ async function registrarKit() {
             observacionDetalle: 'Entrega kit medicinal — cilindro en préstamo',
           },
         ],
+        generarGre: generarGre.value,
       },
     })
 
@@ -801,6 +805,7 @@ async function limpiarFormulario() {
   idMedioPagoGarantia.value = ''
   observacionGarantia.value = ''
   observacion.value = ''
+  generarGre.value = false
   kitLineas.splice(0, kitLineas.length, ...crearKitMedicinalInicial())
   descartables.splice(0, descartables.length)
   comprobanteGuardadoId.value = null

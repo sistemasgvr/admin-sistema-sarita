@@ -341,6 +341,8 @@
         v-model:glosa="glosa"
         v-model:id-condicion-pago="idCondicionPago"
         v-model:id-medio-pago="idMedioPago"
+        v-model:generar-gre="generarGre"
+        :mostrar-generar-gre="mostrarGenerarGre"
         :totales="totales"
         :condicion-pago-options="condicionPagoOptions"
         :medio-pago-options="medioPagoOptions"
@@ -538,6 +540,7 @@ const productosPorId = ref<Map<number, Producto>>(new Map())
 const inicioPreferidoAnadir = ref<'gas' | null>(null)
 
 const glosa = ref('')
+const generarGre = ref(false)
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
@@ -561,6 +564,16 @@ onMounted(() => {
 
 const lineasActivas = computed(() =>
   lineas.value.filter((linea) => linea.idProducto && Number(linea.cantidad) > 0),
+)
+
+const mostrarGenerarGre = computed(
+  () =>
+    lineasActivas.value.some(
+      (linea) =>
+        Boolean(linea.idBalon) &&
+        (esEntregarPrestamo(linea) ||
+          ((linea.tipoPos === 'alquiler' || linea.esAlquilable) && linea.fechaInicioAlquiler)),
+    ),
 )
 
 function importeGasLinea(linea: PosLineItem) {
@@ -1195,6 +1208,7 @@ try {
               : undefined,
         }
       })
+      efectosPos.generarGre = generarGre.value
     }
 
     if (lineasAlquiler.length > 0) {
@@ -1314,6 +1328,7 @@ try {
 async function limpiarFormulario() {
   lineas.value = []
   glosa.value = ''
+  generarGre.value = false
   idAlmacen.value = ''
   lineaEditando.value = null
   productoEdicion.value = null

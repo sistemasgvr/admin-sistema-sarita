@@ -2,44 +2,38 @@
   <div class="space-y-5">
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-            <div class="w-full sm:max-w-sm">
-              <AppInput
-                v-model="buscar"
-                type="search"
-                placeholder="Buscar por cliente, préstamo, alquiler..."
-              />
-            </div>
-            <div class="w-full sm:w-56">
-              <AppSelect v-model="filtroEstado" :options="filtroEstadoOptions" />
-            </div>
-            <div class="w-full sm:w-56">
-              <AppDateRangePicker v-model="rango" placeholder="Rango de fechas" />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
+        <AppListToolbar
+          v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
+          search-placeholder="Buscar por cliente, préstamo, alquiler..."
+          @filter-change="onFiltersChange"
+        >
+          <template #actions>
             <button
               v-if="canExportar"
               type="button"
-              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] lg:h-auto lg:w-auto lg:px-3 lg:py-2"
+              title="Exportar"
+              aria-label="Exportar"
               @click="exportarModalOpen = true"
             >
               <AppIcon :name="ICONS.download" :size="16" />
-              Exportar
+              <span class="hidden lg:inline">Exportar</span>
             </button>
             <button
               v-if="canCrear"
               type="button"
-              class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
+              class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-lg bg-brand-500 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 lg:h-auto lg:w-auto lg:px-4 lg:py-2.5"
+              title="Nueva garantía"
+              aria-label="Nueva garantía"
               @click="openCrear"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva garantía
+              <span class="hidden lg:inline">Nueva garantía</span>
             </button>
-          </div>
-        </div>
+          </template>
+        </AppListToolbar>
       </template>
 
       <template #cell-fecha="{ row }">{{ formatListDate(row.fecha_registro) }}</template>
@@ -296,11 +290,9 @@ import { computed, ref, watch } from 'vue'
 import {
   AppBadge,
   AppConfirmDialog,
-  AppDateRangePicker,
-  AppInput,
+  AppListToolbar,
   AppModal,
   AppPagination,
-  AppSelect,
   AppTable,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -317,8 +309,8 @@ import type {
   GarantiaListFilters,
   OrigenGarantia,
 } from '@/modules/finanzas/interfaces/garantia.interface'
-import type { RangoFechas, SelectOption } from '@/shared/interfaces/form.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
@@ -337,16 +329,24 @@ const canReembolsar = computed(() =>
 const canExportar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_EXPORTAR))
 
 const buscar = ref('')
-const rango = ref<RangoFechas>({ start: '', end: '' })
-const filtroEstado = ref<'' | EstadoGarantia>('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 
-const filtroEstadoOptions: SelectOption[] = [
-  { label: 'Todas', value: '' },
-  { label: 'Activas', value: 'ACTIVA' },
-  { label: 'Parciales', value: 'PARCIAL' },
-  { label: 'Devueltas', value: 'DEVUELTA' },
+const filterFields: DynamicFilterFieldDef[] = [
+  {
+    key: 'estado',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todas',
+    options: [
+      { label: 'Activas', value: 'ACTIVA' },
+      { label: 'Parciales', value: 'PARCIAL' },
+      { label: 'Devueltas', value: 'DEVUELTA' },
+    ],
+  },
+  { key: 'desde', label: 'Desde', type: 'date' },
+  { key: 'hasta', label: 'Hasta', type: 'date' },
 ]
 
 const filters = ref<GarantiaListFilters>({ buscar: '', pagina: 1, limite: 10 })
@@ -364,6 +364,34 @@ const columns: TableColumn<Garantia>[] = [
   { key: 'observacion', label: 'Observaciones' },
 ]
 
+function parseEstado(): EstadoGarantia | undefined {
+  const raw = String(dynamicFilters.value.estado ?? '')
+  if (raw === 'ACTIVA' || raw === 'PARCIAL' || raw === 'DEVUELTA') return raw
+  return undefined
+}
+
+function parseFecha(key: 'desde' | 'hasta'): string | undefined {
+  const raw = dynamicFilters.value[key]
+  if (raw === '' || raw == null) return undefined
+  return String(raw)
+}
+
+function syncFilters() {
+  filters.value = {
+    buscar: buscar.value.trim(),
+    pagina: pagina.value,
+    limite: limite.value,
+    estado: parseEstado(),
+    desde: parseFecha('desde'),
+    hasta: parseFecha('hasta'),
+  }
+}
+
+function onFiltersChange() {
+  pagina.value = 1
+  syncFilters()
+}
+
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 watch(buscar, (v) => {
   clearTimeout(buscarTimeout)
@@ -373,27 +401,8 @@ watch(buscar, (v) => {
   }, 300)
 })
 
-watch(
-  rango,
-  (r) => {
-    pagina.value = 1
-    filters.value = {
-      ...filters.value,
-      desde: r.start || undefined,
-      hasta: r.end || undefined,
-      pagina: 1,
-    }
-  },
-  { deep: true },
-)
-
-watch(filtroEstado, (v) => {
-  pagina.value = 1
-  filters.value = { ...filters.value, estado: v || undefined, pagina: 1 }
-})
-
 watch([pagina, limite], () => {
-  filters.value = { ...filters.value, pagina: pagina.value, limite: limite.value }
+  syncFilters()
 })
 
 function resolveOrigen(g: Garantia): OrigenGarantia {
