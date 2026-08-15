@@ -543,7 +543,7 @@ import {
 } from '@/modules/ventas/comprobantes/constants/ventaEnvase'
 import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
-  productoAfectaStock,
+  productoGasSinStockParaVenta,
   productoSinStockParaVenta,
   validarStockParaAgregar,
   type StockGasPosInfo,
@@ -593,6 +593,7 @@ export interface PosLineaConfirmada {
   montoGarantia?: number
   idMedioPagoGarantia?: number
   observacionGarantia?: string
+  stockDisponible?: number | null
 }
 
 const props = withDefaults(
@@ -1132,11 +1133,7 @@ const stockGasQuery = useQuery({
   queryKey: computed(() => stockGasQueryKeys.list(stockGasFilters.value)),
   queryFn: () => stockGasService.listar(stockGasFilters.value),
   enabled: computed(
-    () =>
-      open.value &&
-      paso.value === 'catalogo' &&
-      tipo.value === 'gas' &&
-      Boolean(props.idAlmacen),
+    () => open.value && tipo.value === 'gas' && Boolean(props.idAlmacen),
   ),
   placeholderData: keepPreviousData,
 })
@@ -1153,6 +1150,11 @@ const stockGasPorProducto = computed(() => {
   }
   return map
 })
+
+const opcionesStockGas = computed(() => ({
+  sinAlmacen: tipo.value === 'gas' && !props.idAlmacen,
+  stockGasListo: tipo.value !== 'gas' || !props.idAlmacen || stockGasQuery.isFetched.value,
+}))
 
 const productosBase = computed(() =>
   filtrarProductosCatalogo(productosQuery.data.value?.data ?? []),
@@ -1332,6 +1334,7 @@ const puedeConfirmar = computed(() => {
     )
   }
   if (tipo.value === 'gas') {
+    if (props.idAlmacen && !stockGasQuery.isFetched.value) return false
     if (!escenarioGas.value) return false
     if (escenarioGas.value === 'balon_cliente') {
       return (
@@ -1545,7 +1548,10 @@ function elegirTipo(t: PosAnadirTipo) {
 }
 
 function elegirProducto(p: Producto) {
-  if (productoSinStockParaVenta(p)) {
+  if (
+    productoSinStockParaVenta(p) ||
+    productoGasSinStockParaVenta(p, stockGasPorProducto.value[p.id], opcionesStockGas.value)
+  ) {
     toastWarning(`${p.nombre} no tiene stock disponible`)
     return
   }
@@ -1612,14 +1618,17 @@ async function confirmar() {
     return
   }
 
-  if (productoAfectaStock(producto.value)) {
-    const errorStock = validarStockParaAgregar(producto.value, cant, {
-      requiereAlmacenSeleccionado: true,
-    })
-    if (errorStock) {
-      toastWarning(errorStock)
-      return
-    }
+  const errorStock = validarStockParaAgregar(producto.value, cant, {
+    requiereAlmacenSeleccionado: true,
+    stockGas:
+      producto.value.es_gas && stockGasQuery.isFetched.value
+        ? (stockGasPorProducto.value[producto.value.id] ?? null)
+        : undefined,
+    sinAlmacen: Boolean(producto.value.es_gas && !props.idAlmacen),
+  })
+  if (errorStock) {
+    toastWarning(errorStock)
+    return
   }
 
   if (tipo.value === 'gas' && escenarioGas.value === 'balon_cliente') {
@@ -1695,6 +1704,11 @@ async function confirmar() {
     cantidad: cant,
     precioUnitario: Number(precioUnitario.value || 0),
     observacionLinea: observacion.value.trim() || undefined,
+  }
+
+  if (producto.value.es_gas && stockGasQuery.isFetched.value) {
+    const info = stockGasPorProducto.value[producto.value.id]
+    payload.stockDisponible = info ? Number(info.capacidad_disponible || 0) : 0
   }
 
   if (idBalon.value && (tipo.value === 'gas' || esTallerProducto.value)) {

@@ -21,6 +21,18 @@ export function productoSinStockParaVenta(producto: Producto): boolean {
   return Number(producto.stock_actual) <= 0
 }
 
+/** Gas: sin cilindros con m³ disponible en el almacén (no usa pro_stock). */
+export function productoGasSinStockParaVenta(
+  producto: Pick<Producto, 'es_gas'>,
+  info?: StockGasPosInfo | null,
+  options?: { sinAlmacen?: boolean; stockGasListo?: boolean },
+): boolean {
+  if (!producto.es_gas) return false
+  if (options?.sinAlmacen) return true
+  if (options?.stockGasListo === false) return false
+  return stockGasSinDisponible(info)
+}
+
 /**
  * Valida si se puede agregar/aumentar cantidad en el carrito POS.
  * @returns mensaje de error o null si está permitido
@@ -28,8 +40,31 @@ export function productoSinStockParaVenta(producto: Producto): boolean {
 export function validarStockParaAgregar(
   producto: Producto,
   cantidadDeseada: number,
-  options?: { requiereAlmacenSeleccionado?: boolean },
+  options?: {
+    requiereAlmacenSeleccionado?: boolean
+    stockGas?: StockGasPosInfo | null
+    sinAlmacen?: boolean
+  },
 ): string | null {
+  if (producto.es_gas) {
+    if (options?.sinAlmacen) {
+      return options?.requiereAlmacenSeleccionado
+        ? 'Selecciona un almacén para verificar el stock del producto'
+        : `${producto.nombre} no tiene stock disponible`
+    }
+    if (!('stockGas' in (options ?? {}))) return null
+
+    const info = options?.stockGas
+    if (stockGasSinDisponible(info)) {
+      return `${producto.nombre} no tiene stock disponible`
+    }
+    const disponible = Number(info?.capacidad_disponible || 0)
+    if (cantidadDeseada > disponible) {
+      return `${producto.nombre}: stock insuficiente (disponible: ${formatStockPos(disponible)})`
+    }
+    return null
+  }
+
   if (!productoAfectaStock(producto)) return null
 
   if (producto.stock_actual == null) {

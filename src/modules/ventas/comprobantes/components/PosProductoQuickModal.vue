@@ -113,7 +113,9 @@ import ProductoImagenesManager from '@/modules/productos/articulos/components/Pr
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import {
   etiquetaStockPos,
+  productoGasSinStockParaVenta,
   productoSinStockParaVenta,
+  type StockGasPosInfo,
 } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { AppModal, AppTabs } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -127,10 +129,14 @@ const props = withDefaults(
   defineProps<{
     producto?: Producto | null
     initialTab?: PosProductoQuickTab
+    stockGas?: StockGasPosInfo | null
+    sinAlmacenParaGas?: boolean
+    stockGasListo?: boolean
   }>(),
   {
     producto: null,
     initialTab: 'ubicacion',
+    sinAlmacenParaGas: false,
   },
 )
 
@@ -154,8 +160,18 @@ const etiquetaStock = computed(() =>
 )
 
 const puedeAgregar = computed(
-  () => Boolean(props.producto) && !productoSinStockParaVenta(props.producto!),
+  () => Boolean(props.producto) && !productoNoAgregable(props.producto!),
 )
+
+function productoNoAgregable(producto: Producto): boolean {
+  return (
+    productoSinStockParaVenta(producto) ||
+    productoGasSinStockParaVenta(producto, props.stockGas, {
+      sinAlmacen: props.sinAlmacenParaGas,
+      stockGasListo: props.stockGasListo,
+    })
+  )
+}
 
 const tabs = computed<AppTabItem[]>(() => [
   { key: 'ubicacion', label: 'Ubicación', icon: ICONS.mapPin },
@@ -181,7 +197,7 @@ async function copiarUbicacion() {
 
 function agregar() {
   if (!props.producto) return
-  if (productoSinStockParaVenta(props.producto)) {
+  if (productoNoAgregable(props.producto)) {
     toastWarning(`${props.producto.nombre} no tiene stock disponible`)
     return
   }

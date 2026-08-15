@@ -622,6 +622,7 @@ const tieneMantenimiento = computed(() =>
 const requiereAlmacen = computed(
   () =>
     lineasActivas.value.some((linea) => linea.afectaStock !== false) ||
+    lineasActivas.value.some((linea) => linea.esGas) ||
     tieneAlquilable.value,
 )
 
@@ -805,7 +806,7 @@ function onConfirmLinea(payload: PosLineaConfirmada) {
     precioUnitario: payload.precioUnitario,
     idAfectacionIgv: idAfectacionGravado.value,
     afectaStock: productoAfectaStock(producto),
-    stockDisponible: producto.stock_actual ?? null,
+    stockDisponible: payload.stockDisponible ?? producto.stock_actual ?? null,
     nombreUnidadMedida: producto.nombre_unidad_medida ?? 'UNID',
     esGas: tipo === 'gas' || Boolean(producto.es_gas),
     esServicio: Boolean(producto.es_servicio),
@@ -856,6 +857,9 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.idTipoMantenimiento = payload.idTipoMantenimiento
   linea.fechaIngresoMantenimiento = payload.fechaIngresoMantenimiento
   linea.descripcionMantenimiento = payload.descripcionMantenimiento
+  if (payload.stockDisponible !== undefined) {
+    linea.stockDisponible = payload.stockDisponible
+  }
   if (payload.tipo === 'mantenimiento' && payload.descripcionMantenimiento) {
     linea.nombre = payload.descripcionMantenimiento
   } else if (payload.producto) {
@@ -1024,8 +1028,12 @@ async function guardarComprobante() {
       cilindrosUsados.add(idBalonNum)
     }
 
-    if (linea.afectaStock === false) continue
+    if (linea.afectaStock === false && !linea.esGas) continue
     const stock = linea.stockDisponible
+    if (linea.esGas && (stock == null || Number(stock) <= 0)) {
+      toastWarning(`${linea.nombre} no tiene stock disponible`)
+      return
+    }
     if (stock != null && Number(linea.cantidad) > Number(stock)) {
       toastWarning(`${linea.nombre}: stock insuficiente (disponible: ${stock})`)
       return

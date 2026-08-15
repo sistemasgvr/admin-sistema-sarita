@@ -81,7 +81,7 @@
         :key="producto.id"
         class="group flex gap-2.5 rounded-xl border border-gray-200 bg-white p-2.5 text-left transition dark:border-gray-800 dark:bg-white/[0.02]"
         :class="
-          productoSinStockParaVenta(producto)
+          productoNoAgregable(producto)
             ? 'opacity-80'
             : 'hover:border-brand-400 hover:shadow-theme-xs dark:hover:border-brand-500'
         "
@@ -90,7 +90,7 @@
           type="button"
           class="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-gray-50 transition dark:border-gray-800 dark:bg-white/5"
           :class="
-            productoSinStockParaVenta(producto)
+            productoNoAgregable(producto)
               ? ''
               : 'group-hover:border-brand-200 group-hover:bg-brand-50/60 dark:group-hover:border-brand-500/30 dark:group-hover:bg-brand-500/10'
           "
@@ -109,10 +109,10 @@
             :name="ICONS.package"
             :size="22"
             class="text-gray-400"
-            :class="productoSinStockParaVenta(producto) ? '' : 'group-hover:text-brand-500'"
+            :class="productoNoAgregable(producto) ? '' : 'group-hover:text-brand-500'"
           />
           <span
-            v-if="productoSinStockParaVenta(producto)"
+            v-if="productoNoAgregable(producto)"
             class="absolute inset-x-0 bottom-0 bg-error-500/90 px-0.5 py-px text-center text-[9px] font-semibold uppercase tracking-wide text-white"
           >
             Agotado
@@ -123,11 +123,11 @@
           <button
             type="button"
             class="min-w-0 flex-1 text-left"
-            :disabled="productoSinStockParaVenta(producto)"
+            :disabled="productoNoAgregable(producto)"
             :title="
-              productoSinStockParaVenta(producto) ? 'Sin stock disponible' : 'Agregar al carrito'
+              productoNoAgregable(producto) ? 'Sin stock disponible' : 'Agregar al carrito'
             "
-            :class="productoSinStockParaVenta(producto) ? 'cursor-not-allowed' : ''"
+            :class="productoNoAgregable(producto) ? 'cursor-not-allowed' : ''"
             @click="onAdd(producto)"
           >
             <p class="line-clamp-2 text-sm font-medium leading-snug text-gray-800 dark:text-white/90">
@@ -168,13 +168,13 @@
                 type="button"
                 class="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-50"
                 :class="
-                  productoSinStockParaVenta(producto)
+                  productoNoAgregable(producto)
                     ? 'border-gray-300 text-gray-400 dark:border-gray-700 dark:text-gray-500'
                     : 'border-brand-500 bg-brand-500 text-white hover:bg-brand-600'
                 "
-                :disabled="productoSinStockParaVenta(producto)"
+                :disabled="productoNoAgregable(producto)"
                 :title="
-                  productoSinStockParaVenta(producto)
+                  productoNoAgregable(producto)
                     ? 'Sin stock disponible'
                     : 'Agregar al carrito'
                 "
@@ -199,7 +199,7 @@
         :key="producto.id"
         class="flex w-full items-center gap-3 px-4 py-3 transition"
         :class="
-          productoSinStockParaVenta(producto)
+          productoNoAgregable(producto)
             ? 'opacity-80'
             : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]'
         "
@@ -223,9 +223,9 @@
         <button
           type="button"
           class="min-w-0 flex-1 text-left"
-          :disabled="productoSinStockParaVenta(producto)"
-          :title="productoSinStockParaVenta(producto) ? 'Sin stock disponible' : 'Agregar al carrito'"
-          :class="productoSinStockParaVenta(producto) ? 'cursor-not-allowed' : ''"
+          :disabled="productoNoAgregable(producto)"
+          :title="productoNoAgregable(producto) ? 'Sin stock disponible' : 'Agregar al carrito'"
+          :class="productoNoAgregable(producto) ? 'cursor-not-allowed' : ''"
           @click="onAdd(producto)"
         >
           <p class="truncate font-medium text-gray-800 dark:text-white/90">{{ producto.nombre }}</p>
@@ -257,13 +257,13 @@
             type="button"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-50"
             :class="
-              productoSinStockParaVenta(producto)
+              productoNoAgregable(producto)
                 ? 'border-gray-300 text-gray-400 dark:border-gray-700 dark:text-gray-500'
                 : 'border-brand-500 bg-brand-500 text-white hover:bg-brand-600'
             "
-            :disabled="productoSinStockParaVenta(producto)"
+            :disabled="productoNoAgregable(producto)"
             :title="
-              productoSinStockParaVenta(producto) ? 'Sin stock disponible' : 'Agregar al carrito'
+              productoNoAgregable(producto) ? 'Sin stock disponible' : 'Agregar al carrito'
             "
             @click.stop="onAdd(producto)"
           >
@@ -282,6 +282,9 @@
       v-model="quickOpen"
       :producto="productoActivo"
       :initial-tab="quickTab"
+      :stock-gas="productoActivo ? stockGasInfo(productoActivo) : undefined"
+      :sin-almacen-para-gas="sinAlmacenParaGas"
+      :stock-gas-listo="stockGasListo"
       @add="onAdd"
     />
   </div>
@@ -296,6 +299,7 @@ import PosProductoQuickModal, {
 import {
   formatStockPos,
   productoAfectaStock,
+  productoGasSinStockParaVenta,
   productoSinStockParaVenta,
   stockGasSinDisponible,
   type StockGasPosInfo,
@@ -374,8 +378,22 @@ function onAction(key: string, producto: Producto) {
   }
 }
 
+function stockGasInfo(producto: Producto): StockGasPosInfo | undefined {
+  return props.stockGasPorProducto?.[producto.id]
+}
+
+function productoNoAgregable(producto: Producto): boolean {
+  return (
+    productoSinStockParaVenta(producto) ||
+    productoGasSinStockParaVenta(producto, stockGasInfo(producto), {
+      sinAlmacen: props.sinAlmacenParaGas,
+      stockGasListo: props.stockGasListo,
+    })
+  )
+}
+
 function onAdd(producto: Producto) {
-  if (productoSinStockParaVenta(producto)) {
+  if (productoNoAgregable(producto)) {
     toastWarning(`${producto.nombre} no tiene stock disponible`)
     return
   }
