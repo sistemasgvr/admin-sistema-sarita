@@ -145,6 +145,7 @@ import { AppInput, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { getApiErrorMessage, toastApiError } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { hoyIsoLima } from '@/shared/utils/date'
 
 const props = defineProps<{
   modelValue: boolean
@@ -158,7 +159,7 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const enviarMutation = useEnviarResumenDiarioMutation()
 
-const fecha = ref(new Date().toISOString().slice(0, 10))
+const fecha = ref(hoyIsoLima())
 const correlativo = ref('001')
 const preview = ref<ResumenDiarioPreview | null>(null)
 const previewLoading = ref(false)
@@ -181,7 +182,7 @@ watch(
     }
     errorMessage.value = null
     enviarMutation.reset()
-    fecha.value = new Date().toISOString().slice(0, 10)
+    fecha.value = hoyIsoLima()
     await syncCorrelativo()
     await cargarPreview()
   },

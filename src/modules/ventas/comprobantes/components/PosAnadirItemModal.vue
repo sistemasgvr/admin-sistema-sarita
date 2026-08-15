@@ -466,6 +466,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { hoyIsoLima } from '@/shared/utils/date'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
 export type PosAnadirTipo = 'accesorio' | 'gas' | 'alquiler' | 'mantenimiento'
@@ -562,7 +563,7 @@ const fechaFin = ref('')
 const observacion = ref('')
 const idTipoMantenimiento = ref<number | ''>('')
 const tipoMantenimientoBuscar = ref('')
-const fechaIngreso = ref(new Date().toISOString().slice(0, 10))
+const fechaIngreso = ref(hoyIsoLima())
 const descripcionMantenimiento = ref('')
 const escenarioGas = ref<EscenarioGas | null>(null)
 const montoGarantia = ref<number | string>(0)
@@ -872,7 +873,7 @@ function setEscenarioGas(key: EscenarioGas) {
   idProductoAlquiler.value = ''
   nombreProductoAlquiler.value = ''
   if (key === 'entregar_prestamo') {
-    fechaInicio.value = new Date().toISOString().slice(0, 10)
+    fechaInicio.value = hoyIsoLima()
     fechaFin.value = ''
     void prefillMontoGarantia(producto.value)
   } else {
@@ -1276,13 +1277,13 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     capacidad.value = fromLinea.capacidad ?? ''
     sugerenciaOrigenLabel.value = fromLinea.etiquetaBalonOrigen ?? ''
     fechaInicio.value =
-      fromLinea.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
+      fromLinea.fechaInicioAlquiler || hoyIsoLima()
     fechaFin.value =
       fromLinea.fechaFinAlquiler || addDaysIso(fechaInicio.value, 14)
     observacion.value = fromLinea.observacionLinea || ''
     idTipoMantenimiento.value = fromLinea.idTipoMantenimiento ?? ''
     fechaIngreso.value =
-      fromLinea.fechaIngresoMantenimiento || new Date().toISOString().slice(0, 10)
+      fromLinea.fechaIngresoMantenimiento || hoyIsoLima()
     descripcionMantenimiento.value =
       fromLinea.descripcionMantenimiento || fromLinea.nombre || ''
     escenarioGas.value =
@@ -1340,11 +1341,11 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   errorOrigenes.value = ''
   sugerenciaOrigenLabel.value = ''
   capacidad.value = ''
-  fechaInicio.value = new Date().toISOString().slice(0, 10)
+  fechaInicio.value = hoyIsoLima()
   fechaFin.value = addDaysIso(fechaInicio.value, 14)
   observacion.value = ''
   idTipoMantenimiento.value = ''
-  fechaIngreso.value = new Date().toISOString().slice(0, 10)
+  fechaIngreso.value = hoyIsoLima()
   descripcionMantenimiento.value = fromProducto?.nombre || ''
   escenarioGas.value = null
   montoGarantia.value = 0

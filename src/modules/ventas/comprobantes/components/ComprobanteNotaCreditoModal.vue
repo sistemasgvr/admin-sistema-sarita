@@ -155,6 +155,7 @@ import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/Cantid
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { toastApiError, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { hoyIsoLima } from '@/shared/utils/date'
 
 interface LineaNc {
   key: string
@@ -187,7 +188,7 @@ const origenQuery = useComprobanteQuery(origenId)
 
 const idMotivoNota = ref<number | ''>('')
 const serie = ref('')
-const fecha = ref(new Date().toISOString().slice(0, 10))
+const fecha = ref(hoyIsoLima())
 const emitirTrasCrear = ref(true)
 const lineas = ref<LineaNc[]>([])
 
@@ -264,7 +265,7 @@ watch(
   (isOpen) => {
     if (!isOpen) return
     idMotivoNota.value = ''
-    fecha.value = new Date().toISOString().slice(0, 10)
+    fecha.value = hoyIsoLima()
     emitirTrasCrear.value = true
     serie.value = seriePorDefectoDesdeCodigo('07', '', props.comprobante?.serie)
   },

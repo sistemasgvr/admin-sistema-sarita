@@ -233,12 +233,11 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
+import { hoyIsoLima } from '@/shared/utils/date'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
 function hoyLocal(): string {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  return hoyIsoLima()
 }
 
 function esClienteVariosNombre(nombre?: string | null): boolean {

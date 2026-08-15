@@ -164,6 +164,7 @@ import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuer
 import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { hoyIsoLima } from '@/shared/utils/date'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import type { Comprobante } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { CLIENTES_VARIOS_DOCUMENTO } from '@/modules/clientes/constants/clientesVarios'
@@ -210,7 +211,7 @@ const origenId = computed(() => (props.modelValue ? props.comprobante?.id ?? nul
 const origenQuery = useComprobanteQuery(origenId)
 
 const serie = ref('')
-const fecha = ref(new Date().toISOString().slice(0, 10))
+const fecha = ref(hoyIsoLima())
 const { assertCajaAbierta } = useCajaAbiertaRequerida(fecha)
 const emitirTrasCrear = ref(false)
 const observaciones = ref('')
@@ -346,7 +347,7 @@ watch(
   () => props.modelValue,
   (isOpen) => {
     if (!isOpen) return
-    fecha.value = new Date().toISOString().slice(0, 10)
+    fecha.value = hoyIsoLima()
     emitirTrasCrear.value = false
     observaciones.value = ''
     serie.value = seriePorDefectoDesdeCodigo(props.codigoTipo, '')

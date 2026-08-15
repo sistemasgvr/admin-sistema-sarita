@@ -384,20 +384,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
-import { bajasPendientesService } from '@/modules/balones/bajas-pendientes/services/bajas-pendientes.service'
-import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
-import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
-import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
-import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
-import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
-import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import PosCajaEstadoBanner from '@/modules/caja/components/PosCajaEstadoBanner.vue'
 import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
+import { hoyIsoLima } from '@/shared/utils/date'
 import PosAnadirItemModal, {
   type PosLineaConfirmada,
 } from '@/modules/ventas/comprobantes/components/PosAnadirItemModal.vue'
@@ -414,7 +407,10 @@ import {
   formatPosMoney,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
-import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import type {
+  EfectosPosPayload,
+  PosLineItem,
+} from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
@@ -1043,6 +1039,36 @@ async function guardarComprobante() {
     (linea) => linea.escenarioGas === 'comprar_balon' && linea.idBalon,
   )
 
+  if (
+    lineasGasConBalon.length > 0 &&
+    !authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR)
+  ) {
+    toastWarning('No tienes permiso para registrar recargas de cliente')
+    return
+  }
+  if (
+    lineasAlquiler.length > 0 &&
+    !authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR)
+  ) {
+    toastWarning('No tienes permiso para registrar alquileres')
+    return
+  }
+  if (
+    lineasMantenimiento.length > 0 &&
+    !authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR)
+  ) {
+    toastWarning('No tienes permiso para registrar mantenimientos')
+    return
+  }
+  if (lineasPrestamo.length > 0 && !idTipoPrestamoEmpresaCliente.value) {
+    toastWarning('No se encontró el tipo de préstamo ENVASE_EMPRESA_A_CLIENTE')
+    return
+  }
+  if (lineasCompraBalon.length > 0 && !idMotivoVendido.value) {
+    toastWarning('No se encontró el motivo de baja VENDIDO para registrar el cilindro')
+    return
+  }
+
 try {
     guardandoExtra.value = true
 
@@ -1105,122 +1131,56 @@ try {
       return [base]
     })
 
-    const comprobante = await createMutation.mutateAsync({
-      idUsuarioAuditoria: userId,
-      idTipoComprobante: Number(idTipoComprobante.value),
-      serie: serie.value.trim(),
-      numero: numero.value || undefined,
-      fecha: fecha.value,
-      idCliente: Number(idCliente.value),
-      idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
-      detalles,
-      idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
-      idMoneda: idMonedaPen.value,
-      idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
-      idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
-      fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
-      glosa: glosa.value || undefined,
-      observaciones: clienteDescripcion.value || undefined,
-      origenPos: resolverOrigenPos(),
-    })
+    const efectosPos: EfectosPosPayload = {}
+    const idAlmacenNum = idAlmacen.value ? Number(idAlmacen.value) : undefined
 
-    // Marcar guardado de inmediato para evitar reintento/duplicado si falla un efecto colateral.
-    comprobanteGuardadoId.value = comprobante.id
-    comprobanteGuardadoSerie.value = comprobante.serie
-    comprobanteGuardadoNumero.value = comprobante.numero
-
-    let advertencias = 0
-
-    if (authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR)) {
-      for (const lineaGas of lineasGasConBalon) {
-        try {
-          await movimientosRecargaService.vincularRecargaClienteComprobante({
-            idUsuarioAuditoria: userId,
-            idComprobante: comprobante.id,
-            idCliente: Number(idCliente.value),
-            idBalon: Number(lineaGas.idBalon),
-            idProducto: Number(lineaGas.idProducto),
-            capacidad: lineaGas.capacidad,
-            idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
-            observacion: lineaGas.observacionLinea || glosa.value || undefined,
-            idBalonOrigen: lineaGas.idBalonOrigen
-              ? Number(lineaGas.idBalonOrigen)
-              : undefined,
-          })
-        } catch (error) {
-          advertencias += 1
-          toastApiError(
-            error,
-            `Comprobante creado, pero falló la vinculación de recarga de ${lineaGas.nombre}`,
-          )
-        }
-      }
+    if (lineasGasConBalon.length > 0) {
+      efectosPos.recargas = lineasGasConBalon.map((lineaGas) => ({
+        idBalon: Number(lineaGas.idBalon),
+        idProducto: Number(lineaGas.idProducto),
+        capacidad: lineaGas.capacidad,
+        idAlmacen: idAlmacenNum,
+        observacion: lineaGas.observacionLinea || glosa.value || undefined,
+        idBalonOrigen: lineaGas.idBalonOrigen ? Number(lineaGas.idBalonOrigen) : undefined,
+      }))
     }
 
-    if (
-      lineasPrestamo.length > 0 &&
-      authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR)
-    ) {
-      if (!idTipoPrestamoEmpresaCliente.value) {
-        advertencias += 1
-        toastWarning(
-          'Comprobante creado, pero no se encontró el tipo de préstamo ENVASE_EMPRESA_A_CLIENTE',
-        )
-      } else {
-        for (const lineaPrestamo of lineasPrestamo) {
-          try {
-            const salida =
-              lineaPrestamo.fechaInicioAlquiler ||
-              fecha.value ||
-              new Date().toISOString().slice(0, 10)
-            const conAlquilerRegulador =
-              (lineaPrestamo.tipoPos === 'alquiler' || lineaPrestamo.esAlquilable) &&
-              !esEntregarPrestamo(lineaPrestamo)
-            const prestamo = await prestamosService.crear({
-              idUsuarioAuditoria: userId,
-              idTipoPrestamo: idTipoPrestamoEmpresaCliente.value,
-              idCliente: Number(idCliente.value),
-              idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
-              fechaSalida: salida,
-              fechaRetornoPactada: lineaPrestamo.fechaFinAlquiler || undefined,
-              idComprobanteVenta: comprobante.id,
-              idEstado: idEstadoPrestamoActivo.value ?? undefined,
-              titulo: `Préstamo POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
-              observacion:
-                lineaPrestamo.observacionLinea ||
-                glosa.value ||
-                (conAlquilerRegulador
-                  ? `Préstamo de cilindro junto a alquiler de regulador (${lineaPrestamo.nombre})`
-                  : `Préstamo de cilindro con venta de gas desde POS`),
-            })
-
-            await prestamosDetalleService.crear({
-              idUsuarioAuditoria: userId,
-              idPrestamo: prestamo.id,
-              idBalon: Number(lineaPrestamo.idBalon),
-              idProducto: conAlquilerRegulador
-                ? undefined
-                : Number(lineaPrestamo.idProducto),
-              fechaEntregado: salida,
-              fechaPrestamo: salida,
-              fechaVencimiento: lineaPrestamo.fechaFinAlquiler || undefined,
-              observacion: conAlquilerRegulador
-                ? 'Cilindro en préstamo (kit/regulador en alquiler aparte)'
-                : 'Entrega desde POS unificado',
-            })
-
-            const montoGarantia = Number(lineaPrestamo.montoGarantia || 0)
-            if (esEntregarPrestamo(lineaPrestamo) && montoGarantia > 0) {
-              try {
-                const productoLinea = productosPorId.value.get(
-                  Number(lineaPrestamo.idProducto),
-                )
-                await garantiasService.crear({
-                  idUsuarioAuditoria: userId,
-                  idCliente: Number(idCliente.value),
+    if (lineasPrestamo.length > 0 && idTipoPrestamoEmpresaCliente.value) {
+      efectosPos.prestamos = lineasPrestamo.map((lineaPrestamo) => {
+        const salida =
+          lineaPrestamo.fechaInicioAlquiler ||
+          fecha.value ||
+          hoyIsoLima()
+        const conAlquilerRegulador =
+          (lineaPrestamo.tipoPos === 'alquiler' || lineaPrestamo.esAlquilable) &&
+          !esEntregarPrestamo(lineaPrestamo)
+        const montoGarantia = Number(lineaPrestamo.montoGarantia || 0)
+        const productoLinea = productosPorId.value.get(Number(lineaPrestamo.idProducto))
+        return {
+          idTipoPrestamo: idTipoPrestamoEmpresaCliente.value!,
+          idAlmacen: idAlmacenNum,
+          fechaSalida: salida,
+          fechaRetornoPactada: lineaPrestamo.fechaFinAlquiler || undefined,
+          idEstado: idEstadoPrestamoActivo.value ?? undefined,
+          titulo: `Préstamo POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
+          observacion:
+            lineaPrestamo.observacionLinea ||
+            glosa.value ||
+            (conAlquilerRegulador
+              ? `Préstamo de cilindro junto a alquiler de regulador (${lineaPrestamo.nombre})`
+              : `Préstamo de cilindro con venta de gas desde POS`),
+          idBalon: Number(lineaPrestamo.idBalon),
+          idProducto: conAlquilerRegulador ? undefined : Number(lineaPrestamo.idProducto),
+          fechaEntregado: salida,
+          fechaPrestamo: salida,
+          fechaVencimiento: lineaPrestamo.fechaFinAlquiler || undefined,
+          observacionDetalle: conAlquilerRegulador
+            ? 'Cilindro en préstamo (kit/regulador en alquiler aparte)'
+            : 'Entrega desde POS unificado',
+          garantia:
+            esEntregarPrestamo(lineaPrestamo) && montoGarantia > 0
+              ? {
                   monto: montoGarantia,
-                  idComprobante: comprobante.id,
-                  idPrestamo: prestamo.id,
                   idProducto: Number(lineaPrestamo.idProducto),
                   cantidadVenta: 1,
                   idUnidadMedida: productoLinea?.id_unidad_medida ?? undefined,
@@ -1231,200 +1191,119 @@ try {
                   observacion:
                     lineaPrestamo.observacionGarantia?.trim() ||
                     `Garantía POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
-                })
-              } catch (error) {
-                advertencias += 1
-                toastApiError(
-                  error,
-                  `Comprobante y préstamo creados, pero falló el registro de garantía de ${lineaPrestamo.nombre}`,
-                )
-              }
-            }
-          } catch (error) {
-            advertencias += 1
-            toastApiError(
-              error,
-              `Comprobante creado, pero falló el préstamo de ${lineaPrestamo.nombre}`,
-            )
-          }
+                }
+              : undefined,
         }
-      }
+      })
     }
 
-    if (
-      lineasAlquiler.length > 0 &&
-      authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR)
-    ) {
-      for (const lineaAlquilable of lineasAlquiler) {
-        try {
-          // Sin garantía: esa va en línea aparte del comprobante y en ven_garantia.
-          const montoAlquiler = importeGasLinea(lineaAlquilable)
-          const idProductoAlquiler = Number(lineaAlquilable.idProducto)
-          const inicio =
-            lineaAlquilable.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
-          const fin = lineaAlquilable.fechaFinAlquiler || addDaysIso(inicio, 14)
-
-          const idProductoStock =
-            lineaAlquilable.afectaStock &&
-            !lineaAlquilable.esServicio &&
-            !lineaAlquilable.esGas
-              ? idProductoAlquiler
-              : undefined
-
-          // En este dominio tarifa_diaria se usa como monto del periodo (ver bal_renovar_alquiler).
-          const alquiler = await alquileresService.crear({
-            idUsuarioAuditoria: userId,
-            idCliente: Number(idCliente.value),
-            idAlmacen: Number(idAlmacen.value),
-            fechaInicio: inicio,
-            fechaFinPactada: fin,
-            tarifaDiaria: montoAlquiler,
-            totalCobrado: montoAlquiler,
-            idComprobanteVenta: comprobante.id,
-            idProductoRegulador: idProductoAlquiler,
-            idProductoStock,
-            observacion:
-              lineaAlquilable.observacionLinea ||
-              glosa.value ||
-              `Alquiler de regulador/accesorio ${lineaAlquilable.nombre} desde POS`,
-          })
-
-          // El cilindro opcional se registra como préstamo (arriba), no como detalle de alquiler.
-
-          await alquileresService.registrarPeriodo(alquiler.id, {
-            idUsuarioAuditoria: userId,
+    if (lineasAlquiler.length > 0) {
+      efectosPos.alquileres = lineasAlquiler.map((lineaAlquilable) => {
+        const montoAlquiler = importeGasLinea(lineaAlquilable)
+        const idProductoAlquiler = Number(lineaAlquilable.idProducto)
+        const inicio =
+          lineaAlquilable.fechaInicioAlquiler || hoyIsoLima()
+        const fin = lineaAlquilable.fechaFinAlquiler || addDaysIso(inicio, 14)
+        const idProductoStock =
+          lineaAlquilable.afectaStock &&
+          !lineaAlquilable.esServicio &&
+          !lineaAlquilable.esGas
+            ? idProductoAlquiler
+            : undefined
+        const montoGarantiaAlq = Number(lineaAlquilable.montoGarantia || 0)
+        return {
+          idAlmacen: Number(idAlmacen.value),
+          fechaInicio: inicio,
+          fechaFinPactada: fin,
+          tarifaDiaria: montoAlquiler,
+          totalCobrado: montoAlquiler,
+          idProductoRegulador: idProductoAlquiler,
+          idProductoStock,
+          observacion:
+            lineaAlquilable.observacionLinea ||
+            glosa.value ||
+            `Alquiler de regulador/accesorio ${lineaAlquilable.nombre} desde POS`,
+          periodo: {
             fechaInicio: inicio,
             fechaFin: fin,
             monto: montoAlquiler,
             idProducto: idProductoAlquiler,
-            idComprobante: comprobante.id,
             observacion: 'Periodo 1 — POS unificado',
-          })
-
-          const montoGarantiaAlq = Number(lineaAlquilable.montoGarantia || 0)
-          if (montoGarantiaAlq > 0) {
-            try {
-              await garantiasService.crear({
-                idUsuarioAuditoria: userId,
-                idCliente: Number(idCliente.value),
-                monto: montoGarantiaAlq,
-                idComprobante: comprobante.id,
-                idAlquiler: alquiler.id,
-                idProducto: idProductoAlquiler,
-                cantidadVenta: 1,
-                fechaRegistro: fecha.value,
-                idMedioPago: lineaAlquilable.idMedioPagoGarantia
-                  ? Number(lineaAlquilable.idMedioPagoGarantia)
-                  : undefined,
-                observacion:
-                  lineaAlquilable.observacionGarantia?.trim() ||
-                  `Garantía POS · alquiler ${lineaAlquilable.nombre}`,
-              })
-            } catch (error) {
-              advertencias += 1
-              toastApiError(
-                error,
-                `Comprobante y alquiler creados, pero falló la garantía de ${lineaAlquilable.nombre}`,
-              )
-            }
-          }
-        } catch (error) {
-          advertencias += 1
-          toastApiError(
-            error,
-            `Comprobante creado, pero falló el alquiler de ${lineaAlquilable.nombre}`,
-          )
+          },
+          garantia:
+            montoGarantiaAlq > 0
+              ? {
+                  monto: montoGarantiaAlq,
+                  idProducto: idProductoAlquiler,
+                  cantidadVenta: 1,
+                  fechaRegistro: fecha.value,
+                  idMedioPago: lineaAlquilable.idMedioPagoGarantia
+                    ? Number(lineaAlquilable.idMedioPagoGarantia)
+                    : undefined,
+                  observacion:
+                    lineaAlquilable.observacionGarantia?.trim() ||
+                    `Garantía POS · alquiler ${lineaAlquilable.nombre}`,
+                }
+              : undefined,
         }
-      }
-    } else if (
-      lineasAlquiler.length > 0 &&
-      !authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR)
-    ) {
-      advertencias += 1
-      toastWarning(
-        'Comprobante creado, pero no se registró el alquiler: sin permiso ALQUILERES_BALON_CREAR',
-      )
+      })
     }
 
-    if (authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR)) {
-      for (const lineaMant of lineasMantenimiento) {
-        try {
-          await mantenimientosService.crear({
-            idUsuarioAuditoria: userId,
-            idBalon: Number(lineaMant.idBalon),
-            fechaIngreso:
-              lineaMant.fechaIngresoMantenimiento ||
-              new Date().toISOString().slice(0, 10),
-            idTipoMantenimiento: lineaMant.idTipoMantenimiento,
-            descripcion:
-              lineaMant.descripcionMantenimiento || lineaMant.nombre,
-            costo: Number(lineaMant.precioUnitario),
-            idComprobanteVenta: comprobante.id,
-            observacion: lineaMant.observacionLinea || undefined,
-          })
-        } catch (error) {
-          advertencias += 1
-          toastApiError(
-            error,
-            `Comprobante creado, pero falló el mantenimiento de ${lineaMant.nombre}`,
-          )
-        }
-      }
+    if (lineasMantenimiento.length > 0) {
+      efectosPos.mantenimientos = lineasMantenimiento.map((lineaMant) => ({
+        idBalon: Number(lineaMant.idBalon),
+        fechaIngreso:
+          lineaMant.fechaIngresoMantenimiento || hoyIsoLima(),
+        idTipoMantenimiento: lineaMant.idTipoMantenimiento,
+        descripcion: lineaMant.descripcionMantenimiento || lineaMant.nombre,
+        costo: Number(lineaMant.precioUnitario),
+        observacion: lineaMant.observacionLinea || undefined,
+      }))
     }
 
-    if (lineasCompraBalon.length > 0) {
-      if (!authStore.hasPermission(PermisoBanderas.BAJAS_BALON_SOLICITAR)) {
-        advertencias += 1
-        toastWarning(
-          'Comprobante creado, pero no se registró la baja del cilindro: sin permiso BAJAS_BALON_SOLICITAR',
-        )
-      } else if (!idMotivoVendido.value) {
-        advertencias += 1
-        toastWarning(
-          'Comprobante creado, pero no se encontró el motivo de baja VENDIDO para registrar el cilindro',
-        )
-      } else {
-        for (const linea of lineasCompraBalon) {
-          try {
-            const baja = await balonesService.darBaja(Number(linea.idBalon), {
-              idUsuarioAuditoria: userId,
-              idMotivoBaja: Number(idMotivoVendido.value),
-              idUsuarioSolicita: userId,
-              idClienteComprador: Number(idCliente.value),
-              idComprobanteVenta: comprobante.id,
-              serieComprobante: comprobante.serie,
-              numeroComprobante: comprobante.numero,
-              montoVenta: Number(linea.precioBalon || 0),
-              observacion:
-                linea.observacionLinea || 'Venta de cilindro desde POS',
-              fechaBaja: fecha.value,
-            })
-
-            if (
-              baja?.id &&
-              authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR)
-            ) {
-              await bajasPendientesService.aprobar(baja.id, {
-                idUsuarioAuditoria: userId,
-                idUsuarioAutoriza: userId,
-              })
-            }
-          } catch (error) {
-            advertencias += 1
-            toastApiError(
-              error,
-              `Comprobante creado, pero falló la baja por venta del cilindro ${etiquetaCilindro(linea) || linea.idBalon}`,
-            )
-          }
-        }
-      }
+    if (lineasCompraBalon.length > 0 && idMotivoVendido.value) {
+      efectosPos.bajas = lineasCompraBalon.map((linea) => ({
+        idBalon: Number(linea.idBalon),
+        idMotivoBaja: Number(idMotivoVendido.value),
+        montoVenta: Number(linea.precioBalon || 0),
+        observacion: linea.observacionLinea || 'Venta de cilindro desde POS',
+        fechaBaja: fecha.value,
+        aprobar: authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR),
+      }))
     }
 
-    if (advertencias > 0) {
-      toastSuccess('Venta registrada (con advertencias en operaciones de balón)')
-    } else {
-      toastSuccess('Venta registrada')
-    }
+    const comprobante = await createMutation.mutateAsync({
+      idUsuarioAuditoria: userId,
+      idTipoComprobante: Number(idTipoComprobante.value),
+      serie: serie.value.trim(),
+      numero: numero.value || undefined,
+      fecha: fecha.value,
+      idCliente: Number(idCliente.value),
+      idAlmacen: idAlmacenNum,
+      detalles,
+      idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
+      idMoneda: idMonedaPen.value,
+      idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
+      idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+      fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
+      glosa: glosa.value || undefined,
+      observaciones: clienteDescripcion.value || undefined,
+      origenPos: resolverOrigenPos(),
+      efectosPos:
+        efectosPos.recargas ||
+        efectosPos.prestamos ||
+        efectosPos.alquileres ||
+        efectosPos.mantenimientos ||
+        efectosPos.bajas
+          ? efectosPos
+          : undefined,
+    })
+
+    comprobanteGuardadoId.value = comprobante.id
+    comprobanteGuardadoSerie.value = comprobante.serie
+    comprobanteGuardadoNumero.value = comprobante.numero
+    toastSuccess('Venta registrada')
+
   } catch (error) {
     toastApiError(error, 'No se pudo guardar la venta')
   } finally {

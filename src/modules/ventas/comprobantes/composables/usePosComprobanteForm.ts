@@ -21,6 +21,7 @@ import {
 } from '@/modules/ventas/comprobantes/utils/serieComprobante'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { hoyIsoLima } from '@/shared/utils/date'
 
 export {
   seriePorDefectoDesdeCodigo,
@@ -70,7 +71,7 @@ export function usePosComprobanteForm(options?: {
   const idTipoComprobante = ref<number | ''>('')
   const serie = ref('B001')
   const numero = ref('')
-  const fecha = ref(new Date().toISOString().slice(0, 10))
+  const fecha = ref(hoyIsoLima())
   const idCliente = ref<number | ''>('')
   const clienteDescripcion = ref('')
   const clienteSeleccionadoCache = ref<Cliente | null>(null)
@@ -383,7 +384,7 @@ export function usePosComprobanteForm(options?: {
   async function reiniciarTrasOperacion() {
     clienteDescripcion.value = ''
     aplicarClientesVariosPorDefecto()
-    fecha.value = new Date().toISOString().slice(0, 10)
+    fecha.value = hoyIsoLima()
     idMedioPago.value = ''
     const contado = (condicionesPagoQuery.data.value?.data ?? []).find(
       (item) =>

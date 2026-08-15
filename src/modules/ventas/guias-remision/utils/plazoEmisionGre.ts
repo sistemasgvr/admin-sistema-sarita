@@ -1,4 +1,5 @@
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
+import { hoyIsoLima } from '@/shared/utils/date'
 
 /**
  * Plazo de emisión GRE: debe emitirse a SUNAT antes o el mismo día del traslado.
@@ -21,8 +22,8 @@ function parseFechaLocal(value: string): Date | null {
 }
 
 function hoyLocal(): Date {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const [y, m, d] = hoyIsoLima().split('-').map(Number)
+  return new Date(y, m - 1, d)
 }
 
 function diffDias(desde: Date, hasta: Date): number {

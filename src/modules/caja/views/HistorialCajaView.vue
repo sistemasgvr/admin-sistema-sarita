@@ -129,7 +129,7 @@ import type { RangoFechas, SelectOption } from '@/shared/interfaces/form.interfa
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { ICONS } from '@/shared/constants/icons'
 import { formatCurrency } from '@/shared/utils/currency'
-import { formatDateTime, formatListDate } from '@/shared/utils/date'
+import { formatDateTime, formatListDate, hoyIsoLima } from '@/shared/utils/date'
 
 const breadcrumbItems = ventasBreadcrumbItems('Historial de caja')
 const router = useRouter()
@@ -176,9 +176,7 @@ function abrirDia(row: CajaSesion) {
 }
 
 function hoyLocal(): string {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  return hoyIsoLima()
 }
 
 function esSesionPendiente(row: CajaSesion) {

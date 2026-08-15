@@ -113,6 +113,7 @@ import { AppInput, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { hoyIsoLima } from '@/shared/utils/date'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 
 export interface PosLineaConfirmada {
@@ -199,7 +200,7 @@ watch(
       precioUnitario.value = Number(linea.precioUnitario || 0)
       idBalon.value = linea.idBalon ?? ''
       capacidad.value = linea.capacidad ?? ''
-      fechaInicio.value = linea.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
+      fechaInicio.value = linea.fechaInicioAlquiler || hoyIsoLima()
       fechaFin.value =
         linea.fechaFinAlquiler || addDaysIso(fechaInicio.value, 14)
       observacion.value = linea.observacionLinea || ''
@@ -210,7 +211,7 @@ watch(
     precioUnitario.value = Number(producto.precio ?? 0)
     idBalon.value = ''
     capacidad.value = ''
-    fechaInicio.value = new Date().toISOString().slice(0, 10)
+    fechaInicio.value = hoyIsoLima()
     fechaFin.value = addDaysIso(fechaInicio.value, 14)
     observacion.value = ''
   },
