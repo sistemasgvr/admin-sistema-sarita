@@ -4,6 +4,7 @@
     title="Detalle de la actividad"
     :subtitle="actividad?.titulo"
     size="lg"
+    :z-index="100000"
   >
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>

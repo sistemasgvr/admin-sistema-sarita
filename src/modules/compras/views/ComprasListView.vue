@@ -12,6 +12,7 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <AppExportExcelButton :on-export="exportarExcel" />
             <button
               v-if="canCreate"
               type="button"
@@ -123,9 +124,18 @@ import { useComprasQuery } from '@/modules/compras/composables/useComprasQuery'
 import { useAnularCompraMutation } from '@/modules/compras/composables/useCompraMutations'
 import type { CompraListFilters, CompraListItem } from '@/modules/compras/interfaces/compra.interface'
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
+import { exportarComprasExcel } from '@/modules/compras/utils/exportarComprasExcel'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import { AppActionMenu, AppBadge, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppExportExcelButton,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+} from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -154,6 +164,8 @@ const filters = ref<CompraListFilters>({
 
 const comprasQuery = useComprasQuery(filters)
 const anularMutation = useAnularCompraMutation()
+
+const exportarExcel = () => exportarComprasExcel(filters.value)
 
 const anularModalOpen = ref(false)
 const compraToAnular = ref<CompraListItem | null>(null)

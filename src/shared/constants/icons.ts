@@ -89,6 +89,7 @@ export const ICONS = {
   wallet: 'lucide:wallet',
   banknote: 'lucide:banknote',
   userCheck: 'lucide:user-check',
+  trophy: 'lucide:trophy',
   bookOpen: 'lucide:book-open',
   cashRegister: 'lucide:calculator',
 } as const

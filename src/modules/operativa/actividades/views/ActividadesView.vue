@@ -11,6 +11,7 @@
         @filter-change="onFiltersChange"
       >
         <template #actions>
+          <AppExportExcelButton :on-export="exportarExcel" />
           <button
             v-if="canCreate"
             type="button"
@@ -192,6 +193,14 @@
       />
     </div>
 
+    <div v-show="activeTab === 'colaboradores'">
+      <ActividadesColaboradoresPanel
+        :rows="rankingRows"
+        :loading="isLoadingRanking"
+        @ver-actividad="openDetailModal"
+      />
+    </div>
+
     <ActividadFormModal
       v-model="formModalOpen"
       :mode="formMode"
@@ -247,6 +256,7 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import ActividadDetailModal from '@/modules/operativa/actividades/components/ActividadDetailModal.vue'
 import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
 import ActividadesCalendar from '@/modules/operativa/actividades/components/ActividadesCalendar.vue'
+import ActividadesColaboradoresPanel from '@/modules/operativa/actividades/components/ActividadesColaboradoresPanel.vue'
 import {
   useCancelarActividadMutation,
   useDeleteActividadMutation,
@@ -259,14 +269,25 @@ import type {
   ActividadFormMode,
   ActividadListFilters,
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
+import { actividadesService } from '@/modules/operativa/actividades/services/actividades.service'
 import {
   esActividadCancelada,
   esActividadRealizada,
+  idOpcionPorNombre,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
+import {
+  agruparActividadesPorColaborador,
+  type ActividadColaboradorRanking,
+} from '@/modules/operativa/actividades/utils/agruparActividadesPorColaborador'
+import {
+  exportarActividadesExcel,
+  exportarColaboradoresExcel,
+} from '@/modules/operativa/actividades/utils/exportarActividadesExcel'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -286,7 +307,11 @@ import type {
 } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
+import { toastApiError, toastInfo } from '@/shared/composables/useToast'
 import { formatListDate } from '@/shared/utils/date'
+import { fetchAllPages } from '@/shared/utils/exportExcel'
+
+type ActividadesTab = 'lista' | 'calendario' | 'colaboradores'
 
 const authStore = useAuthStore()
 
@@ -301,21 +326,23 @@ const router = useRouter()
 const tabs: AppTabItem[] = [
   { key: 'lista', label: 'Lista', icon: ICONS.list },
   { key: 'calendario', label: 'Calendario', icon: ICONS.calendar },
+  { key: 'colaboradores', label: 'Colaboradores', icon: ICONS.users },
 ]
 
-const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]): 'lista' | 'calendario' => {
+const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]): ActividadesTab => {
   const value = Array.isArray(tab) ? tab[0] : tab
-  return value === 'calendario' ? 'calendario' : 'lista'
+  if (value === 'calendario' || value === 'colaboradores') return value
+  return 'lista'
 }
 
-const activeTab = ref<'lista' | 'calendario'>(resolveTab(route.query.tab))
+const activeTab = ref<ActividadesTab>(resolveTab(route.query.tab))
 
 watch(activeTab, (tab) => {
-  const wantsCalendario = tab === 'calendario'
-  const hasCalendarioQuery = route.query.tab === 'calendario'
-  if (wantsCalendario === hasCalendarioQuery) return
-  if (wantsCalendario) {
-    router.replace({ query: { ...route.query, tab: 'calendario' } })
+  const desired = tab === 'lista' ? undefined : tab
+  const current = typeof route.query.tab === 'string' ? route.query.tab : undefined
+  if (current === desired) return
+  if (desired) {
+    router.replace({ query: { ...route.query, tab: desired } })
     return
   }
   const query = { ...route.query }
@@ -479,6 +506,86 @@ const calendarQuery = useActividadesQuery(
 
 const isLoadingCalendar = computed(() => calendarQuery.isFetching.value)
 const calendarRows = computed(() => calendarQuery.data.value?.data ?? [])
+
+const rankingRows = ref<ActividadColaboradorRanking[]>([])
+const isLoadingRanking = ref(false)
+let rankingRequestId = 0
+
+function buildRankingFilters(): ActividadListFilters | null {
+  const { pagina: _pagina, limite: _limite, ...rest } = listFilters.value
+  const filters: ActividadListFilters = { ...rest }
+  if (filters.idEstado == null) {
+    const opciones = estadoActividadQuery.data.value
+    if (!opciones?.length) return null
+    const idRealizada = idOpcionPorNombre(opciones, ['REALIZADA'])
+    if (!idRealizada) return null
+    filters.idEstado = idRealizada
+  }
+  return filters
+}
+
+async function loadRanking() {
+  if (activeTab.value !== 'colaboradores') return
+  const filters = buildRankingFilters()
+  if (!filters) return
+
+  const requestId = ++rankingRequestId
+  isLoadingRanking.value = true
+  try {
+    const actividades = await fetchAllPages(actividadesService.listar, filters)
+    if (requestId !== rankingRequestId) return
+    rankingRows.value = agruparActividadesPorColaborador(actividades)
+  } catch (error) {
+    if (requestId !== rankingRequestId) return
+    rankingRows.value = []
+    toastApiError(error, 'No se pudo cargar el ranking de colaboradores')
+  } finally {
+    if (requestId === rankingRequestId) {
+      isLoadingRanking.value = false
+    }
+  }
+}
+
+watch(
+  [
+    activeTab,
+    () => listFilters.value.buscar,
+    () => listFilters.value.fechaDesde,
+    () => listFilters.value.fechaHasta,
+    () => listFilters.value.idEstado,
+    () => listFilters.value.idTipo,
+    () => listFilters.value.idPrioridad,
+    () => estadoActividadQuery.data.value,
+  ],
+  () => {
+    void loadRanking()
+  },
+  { immediate: true },
+)
+
+async function exportarExcel() {
+  if (activeTab.value === 'calendario') {
+    await exportarActividadesExcel(calendarFilters.value, 'calendario')
+    return
+  }
+
+  if (activeTab.value === 'colaboradores') {
+    let ranking = rankingRows.value
+    if (!ranking.length) {
+      const filters = buildRankingFilters()
+      if (!filters) {
+        toastInfo('Espera a que carguen los estados para exportar el ranking')
+        return
+      }
+      const actividades = await fetchAllPages(actividadesService.listar, filters)
+      ranking = agruparActividadesPorColaborador(actividades)
+    }
+    await exportarColaboradoresExcel(ranking)
+    return
+  }
+
+  await exportarActividadesExcel(listFilters.value, 'lista')
+}
 
 const onCalendarRangeChange = (range: { fechaDesde: string; fechaHasta: string }) => {
   calendarFilters.value = {
