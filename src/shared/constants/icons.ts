@@ -91,6 +91,9 @@ export const ICONS = {
   userCheck: 'lucide:user-check',
   bookOpen: 'lucide:book-open',
   cashRegister: 'lucide:calculator',
+  trendingUp: 'lucide:trending-up',
+  shoppingCart: 'lucide:shopping-cart',
+  handCoins: 'lucide:hand-coins',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]
