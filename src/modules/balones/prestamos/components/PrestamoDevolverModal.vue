@@ -107,7 +107,7 @@ const garantiaPendienteId = ref<number | null>(null)
 
 const contenidoOptions = [
   { value: 'VACIO', label: 'Vacío' },
-  { value: 'LLENO', label: 'Lleno (gas no usado)' },
+  { value: 'LLENO', label: 'Lleno' },
   { value: 'DESCONOCIDO', label: 'Desconocido' },
 ]
 

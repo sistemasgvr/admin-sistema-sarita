@@ -6,7 +6,10 @@
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
+          v-model:filters="dynamicFilters"
+          :filter-fields="filterFields"
           search-placeholder="Almacén, chofer, observación..."
+          @filter-change="onFiltersChange"
         >
           <template #actions>
             <button
@@ -23,7 +26,7 @@
       </template>
 
       <template #cell-fecha="{ row }">
-        <span class="whitespace-nowrap">{{ row.fecha?.slice(0, 10) || '—' }}</span>
+        <span class="whitespace-nowrap">{{ formatListDate(row.fecha) }}</span>
       </template>
 
       <template #cell-nombre_almacen="{ row }">
@@ -72,43 +75,13 @@
       <template #actions="{ row }">
         <div class="inline-flex items-center justify-end gap-1.5">
           <button
+            v-if="canView"
             type="button"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetail(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
-          </button>
-          <button
-            v-if="canEdit && row.nombre_estado === 'ABIERTA'"
-            type="button"
-            title="Iniciar ruta"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-300 text-brand-600 transition hover:bg-brand-50 dark:border-brand-700 dark:hover:bg-brand-500/10"
-            @click="askIniciar(row)"
-          >
-            <AppIcon :name="ICONS.mapPin" :size="15" />
-          </button>
-          <button
-            v-if="canEdit && (row.nombre_estado === 'ABIERTA' || row.nombre_estado === 'EN_RUTA')"
-            type="button"
-            title="Registrar retorno"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openRetorno(row)"
-          >
-            <AppIcon :name="ICONS.truck" :size="15" />
-          </button>
-          <button
-            v-if="
-              canEdit &&
-              row.nombre_estado === 'EN_RUTA' &&
-              Number(row.total_retornados) >= Number(row.total_cilindros)
-            "
-            type="button"
-            title="Cerrar ruta"
-            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-success-300 text-success-600 transition hover:bg-success-50 dark:border-success-700 dark:hover:bg-success-500/10"
-            @click="openCerrar(row)"
-          >
-            <AppIcon :name="ICONS.clipboardCheck" :size="15" />
           </button>
           <AppActionMenu
             v-if="actionsFor(row).length"
@@ -184,10 +157,15 @@ import RutaPuebloCerrarModal from '@/modules/balones/rutas-pueblos/components/Ru
 import RutaPuebloDetailModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloDetailModal.vue'
 import RutaPuebloFormModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloFormModal.vue'
 import RutaPuebloRetornoModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloRetornoModal.vue'
-import type { RutaPueblo } from '@/modules/balones/rutas-pueblos/interfaces/ruta-pueblo.interface'
+import {
+  ESTADOS_RUTA_PUEBLO_FILTRO,
+  type RutaPueblo,
+  type RutaPuebloListFilters,
+} from '@/modules/balones/rutas-pueblos/interfaces/ruta-pueblo.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import {
   AppActionMenu,
   AppConfirmDialog,
@@ -200,10 +178,14 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { formatListDate } from '@/shared/utils/date'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
+import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
 const authStore = useAuthStore()
 
 const buscar = ref('')
+const dynamicFilters = ref<DynamicFilterValues>({})
 const pagina = ref(1)
 const limite = ref(10)
 const formOpen = ref(false)
@@ -216,20 +198,36 @@ const eliminarOpen = ref(false)
 const rutaActivaId = ref<number | null>(null)
 const rutaSeleccionada = ref<RutaPueblo | null>(null)
 
-const filters = ref({
+const filters = ref<RutaPuebloListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
 })
 
+const almacenesFilters = ref({ pagina: 1, limite: 200 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 function syncFilters() {
+  const active = dynamicFilters.value
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
+    estadoNombre:
+      active.estadoNombre != null && String(active.estadoNombre) !== ''
+        ? String(active.estadoNombre)
+        : undefined,
+    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
+    fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
   }
+}
+
+function onFiltersChange() {
+  pagina.value = 1
+  syncFilters()
 }
 
 watch(buscar, () => {
@@ -256,8 +254,40 @@ const isLoading = computed(() => query.isFetching.value)
 const breadcrumbItems = balonesBreadcrumbItems('Ruta pueblos')
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.RUTAS_PUEBLOS_CREAR))
+const canView = computed(() => authStore.hasPermission(PermisoBanderas.RUTAS_PUEBLOS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.RUTAS_PUEBLOS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.RUTAS_PUEBLOS_ELIMINAR))
+
+const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'estadoNombre',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Seleccionar estado',
+    options: ESTADOS_RUTA_PUEBLO_FILTRO.map((e) => ({ value: e.value, label: e.label })),
+  },
+  {
+    key: 'idAlmacen',
+    label: 'Almacén',
+    type: 'select',
+    placeholder: 'Seleccionar almacén',
+    disabled: almacenesQuery.isLoading.value,
+    options: (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
+      value: almacen.id,
+      label: almacen.nombre,
+    })),
+  },
+  {
+    key: 'fechaDesde',
+    label: 'Desde',
+    type: 'date',
+  },
+  {
+    key: 'fechaHasta',
+    label: 'Hasta',
+    type: 'date',
+  },
+])
 
 const columns = [
   { key: 'fecha', label: 'Fecha' },
@@ -278,16 +308,19 @@ function labelEstado(codigo: string) {
 }
 
 function openDetail(row: RutaPueblo) {
+  if (!canView.value) return
   rutaActivaId.value = row.id
   detailOpen.value = true
 }
 
 function openRetorno(row: RutaPueblo) {
+  if (!canView.value) return
   rutaActivaId.value = row.id
   retornoOpen.value = true
 }
 
 function openCerrar(row: RutaPueblo) {
+  if (!canView.value) return
   rutaActivaId.value = row.id
   cerrarOpen.value = true
 }
@@ -297,19 +330,41 @@ function askIniciar(row: RutaPueblo) {
   iniciarOpen.value = true
 }
 
-function actionsFor(row: RutaPueblo) {
-  const items: { key: string; label: string }[] = []
-  if (canEdit.value && row.nombre_estado !== 'CERRADA' && row.nombre_estado !== 'CANCELADA') {
-    items.push({ key: 'cancelar', label: 'Cancelar' })
+function actionsFor(row: RutaPueblo): ActionMenuItem[] {
+  const items: ActionMenuItem[] = []
+  const estado = row.nombre_estado
+  if (canEdit.value && estado === 'ABIERTA') {
+    items.push({ key: 'iniciar', label: 'Iniciar ruta', icon: ICONS.mapPin })
   }
-  if (canDelete.value && row.nombre_estado !== 'EN_RUTA') {
-    items.push({ key: 'eliminar', label: 'Eliminar' })
+  if (
+    canEdit.value &&
+    canView.value &&
+    (estado === 'ABIERTA' || estado === 'EN_RUTA')
+  ) {
+    items.push({ key: 'retorno', label: 'Registrar retorno', icon: ICONS.truck })
+  }
+  if (
+    canEdit.value &&
+    canView.value &&
+    estado === 'EN_RUTA' &&
+    Number(row.total_retornados) >= Number(row.total_cilindros)
+  ) {
+    items.push({ key: 'cerrar', label: 'Cerrar ruta', icon: ICONS.clipboardCheck })
+  }
+  if (canEdit.value && estado !== 'CERRADA' && estado !== 'CANCELADA') {
+    items.push({ key: 'cancelar', label: 'Cancelar', icon: ICONS.x, danger: true })
+  }
+  if (canDelete.value && estado !== 'EN_RUTA') {
+    items.push({ key: 'eliminar', label: 'Eliminar', icon: ICONS.trash, danger: true })
   }
   return items
 }
 
 function onAction(key: string, row: RutaPueblo) {
   rutaSeleccionada.value = row
+  if (key === 'iniciar') askIniciar(row)
+  if (key === 'retorno') openRetorno(row)
+  if (key === 'cerrar') openCerrar(row)
   if (key === 'cancelar') cancelarOpen.value = true
   if (key === 'eliminar') eliminarOpen.value = true
 }

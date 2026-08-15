@@ -48,8 +48,8 @@ const balonId = computed(() => {
 const pageTitle = computed(() => (isEdit.value ? 'Editar cilindro' : 'Nuevo cilindro'))
 const pageHelpText = computed(() =>
   isEdit.value
-    ? 'Actualiza identificación, tipo, propietario y almacén. El historial de movimientos se ve en el detalle.'
-    : 'Registra el cilindro en inventario (propio o de cliente). Código y tipo son obligatorios.',
+    ? 'Actualiza datos, ubicación y P.H. El historial de movimientos está en el detalle.'
+    : 'Código y tipo son obligatorios. El tipo sugiere el gas y la vigencia de P.H.',
 )
 const breadcrumbItems = computed(() => balonesCilindrosBreadcrumbItems(pageTitle.value))
 

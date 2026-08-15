@@ -50,7 +50,7 @@ import { parseMoneyInput } from '@/shared/utils/currency'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const open = defineModel<boolean>({ default: false })
-const props = defineProps<{ fecha: string; idSesion?: number | null }>()
+const props = defineProps<{ fecha: string; idSesion?: number | null; idSucursal?: number | null }>()
 const emit = defineEmits<{ saved: [] }>()
 
 const form = reactive({
@@ -94,6 +94,7 @@ async function submit() {
     numeroOperacion: form.numeroOperacion || undefined,
     observacion: form.observacion || undefined,
     idSesion: props.idSesion ?? undefined,
+    idSucursal: props.idSucursal ?? undefined,
   })
   open.value = false
   emit('saved')

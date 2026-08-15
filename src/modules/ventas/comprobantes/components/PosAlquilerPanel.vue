@@ -269,6 +269,8 @@
         v-model:glosa="observacion"
         v-model:id-condicion-pago="idCondicionPago"
         v-model:id-medio-pago="idMedioPago"
+        v-model:generar-gre="generarGre"
+        :mostrar-generar-gre="Boolean(idBalon)"
         :totales="totales"
         :condicion-pago-options="condicionPagoOptions"
         :medio-pago-options="medioPagoOptions"
@@ -298,12 +300,9 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
-import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
-import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
-import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
+import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
@@ -346,6 +345,7 @@ import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { hoyIsoLima } from '@/shared/utils/date'
 
 const {
   authStore,
@@ -413,6 +413,7 @@ const serviciosFleteFilters = ref({
   limite: 100,
   esServicio: true,
   esAlquilable: false,
+  esMantenimiento: false,
   soloActivos: 1,
   buscar: undefined as string | undefined,
 })
@@ -425,11 +426,8 @@ const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmac
 
 const listaTipoPrestamoId = ref(ListaIds.TIPO_PRESTAMO)
 const tiposPrestamoQuery = useListaOpcionesQuery(listaTipoPrestamoId)
-const idTipoPrestamoEmpresaCliente = computed(
-  () =>
-    tiposPrestamoQuery.data.value?.find(
-      (item) => (item.nombre ?? '').toUpperCase() === 'ENVASE_EMPRESA_A_CLIENTE',
-    )?.id ?? null,
+const idTipoPrestamoEmpresaCliente = computed(() =>
+  idTipoPrestamoPermitePos(tiposPrestamoQuery.data.value),
 )
 
 const listaEstadoPrestamoId = ref(ListaIds.ESTADO_PRESTAMO)
@@ -445,7 +443,7 @@ async function onAlmacenCreated() {
   await almacenesQuery.refetch()
 }
 
-const hoy = new Date().toISOString().slice(0, 10)
+const hoy = hoyIsoLima()
 const fechaInicio = ref(hoy)
 const fechaFinPactada = ref(addDaysIso(hoy, 14))
 const tarifaPeriodo = ref(0)
@@ -454,6 +452,7 @@ const idMedioPagoGarantia = ref<string | number>('')
 const observacionGarantia = ref('')
 const origenMontoGarantia = ref('')
 const observacion = ref('')
+const generarGre = ref(false)
 const guardando = ref(false)
 
 const kitLineas = reactive<KitMedicinalLinea[]>(crearKitMedicinalInicial())
@@ -669,6 +668,10 @@ async function registrarKit() {
     toastWarning('Indica el medio con el que se recibe la garantía')
     return
   }
+  if (!idTipoPrestamoEmpresaCliente.value) {
+    toastWarning('No se encontró el tipo de préstamo para cobro de envase')
+    return
+  }
 
   guardando.value = true
 
@@ -697,6 +700,16 @@ async function registrarKit() {
       })
     }
 
+    const productoReg = findProducto('regulador', idProductoReg)
+    const idProductoStock =
+      productoReg &&
+      productoReg.afecta_stock &&
+      !productoReg.es_servicio &&
+      !productoReg.es_gas
+        ? idProductoReg
+        : undefined
+
+    const montoRegulador = importeLineaKit(lineaRegulador.value)
     const comprobante = await createComprobanteMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idTipoComprobante: Number(idTipoComprobante.value),
@@ -713,101 +726,67 @@ async function registrarKit() {
       glosa: observacion.value || 'Kit medicinal',
       observaciones: observacion.value || undefined,
       origenPos: OrigenPos.MEDICINAL,
+      efectosPos: {
+        alquileres: [
+          {
+            idAlmacen: Number(idAlmacen.value),
+            fechaInicio: fechaInicio.value,
+            fechaFinPactada: fechaFinPactada.value,
+            tarifaDiaria: Number(tarifaPeriodo.value || 0),
+            totalCobrado: totalKitMedicinal(todasLasLineas.value),
+            idProductoRegulador: idProductoReg,
+            idProductoStock,
+            observacion: observacion.value || 'Kit medicinal (alquiler regulador)',
+            periodo: {
+              fechaInicio: fechaInicio.value,
+              fechaFin: fechaFinPactada.value || addDaysIso(fechaInicio.value, 14),
+              monto: montoRegulador,
+              idProducto: idProductoReg,
+              observacion: 'Periodo 1 — kit medicinal (regulador)',
+            },
+            garantia:
+              garantia > 0
+                ? {
+                    monto: garantia,
+                    idProducto: idProductoReg,
+                    cantidadVenta: 1,
+                    fechaRegistro: fecha.value,
+                    idMedioPago: Number(idMedioPagoGarantia.value),
+                    observacion:
+                      observacionGarantia.value.trim() ||
+                      `Garantía kit medicinal · ${lineaRegulador.value.nombre || 'alquiler'}`,
+                  }
+                : undefined,
+          },
+        ],
+        prestamos: [
+          {
+            idTipoPrestamo: idTipoPrestamoEmpresaCliente.value,
+            idAlmacen: Number(idAlmacen.value),
+            fechaSalida: fechaInicio.value,
+            fechaRetornoPactada: fechaFinPactada.value || undefined,
+            idEstado: idEstadoPrestamoActivo.value ?? undefined,
+            titulo: `Préstamo kit medicinal · balón #${idBalon.value}`,
+            observacion:
+              observacion.value ||
+              'Cilindro en préstamo junto a alquiler de regulador (kit medicinal)',
+            idBalon: Number(idBalon.value),
+            fechaEntregado: fechaInicio.value,
+            fechaPrestamo: fechaInicio.value,
+            fechaVencimiento: fechaFinPactada.value || undefined,
+            observacionDetalle: 'Entrega kit medicinal — cilindro en préstamo',
+          },
+        ],
+        generarGre: generarGre.value,
+      },
     })
-
-    const productoReg = findProducto('regulador', idProductoReg)
-    const idProductoStock =
-      productoReg &&
-      productoReg.afecta_stock &&
-      !productoReg.es_servicio &&
-      !productoReg.es_gas
-        ? idProductoReg
-        : undefined
-
-    const alquiler = await alquileresService.crear({
-      idUsuarioAuditoria: userId,
-      idCliente: Number(idCliente.value),
-      idAlmacen: Number(idAlmacen.value),
-      fechaInicio: fechaInicio.value,
-      fechaFinPactada: fechaFinPactada.value,
-      tarifaDiaria: Number(tarifaPeriodo.value || 0),
-      totalCobrado: totalKitMedicinal(todasLasLineas.value),
-      idComprobanteVenta: comprobante.id,
-      idProductoRegulador: idProductoReg,
-      idProductoStock,
-      observacion: observacion.value || 'Kit medicinal (alquiler regulador)',
-    })
-
-    if (!idTipoPrestamoEmpresaCliente.value) {
-      toastWarning(
-        'Kit creado, pero no se encontró tipo ENVASE_EMPRESA_A_CLIENTE para prestar el cilindro',
-      )
-    } else {
-      try {
-        const prestamo = await prestamosService.crear({
-          idUsuarioAuditoria: userId,
-          idTipoPrestamo: idTipoPrestamoEmpresaCliente.value,
-          idCliente: Number(idCliente.value),
-          idAlmacen: Number(idAlmacen.value),
-          fechaSalida: fechaInicio.value,
-          fechaRetornoPactada: fechaFinPactada.value || undefined,
-          idComprobanteVenta: comprobante.id,
-          idEstado: idEstadoPrestamoActivo.value ?? undefined,
-          titulo: `Préstamo kit medicinal · balón #${idBalon.value}`,
-          observacion:
-            observacion.value ||
-            'Cilindro en préstamo junto a alquiler de regulador (kit medicinal)',
-        })
-        await prestamosDetalleService.crear({
-          idUsuarioAuditoria: userId,
-          idPrestamo: prestamo.id,
-          idBalon: Number(idBalon.value),
-          fechaEntregado: fechaInicio.value,
-          fechaPrestamo: fechaInicio.value,
-          fechaVencimiento: fechaFinPactada.value || undefined,
-          observacion: 'Entrega kit medicinal — cilindro en préstamo',
-        })
-      } catch (error) {
-        toastApiError(error, 'Kit creado, pero falló el préstamo del cilindro')
-      }
-    }
-
-    const montoRegulador = importeLineaKit(lineaRegulador.value)
-    await alquileresService.registrarPeriodo(alquiler.id, {
-      idUsuarioAuditoria: userId,
-      fechaInicio: fechaInicio.value,
-      fechaFin: fechaFinPactada.value || addDaysIso(fechaInicio.value, 14),
-      monto: montoRegulador,
-      idProducto: idProductoReg,
-      idComprobante: comprobante.id,
-      observacion: 'Periodo 1 — kit medicinal (regulador)',
-    })
-
-    if (garantia > 0) {
-      try {
-        await garantiasService.crear({
-          idUsuarioAuditoria: userId,
-          idCliente: Number(idCliente.value),
-          monto: garantia,
-          idComprobante: comprobante.id,
-          idAlquiler: alquiler.id,
-          idProducto: idProductoReg,
-          cantidadVenta: 1,
-          fechaRegistro: fecha.value,
-          idMedioPago: Number(idMedioPagoGarantia.value),
-          observacion:
-            observacionGarantia.value.trim() ||
-            `Garantía kit medicinal · ${lineaRegulador.value.nombre || 'alquiler'}`,
-        })
-      } catch (error) {
-        toastApiError(error, 'Kit creado, pero falló el registro de la garantía')
-      }
-    }
 
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
     toastSuccess('Kit medicinal: alquiler de regulador + préstamo de cilindro')
+  } catch (error) {
+    toastApiError(error, 'No se pudo registrar el kit medicinal')
   } finally {
     guardando.value = false
   }
@@ -816,7 +795,7 @@ async function registrarKit() {
 async function limpiarFormulario() {
   idBalon.value = ''
   idAlmacen.value = ''
-  const inicio = new Date().toISOString().slice(0, 10)
+  const inicio = hoyIsoLima()
   fechaInicio.value = inicio
   fechaFinPactada.value = addDaysIso(inicio, 14)
   tarifaPeriodo.value = 0
@@ -825,6 +804,7 @@ async function limpiarFormulario() {
   idMedioPagoGarantia.value = ''
   observacionGarantia.value = ''
   observacion.value = ''
+  generarGre.value = false
   kitLineas.splice(0, kitLineas.length, ...crearKitMedicinalInicial())
   descartables.splice(0, descartables.length)
   comprobanteGuardadoId.value = null

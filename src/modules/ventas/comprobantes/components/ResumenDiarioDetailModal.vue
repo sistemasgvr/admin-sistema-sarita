@@ -13,7 +13,7 @@
       {{ consultando ? 'Consultando estado en SUNAT...' : 'Cargando resumen...' }}
     </div>
 
-    <div v-else-if="resumen" class="space-y-4">
+    <div v-else-if="resumenData" class="space-y-4">
       <DetailSectionCard title="Resultado" :icon="resultadoIcon" :full-width="true">
         <div class="rounded-xl border px-4 py-3" :class="resumenTone.box">
           <div class="flex flex-wrap items-start justify-between gap-3">
@@ -45,7 +45,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="detalle in resumen.detalles"
+                v-for="detalle in resumenData.detalles"
                 :key="detalle.id"
                 class="border-t border-gray-100 dark:border-gray-800"
               >
@@ -75,7 +75,7 @@
         Cerrar
       </button>
       <button
-        v-if="resumen?.ticket_sunat"
+        v-if="resumenData?.ticket_sunat"
         type="button"
         class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
         :disabled="consultarMutation.isPending.value"
@@ -124,14 +124,14 @@ const open = computed({
   set: (value: boolean) => emit('update:modelValue', value),
 })
 
-const resumen = computed(() => resumenQuery.data.value ?? null)
-const subtitulo = computed(() => resumen.value?.identificador ?? props.resumen?.identificador ?? undefined)
+const resumenData = computed(() => resumenQuery.data.value ?? null)
+const subtitulo = computed(() => resumenData.value?.identificador ?? props.resumen?.identificador ?? undefined)
 
 const sunatInfo = computed(() => {
   let payload: unknown = null
   try {
-    payload = resumen.value?.cdr_respuesta
-      ? JSON.parse(resumen.value.cdr_respuesta)
+    payload = resumenData.value?.cdr_respuesta
+      ? JSON.parse(resumenData.value.cdr_respuesta)
       : null
   } catch {
     payload = null
@@ -154,7 +154,7 @@ const sunatInfo = computed(() => {
 })
 
 const estadoNormalizado = computed(() =>
-  String(resumen.value?.nombre_estado_sunat ?? 'PENDIENTE').trim().toUpperCase(),
+  String(resumenData.value?.nombre_estado_sunat ?? 'PENDIENTE').trim().toUpperCase(),
 )
 
 const resultadoIcon = computed(() => {
@@ -227,19 +227,19 @@ const resumenTone = computed(() => {
 })
 
 const sections = computed<DetailSection[]>(() => {
-  if (!resumen.value) return []
+  if (!resumenData.value) return []
   return [
     {
       title: 'Resumen',
       icon: ICONS.calendar,
       items: [
-        { label: 'Identificador', value: resumen.value.identificador ?? '—' },
-        { label: 'Fecha', value: formatFechaUi(resumen.value.fecha) },
-        { label: 'Correlativo', value: resumen.value.correlativo },
-        { label: 'Documentos', value: String(resumen.value.cantidad_docs) },
+        { label: 'Identificador', value: resumenData.value.identificador ?? '—' },
+        { label: 'Fecha', value: formatFechaUi(resumenData.value.fecha) },
+        { label: 'Correlativo', value: resumenData.value.correlativo },
+        { label: 'Documentos', value: String(resumenData.value.cantidad_docs) },
         {
           label: 'Total',
-          value: formatMoney(Number(resumen.value.total_importe ?? 0)),
+          value: formatMoney(Number(resumenData.value.total_importe ?? 0)),
         },
       ],
     },
@@ -247,7 +247,7 @@ const sections = computed<DetailSection[]>(() => {
       title: 'Respuesta SUNAT',
       icon: ICONS.shield,
       items: [
-        { label: 'Estado', value: resumen.value.nombre_estado_sunat ?? 'PENDIENTE' },
+        { label: 'Estado', value: resumenData.value.nombre_estado_sunat ?? 'PENDIENTE' },
         { label: 'Código', value: sunatInfo.value.codigo ?? '—' },
         {
           label: 'Mensaje',
@@ -256,7 +256,7 @@ const sections = computed<DetailSection[]>(() => {
         },
         {
           label: 'Nº de seguimiento',
-          value: resumen.value.ticket_sunat ?? '—',
+          value: resumenData.value.ticket_sunat ?? '—',
           fullWidth: true,
         },
       ],

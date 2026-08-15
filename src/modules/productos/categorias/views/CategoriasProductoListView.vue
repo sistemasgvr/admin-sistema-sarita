@@ -14,6 +14,7 @@
           search-placeholder="Nombre o descripción..."
         >
           <template #actions>
+            <AppExportExcelButton :on-export="exportarExcel" />
             <div class="w-full sm:w-40">
               <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
             </div>
@@ -204,6 +205,7 @@ import {
 } from '@/modules/productos/categorias/composables/useCategoriaProductoMutations'
 import { useCategoriasProductoQuery } from '@/modules/productos/categorias/composables/useCategoriasProductoQuery'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
+import { exportarCategoriasExcel } from '@/modules/productos/categorias/utils/exportarCategoriasExcel'
 import type {
   CategoriaProducto,
   CategoriaProductoFormMode,
@@ -213,6 +215,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -298,6 +301,8 @@ const columns = computed<TableColumn<CategoriaProducto>[]>(() => [
   { key: 'descripcion', label: 'Descripción' },
   { key: 'total_sub_categorias', label: 'Subcategorías' },
 ])
+
+const exportarExcel = () => exportarCategoriasExcel(filters.value)
 
 const SUBCATEGORIAS_VISIBLE_MAX = 3
 

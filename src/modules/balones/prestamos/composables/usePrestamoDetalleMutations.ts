@@ -3,6 +3,7 @@ import { prestamosAntiguedadQueryKeys } from '@/modules/balones/prestamos/consta
 import { prestamosDetalleQueryKeys } from '@/modules/balones/prestamos/constants/prestamosDetalleQueryKeys'
 import { prestamosQueryKeys } from '@/modules/balones/prestamos/constants/prestamosQueryKeys'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
 import { prestamosDetalleService } from '@/modules/balones/prestamos/services/prestamos-detalle.service'
 import type {
   CreatePrestamoDetallePayload,
@@ -11,6 +12,14 @@ import type {
 } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
+function invalidatePrestamoImpacto(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: stockGasQueryKeys.all })
+}
+
 export function useCreatePrestamoDetalleMutation() {
   const queryClient = useQueryClient()
 
@@ -18,12 +27,10 @@ export function useCreatePrestamoDetalleMutation() {
     mutationFn: (payload: CreatePrestamoDetallePayload) =>
       prestamosDetalleService.crear(payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
+      invalidatePrestamoImpacto(queryClient)
       queryClient.invalidateQueries({
         queryKey: prestamosQueryKeys.detail(variables.idPrestamo),
       })
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
       toastSuccess('Cilindro agregado al préstamo')
     },
     onError: (error) => {
@@ -39,12 +46,10 @@ export function useUpdatePrestamoDetalleMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: UpdatePrestamoDetallePayload }) =>
       prestamosDetalleService.actualizar(id, payload),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
+      invalidatePrestamoImpacto(queryClient)
       queryClient.invalidateQueries({
         queryKey: prestamosDetalleQueryKeys.detail(variables.id),
       })
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
       toastSuccess('Detalle actualizado correctamente')
     },
     onError: (error) => {
@@ -60,10 +65,7 @@ export function useDevolverPrestamoDetalleMutation() {
     mutationFn: ({ id, payload }: { id: number; payload: DevolverPrestamoDetallePayload }) =>
       prestamosDetalleService.devolver(id, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      invalidatePrestamoImpacto(queryClient)
       toastSuccess('Devolución / reingreso registrado')
     },
     onError: (error) => {
@@ -79,9 +81,7 @@ export function useDeletePrestamoDetalleMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       prestamosDetalleService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
-      queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
+      invalidatePrestamoImpacto(queryClient)
       toastSuccess('Cilindro eliminado del préstamo')
     },
     onError: (error) => {

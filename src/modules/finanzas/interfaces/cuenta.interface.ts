@@ -136,6 +136,7 @@ export interface RegistrarPagoPayload {
   idUsuarioAuditoria?: number
   /** Si true, ignora el chequeo de duplicados (backend valida permiso). */
   forzarDuplicado?: boolean
+  idSucursal?: number
 }
 
 export interface CrearCuentaPayload {

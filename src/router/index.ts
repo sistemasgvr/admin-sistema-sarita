@@ -10,6 +10,7 @@ import { productosRoutes } from '@/modules/productos/router'
 import { balonesRoutes } from '@/modules/balones/router'
 import { ventasRoutes } from '@/modules/ventas/router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { canAccessByPermissions } from '@/shared/constants/permissions'
 import { toastWarning } from '@/shared/composables/useToast'
 import { resolvePostLoginRedirect } from '@/shared/utils/resolvePostLoginRedirect'
 import { contactosRoutes } from '@/modules/contactos/router'
@@ -87,14 +88,20 @@ router.beforeEach((to) => {
     return resolvePostLoginRedirect(to.query.redirect)
   }
 
-  const requiredPermission = [...to.matched]
+  const accessRecord = [...to.matched]
     .reverse()
-    .find((record) => record.meta.permission)?.meta.permission
+    .find(
+      (record) =>
+        Boolean(record.meta.permission) || Boolean(record.meta.anyPermission?.length),
+    )
 
   if (
     requiresAuth &&
-    requiredPermission &&
-    !authStore.hasPermission(requiredPermission)
+    accessRecord &&
+    !canAccessByPermissions(authStore.permisos, {
+      permission: accessRecord.meta.permission,
+      anyPermission: accessRecord.meta.anyPermission,
+    })
   ) {
     toastWarning('No tienes permiso para acceder a esta sección')
     return { path: '/admin/dashboard' }

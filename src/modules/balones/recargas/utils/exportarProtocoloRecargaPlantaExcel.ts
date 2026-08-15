@@ -117,7 +117,6 @@ export async function exportarProtocoloRecargaPlantaExcel(
     sheets: [
       {
         name: 'Protocolo planta',
-        title: `Protocolo de recarga planta — ${rows.length} cilindro(s)`,
         columns,
         rows,
       },

@@ -130,6 +130,44 @@
       </div>
     </div>
 
+    <!-- Solicitudes baja / reactivación -->
+    <div v-show="activeTab === 'solicitudes'" class="pt-4">
+      <p v-if="solicitudesQuery.isFetching.value" class="app-related-empty">Cargando...</p>
+      <p v-else-if="!solicitudesRows.length" class="app-related-empty">
+        Sin solicitudes de baja o reactivación
+      </p>
+      <div v-else class="space-y-2">
+        <div v-for="s in solicitudesRows" :key="s.id" class="app-related-row">
+          <div class="min-w-0">
+            <p class="truncate font-medium text-gray-800 dark:text-white/90">
+              {{ s.nombre_tipo_solicitud ? formatListaOpcionLabel(s.nombre_tipo_solicitud) : 'Solicitud' }}
+              <AppBadge
+                size="sm"
+                class="ml-1"
+                :color="
+                  s.nombre_estado_aprobacion === 'APROBADA'
+                    ? 'success'
+                    : s.nombre_estado_aprobacion === 'RECHAZADA'
+                      ? 'error'
+                      : 'warning'
+                "
+              >
+                {{ formatListaOpcionLabel(s.nombre_estado_aprobacion) }}
+              </AppBadge>
+            </p>
+            <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+              Solicitó: {{ s.nombre_usuario_solicita || '—' }}
+              · {{ s.fecha_creacion ? formatDate(s.fecha_creacion) : '—' }}
+            </p>
+            <p class="truncate text-xs text-gray-500 dark:text-gray-400">
+              Autorizó: {{ s.nombre_usuario_autoriza || '—' }}
+              · {{ s.fecha_autorizacion ? formatDate(s.fecha_autorizacion) : 'Pendiente' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Cuentas bancarias -->
     <div v-show="activeTab === 'cuentas-bancarias'" class="pt-4">
       <div class="mb-3 flex justify-end">
@@ -205,10 +243,16 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useQuery } from '@tanstack/vue-query'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppBadge, AppTabs } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
+import { formatDate } from '@/shared/utils/date'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { bajasClienteService } from '@/modules/clientes/bajas-cliente/services/bajas-cliente.service'
+import { bajasClienteQueryKeys } from '@/modules/clientes/bajas-cliente/constants/bajasClienteQueryKeys'
+import type { BajaClienteListFilters } from '@/modules/clientes/bajas-cliente/interfaces/baja-cliente.interface'
 
 import ContactoFormModal from '@/modules/contactos/components/ContactoFormModal.vue'
 import { useContactosQuery } from '@/modules/contactos/composables/useContactosQuery'
@@ -347,6 +391,18 @@ const onCuentaSaved = () => {
   void cuentasQuery.refetch()
 }
 
+// ─── Solicitudes baja / reactivación ─────────────────────────────────────────
+const solicitudesFilters = computed<BajaClienteListFilters>(() => ({
+  idCliente: props.idCliente,
+  pagina: 1,
+  limite: 100,
+}))
+const solicitudesQuery = useQuery({
+  queryKey: computed(() => bajasClienteQueryKeys.list(solicitudesFilters.value)),
+  queryFn: () => bajasClienteService.listar(solicitudesFilters.value),
+})
+const solicitudesRows = computed(() => solicitudesQuery.data.value?.data ?? [])
+
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 const activeTab = ref('contactos')
 
@@ -356,6 +412,7 @@ const tabs = computed<AppTabItem[]>(() => [
   { key: 'choferes', label: 'Choferes', icon: ICONS.idCard, badge: choferesRows.value.length },
   { key: 'vehiculos', label: 'Vehículos', icon: ICONS.car, badge: vehiculosRows.value.length },
   { key: 'cuentas-bancarias', label: 'Cuentas bancarias', icon: ICONS.building2, badge: cuentasRows.value.length },
+  { key: 'solicitudes', label: 'Solicitudes', icon: ICONS.clipboardList, badge: solicitudesRows.value.length },
 ])
 </script>
 

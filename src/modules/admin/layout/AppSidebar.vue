@@ -266,7 +266,7 @@ const startTransition = (el: Element) => {
   htmlEl.style.height = 'auto'
   const height = htmlEl.scrollHeight
   htmlEl.style.height = '0px'
-  htmlEl.offsetHeight
+  void htmlEl.offsetHeight
   htmlEl.style.height = `${height}px`
 }
 

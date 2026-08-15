@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { productosAccessPermissions } from '@/modules/productos/config/productos-menu'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
 export const productosRoutes: RouteRecordRaw[] = [
@@ -138,7 +139,7 @@ export const productosRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Productos',
           module: 'productos',
-          permission: PermisoBanderas.PRODUCTOS_HUB_VER,
+          anyPermission: productosAccessPermissions,
         },
       },
     ],

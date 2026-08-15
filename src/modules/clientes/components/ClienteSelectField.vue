@@ -51,9 +51,10 @@ import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type { Cliente, ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppSelect, AppSelectSearch, AppSelectWithCreate } from '@/shared/components'
-import { TipoClienteIds } from '@/shared/constants/lista-ids'
+import { ListaIds, TipoClienteIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
@@ -75,7 +76,12 @@ const props = withDefaults(
      * Útil en planta externa / compras.
      */
     soloProveedores?: boolean
-    /** Filtro único por tipo (ignorado si soloProveedores). */
+    /**
+     * Solo CLIENTE + CLIENTE/PROVEEDOR (excluye proveedores puros).
+     * Ignorado si soloProveedores.
+     */
+    soloClientes?: boolean
+    /** Filtro único por tipo (ignorado si soloProveedores / soloClientes). */
     idTipoCliente?: number
     createTitle?: string
     createSubtitle?: string
@@ -91,6 +97,7 @@ const props = withDefaults(
     placeholder: 'Selecciona cliente',
     searchPlaceholder: 'Razón social, documento o código...',
     soloProveedores: false,
+    soloClientes: false,
     createTitle: undefined,
     createSubtitle: undefined,
     defaultIdTipoCliente: undefined,
@@ -110,6 +117,19 @@ const createdOption = ref<SelectOption | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 
+const listaTipoClienteId = ref(ListaIds.TIPO_CLIENTE)
+const tipoClienteQuery = useListaOpcionesQuery(listaTipoClienteId)
+
+function idTipoClientePorNombre(nombre: string): number | undefined {
+  return tipoClienteQuery.data.value?.find(
+    (opcion) => opcion.nombre?.toUpperCase() === nombre,
+  )?.id
+}
+
+const idTipoSoloCliente = computed(
+  () => idTipoClientePorNombre('CLIENTE') ?? idTipoClientePorNombre('Cliente'),
+)
+
 const createTitle = computed(
   () => props.createTitle ?? (props.soloProveedores ? 'Nuevo proveedor' : 'Nuevo cliente'),
 )
@@ -123,7 +143,11 @@ const createSubtitle = computed(
 const resolvedDefaultTipoCliente = computed(
   () =>
     props.defaultIdTipoCliente ??
-    (props.soloProveedores ? TipoClienteIds.PROVEEDOR : undefined),
+    (props.soloProveedores
+      ? TipoClienteIds.PROVEEDOR
+      : props.soloClientes
+        ? idTipoSoloCliente.value
+        : undefined),
 )
 
 function baseFilters(extra: Partial<ClienteListFilters> = {}): ClienteListFilters {
@@ -136,65 +160,71 @@ function baseFilters(extra: Partial<ClienteListFilters> = {}): ClienteListFilter
   }
 }
 
-const clientesFilters = ref<ClienteListFilters>(
-  baseFilters(
-    props.soloProveedores
-      ? { idTipoCliente: TipoClienteIds.PROVEEDOR }
-      : props.idTipoCliente
-        ? { idTipoCliente: props.idTipoCliente }
-        : {},
-  ),
-)
+function extraFiltroTipo(): Partial<ClienteListFilters> {
+  if (props.soloProveedores) {
+    return { idTipoCliente: TipoClienteIds.PROVEEDOR }
+  }
+  if (props.soloClientes && idTipoSoloCliente.value) {
+    return { idTipoCliente: idTipoSoloCliente.value }
+  }
+  if (props.idTipoCliente) {
+    return { idTipoCliente: props.idTipoCliente }
+  }
+  return {}
+}
+
+const clientesFilters = ref<ClienteListFilters>(baseFilters(extraFiltroTipo()))
 const clienteProveedoresFilters = ref<ClienteListFilters>(
   baseFilters({ idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR }),
 )
 
+const usaClienteProveedor = computed(() => props.soloProveedores || props.soloClientes)
+
 const clientesQuery = useClientesQuery(clientesFilters)
 const clienteProveedoresQuery = useClientesQuery(
   clienteProveedoresFilters,
-  () => props.soloProveedores,
+  () => usaClienteProveedor.value,
 )
+
+function syncTipoFilters() {
+  clientesFilters.value = baseFilters(extraFiltroTipo())
+  if (usaClienteProveedor.value) {
+    clienteProveedoresFilters.value = baseFilters({
+      idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR,
+    })
+  }
+}
 
 watch(search, (term) => {
   if (!props.searchable) return
   const buscar = term.trim() || undefined
   clientesFilters.value = { ...clientesFilters.value, buscar }
-  if (props.soloProveedores) {
+  if (usaClienteProveedor.value) {
     clienteProveedoresFilters.value = { ...clienteProveedoresFilters.value, buscar }
   }
 })
 
 watch(
-  () => [props.soloProveedores, props.idTipoCliente] as const,
-  ([soloProv, idTipo]) => {
-    clientesFilters.value = baseFilters(
-      soloProv
-        ? { idTipoCliente: TipoClienteIds.PROVEEDOR }
-        : idTipo
-          ? { idTipoCliente: idTipo }
-          : {},
-    )
-    if (soloProv) {
-      clienteProveedoresFilters.value = baseFilters({
-        idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR,
-      })
-    }
+  () =>
+    [props.soloProveedores, props.soloClientes, props.idTipoCliente, idTipoSoloCliente.value] as const,
+  () => {
+    syncTipoFilters()
   },
 )
 
 const isFetching = computed(
   () =>
     clientesQuery.isFetching.value ||
-    (props.soloProveedores && clienteProveedoresQuery.isFetching.value),
+    (usaClienteProveedor.value && clienteProveedoresQuery.isFetching.value),
 )
 const isLoading = computed(
   () =>
     clientesQuery.isLoading.value ||
-    (props.soloProveedores && clienteProveedoresQuery.isLoading.value),
+    (usaClienteProveedor.value && clienteProveedoresQuery.isLoading.value),
 )
 
 const queryOptions = computed<SelectOption[]>(() => {
-  const rows = props.soloProveedores
+  const rows = usaClienteProveedor.value
     ? [
         ...(clientesQuery.data.value?.data ?? []),
         ...(clienteProveedoresQuery.data.value?.data ?? []),
@@ -205,6 +235,10 @@ const queryOptions = computed<SelectOption[]>(() => {
   const options: SelectOption[] = []
   for (const cliente of rows) {
     if (seen.has(cliente.id)) continue
+    if (props.soloClientes) {
+      const tipo = cliente.nombre_tipo_cliente?.toUpperCase() ?? ''
+      if (tipo === 'PROVEEDOR') continue
+    }
     seen.add(cliente.id)
     options.push({ value: cliente.id, label: getClienteOptionLabel(cliente) })
   }
@@ -227,7 +261,7 @@ function onCreated(cliente: Cliente) {
   }
   model.value = cliente.id
   void clientesQuery.refetch()
-  if (props.soloProveedores) void clienteProveedoresQuery.refetch()
+  if (usaClienteProveedor.value) void clienteProveedoresQuery.refetch()
   emit('created', cliente)
 }
 </script>

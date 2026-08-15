@@ -8,6 +8,10 @@ export interface CajaTotales {
   gastosCompra: number
   gastos: number
   depositos: number
+  garantiasCobro?: number
+  garantiasCobroMediosCaja?: number
+  garantiasDevolucion?: number
+  garantiasDevolucionMediosCaja?: number
 }
 
 export interface CajaMovimientoGasto {
@@ -80,6 +84,7 @@ export interface CrearCajaGastoPayload {
   numeroOperacion?: string
   observacion?: string
   idSesion?: number | null
+  idSucursal?: number | null
   idUsuarioAuditoria?: number
 }
 
@@ -91,6 +96,7 @@ export interface CrearCajaDepositoPayload {
   numeroOperacion?: string
   observacion?: string
   idSesion?: number | null
+  idSucursal?: number | null
   idUsuarioAuditoria?: number
 }
 

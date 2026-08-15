@@ -6,35 +6,68 @@
       <div
         class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] sm:px-5"
       >
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div class="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Caja / arqueo</h3>
-            <AppHelpTip
-              text="Control operativo del día: abrir, registrar/anular gastos y depósitos, y cerrar. Con caja cerrada no se anulan movimientos. No reemplaza el Resumen diario SUNAT."
-            />
-            <AppBadge
-              v-if="sesion?.estadoCaja"
-              :color="sesion.estadoCaja === 'ABIERTA' ? 'success' : 'warning'"
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+          <div class="min-w-0 lg:max-w-xs lg:shrink">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
+                Caja / arqueo
+              </h3>
+              <AppHelpTip
+                text="Control operativo del día: abrir, registrar/anular gastos y depósitos, y cerrar. Con caja cerrada no se anulan movimientos. No reemplaza el Resumen diario SUNAT."
+              />
+              <AppBadge
+                v-if="sesion?.estadoCaja"
+                :color="sesion.estadoCaja === 'ABIERTA' ? 'success' : 'warning'"
+              >
+                {{ sesion.estadoCaja }}
+              </AppBadge>
+              <AppBadge v-else-if="!isLoading" color="neutral">SIN APERTURA</AppBadge>
+              <RouterLink
+                :to="{ name: 'admin-ventas-caja-historial' }"
+                class="text-theme-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                Historial
+              </RouterLink>
+            </div>
+            <p
+              v-if="sesion?.id"
+              class="mt-0.5 text-theme-sm text-gray-500 dark:text-gray-400 lg:truncate"
             >
-              {{ sesion.estadoCaja }}
-            </AppBadge>
-            <AppBadge v-else-if="!isLoading" color="neutral">SIN APERTURA</AppBadge>
-            <RouterLink
-              :to="{ name: 'admin-ventas-caja-historial' }"
-              class="text-theme-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
-            >
-              Historial
-            </RouterLink>
+              Inicial {{ formatCurrency(sesion.montoInicial) }}
+              <span v-if="sesion.usuarioApertura">
+                · {{ sesion.usuarioApertura }}
+                <template v-if="sesion.fechaApertura">
+                  ({{ formatFechaHora(sesion.fechaApertura) }})</template
+                >
+              </span>
+              <span v-if="sesion.estadoCaja === 'CERRADA'">
+                · Contado {{ formatCurrency(sesion.montoEfectivoContado ?? 0) }} · Dif.
+                {{ formatCurrency(sesion.diferencia ?? 0) }}
+              </span>
+            </p>
           </div>
 
-          <div class="flex flex-wrap items-end gap-2">
-            <AppFormField label="Fecha" class="!w-auto min-w-[150px] shrink-0">
-              <AppInput v-model="fecha" type="date" class="w-[160px]" />
-            </AppFormField>
+          <div class="grid w-full grid-cols-2 gap-2 sm:max-w-md lg:flex lg:w-auto lg:max-w-none lg:shrink-0">
+            <div class="min-w-0 lg:w-[10.5rem]">
+              <AppFormField label="Fecha">
+                <AppInput v-model="fecha" type="date" />
+              </AppFormField>
+            </div>
+            <div class="min-w-0 lg:w-[12rem]">
+              <AppSelect
+                v-model="idSucursalSelect"
+                label="Sucursal"
+                :options="sucursalOptions"
+                placeholder="Todas"
+              />
+            </div>
+          </div>
+
+          <div class="flex w-full flex-wrap gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:items-end">
             <button
               v-if="canAbrir && !sesion?.id && !pendienteCierre"
               type="button"
-              class="shrink-0 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
+              class="flex-1 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:flex-none"
               @click="showAbrir = true"
             >
               Abrir caja
@@ -42,7 +75,7 @@
             <button
               v-if="canGasto && sesion?.estadoCaja === 'ABIERTA'"
               type="button"
-              class="shrink-0 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
+              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:flex-none dark:border-gray-700 dark:text-gray-300"
               @click="showGasto = true"
             >
               Gasto
@@ -50,7 +83,7 @@
             <button
               v-if="canDeposito && sesion?.estadoCaja === 'ABIERTA'"
               type="button"
-              class="shrink-0 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
+              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:flex-none dark:border-gray-700 dark:text-gray-300"
               @click="showDeposito = true"
             >
               Depósito
@@ -58,30 +91,13 @@
             <button
               v-if="canCerrar && sesion?.id && sesion.estadoCaja === 'ABIERTA'"
               type="button"
-              class="shrink-0 rounded-lg bg-gray-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white/10"
+              class="min-w-0 flex-1 rounded-lg bg-gray-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-gray-800 sm:flex-none dark:bg-white/10"
               @click="showCerrar = true"
             >
               Cerrar caja
             </button>
           </div>
         </div>
-
-        <p
-          v-if="sesion?.id"
-          class="mt-2 text-theme-sm text-gray-500 dark:text-gray-400"
-        >
-          Inicial {{ formatCurrency(sesion.montoInicial) }}
-          <span v-if="sesion.usuarioApertura">
-            · {{ sesion.usuarioApertura }}
-            <template v-if="sesion.fechaApertura">
-              ({{ formatFechaHora(sesion.fechaApertura) }})</template
-            >
-          </span>
-          <span v-if="sesion.estadoCaja === 'CERRADA'">
-            · Contado {{ formatCurrency(sesion.montoEfectivoContado ?? 0) }} · Dif.
-            {{ formatCurrency(sesion.diferencia ?? 0) }}
-          </span>
-        </p>
       </div>
 
       <div
@@ -146,17 +162,25 @@
           Caja cerrada: no se registran más ventas ni movimientos para esta fecha.
         </div>
 
-        <AppSummaryCards :cards="resumenCards" :columns="3" />
+        <div class="grid items-stretch gap-3 xl:grid-cols-3">
+          <div class="min-h-0 xl:col-span-2 xl:h-full">
+            <AppSummaryCards
+              class="!mb-0 grid-cols-2"
+              :cards="resumenCards"
+              :columns="3"
+              stretch
+            />
+          </div>
 
-        <div
-          class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]"
-        >
+          <div
+            class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]"
+          >
           <div class="mb-3 flex items-center gap-2">
             <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90">
               Dinero que debería haber
             </h4>
             <AppHelpTip
-              text="Suma lo que entra a caja (fondo, ventas y cobranzas en efectivo/Yape/Plin) y resta lo que sale (depósitos al banco y gastos menudos)."
+              text="Suma lo que entra a caja (fondo, ventas, cobranzas y cobros de garantía en efectivo/Yape/Plin) y resta lo que sale (depósitos al banco, gastos menudos y devoluciones de garantía)."
             />
           </div>
 
@@ -200,6 +224,7 @@
               </span>
             </li>
           </ul>
+        </div>
         </div>
 
         <div v-if="sesion?.id" class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
@@ -303,15 +328,25 @@
         </div>
       </template>
 
-      <AbrirCajaModal v-model="showAbrir" :fecha="fecha" />
+      <AbrirCajaModal v-model="showAbrir" :fecha="fecha" :id-sucursal="idSucursal" />
       <CerrarCajaModal
         v-if="sesion?.id"
         v-model="showCerrar"
         :id-sesion="sesion.id"
         :caja-esperada="cajaEsperada"
       />
-      <RegistrarGastoCajaModal v-model="showGasto" :fecha="fecha" :id-sesion="sesion?.id" />
-      <RegistrarDepositoCajaModal v-model="showDeposito" :fecha="fecha" :id-sesion="sesion?.id" />
+      <RegistrarGastoCajaModal
+        v-model="showGasto"
+        :fecha="fecha"
+        :id-sesion="sesion?.id"
+        :id-sucursal="idSucursal"
+      />
+      <RegistrarDepositoCajaModal
+        v-model="showDeposito"
+        :fecha="fecha"
+        :id-sesion="sesion?.id"
+        :id-sucursal="idSucursal"
+      />
 
       <AppConfirmDialog
         v-model="confirmAnularOpen"
@@ -342,6 +377,7 @@ import {
   AppConfirmDialog,
   AppHelpTip,
   AppInput,
+  AppSelect,
   AppSummaryCards,
 } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
@@ -362,18 +398,17 @@ import type {
   CajaMovimientoGasto,
 } from '@/modules/caja/interfaces/caja.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
-import { formatListDate } from '@/shared/utils/date'
+import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 import { toastWarning } from '@/shared/composables/useToast'
 
 const breadcrumbItems = ventasBreadcrumbItems('Caja')
 
 function hoyLocal(): string {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  return hoyIsoLima()
 }
 
 function formatFechaHora(value: string): string {
@@ -385,6 +420,7 @@ function formatFechaHora(value: string): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'America/Lima',
   })
 }
 
@@ -400,6 +436,21 @@ function fechaInicial(): string {
 
 const fecha = ref(fechaInicial())
 const idSucursal = ref<number | null>(null)
+const sucursalesFilters = ref({ pagina: 1, limite: 100 })
+const sucursalesQuery = useSucursalesQuery(sucursalesFilters)
+const sucursalOptions = computed(() => [
+  { value: '', label: 'Todas' },
+  ...(sucursalesQuery.data.value?.data ?? []).map((s) => ({
+    value: s.id,
+    label: s.nombre,
+  })),
+])
+const idSucursalSelect = computed({
+  get: () => idSucursal.value ?? '',
+  set: (value: string | number | null) => {
+    idSucursal.value = value === '' || value == null ? null : Number(value)
+  },
+})
 const showAbrir = ref(false)
 const showCerrar = ref(false)
 const showGasto = ref(false)
@@ -452,17 +503,25 @@ const depositos = computed(() => sesion.value?.depositos ?? [])
 const montoInicial = computed(() => Number(sesion.value?.montoInicial ?? 0))
 const ventasMediosCaja = computed(() => Number(totales.value?.ventasMediosCaja ?? 0))
 const cobranzasMediosCaja = computed(() => Number(totales.value?.cobranzasMediosCaja ?? 0))
+const garantiasCobroMediosCaja = computed(() =>
+  Number(totales.value?.garantiasCobroMediosCaja ?? 0),
+)
 const totalDepositos = computed(() => Number(totales.value?.depositos ?? 0))
 const totalGastosCaja = computed(() => Number(totales.value?.gastosCaja ?? 0))
+const garantiasDevolucionMediosCaja = computed(() =>
+  Number(totales.value?.garantiasDevolucionMediosCaja ?? 0),
+)
 
 const cajaEsperada = computed(
   () =>
     sesion.value?.cajaEsperada ??
     montoInicial.value +
       ventasMediosCaja.value +
-      cobranzasMediosCaja.value -
+      cobranzasMediosCaja.value +
+      garantiasCobroMediosCaja.value -
       totalDepositos.value -
-      totalGastosCaja.value,
+      totalGastosCaja.value -
+      garantiasDevolucionMediosCaja.value,
 )
 
 const canAbrir = computed(() => auth.hasPermission(PermisoBanderas.CAJA_ABRIR))
@@ -538,19 +597,21 @@ const resumenCards = computed<SummaryCardItem[]>(() => [
     iconClass: 'bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300',
   },
   {
+    key: 'garantias',
+    label: 'Garantías (neto caja)',
+    value: formatCurrency(
+      Number(totales.value?.garantiasCobroMediosCaja ?? 0) -
+        Number(totales.value?.garantiasDevolucionMediosCaja ?? 0),
+    ),
+    icon: ICONS.wallet,
+    iconClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
+  },
+  {
     key: 'depositos',
     label: 'Depósitos',
     value: formatCurrency(totales.value?.depositos ?? 0),
     icon: ICONS.arrowDownToLine,
     iconClass: 'bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300',
-  },
-  {
-    key: 'esperada',
-    label: 'Caja esperada',
-    value: formatCurrency(cajaEsperada.value),
-    icon: ICONS.cashRegister,
-    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
-    hint: 'Lo que debería haber al cerrar',
   },
 ])
 
@@ -564,16 +625,23 @@ const desgloseArqueo = computed(() => [
   },
   {
     key: 'ventas',
-    label: 'Ventas en efectivo / Yape / Plin',
+    label: 'Ventas efectivo / Yape / Plin',
     signo: '+' as const,
     monto: ventasMediosCaja.value,
     destacado: false,
   },
   {
     key: 'cobranzas',
-    label: 'Cobranzas en efectivo / Yape / Plin',
+    label: 'Cobranzas efectivo / Yape / Plin',
     signo: '+' as const,
     monto: cobranzasMediosCaja.value,
+    destacado: false,
+  },
+  {
+    key: 'garantiasCobro',
+    label: 'Cobro garantías (sin CPE)',
+    signo: '+' as const,
+    monto: garantiasCobroMediosCaja.value,
     destacado: false,
   },
   {
@@ -588,6 +656,13 @@ const desgloseArqueo = computed(() => [
     label: 'Gastos de caja',
     signo: '-' as const,
     monto: totalGastosCaja.value,
+    destacado: false,
+  },
+  {
+    key: 'garantiasDev',
+    label: 'Devolución garantías',
+    signo: '-' as const,
+    monto: garantiasDevolucionMediosCaja.value,
     destacado: false,
   },
   {

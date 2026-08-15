@@ -8,7 +8,7 @@
     <div class="space-y-4">
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <AppSelectSearch
-          v-model="idCliente"
+          v-model="clienteId"
           v-model:search="clienteBuscar"
           label="Cliente"
           placeholder="Selecciona cliente"
@@ -20,14 +20,14 @@
           :disabled="Boolean(props.idCliente)"
         />
         <AppSelect
-          v-model="idPrestamo"
+          v-model="prestamoId"
           label="Préstamo (opcional)"
           placeholder="Sin préstamo"
           :options="prestamoOptions"
-          :disabled="!idCliente || prestamosQuery.isFetching.value"
+          :disabled="!clienteId || prestamosQuery.isFetching.value"
         />
         <AppSelectSearch
-          v-model="idProducto"
+          v-model="productoId"
           v-model:search="productoBuscar"
           label="Producto / tipo envase"
           placeholder="Selecciona producto (no servicios)"
@@ -131,9 +131,9 @@ const {
   idTipoOperacionVentaInterna,
 } = usePosComprobanteForm()
 
-const idCliente = ref<number | ''>('')
-const idPrestamo = ref<number | ''>('')
-const idProducto = ref<number | ''>('')
+const clienteId = ref<number | ''>('')
+const prestamoId = ref<number | ''>('')
+const productoId = ref<number | ''>('')
 const monto = ref(0)
 const origenMonto = ref('')
 const idMedioPago = ref<string | number>('')
@@ -194,8 +194,8 @@ const productoOptions = computed(() =>
 
 const puedeCobrar = computed(
   () =>
-    Boolean(idCliente.value) &&
-    Boolean(idProducto.value) &&
+    Boolean(clienteId.value) &&
+    Boolean(productoId.value) &&
     Boolean(idTipoComprobante.value) &&
     Number(monto.value) > 0 &&
     Boolean(idMedioPago.value),
@@ -215,17 +215,17 @@ watch(productoBuscar, (term) => {
   }
 })
 
-watch(idCliente, (value) => {
+watch(clienteId, (value) => {
   prestamosFilters.value = {
     ...prestamosFilters.value,
     idCliente: value ? Number(value) : undefined,
   }
   if (!value) {
-    idPrestamo.value = ''
+    prestamoId.value = ''
   }
 })
 
-watch(idProducto, async (value) => {
+watch(productoId, async (value) => {
   if (!value) {
     origenMonto.value = ''
     return
@@ -263,9 +263,9 @@ watch(
   () => [open.value, props.idCliente, props.idPrestamo, props.idProducto] as const,
   ([isOpen]) => {
     if (!isOpen) return
-    idCliente.value = props.idCliente ?? ''
-    idPrestamo.value = props.idPrestamo ?? ''
-    idProducto.value = props.idProducto ?? ''
+    clienteId.value = props.idCliente ?? ''
+    prestamoId.value = props.idPrestamo ?? ''
+    productoId.value = props.idProducto ?? ''
     monto.value = 0
     origenMonto.value = ''
     idMedioPago.value = ''
@@ -287,7 +287,7 @@ async function confirmar() {
   }
 
   const producto = (productosQuery.data.value?.data ?? []).find(
-    (p) => p.id === idProducto.value,
+    (p) => p.id === productoId.value,
   )
   if (!producto) {
     toastWarning('Selecciona un producto válido')
@@ -301,7 +301,7 @@ async function confirmar() {
       idTipoComprobante: Number(idTipoComprobante.value),
       serie: serie.value.trim(),
       fecha: fecha.value,
-      idCliente: Number(idCliente.value),
+      idCliente: Number(clienteId.value),
       detalles: [
         {
           idProducto: producto.id,
@@ -321,10 +321,10 @@ async function confirmar() {
 
     await createGarantiaMutation.mutateAsync({
       idUsuarioAuditoria: userId,
-      idCliente: Number(idCliente.value),
+      idCliente: Number(clienteId.value),
       monto: Number(monto.value),
       idComprobante: comprobante.id,
-      idPrestamo: idPrestamo.value ? Number(idPrestamo.value) : undefined,
+      idPrestamo: prestamoId.value ? Number(prestamoId.value) : undefined,
       idProducto: producto.id,
       cantidadVenta: 1,
       idUnidadMedida: producto.id_unidad_medida ?? undefined,

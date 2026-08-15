@@ -74,20 +74,24 @@
             <button
               v-if="canExportar"
               type="button"
-              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] lg:h-auto lg:w-auto lg:px-3 lg:py-2"
+              title="Exportar"
+              aria-label="Exportar"
               @click="exportarModalOpen = true"
             >
               <IconExcel class="h-[18px] w-[18px] shrink-0" />
-              Exportar
+              <span class="hidden lg:inline">Exportar</span>
             </button>
             <button
               v-if="canCrear"
               type="button"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              class="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 lg:h-auto lg:w-auto lg:px-4 lg:py-2.5"
+              :title="ctaCrearLabel"
+              :aria-label="ctaCrearLabel"
               @click="crearModalOpen = true"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              {{ ctaCrearLabel }}
+              <span class="hidden lg:inline">{{ ctaCrearLabel }}</span>
             </button>
           </template>
         </AppListToolbar>
@@ -145,7 +149,7 @@
           <AppIcon :name="ICONS.eye" :size="16" />
         </button>
         <button
-          v-if="canRegistrarPago && !row.es_plan && row.saldo > 0"
+          v-if="canRegistrarPago && !row.es_plan && tieneSaldoPendiente(row.saldo)"
           type="button"
           :title="ctaPagoLabel"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
@@ -261,7 +265,7 @@ import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.i
 import { ICONS } from '@/shared/constants/icons'
 import { TipoClienteIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { formatCurrency, formatNumber } from '@/shared/utils/currency'
+import { formatCurrency, formatNumber, tieneSaldoPendiente } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type {

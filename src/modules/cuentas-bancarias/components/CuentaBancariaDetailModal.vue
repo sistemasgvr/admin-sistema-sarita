@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import { useCuentaBancariaDetailQuery } from '@/modules/cuentas-bancarias/composables/useCuentaBancariaDetailQuery'
 import type { CuentaBancaria } from '@/modules/cuentas-bancarias/interfaces/cuenta-bancaria.interface'
 import { AppBadge, AppModal } from '@/shared/components'
@@ -141,13 +141,4 @@ const sections = computed<DetailItem[]>(() => {
     { label: 'Es principal', value: c.es_principal ? 'Sí' : 'No' },
   ]
 })
-
-watch(
-  () => props.cuenta,
-  () => {
-    if (open.value && props.cuenta) {
-      detailQuery
-    }
-  },
-)
 </script>

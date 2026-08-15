@@ -92,6 +92,12 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   NO_RECOGIDO: 'error',
   EXTENDIDO: 'warning',
 
+  // EstadoRutaPueblo
+  ABIERTA: 'primary',
+  CERRADA: 'neutral',
+  CANCELADA: 'error',
+  RETORNADO: 'success',
+
   // Estados genéricos de operaciones
   ACTIVO: 'success',
   CERRADO: 'neutral',

@@ -3,7 +3,7 @@
     <DetailSectionCard
       title="¿Qué necesita el cliente?"
       :icon="ICONS.cylinder"
-      help="Elige el escenario. El formulario se adapta: no hace falta cambiar entre Recarga, Medicinal e Industrial."
+          help="Elige una opción. El formulario cambia según lo que necesite el cliente."
     >
       <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
         <button
@@ -50,7 +50,7 @@
       <DetailSectionCard
         title="Préstamo industrial"
         :icon="ICONS.building2"
-        help="El cilindro sale en comodato (sin tarifa de alquiler). Cobras el gas y, si aplica, una garantía reembolsable."
+        help="Le damos un cilindro de la empresa (sin alquiler). Cobras el gas y, si aplica, una garantía que se devuelve."
       >
         <ol class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
           <li class="flex gap-3">
@@ -83,7 +83,7 @@
             </span>
             <span>
               <span class="font-medium text-gray-800 dark:text-white/90">Cobrar garantía</span>
-              — depósito reembolsable al devolver el cilindro.
+              — depósito que se devuelve cuando traiga el cilindro.
               <span
                 v-if="lastPrestamoId"
                 class="mt-1 block text-xs text-brand-600 dark:text-brand-400"
@@ -204,22 +204,22 @@ const escenarios = computed(() => {
   }> = [
     {
       key: 'solo_gas',
-      label: 'Solo gas',
-      descripcion: 'Ya tiene el cilindro (propio o prestado) y solo compra el contenido.',
+      label: 'Solo recargar',
+      descripcion: 'El cliente ya tiene el cilindro. Solo cobramos el gas.',
       icon: ICONS.cylinder,
       visible: canRecarga.value,
     },
     {
       key: 'prestamo',
-      label: 'Préstamo + gas',
-      descripcion: 'Le entregamos un cilindro de la empresa (comodato) y cobramos gas/garantía.',
+      label: 'Prestar cilindro',
+      descripcion: 'Le damos un cilindro de la empresa. Cobramos gas y, si aplica, garantía.',
       icon: ICONS.building2,
       visible: canPrestamo.value || canRecarga.value || canListPrestamos.value,
     },
     {
       key: 'kit',
       label: 'Kit medicinal',
-      descripcion: 'Alquila regulador, entrega cilindro medicinal y puede sumar descartables/flete.',
+      descripcion: 'Regulador en alquiler + cilindro medicinal. Puedes sumar extras.',
       icon: ICONS.boxes,
       visible: canKit.value,
     },

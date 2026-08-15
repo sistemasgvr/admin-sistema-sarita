@@ -59,8 +59,8 @@ export function lineasKitConProducto(lineas: KitMedicinalLinea[]): KitMedicinalL
 
 export function addDaysIso(fechaIso: string, days: number): string {
   const base = fechaIso.includes('T') ? fechaIso.slice(0, 10) : fechaIso
-  const date = new Date(`${base}T12:00:00`)
-  if (Number.isNaN(date.getTime())) return base
-  date.setDate(date.getDate() + days)
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(base)
+  if (!match) return base
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days))
   return date.toISOString().slice(0, 10)
 }

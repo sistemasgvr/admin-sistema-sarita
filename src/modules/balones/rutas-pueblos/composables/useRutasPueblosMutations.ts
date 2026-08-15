@@ -37,7 +37,7 @@ export function useUpdateRutaPuebloMutation() {
       rutasPueblosService.actualizar(id, payload),
     onSuccess: (_d, v) => {
       invalidate(queryClient, v.id)
-      toastSuccess('Ruta actualizada')
+      toastSuccess(v.payload.estadoNombre === 'CANCELADA' ? 'Ruta cancelada' : 'Ruta actualizada')
     },
     onError: (error) => toastApiError(error, 'No se pudo actualizar la ruta'),
   })

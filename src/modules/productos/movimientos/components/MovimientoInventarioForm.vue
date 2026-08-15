@@ -16,32 +16,27 @@
     >
       <FormCardsLayout>
         <DetailSectionCard
-          v-if="mode === 'edit' && movimiento"
-          title="Movimiento"
+          title="Datos"
           :icon="ICONS.arrowLeftRight"
-          :full-width="true"
-          help="Almacén, producto, tipo y cantidad no se modifican. Solo fecha, documento de referencia y glosa."
+          :help="cardHelp"
         >
-          <div class="text-sm">
+          <div
+            v-if="mode === 'edit' && movimiento"
+            class="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm dark:border-gray-800 dark:bg-white/[0.03] sm:grid-cols-3"
+          >
             <p class="font-medium text-gray-800 dark:text-white/90">
-              {{ formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) }} —
-              {{ formatCantidad(movimiento.cantidad) }}
+              {{ formatListaOpcionLabel(movimiento.nombre_tipo_movimiento) }}
+              · {{ formatCantidad(movimiento.cantidad) }}
             </p>
-            <p class="mt-1 text-gray-600 dark:text-gray-400">
+            <p class="text-gray-600 dark:text-gray-400">
               {{ movimiento.codigo_producto }} — {{ movimiento.nombre_producto }}
             </p>
             <p class="text-gray-500 dark:text-gray-400">
               {{ movimiento.nombre_almacen }}
             </p>
           </div>
-        </DetailSectionCard>
 
-        <DetailSectionCard
-          title="Datos del movimiento"
-          :icon="ICONS.arrowLeftRight"
-          help="Ingresos, salidas o ajustes de accesorios en almacén. No aplica a gases."
-        >
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AppInput
               v-model="fecha"
               label="Fecha"
@@ -55,9 +50,30 @@
             <template v-if="mode === 'create'">
               <AlmacenSelectField
                 v-model="idAlmacen"
+                :label="esTraslado ? 'Almacén origen' : 'Almacén'"
                 required
                 :disabled="isSubmitting"
                 :error="errors.idAlmacen"
+              />
+
+              <AlmacenSelectField
+                v-if="esTraslado"
+                v-model="idAlmacenDestino"
+                label="Almacén destino"
+                required
+                :disabled="isSubmitting"
+                :error="errors.idAlmacenDestino"
+              />
+
+              <AppSelect
+                v-model="idTipoMovimiento"
+                label="Tipo de movimiento"
+                placeholder="Selecciona tipo"
+                required
+                v-bind="idTipoMovimientoAttrs"
+                :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
+                :error="errors.idTipoMovimiento"
+                :options="tipoMovimientoOptions"
               />
 
               <ProductoSelectField
@@ -72,18 +88,7 @@
                 class="sm:col-span-2"
                 :disabled="isSubmitting"
                 :error="errors.idProducto"
-                hint="Solo accesorios. El gas se controla en Balones / Stock de gas."
-              />
-
-              <AppSelect
-                v-model="idTipoMovimiento"
-                label="Tipo de movimiento"
-                placeholder="Selecciona tipo"
-                required
-                v-bind="idTipoMovimientoAttrs"
-                :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
-                :error="errors.idTipoMovimiento"
-                :options="tipoMovimientoOptions"
+                help="Solo accesorios. El gas se controla en Balones / Stock de gas."
               />
 
               <AppInput
@@ -99,20 +104,13 @@
                 :hint="hintCantidad"
               />
             </template>
-          </div>
-        </DetailSectionCard>
 
-        <DetailSectionCard
-          title="Referencia"
-          :icon="ICONS.clipboardList"
-          help="Opcional. Vincula el movimiento a un documento de origen si aplica."
-        >
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppSelect
               v-model="idTipoDocumentoRef"
               label="Documento origen"
               placeholder="Opcional"
               optional
+              :help="helpDocumentoOrigen"
               v-bind="idTipoDocumentoRefAttrs"
               :disabled="isSubmitting || tiposDocumentoQuery.isFetching.value"
               :options="tipoDocumentoOptions"
@@ -129,18 +127,16 @@
               v-bind="idDocumentoRefAttrs"
               :disabled="isSubmitting"
             />
-          </div>
-        </DetailSectionCard>
 
-        <DetailSectionCard title="Glosa" :icon="ICONS.messageSquare" :full-width="true">
-          <AppInput
-            v-model="glosa"
-            label="Glosa"
-            placeholder="Detalle del movimiento"
-            optional
-            v-bind="glosaAttrs"
-            :disabled="isSubmitting"
-          />
+            <AppInput
+              v-model="glosa"
+              label="Glosa"
+              placeholder="Detalle del movimiento"
+              optional
+              v-bind="glosaAttrs"
+              :disabled="isSubmitting"
+            />
+          </div>
         </DetailSectionCard>
       </FormCardsLayout>
 
@@ -277,11 +273,42 @@ const hintCantidad = computed(() =>
     : undefined,
 )
 
+const cardHelp = computed(() =>
+  props.mode === 'edit'
+    ? 'Almacén, producto, tipo y cantidad no se modifican. Solo fecha, documento de referencia y glosa.'
+    : 'Ingresos, salidas, traslados o ajustes de accesorios. Un traslado resta origen y suma destino.',
+)
+
+const helpDocumentoOrigen =
+  'Opcional. Vincula el movimiento a un documento de origen si aplica.'
+
+function esTipoTraslado(idTipo: unknown) {
+  const id = Number(idTipo)
+  if (!Number.isFinite(id) || id <= 0) return false
+  const opcion = tiposMovimientoQuery.data.value?.find((item) => item.id === id)
+  return String(opcion?.nombre ?? '').toUpperCase() === 'TRASLADO'
+}
+
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       fecha: requiredString('La fecha'),
       idAlmacen: requiredSelect('El almacén'),
+      idAlmacenDestino: yup.mixed<string | number>().when('idTipoMovimiento', {
+        is: (idTipo: unknown) => esTipoTraslado(idTipo),
+        then: (schema) =>
+          schema
+            .transform((value) => (value === '' ? undefined : value))
+            .required('El almacén de destino es obligatorio')
+            .test(
+              'distinto',
+              'El destino debe ser distinto al origen',
+              function (value) {
+                return Number(value) !== Number(this.parent.idAlmacen)
+              },
+            ),
+        otherwise: (schema) => schema.optional(),
+      }),
       idProducto: requiredSelect('El producto'),
       idTipoMovimiento: requiredSelect('El tipo de movimiento'),
       cantidad: yup
@@ -314,6 +341,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   initialValues: {
     fecha: today(),
     idAlmacen: '' as string | number,
+    idAlmacenDestino: '' as string | number,
     idProducto: '' as string | number,
     idTipoMovimiento: '' as string | number,
     cantidad: undefined as number | undefined,
@@ -325,12 +353,15 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 
 const [fecha, fechaAttrs] = defineField('fecha')
 const [idAlmacen] = defineField('idAlmacen')
+const [idAlmacenDestino] = defineField('idAlmacenDestino')
 const [idProducto] = defineField('idProducto')
 const [idTipoMovimiento, idTipoMovimientoAttrs] = defineField('idTipoMovimiento')
 const [cantidad, cantidadAttrs] = defineField('cantidad')
 const [idTipoDocumentoRef, idTipoDocumentoRefAttrs] = defineField('idTipoDocumentoRef')
 const [idDocumentoRef, idDocumentoRefAttrs] = defineField('idDocumentoRef')
 const [glosa, glosaAttrs] = defineField('glosa')
+
+const esTraslado = computed(() => esTipoTraslado(idTipoMovimiento.value))
 
 watch(
   () => [props.active, props.mode, idProducto.value] as const,
@@ -360,6 +391,7 @@ const syncFormValues = () => {
       fecha: data?.fecha?.slice(0, 10) ?? today(),
       // Hidden in edit; keep values so requiredSelect still validates on save.
       idAlmacen: data?.id_almacen ?? '',
+      idAlmacenDestino: data?.id_almacen_destino ?? '',
       idProducto: data?.id_producto ?? '',
       idTipoMovimiento: data?.id_tipo_movimiento ?? '',
       cantidad: data?.cantidad ?? 1,
@@ -381,6 +413,7 @@ watch(
         values: {
           fecha: today(),
           idAlmacen: props.initialIdAlmacen ?? '',
+          idAlmacenDestino: '',
           idProducto: props.initialIdProducto ?? '',
           idTipoMovimiento: '',
           cantidad: undefined,
@@ -416,6 +449,9 @@ const onSubmit = handleSubmit(async (values) => {
       await createMutation.mutateAsync({
         fecha: values.fecha,
         idAlmacen: Number(values.idAlmacen),
+        idAlmacenDestino: esTraslado.value
+          ? Number(values.idAlmacenDestino)
+          : undefined,
         idProducto: Number(values.idProducto),
         idTipoMovimiento: Number(values.idTipoMovimiento),
         cantidad: Number(values.cantidad),

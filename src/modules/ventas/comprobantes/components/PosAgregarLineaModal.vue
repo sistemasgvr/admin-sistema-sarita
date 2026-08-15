@@ -32,10 +32,11 @@
           v-model="idBalon"
           mode="cliente"
           :id-cliente="idCliente"
-          label="Balón del cliente"
-          placeholder="Prestado o propio (opcional)"
-          register-label="Registrar balón propio del cliente"
-          empty-text="Sin balones. Registra el del cliente si aplica."
+          :extra-filters="extraFiltersProductoGas"
+          label="Cilindro del cliente"
+          placeholder="Opcional: código o serie"
+          register-label="Registrar cilindro del cliente"
+          empty-text="Sin cilindros. Regístralo si aplica."
         />
         <AppInput
           v-model="capacidad"
@@ -46,13 +47,14 @@
           placeholder="Opcional"
         />
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          El stock de gas se descuenta del almacén. El balón solo vincula la recarga al cilindro.
+          El gas se descuenta del almacén. El cilindro sirve para saber cuál recargaste.
         </p>
       </template>
 
       <template v-else-if="esAlquilable">
-        <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
-          Alquiler de regulador/accesorio. El cilindro, si se entrega, queda en préstamo.
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Alquiler de regulador o accesorio. El cilindro, si se entrega, se presta (el cliente lo
+          devuelve).
         </p>
         <PosBalonSelectField
           v-model="idBalon"
@@ -113,6 +115,7 @@ import { AppInput, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { hoyIsoLima } from '@/shared/utils/date'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 
 export interface PosLineaConfirmada {
@@ -155,6 +158,9 @@ const fechaFin = ref('')
 const observacion = ref('')
 
 const esGas = computed(() => Boolean(props.producto?.es_gas))
+const extraFiltersProductoGas = computed(() =>
+  props.producto?.id ? { idProductoGas: props.producto.id } : undefined,
+)
 const esAlquilable = computed(() => Boolean(props.producto?.es_alquilable))
 const modoEdicion = computed(() => Boolean(props.linea))
 
@@ -166,13 +172,13 @@ const titulo = computed(() => {
 
 const ayuda = computed(() => {
   if (esGas.value) {
-    return 'Configura cantidad de gas y, si aplica, el balón a recargar.'
+    return 'Indica cuánto gas cobras y, si aplica, el cilindro del cliente.'
   }
   if (esAlquilable.value) {
-    return 'Alquiler de regulador/accesorio y periodo. Cilindro opcional = préstamo.'
+    return 'Alquiler del accesorio. Si entregas un cilindro, el cliente lo devuelve después.'
   }
   if (props.producto?.es_servicio) {
-    return 'Servicio sin stock de almacén. Ajusta cantidad y precio.'
+    return 'Servicio. Ajusta cantidad y precio.'
   }
   return 'Ajusta cantidad y precio antes de agregar.'
 })
@@ -199,7 +205,7 @@ watch(
       precioUnitario.value = Number(linea.precioUnitario || 0)
       idBalon.value = linea.idBalon ?? ''
       capacidad.value = linea.capacidad ?? ''
-      fechaInicio.value = linea.fechaInicioAlquiler || new Date().toISOString().slice(0, 10)
+      fechaInicio.value = linea.fechaInicioAlquiler || hoyIsoLima()
       fechaFin.value =
         linea.fechaFinAlquiler || addDaysIso(fechaInicio.value, 14)
       observacion.value = linea.observacionLinea || ''
@@ -210,7 +216,7 @@ watch(
     precioUnitario.value = Number(producto.precio ?? 0)
     idBalon.value = ''
     capacidad.value = ''
-    fechaInicio.value = new Date().toISOString().slice(0, 10)
+    fechaInicio.value = hoyIsoLima()
     fechaFin.value = addDaysIso(fechaInicio.value, 14)
     observacion.value = ''
   },

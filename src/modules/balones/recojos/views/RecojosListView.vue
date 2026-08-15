@@ -8,7 +8,7 @@
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Cliente, préstamo u observación..."
+          search-placeholder="Cliente, préstamo, alquiler u observación..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -47,11 +47,19 @@
         <ListaOpcionBadge :value="value as string" />
       </template>
 
-      <template #cell-total_detalles="{ value }">
+      <template #cell-tipo_origen="{ row }">
+        <ListaOpcionBadge :value="etiquetaTipo(row)" />
+      </template>
+
+      <template #cell-origen_numero="{ row }">
+        {{ numeroOrigen(row) }}
+      </template>
+
+      <template #cell-items="{ row }">
         <span
           class="inline-flex min-w-8 items-center justify-center rounded-full bg-gray-100 px-2 py-0.5 text-sm font-medium text-gray-700 dark:bg-white/10 dark:text-gray-300"
         >
-          {{ value ?? 0 }}
+          {{ etiquetaItems(row) }}
         </span>
       </template>
 
@@ -99,6 +107,39 @@
       @saved="onSaved"
     />
     <RecojoDetailModal v-model="detailOpen" :recojo-id="recojoActivoId" />
+
+    <AppModal
+      v-model="cancelModalOpen"
+      title="Cancelar visita"
+      subtitle="La visita quedará cancelada."
+      size="sm"
+    >
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        ¿Confirmas cancelar la visita de
+        <span class="font-medium text-gray-800 dark:text-white/90">
+          {{ recojoACancelar?.nombre_cliente || `#${recojoACancelar?.id}` }}
+        </span>
+        ?
+      </p>
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
+          :disabled="updateMutation.isPending.value"
+          @click="cancelModalOpen = false"
+        >
+          Volver
+        </button>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-70 sm:w-auto"
+          :disabled="updateMutation.isPending.value"
+          @click="confirmCancel"
+        >
+          {{ updateMutation.isPending.value ? 'Cancelando...' : 'Cancelar visita' }}
+        </button>
+      </template>
+    </AppModal>
 
     <AppModal
       v-model="deleteModalOpen"
@@ -174,7 +215,7 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
-const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 const authStore = useAuthStore()
 const breadcrumbItems = balonesBreadcrumbItems('Recojos')
 
@@ -202,6 +243,8 @@ const detailOpen = ref(false)
 const recojoActivoId = ref<number | null>(null)
 const deleteModalOpen = ref(false)
 const recojoAEliminar = ref<Recojo | null>(null)
+const cancelModalOpen = ref(false)
+const recojoACancelar = ref<Recojo | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_VER))
@@ -215,10 +258,11 @@ const rows = computed(() => recojosQuery.data.value?.data ?? [])
 
 const columns: TableColumn[] = [
   { key: 'cliente', label: 'Cliente' },
-  { key: 'numero_prestamo', label: 'Préstamo' },
+  { key: 'tipo_origen', label: 'Tipo' },
+  { key: 'origen_numero', label: 'N° préstamo / alquiler' },
   { key: 'programado', label: 'Programado' },
   { key: 'nombre_estado', label: 'Estado' },
-  { key: 'total_detalles', label: 'Cilindros' },
+  { key: 'items', label: 'Ítems' },
 ]
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
@@ -285,6 +329,37 @@ watch(buscar, () => {
 
 watch([pagina, limite], () => syncFilters())
 
+function etiquetaTipo(row: Recojo) {
+  const t = (row.tipo_origen ?? (row.id_alquiler ? 'ALQUILER' : 'PRESTAMO')).toUpperCase()
+  if (t === 'ALQUILER') return 'Alquiler'
+  if (t === 'MIXTO') return 'Mixto'
+  return 'Préstamo'
+}
+
+function numeroOrigen(row: Recojo) {
+  const t = (row.tipo_origen ?? '').toUpperCase()
+  if (t === 'ALQUILER') {
+    return row.numero_alquiler || (row.id_alquiler ? `#${row.id_alquiler}` : '—')
+  }
+  if (t === 'MIXTO') {
+    return [row.numero_prestamo, row.numero_alquiler].filter(Boolean).join(' · ') || '—'
+  }
+  return row.numero_prestamo || (row.id_prestamo ? `#${row.id_prestamo}` : '—')
+}
+
+function etiquetaItems(row: Recojo) {
+  const n = Number(row.total_detalles ?? 0)
+  const acc = Boolean(row.tiene_regulador || row.es_solo_regulador)
+  if (n === 0 && acc) return 'Accesorio'
+  if (n > 0 && acc) return `${n} + acc.`
+  return String(n)
+}
+
+function puedeEliminar(row: Recojo) {
+  const estado = (row.nombre_estado ?? '').toUpperCase()
+  return estado === 'PROGRAMADO' || estado === 'CANCELADO'
+}
+
 function esEditable(row: Recojo) {
   const estado = (row.nombre_estado ?? '').toUpperCase()
   return estado === 'PROGRAMADO' || estado === 'EN_RUTA'
@@ -331,13 +406,6 @@ function actionItemsForRow(row: Recojo): ActionMenuItem[] {
   const editable = esEditable(row)
   return [
     {
-      key: 'iniciar_ruta',
-      label: 'Iniciar ruta',
-      icon: ICONS.mapPin,
-      disabled: busy,
-      hidden: !puedeIniciarRuta(row),
-    },
-    {
       key: 'resultado',
       label: 'Registrar resultado',
       icon: ICONS.clipboardCheck,
@@ -365,7 +433,7 @@ function actionItemsForRow(row: Recojo): ActionMenuItem[] {
       icon: ICONS.trash,
       danger: true,
       disabled: busy,
-      hidden: !canDelete.value,
+      hidden: !canDelete.value || !puedeEliminar(row),
     },
   ]
 }
@@ -388,15 +456,29 @@ async function onActionSelect(key: string, row: Recojo) {
     return
   }
   if (key === 'cancelar' && userId) {
-    await updateMutation.mutateAsync({
-      id: row.id,
-      payload: { idUsuarioAuditoria: userId, estadoNombre: 'CANCELADO' },
-    })
+    recojoACancelar.value = row
+    cancelModalOpen.value = true
     return
   }
   if (key === 'delete') {
     recojoAEliminar.value = row
     deleteModalOpen.value = true
+  }
+}
+
+async function confirmCancel() {
+  const row = recojoACancelar.value
+  const userId = authStore.user?.id
+  if (!row || !userId) return
+  try {
+    await updateMutation.mutateAsync({
+      id: row.id,
+      payload: { idUsuarioAuditoria: userId, estadoNombre: 'CANCELADO' },
+    })
+    cancelModalOpen.value = false
+    recojoACancelar.value = null
+  } catch {
+    // toast en mutation
   }
 }
 

@@ -5,7 +5,7 @@
         <DetailSectionCard
           title="Comprobante y cliente"
           :icon="ICONS.receipt"
-          help="Recarga de cilindro prestado al cliente o del cilindro propio que trae el cliente. Se genera boleta o factura."
+          help="El cliente trae su cilindro (propio o prestado). Se cobra el gas."
         >
           <template #actions>
             <button
@@ -55,7 +55,7 @@
             />
             <AlmacenSelectField
               v-model="idAlmacen"
-              label="Almacén (stock gas)"
+              label="Almacén"
               searchable
               required
               :disabled="almacenesQuery.isLoading.value"
@@ -68,10 +68,11 @@
               v-model="idBalon"
               mode="cliente"
               :id-cliente="idCliente"
-              label="Balón del cliente"
-              placeholder="Prestado o propio del cliente"
-              register-label="Registrar balón propio del cliente"
-              empty-text="Sin balones prestados ni propios. Registra el del cliente."
+              :extra-filters="extraFiltersProductoGas"
+              label="Cilindro del cliente"
+              placeholder="Buscar código o serie"
+              register-label="Registrar cilindro del cliente"
+              empty-text="No hay cilindros de este cliente. Regístralo con el +."
               required
               @selected="onBalonClienteSelected"
             />
@@ -81,7 +82,7 @@
         <DetailSectionCard
           title="Datos de recarga"
           :icon="ICONS.cylinder"
-          help="Al elegir el balón del cliente se completa cantidad y capacidad (m³). El origen empresa debe tener disponible al menos esa capacidad."
+          help="Al elegir el cilindro se completa la cantidad (m³). El gas se descuenta de los cilindros llenos de la empresa."
         >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <AppSelectSearch
@@ -98,41 +99,39 @@
             />
             <AppInput
               v-model="cantidad"
-              label="Cantidad / m³"
+              label="Cantidad de gas (m³)"
               type="number"
               :min="NUMBER_MIN.measurePositive"
               :step="NUMBER_STEP.measure"
               :disabled="cantidadBloqueadaPorBalon"
               :hint="
                 cantidadBloqueadaPorBalon
-                  ? `${capacidadBalonSeleccionado} m³ — se toma de la capacidad del balón`
-                  : 'Se completa al elegir el balón del cliente'
+                  ? `${capacidadBalonSeleccionado} m³ — se toma del cilindro elegido`
+                  : 'Se completa al elegir el cilindro'
               "
             />
             <AppInput
               v-model="capacidad"
-              label="Capacidad cilindro"
+              label="Capacidad del cilindro"
               type="number"
               :min="NUMBER_MIN.measure"
               :step="NUMBER_STEP.measure"
-              placeholder="Se completa al elegir el balón"
+              placeholder="Se completa al elegir el cilindro"
               :disabled="cantidadBloqueadaPorBalon"
-              hint="El gas puede salir de varios balones empresa (FIFO)."
             />
             <AppInput
               v-model="precioUnitario"
-              label="Precio unitario"
+              label="Precio por m³"
               type="number"
               :min="NUMBER_MIN.money"
               :step="NUMBER_STEP.money"
             />
             <AppSelect
               v-model="idBalonPreferido"
-              label="Priorizar balón empresa"
-              placeholder="Automático (FIFO)"
+              label="Cilindro de la empresa (opcional)"
+              placeholder="Automático (el más antiguo)"
               :options="origenOptions"
               :disabled="cargandoOrigenes || !idProducto"
-              hint="Opcional. Si el primero no alcanza, se completa con el siguiente."
             />
           </div>
 
@@ -146,13 +145,14 @@
             v-else-if="cargandoOrigenes"
             class="mt-3 text-xs text-gray-500 dark:text-gray-400"
           >
-            Calculando orígenes...
+            Buscando de dónde salir el gas...
           </p>
           <p
             v-else-if="sugerenciaOrigenLabel"
-            class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"
+            class="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
           >
-            Se tomará de (FIFO): {{ sugerenciaOrigenLabel }}
+            El gas se descontará de:
+            <span class="font-semibold">{{ sugerenciaOrigenLabel }}</span>
           </p>
 
           <div class="mt-5">
@@ -281,6 +281,9 @@ const cargandoOrigenes = ref(false)
 const errorOrigenes = ref('')
 const sugerenciaOrigenLabel = ref('')
 const idProducto = ref<number | ''>('')
+const extraFiltersProductoGas = computed(() =>
+  idProducto.value ? { idProductoGas: Number(idProducto.value) } : undefined,
+)
 const gasBuscar = ref('')
 const cantidad = ref(1)
 const capacidad = ref<number | ''>('')

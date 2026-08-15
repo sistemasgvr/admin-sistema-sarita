@@ -1,5 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { prestamosQueryKeys } from '@/modules/balones/prestamos/constants/prestamosQueryKeys'
+import { prestamosAntiguedadQueryKeys } from '@/modules/balones/prestamos/constants/prestamosAntiguedadQueryKeys'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
 import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
 import type {
   CreatePrestamoPayload,
@@ -31,6 +34,9 @@ export function useUpdatePrestamoMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockGasQueryKeys.all })
       toastSuccess('Préstamo actualizado correctamente')
     },
     onError: (error) => {

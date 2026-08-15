@@ -1,12 +1,13 @@
 <template>
   <div
-    class="mb-4 grid gap-3"
-    :class="gridClass"
+    class="grid gap-3"
+    :class="[gridClass, stretch ? 'xl:h-full xl:auto-rows-fr' : 'mb-4']"
   >
     <div
       v-for="card in cards"
       :key="card.key ?? card.label"
       class="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
+      :class="stretch ? 'xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:justify-center' : ''"
     >
       <div class="flex items-start justify-between gap-2">
         <p class="text-theme-xs text-gray-500 dark:text-gray-400">
@@ -51,9 +52,11 @@ const props = withDefaults(
   defineProps<{
     cards: SummaryCardItem[]
     columns?: 2 | 3 | 4 | 5
+    stretch?: boolean
   }>(),
   {
     columns: 4,
+    stretch: false,
   },
 )
 
@@ -65,7 +68,7 @@ const gridClass = computed(() => {
     case 2:
       return 'sm:grid-cols-2'
     case 3:
-      return 'sm:grid-cols-2 xl:grid-cols-3'
+      return 'grid-cols-2 xl:grid-cols-3'
     case 5:
       return 'sm:grid-cols-2 xl:grid-cols-5'
     case 4:

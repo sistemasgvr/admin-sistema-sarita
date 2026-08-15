@@ -18,6 +18,9 @@ export interface BajaCliente {
   nombre_estado_aprobacion: EstadoAprobacionBaja
   id_usuario_solicita?: number | null
   nombre_usuario_solicita?: string | null
+  id_usuario_autoriza?: number | null
+  nombre_usuario_autoriza?: string | null
+  fecha_autorizacion?: string | null
   fecha_creacion?: string | null
   fecha_modificacion?: string | null
 }

@@ -213,7 +213,7 @@ const events = computed<EventInput[]>(() =>
       }
     }
 
-    let start = toIsoDateTime(fecha, actividad.hora_inicio_estimada)
+    const start = toIsoDateTime(fecha, actividad.hora_inicio_estimada)
     let end = toIsoDateTime(fecha, actividad.hora_fin_estimada)
     // FullCalendar oculta o colapsa si fin <= inicio
     if (end <= start) {

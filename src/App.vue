@@ -3,12 +3,13 @@
     <SidebarProvider>
       <RouterView />
     </SidebarProvider>
-    <AppToaster position="top-right" rich-colors close-button />
+    <AppToaster />
   </ThemeProvider>
 </template>
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
-import ThemeProvider from '@/shared/layouts/ThemeProvider.vue'
 import SidebarProvider from '@/modules/admin/layout/SidebarProvider.vue'
+import ThemeProvider from '@/shared/layouts/ThemeProvider.vue'
+import AppToaster from '@/shared/components/ui/AppToaster.vue'
 </script>

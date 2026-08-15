@@ -141,17 +141,92 @@
         />
       </div>
 
-      <SearchableSelect
-        v-if="esTipo31"
-        v-model="idRemitente"
-        label="Remitente"
-        placeholder="Cliente que remite la mercancía..."
-        required
-        :model-label="remitenteLabel"
-        :disabled="saving"
-        :error="remitenteError"
-        :search-fn="searchClientes"
-      />
+      <div v-if="esTipo31">
+        <div class="mb-1.5 flex items-center justify-between">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Remitente <span class="text-error-500">*</span>
+          </label>
+        </div>
+        <div
+          class="mb-2 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800"
+          role="tablist"
+        >
+          <button
+            v-for="opt in modoDestinatarioOptions"
+            :key="`remitente-${opt.value}`"
+            type="button"
+            role="tab"
+            :aria-selected="modoRemitente === opt.value"
+            :disabled="saving"
+            :class="[
+              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition',
+              modoRemitente === opt.value
+                ? 'bg-white text-brand-600 shadow-theme-xs dark:bg-gray-900 dark:text-brand-400'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+            ]"
+            @click="cambiarModoRemitente(opt.value)"
+          >
+            <AppIcon :name="opt.icon" :size="14" />
+            {{ opt.label }}
+          </button>
+        </div>
+
+        <div v-if="modoRemitente === 'cliente'" class="flex items-end gap-2">
+          <div class="min-w-0 flex-1">
+            <SearchableSelect
+              v-model="idRemitente"
+              placeholder="Cliente que remite la mercancía..."
+              required
+              :model-label="remitenteLabel"
+              :disabled="saving"
+              :error="remitenteError"
+              :search-fn="searchClientes"
+            />
+          </div>
+          <button
+            v-if="canCreateCliente"
+            type="button"
+            title="Nuevo remitente"
+            class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
+            :disabled="saving"
+            @click="abrirClienteModal('remitente')"
+          >
+            <AppIcon :name="ICONS.plus" :size="18" />
+          </button>
+        </div>
+
+        <div v-else class="grid gap-3 sm:grid-cols-2">
+          <ConsultaDocumentoInput
+            v-model="remitenteDocumentoLibre"
+            label="Documento (DNI / RUC)"
+            placeholder="8 u 11 dígitos"
+            help="Primero el DNI o RUC. Si no aparece, escribe el nombre a mano."
+            required
+            :disabled="saving"
+            :error="remitenteLibreErrorDocumento"
+            @dni-encontrado="aplicarConsultaRemitenteDni"
+            @ruc-encontrado="aplicarConsultaRemitenteRuc"
+            @consulta-sin-resultado="permitirNombreRemitenteManual"
+          />
+          <AppInput
+            v-model="remitenteNombreLibre"
+            label="Nombre / razón social"
+            :placeholder="
+              remitenteNombreManual
+                ? 'Escribe el nombre si no apareció'
+                : 'Se completa al consultar el documento'
+            "
+            required
+            :disabled="saving || !remitenteNombreManual"
+            :error="remitenteLibreErrorNombre"
+            :help="
+              remitenteNombreManual
+                ? undefined
+                : 'Consulta el documento. Si no se encuentra, podrás escribirlo aquí.'
+            "
+          />
+        </div>
+      </div>
 
       <div>
         <div class="mb-1.5 flex items-center justify-between">
@@ -201,29 +276,41 @@
             title="Nuevo destinatario"
             class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
             :disabled="saving"
-            @click="clienteModalOpen = true"
+            @click="abrirClienteModal('destinatario')"
           >
             <AppIcon :name="ICONS.plus" :size="18" />
           </button>
         </div>
 
         <div v-else class="grid gap-3 sm:grid-cols-2">
-          <AppInput
-            v-model="destinatarioNombreLibre"
-            label="Nombre / razón social"
-            placeholder="Nombre del destinatario..."
-            required
-            :disabled="saving"
-            :error="destinatarioLibreErrorNombre"
-          />
-          <AppInput
+          <ConsultaDocumentoInput
             v-model="destinatarioDocumentoLibre"
             label="Documento (DNI / RUC)"
             placeholder="8 u 11 dígitos"
+            help="Primero el DNI o RUC. Si no aparece, escribe el nombre a mano."
             required
             :disabled="saving"
             :error="destinatarioLibreErrorDocumento"
-            help="SUNAT exige documento del destinatario aunque no esté en el sistema."
+            @dni-encontrado="aplicarConsultaDestinatarioDni"
+            @ruc-encontrado="aplicarConsultaDestinatarioRuc"
+            @consulta-sin-resultado="permitirNombreDestinatarioManual"
+          />
+          <AppInput
+            v-model="destinatarioNombreLibre"
+            label="Nombre / razón social"
+            :placeholder="
+              destinatarioNombreManual
+                ? 'Escribe el nombre si no apareció'
+                : 'Se completa al consultar el documento'
+            "
+            required
+            :disabled="saving || !destinatarioNombreManual"
+            :error="destinatarioLibreErrorNombre"
+            :help="
+              destinatarioNombreManual
+                ? undefined
+                : 'Consulta el documento. Si no se encuentra, podrás escribirlo aquí.'
+            "
           />
         </div>
       </div>
@@ -231,22 +318,60 @@
       <ClienteFormModal
         v-model="clienteModalOpen"
         mode="create"
-        @saved="onDestinatarioCreado"
+        @saved="onClienteCreado"
       />
 
       <div class="grid gap-4 lg:grid-cols-2">
         <div class="space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-800">
           <div class="flex items-center gap-1.5">
             <p class="text-sm font-medium text-gray-800 dark:text-white/90">Punto de partida</p>
-            <AppHelpTip :text="puntoPartidaHelp" />
+            <AppHelpTip :text="puntoPartidaHelp" :tone="origenHint ? 'warning' : 'default'" />
           </div>
-          <p
-            v-if="sucursalSeleccionadaNombre"
-            class="text-xs text-gray-500 dark:text-gray-400"
+          <div
+            v-if="esTipo31 && modoRemitente === 'cliente'"
+            class="flex items-end gap-2"
           >
-            Origen según sucursal: {{ sucursalSeleccionadaNombre }}
-          </p>
+            <div class="min-w-0 flex-1">
+              <AppSelect
+                v-model="idDireccionOrigen"
+                label="Dirección del remitente"
+                :placeholder="
+                  idRemitente
+                    ? direccionesRemitente.length
+                      ? 'Selecciona una dirección'
+                      : 'Sin direcciones — se usa ubicación o sucursal'
+                    : 'Selecciona remitente primero'
+                "
+                :options="direccionOrigenOptions"
+                :disabled="saving || !idRemitente || cargandoDireccionesOrigen"
+              />
+            </div>
+            <button
+              v-if="canCreateDireccion && idRemitente"
+              type="button"
+              title="Registrar dirección del remitente"
+              class="mb-0 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-500 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:hover:bg-brand-500/20"
+              :disabled="saving || cargandoDireccionesOrigen"
+              @click="direccionOrigenModalOpen = true"
+            >
+              <AppIcon :name="ICONS.plus" :size="18" />
+            </button>
+          </div>
           <div class="flex flex-wrap items-center gap-2">
+            <button
+              v-if="puedeUsarUbicacionRemitente"
+              type="button"
+              class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 text-xs font-medium text-brand-600 transition hover:border-brand-300 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20"
+              :disabled="saving || aplicandoOrigenRemitente || cargandoDireccionesOrigen"
+              @click="usarUbicacionRemitente"
+            >
+              <AppIcon
+                :name="aplicandoOrigenRemitente ? ICONS.loader : ICONS.mapPin"
+                :size="14"
+                :class="aplicandoOrigenRemitente ? 'animate-spin' : ''"
+              />
+              {{ aplicandoOrigenRemitente ? 'Cargando...' : 'Usar ubicación del remitente' }}
+            </button>
             <button
               v-if="idSucursal"
               type="button"
@@ -259,19 +384,25 @@
                 :size="14"
                 :class="aplicandoOrigenSucursal ? 'animate-spin' : ''"
               />
-              {{
-                aplicandoOrigenSucursal
-                  ? 'Cargando...'
-                  : labelUsarDireccionSucursal
-              }}
+              {{ aplicandoOrigenSucursal ? 'Cargando...' : 'Usar dirección de sucursal' }}
             </button>
           </div>
+          <div class="relative space-y-3">
+            <div
+              v-if="aplicandoOrigenSucursal || aplicandoOrigenRemitente || cargandoDireccionesOrigen"
+              class="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70 dark:bg-gray-900/70"
+            >
+              <div class="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs text-gray-600 shadow-theme-md dark:bg-gray-800 dark:text-gray-300">
+                <AppIcon :name="ICONS.loader" :size="16" class="animate-spin text-brand-500" />
+                Actualizando origen...
+              </div>
+            </div>
           <AppInput
             v-model="direccionOrigen"
             label="Dirección origen"
             placeholder="Av. ..."
             required
-            :disabled="saving || aplicandoOrigenSucursal"
+            :disabled="saving || aplicandoOrigenSucursal || aplicandoOrigenRemitente || cargandoDireccionesOrigen"
             :error="errors.direccionOrigen"
           />
           <div class="grid gap-3 sm:grid-cols-3">
@@ -279,31 +410,30 @@
               v-model="idDepartamentoOrigen"
               label="Departamento"
               :options="departamentosOptions"
-              :disabled="saving || aplicandoOrigenSucursal"
+              :disabled="saving || aplicandoOrigenSucursal || aplicandoOrigenRemitente || cargandoDireccionesOrigen"
             />
             <AppSelect
               v-model="idProvinciaOrigen"
               label="Provincia"
               :options="provinciasOrigenOptions"
-              :disabled="saving || !idDepartamentoOrigen || aplicandoOrigenSucursal"
+              :disabled="saving || !idDepartamentoOrigen || aplicandoOrigenSucursal || aplicandoOrigenRemitente || cargandoDireccionesOrigen"
             />
             <AppSelect
               v-model="idDistritoOrigen"
               label="Distrito"
               required
               :options="distritosOrigenOptions"
-              :disabled="saving || !idProvinciaOrigen || aplicandoOrigenSucursal"
+              :disabled="saving || !idProvinciaOrigen || aplicandoOrigenSucursal || aplicandoOrigenRemitente || cargandoDireccionesOrigen"
               :error="distritoOrigenError"
             />
+          </div>
           </div>
         </div>
 
         <div class="space-y-3 rounded-xl border border-gray-200 p-3 dark:border-gray-800">
           <div class="flex items-center gap-1.5">
             <p class="text-sm font-medium text-gray-800 dark:text-white/90">Punto de llegada</p>
-            <AppHelpTip
-              text="Si el destinatario no tiene direcciones, puedes completarlas manualmente o usar la ubicación del cliente."
-            />
+            <AppHelpTip :text="puntoLlegadaHelp" />
           </div>
           <div v-if="modoDestinatario === 'cliente'" class="flex items-end gap-2">
             <div class="min-w-0 flex-1">
@@ -332,12 +462,6 @@
               <AppIcon :name="ICONS.plus" :size="18" />
             </button>
           </div>
-          <p v-else class="text-xs text-gray-500 dark:text-gray-400">
-            Completa la dirección de llegada manualmente (destinatario no registrado).
-          </p>
-          <p v-if="llegadaHint" class="text-xs text-gray-500 dark:text-gray-400">
-            {{ llegadaHint }}
-          </p>
           <button
             v-if="puedeUsarUbicacionCliente"
             type="button"
@@ -403,6 +527,14 @@
         :default-cliente-label="destinatarioLabel"
         :lock-cliente="true"
         @saved="onDireccionDestinatarioCreada"
+      />
+      <DireccionFormModal
+        v-model="direccionOrigenModalOpen"
+        mode="create"
+        :default-cliente-id="idRemitente ? Number(idRemitente) : null"
+        :default-cliente-label="remitenteLabel"
+        :lock-cliente="true"
+        @saved="onDireccionRemitenteCreada"
       />
 
       <div v-if="esPrivado" class="grid gap-3 sm:grid-cols-2">
@@ -511,10 +643,8 @@
       <div class="space-y-3">
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-1.5">
-            <p class="text-sm font-medium text-gray-800 dark:text-white/90">Ítems / envases</p>
-            <AppHelpTip
-              text="Un cilindro por línea (como en la GRE). Busca por código o serie del envase."
-            />
+            <p class="text-sm font-medium text-gray-800 dark:text-white/90">Ítems</p>
+            <AppHelpTip :text="itemsHelpText" />
           </div>
           <button
             type="button"
@@ -534,15 +664,72 @@
           :key="linea.key"
           class="space-y-2 rounded-xl border border-gray-100 p-3 dark:border-gray-800"
         >
-          <div class="grid gap-2 sm:grid-cols-[1fr_88px_100px_40px] sm:items-end">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div
+              v-if="!origenRecargaPlanta"
+              class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800"
+              role="tablist"
+            >
+              <button
+                v-for="opt in tipoLineaGuiaOptions"
+                :key="`${linea.key}-${opt.value}`"
+                type="button"
+                role="tab"
+                :aria-selected="linea.tipo === opt.value"
+                :disabled="saving"
+                :class="[
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition',
+                  linea.tipo === opt.value
+                    ? 'bg-white text-brand-600 shadow-theme-xs dark:bg-gray-900 dark:text-brand-400'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                ]"
+                @click="cambiarTipoLinea(index, opt.value)"
+              >
+                <AppIcon :name="opt.icon" :size="14" />
+                {{ opt.label }}
+              </button>
+            </div>
+            <p v-else class="text-xs text-gray-500 dark:text-gray-400">Cilindro (salida a planta)</p>
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 dark:border-gray-700"
+              :disabled="saving || lineas.length <= 1"
+              title="Quitar"
+              @click="quitarLinea(index)"
+            >
+              <AppIcon :name="ICONS.trash" :size="14" />
+            </button>
+          </div>
+          <div class="grid gap-2 sm:grid-cols-[1fr_88px_100px] sm:items-end">
             <SearchableSelect
+              v-if="linea.tipo === 'cilindro'"
               v-model="linea.idBalon"
               label="Cilindro / serie"
               placeholder="Código o serie del envase..."
+              required
               :model-label="linea.balonLabel"
               :disabled="saving"
               :search-fn="searchBalonesForLine(index)"
               @update:model-value="(v) => onBalonSelected(index, v)"
+            />
+            <SearchableSelect
+              v-else-if="linea.tipo === 'producto'"
+              v-model="linea.idProducto"
+              label="Producto"
+              placeholder="Accesorio o mercadería (sin gases)..."
+              required
+              :model-label="linea.productoLabel"
+              :disabled="saving"
+              :search-fn="searchProductosCatalogo"
+              @update:model-value="(v) => onProductoSelected(index, v)"
+            />
+            <AppInput
+              v-else
+              v-model="linea.glosa"
+              label="Descripción"
+              placeholder="Qué se traslada (ingreso libre)..."
+              required
+              :disabled="saving"
             />
             <AppInput
               v-model="linea.cantidad"
@@ -562,35 +749,27 @@
               :disabled="saving"
               :error="errorPesoLinea(linea)"
               :help="helpPesoLinea(linea)"
-              @update:model-value="onPesoLineaEdit(index)"
-            />
-            <button
-              type="button"
-              class="inline-flex h-11 w-11 shrink-0 items-center justify-center justify-self-center rounded-lg border border-gray-300 text-gray-500 hover:bg-gray-50 dark:border-gray-700"
-              :disabled="saving || lineas.length <= 1"
-              title="Quitar"
-              @click="quitarLinea(index)"
-            >
-              <AppIcon :name="ICONS.trash" :size="14" />
-            </button>
-          </div>
-          <div class="grid gap-2 sm:grid-cols-2">
-            <SearchableSelect
-              v-model="linea.idProducto"
-              label="Producto / gas"
-              placeholder="Se completa al elegir cilindro..."
-              :model-label="linea.productoLabel"
-              :disabled="saving"
-              :search-fn="searchProductos"
-              @update:model-value="(v) => onProductoSelected(index, v)"
-            />
-            <AppInput
-              v-model="linea.glosa"
-              label="Descripción / glosa"
-              placeholder="Ej. Acetileno Estándar GAS ENVASE 434012"
-              :disabled="saving"
+              @update:model-value="onPesoLineaEdit()"
             />
           </div>
+          <SearchableSelect
+            v-if="linea.tipo === 'cilindro' && linea.idBalon && !linea.idProducto"
+            v-model="linea.idProducto"
+            label="Producto / gas"
+            placeholder="Este cilindro no tiene gas asociado..."
+            required
+            :model-label="linea.productoLabel"
+            :disabled="saving"
+            :search-fn="searchProductosGas"
+            @update:model-value="(v) => onProductoSelected(index, v)"
+          />
+          <AppInput
+            v-if="linea.tipo !== 'libre'"
+            v-model="linea.glosa"
+            label="Descripción / glosa"
+            placeholder="Opcional. Se completa al elegir el ítem."
+            :disabled="saving"
+          />
         </div>
       </div>
 
@@ -634,6 +813,11 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
+import ConsultaDocumentoInput from '@/modules/consultas/components/ConsultaDocumentoInput.vue'
+import type {
+  ConsultaDniData,
+  ConsultaRucData,
+} from '@/modules/consultas/interfaces/consulta.interface'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import ChoferFormModal from '@/modules/choferes/components/ChoferFormModal.vue'
 import { choferesService } from '@/modules/choferes/services/choferes.service'
@@ -653,6 +837,7 @@ import { direccionesService } from '@/modules/direcciones/services/direcciones.s
 import type { Direccion } from '@/modules/direcciones/interfaces/direccion.interface'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
 import {
   balonToSelectOption,
 } from '@/modules/ventas/comprobantes/composables/usePosBalonSelect'
@@ -737,7 +922,7 @@ const pageHelpText = computed(() => {
   if (origenRecargaPlanta.value) {
     return 'Salida de cilindros vacíos EMPRESA a planta. Un cilindro por línea (id_balon). Al guardar vuelves a la orden de recarga.'
   }
-  return 'Remitente (09 / T…) o Transportista (31 / V…). Privado usa flota propia. Un cilindro por línea.'
+  return 'Remitente (09 / T…) o Transportista (31 / V…). Privado usa flota propia. Ítems: cilindro (envase), producto (sin gases) o descripción libre.'
 })
 const breadcrumbItems = computed(() => [
   { label: 'Ventas', to: '/admin/ventas' },
@@ -769,24 +954,82 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
 const destinatarioLabel = ref<string | null>(null)
 const remitenteLabel = ref<string | null>(null)
-type ModoDestinatario = 'cliente' | 'libre'
-const modoDestinatario = ref<ModoDestinatario>('cliente')
+type ModoPersonaGuia = 'cliente' | 'libre'
+const modoDestinatario = ref<ModoPersonaGuia>('cliente')
 const destinatarioNombreLibre = ref('')
 const destinatarioDocumentoLibre = ref('')
+const destinatarioNombreManual = ref(false)
 const destinatarioLibreError = ref('')
 const destinatarioLibreErrorNombre = ref('')
 const destinatarioLibreErrorDocumento = ref('')
+const modoRemitente = ref<ModoPersonaGuia>('cliente')
+const remitenteNombreLibre = ref('')
+const remitenteDocumentoLibre = ref('')
+const remitenteNombreManual = ref(false)
+const remitenteLibreErrorNombre = ref('')
+const remitenteLibreErrorDocumento = ref('')
 const modoDestinatarioOptions = [
   { value: 'cliente' as const, label: 'Cliente', icon: ICONS.users },
   { value: 'libre' as const, label: 'Nombre libre', icon: ICONS.pencil },
 ]
+type TipoLineaGuia = 'cilindro' | 'producto' | 'libre'
+const tipoLineaGuiaOptions = [
+  { value: 'cilindro' as const, label: 'Cilindro', icon: ICONS.cylinder },
+  { value: 'producto' as const, label: 'Producto', icon: ICONS.package },
+  { value: 'libre' as const, label: 'Libre', icon: ICONS.pencil },
+]
+const itemsHelpText = computed(() =>
+  origenRecargaPlanta.value
+    ? 'Salida a planta: un cilindro vacío EMPRESA por línea.'
+    : 'Cilindro = envase físico. Producto = accesorios/mercadería (sin gases ni servicios). Libre = descripción. El gas viaja con el cilindro.',
+)
 
-function cambiarModoDestinatario(modo: ModoDestinatario) {
+function nombreDesdeConsultaDni(data: ConsultaDniData): string {
+  return [data.nombres, data.apellidoPaterno, data.apellidoMaterno]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+}
+
+function aplicarConsultaDestinatarioDni(data: ConsultaDniData) {
+  destinatarioNombreLibre.value = nombreDesdeConsultaDni(data)
+  destinatarioNombreManual.value = true
+  destinatarioLibreErrorNombre.value = ''
+}
+
+function aplicarConsultaDestinatarioRuc(data: ConsultaRucData) {
+  destinatarioNombreLibre.value = data.razonSocial?.trim() || ''
+  destinatarioNombreManual.value = true
+  destinatarioLibreErrorNombre.value = ''
+}
+
+function permitirNombreDestinatarioManual() {
+  destinatarioNombreManual.value = true
+}
+
+function aplicarConsultaRemitenteDni(data: ConsultaDniData) {
+  remitenteNombreLibre.value = nombreDesdeConsultaDni(data)
+  remitenteNombreManual.value = true
+  remitenteLibreErrorNombre.value = ''
+}
+
+function aplicarConsultaRemitenteRuc(data: ConsultaRucData) {
+  remitenteNombreLibre.value = data.razonSocial?.trim() || ''
+  remitenteNombreManual.value = true
+  remitenteLibreErrorNombre.value = ''
+}
+
+function permitirNombreRemitenteManual() {
+  remitenteNombreManual.value = true
+}
+
+function cambiarModoDestinatario(modo: ModoPersonaGuia) {
   if (modoDestinatario.value === modo) return
   modoDestinatario.value = modo
   destinatarioLibreError.value = ''
   destinatarioLibreErrorNombre.value = ''
   destinatarioLibreErrorDocumento.value = ''
+  destinatarioNombreManual.value = false
   if (modo === 'cliente') {
     destinatarioNombreLibre.value = ''
     destinatarioDocumentoLibre.value = ''
@@ -827,11 +1070,63 @@ function validarDestinatarioForm(): boolean {
   return ok
 }
 
+function cambiarModoRemitente(modo: ModoPersonaGuia) {
+  if (modoRemitente.value === modo) return
+  modoRemitente.value = modo
+  remitenteError.value = ''
+  remitenteLibreErrorNombre.value = ''
+  remitenteLibreErrorDocumento.value = ''
+  remitenteNombreManual.value = false
+  if (modo === 'cliente') {
+    remitenteNombreLibre.value = ''
+    remitenteDocumentoLibre.value = ''
+  } else {
+    idRemitente.value = ''
+    remitenteLabel.value = null
+    idDireccionOrigen.value = ''
+    direccionesRemitente.value = []
+    remitenteUbicacionCache.value = null
+    origenHint.value =
+      'Remitente con nombre libre: completa el origen o usa la dirección de la sucursal.'
+  }
+}
+
+function validarRemitenteForm(): boolean {
+  remitenteError.value = ''
+  remitenteLibreErrorNombre.value = ''
+  remitenteLibreErrorDocumento.value = ''
+  if (modoRemitente.value === 'cliente') {
+    if (!idRemitente.value) {
+      remitenteError.value = 'Remitente obligatorio para GRE transportista (31)'
+      toastWarning('Selecciona el remitente de la mercancía')
+      return false
+    }
+    return true
+  }
+  const nombre = remitenteNombreLibre.value.trim()
+  const doc = remitenteDocumentoLibre.value.replace(/\D/g, '')
+  let ok = true
+  if (nombre.length < 2) {
+    remitenteLibreErrorNombre.value = 'Ingresa el nombre o razón social'
+    ok = false
+  }
+  if (doc.length !== 8 && doc.length !== 11) {
+    remitenteLibreErrorDocumento.value = 'Documento: DNI (8) o RUC (11)'
+    ok = false
+  }
+  if (!ok) toastWarning('Completa nombre y documento del remitente')
+  else remitenteDocumentoLibre.value = doc
+  return ok
+}
+
 const clienteModalOpen = ref(false)
+type ClienteModalTarget = 'destinatario' | 'remitente'
+const clienteModalTarget = ref<ClienteModalTarget>('destinatario')
 const transportistaModalOpen = ref(false)
 const choferModalOpen = ref(false)
 const vehiculoModalOpen = ref(false)
 const direccionModalOpen = ref(false)
+const direccionOrigenModalOpen = ref(false)
 const canCreateCliente = computed(() =>
   authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR),
 )
@@ -846,17 +1141,53 @@ const canCreateDireccion = computed(() =>
 )
 const llegadaHint = ref('')
 const origenHint = ref('')
+const puntoLlegadaHelp = computed(() => {
+  const parts: string[] = []
+  if (modoDestinatario.value === 'libre') {
+    parts.push('Completa la dirección de llegada manualmente (destinatario no registrado).')
+  } else {
+    parts.push(
+      'Si el destinatario no tiene direcciones, puedes completarlas manualmente o usar la ubicación del cliente.',
+    )
+  }
+  if (llegadaHint.value) parts.push(llegadaHint.value)
+  return parts.join(' ')
+})
 const puntoPartidaHelp = computed(() => {
-  const base =
-    'Con varias sucursales, elige la que despacha: el origen se carga con su dirección y ubigeo. Si el bien sale de otro punto físico, edítalo aquí. Cada sucursal debe tener ubigeo en Configuración.'
-  return origenHint.value ? `${base} ${origenHint.value}` : base
+  const parts: string[] = []
+  if (esTipo31.value) {
+    parts.push(
+      'En GRE transportista el origen suele ser la dirección del remitente. Al seleccionarlo se carga automáticamente; también puedes usar la sucursal o editarla.',
+    )
+    if (modoRemitente.value === 'cliente' && remitenteLabel.value) {
+      parts.push(`Origen según remitente: ${remitenteLabel.value}.`)
+    } else if (sucursalSeleccionadaNombre.value) {
+      parts.push(`Origen según sucursal: ${sucursalSeleccionadaNombre.value}.`)
+    }
+  } else {
+    parts.push(
+      'Con varias sucursales, elige la que despacha: el origen se carga con su dirección y ubigeo. Si el bien sale de otro punto físico, edítalo aquí. Cada sucursal debe tener ubigeo en Configuración.',
+    )
+    if (sucursalSeleccionadaNombre.value) {
+      parts.push(`Origen según sucursal: ${sucursalSeleccionadaNombre.value}.`)
+    }
+  }
+  if (origenHint.value) parts.push(origenHint.value)
+  return parts.join(' ')
 })
 const clienteUbicacionCache = ref<Cliente | null>(null)
+const remitenteUbicacionCache = ref<Cliente | null>(null)
 const aplicandoUbicacionCliente = ref(false)
 const aplicandoOrigenSucursal = ref(false)
+const aplicandoOrigenRemitente = ref(false)
 const puedeUsarUbicacionCliente = computed(() => {
   const c = clienteUbicacionCache.value
   if (!c || !idDestinatario.value) return false
+  return Boolean(c.direccion?.trim() || c.id_distrito || c.id_departamento)
+})
+const puedeUsarUbicacionRemitente = computed(() => {
+  const c = remitenteUbicacionCache.value
+  if (!c || !idRemitente.value) return false
   return Boolean(c.direccion?.trim() || c.id_distrito || c.id_departamento)
 })
 const idRemitente = ref<number | ''>('')
@@ -869,14 +1200,19 @@ const distritoOrigenError = ref('')
 const distritoLlegadaError = ref('')
 const direccionLlegadaSelectError = ref('')
 const cargandoDirecciones = ref(false)
+const cargandoDireccionesOrigen = ref(false)
 const idDireccionLlegada = ref<number | ''>('')
+const idDireccionOrigen = ref<number | ''>('')
 const direccionesDestinatario = ref<Direccion[]>([])
+const direccionesRemitente = ref<Direccion[]>([])
 const productosCache = new Map<number, { idUnidadMedida?: number; nombre: string; codigo: string }>()
 const balonesCache = new Map<number, Balon>()
 /** Contador: evita que llamadas anidadas liberen el suppress y borren el distrito. */
 const ubigeoSuppressDepth = ref(0)
 const suppressDestinatarioReset = ref(false)
+const suppressRemitenteReset = ref(false)
 const applyingDireccionLlegada = ref(false)
+const applyingDireccionOrigen = ref(false)
 /** Labels temporales para que AppSelect muestre provincia/distrito antes de que llegue el query. */
 const llegadaProvinciaFallback = ref<SelectOption | null>(null)
 const llegadaDistritoFallback = ref<SelectOption | null>(null)
@@ -926,6 +1262,7 @@ function withFallbackOption(
 
 type LineaForm = {
   key: string
+  tipo: TipoLineaGuia
   idBalon: number | ''
   balonLabel: string | null
   idProducto: number | ''
@@ -938,28 +1275,34 @@ type LineaForm = {
   glosa?: string
 }
 
-const lineas = reactive<LineaForm[]>([
-  {
+function lineaVacia(tipo: TipoLineaGuia = 'cilindro'): LineaForm {
+  return {
     key: crypto.randomUUID(),
+    tipo: origenRecargaPlanta.value ? 'cilindro' : tipo,
     idBalon: '',
     balonLabel: null,
     idProducto: '',
     productoLabel: null,
     cantidad: 1,
     pesoKg: '',
-  },
-])
+    glosa: '',
+  }
+}
+
+const lineas = reactive<LineaForm[]>([lineaVacia()])
 
 /** Si true, no sobrescribe peso/bultos al cambiar ítems (edición manual o carga de guía). */
 const pesoBultosManual = ref(false)
 
 const pesoBultosCalculado = computed(() =>
   calcularPesoBultosGuia(
-    lineas.map((l) => ({
-      idBalon: l.idBalon,
-      cantidad: l.cantidad,
-      pesoKg: l.pesoKg === '' ? null : Number(l.pesoKg),
-    })),
+    lineas
+      .filter((l) => lineaTieneContenido(l))
+      .map((l) => ({
+        idBalon: l.idBalon,
+        cantidad: l.cantidad,
+        pesoKg: l.pesoKg === '' ? null : Number(l.pesoKg),
+      })),
     balonesCache,
   ),
 )
@@ -978,13 +1321,19 @@ const pesoBrutoHelp = computed(() => {
 
 const numeroBultosHelp = computed(() => {
   const n = pesoBultosCalculado.value.numeroBultos
-  const base = 'SUNAT: número de bultos. En cilindros: 1 envase = 1 bulto.'
+  const base =
+    'SUNAT: número de bultos. Cilindro = 1 bulto; producto o libre usa la cantidad.'
   return n ? `${base} Sugerido ahora: ${n}.` : base
 })
 
+function lineaTieneContenido(linea: LineaForm): boolean {
+  if (linea.tipo === 'cilindro') return Boolean(linea.idBalon)
+  if (linea.tipo === 'producto') return Boolean(linea.idProducto)
+  return Boolean(linea.glosa?.trim())
+}
+
 function lineaRequierePeso(linea: LineaForm): boolean {
-  const tieneItem = Boolean(linea.idBalon) || Boolean(linea.idProducto)
-  if (!tieneItem) return false
+  if (!lineaTieneContenido(linea)) return false
   const peso = Number(linea.pesoKg)
   return !(Number.isFinite(peso) && peso > 0)
 }
@@ -1012,7 +1361,32 @@ function helpPesoLinea(linea: LineaForm): string {
   return 'Peso bruto del ítem en kg. Se suma al total de la guía.'
 }
 
-function onPesoLineaEdit(_index: number) {
+function cambiarTipoLinea(index: number, tipo: TipoLineaGuia) {
+  const linea = lineas[index]
+  if (!linea || linea.tipo === tipo) return
+  linea.tipo = tipo
+  linea.idBalon = ''
+  linea.balonLabel = null
+  linea.idProducto = ''
+  linea.productoLabel = null
+  linea.glosa = ''
+  linea.descripcion = undefined
+  linea.idUnidadMedida = undefined
+  linea.pesoKg = ''
+  if (tipo === 'cilindro') linea.cantidad = 1
+  if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
+}
+
+function inferTipoLinea(detalle: {
+  id_balon?: number | null
+  id_producto?: number | null
+}): TipoLineaGuia {
+  if (detalle.id_balon) return 'cilindro'
+  if (detalle.id_producto) return 'producto'
+  return 'libre'
+}
+
+function onPesoLineaEdit() {
   if (!pesoBultosManual.value) {
     aplicarPesoBultosDesdeItems()
   }
@@ -1069,6 +1443,14 @@ const distritosLlegadaOptions = computed(() =>
 )
 const direccionLlegadaOptions = computed(() =>
   direccionesDestinatario.value.map((d) => ({
+    value: d.id,
+    label: `${d.direccion}${d.nombre_distrito ? ` · ${d.nombre_distrito}` : ''}${
+      d.es_principal ? ' (principal)' : ''
+    }`,
+  })),
+)
+const direccionOrigenOptions = computed(() =>
+  direccionesRemitente.value.map((d) => ({
     value: d.id,
     label: `${d.direccion}${d.nombre_distrito ? ` · ${d.nombre_distrito}` : ''}${
       d.es_principal ? ' (principal)' : ''
@@ -1185,10 +1567,6 @@ const sucursalSeleccionada = computed(() => {
   return (sucursalesQuery.data.value?.data ?? []).find((s) => s.id === Number(id)) ?? null
 })
 const sucursalSeleccionadaNombre = computed(() => sucursalSeleccionada.value?.nombre?.trim() || '')
-const labelUsarDireccionSucursal = computed(() => {
-  const nombre = sucursalSeleccionadaNombre.value
-  return nombre ? `Usar dirección de ${nombre}` : 'Usar dirección de la sucursal'
-})
 
 const numero = ref('')
 const saving = computed(
@@ -1255,6 +1633,11 @@ watch(idTipoGuiaRemision, (id) => {
     idRemitente.value = ''
     remitenteLabel.value = null
     remitenteError.value = ''
+    modoRemitente.value = 'cliente'
+    remitenteNombreLibre.value = ''
+    remitenteDocumentoLibre.value = ''
+    remitenteLibreErrorNombre.value = ''
+    remitenteLibreErrorDocumento.value = ''
   }
 })
 
@@ -1354,6 +1737,13 @@ watch(idSucursal, async (id, prev) => {
     idAlmacen.value = undefined
   }
 
+  // GRE 31 con remitente: no pisar su dirección al cambiar sucursal.
+  if (esTipo31.value && modoRemitente.value === 'cliente' && idRemitente.value) {
+    await nextTick()
+    applySucursalAlmacenDefaults()
+    return
+  }
+
   const sucursal = (sucursalesQuery.data.value?.data ?? []).find((s) => s.id === Number(id))
   if (sucursal) {
     await applyOrigenDesdeSucursal(sucursal)
@@ -1403,8 +1793,28 @@ watch(idDireccionLlegada, async (id) => {
   await applyDireccionLlegada(dir)
 })
 
-watch(idRemitente, (id) => {
+watch(idRemitente, async (id, prev) => {
   if (id) remitenteError.value = ''
+  if (suppressRemitenteReset.value) return
+  if (id === prev) return
+
+  if (!id) {
+    direccionesRemitente.value = []
+    idDireccionOrigen.value = ''
+    remitenteLabel.value = null
+    remitenteUbicacionCache.value = null
+    return
+  }
+
+  await loadDireccionesRemitente(Number(id), { aplicarOrigen: true })
+})
+
+watch(idDireccionOrigen, async (id) => {
+  if (suppressRemitenteReset.value) return
+  if (!id || applyingDireccionOrigen.value) return
+  const dir = direccionesRemitente.value.find((d) => d.id === Number(id))
+  if (!dir) return
+  await applyDireccionOrigen(dir)
 })
 
 watch(idDistritoOrigen, () => {
@@ -1471,10 +1881,162 @@ async function usarDireccionSucursal() {
 
   aplicandoOrigenSucursal.value = true
   try {
+    idDireccionOrigen.value = ''
     await applyOrigenDesdeSucursal(sucursal)
     toastSuccess('Dirección de la sucursal aplicada. Puedes ajustarla si es necesario.')
   } finally {
     aplicandoOrigenSucursal.value = false
+  }
+}
+
+async function loadDireccionesRemitente(
+  idCliente: number,
+  opts?: { aplicarOrigen?: boolean },
+) {
+  const aplicar = opts?.aplicarOrigen !== false
+  cargandoDireccionesOrigen.value = true
+  if (aplicar) origenHint.value = ''
+  try {
+    const [response, cliente] = await Promise.all([
+      direccionesService.listar({
+        idCliente,
+        pagina: 1,
+        limite: 100,
+        soloActivos: 1,
+      }),
+      clientesService.obtenerPorId(idCliente).catch(() => null),
+    ])
+    direccionesRemitente.value = response.data
+    remitenteUbicacionCache.value = cliente
+
+    if (!aplicar) {
+      const actual = (direccionOrigen.value ?? '').trim().toLowerCase()
+      const match = actual
+        ? response.data.find((d) => d.direccion.trim().toLowerCase() === actual)
+        : response.data.find((d) => d.es_principal) ?? response.data[0]
+      if (match) idDireccionOrigen.value = match.id
+      return
+    }
+
+    const principal = response.data.find((d) => d.es_principal) ?? response.data[0]
+    if (principal) {
+      if (Number(idDireccionOrigen.value) === principal.id) {
+        await applyDireccionOrigen(principal)
+      } else {
+        idDireccionOrigen.value = principal.id
+      }
+      origenHint.value = ''
+      return
+    }
+
+    idDireccionOrigen.value = ''
+    if (cliente && (cliente.direccion?.trim() || cliente.id_distrito || cliente.id_departamento)) {
+      await applyOrigenDesdeCliente(cliente)
+      origenHint.value =
+        'Sin direcciones registradas: se usó la ubicación del remitente. Puedes editarla, usar la sucursal o registrar una con +.'
+    } else {
+      origenHint.value =
+        'El remitente no tiene dirección. Completa el origen, usa la sucursal o regístrala con +.'
+    }
+  } catch {
+    direccionesRemitente.value = []
+    if (aplicar) {
+      origenHint.value =
+        'No se pudieron cargar las direcciones del remitente. Completa el origen o usa la sucursal.'
+    }
+  } finally {
+    cargandoDireccionesOrigen.value = false
+  }
+}
+
+function resolverTextoDireccionRemitente(cliente: Cliente): string {
+  const delCliente = (cliente.direccion ?? '').trim() || (cliente.referencia ?? '').trim()
+  if (delCliente) return delCliente
+
+  const actual = (direccionOrigen.value ?? '').trim()
+  if (actual) return actual
+
+  const seleccionada = idDireccionOrigen.value
+    ? direccionesRemitente.value.find((d) => d.id === Number(idDireccionOrigen.value))
+    : null
+  const deSeleccion = (seleccionada?.direccion ?? '').trim()
+  if (deSeleccion) return deSeleccion
+
+  return [cliente.nombre_distrito, cliente.nombre_provincia, cliente.nombre_departamento]
+    .filter(Boolean)
+    .join(', ')
+}
+
+async function applyOrigenDesdeCliente(cliente: Cliente) {
+  const dir = clienteToDireccionLike(cliente)
+  dir.direccion = resolverTextoDireccionRemitente(cliente)
+  if (!dir.direccion && !dir.id_distrito && !dir.id_departamento) return
+  await applyDireccionOrigen(dir)
+}
+
+async function usarUbicacionRemitente() {
+  let cliente = remitenteUbicacionCache.value
+  const idCliente = idRemitente.value ? Number(idRemitente.value) : null
+  if (!cliente && !idCliente) return
+
+  aplicandoOrigenRemitente.value = true
+  try {
+    if (!cliente && idCliente) {
+      cliente = await clientesService.obtenerPorId(idCliente)
+      remitenteUbicacionCache.value = cliente
+    }
+    if (!cliente) return
+    await applyOrigenDesdeCliente(cliente)
+    toastSuccess('Ubicación del remitente aplicada. Puedes ajustarla si es necesario.')
+  } finally {
+    aplicandoOrigenRemitente.value = false
+  }
+}
+
+async function onDireccionRemitenteCreada() {
+  const id = idRemitente.value
+  if (!id) return
+  await loadDireccionesRemitente(Number(id), { aplicarOrigen: true })
+}
+
+async function applyDireccionOrigen(dir: Direccion) {
+  if (applyingDireccionOrigen.value) return
+  applyingDireccionOrigen.value = true
+  beginUbigeoSuppress()
+  try {
+    if (dir.direccion?.trim()) direccionOrigen.value = dir.direccion.trim()
+    if (dir.id_pais) idPais.value = dir.id_pais
+
+    origenProvinciaFallback.value =
+      dir.id_provincia && dir.nombre_provincia
+        ? { value: dir.id_provincia, label: dir.nombre_provincia }
+        : null
+    origenDistritoFallback.value =
+      dir.id_distrito && dir.nombre_distrito
+        ? { value: dir.id_distrito, label: dir.nombre_distrito }
+        : null
+
+    idDepartamentoOrigen.value = dir.id_departamento ?? ''
+    await nextTick()
+    await waitForSelectOption(
+      () => toSelectOptions(provinciasOrigenQuery.data.value),
+      dir.id_provincia,
+    )
+    idProvinciaOrigen.value = dir.id_provincia ?? ''
+    await nextTick()
+    await waitForSelectOption(
+      () => toSelectOptions(distritosOrigenQuery.data.value),
+      dir.id_distrito,
+    )
+    idDistritoOrigen.value = dir.id_distrito ?? ''
+    await nextTick()
+
+    origenHint.value = dir.id_distrito
+      ? ''
+      : 'El remitente no tiene ubigeo completo. Completa departamento, provincia y distrito.'
+  } finally {
+    endUbigeoSuppress()
+    applyingDireccionOrigen.value = false
   }
 }
 
@@ -1657,9 +2219,21 @@ function onAlmacenCreated(almacen: Almacen) {
   void almacenesQuery.refetch()
 }
 
-function onDestinatarioCreado(cliente: Cliente) {
-  idDestinatario.value = cliente.id
-  destinatarioLabel.value = getClienteOptionLabel(cliente)
+function abrirClienteModal(target: ClienteModalTarget) {
+  clienteModalTarget.value = target
+  clienteModalOpen.value = true
+}
+
+function onClienteCreado(cliente: Cliente) {
+  const label = getClienteOptionLabel(cliente)
+  if (clienteModalTarget.value === 'remitente') {
+    idRemitente.value = cliente.id
+    remitenteLabel.value = label
+    remitenteError.value = ''
+  } else {
+    idDestinatario.value = cliente.id
+    destinatarioLabel.value = label
+  }
   clienteModalOpen.value = false
 }
 
@@ -1795,6 +2369,7 @@ function searchBalonesForLine(index: number) {
       pagina: 1,
       limite: 30,
       soloBajas: false,
+      idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
       ...(origenRecargaPlanta.value
         ? {
             idPropietario: idPropietarioEmpresa.value,
@@ -1831,13 +2406,8 @@ function productoToSelectOption(p: Producto): SelectOption {
   }
 }
 
-async function searchProductos(query: string): Promise<SelectOption[]> {
-  const response = await productosService.listar({
-    buscar: query || undefined,
-    pagina: 1,
-    limite: 20,
-  })
-  return response.data.map((p) => {
+function mapProductosToOptions(items: Producto[]): SelectOption[] {
+  return items.map((p) => {
     productosCache.set(p.id, {
       idUnidadMedida: p.id_unidad_medida,
       nombre: p.nombre,
@@ -1847,6 +2417,33 @@ async function searchProductos(query: string): Promise<SelectOption[]> {
   })
 }
 
+/** Mercadería física: no gases (van en Cilindro) ni servicios. */
+async function searchProductosCatalogo(query: string): Promise<SelectOption[]> {
+  const response = await productosService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 30,
+    esGas: false,
+    esServicio: false,
+    soloActivos: 1,
+  })
+  return mapProductosToOptions(
+    filtrarProductosCatalogo(response.data).filter((p) => !p.es_gas && !p.es_servicio),
+  ).slice(0, 20)
+}
+
+/** Solo gases: fallback si el cilindro no tiene producto_gas asociado. */
+async function searchProductosGas(query: string): Promise<SelectOption[]> {
+  const response = await productosService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 20,
+    esGas: true,
+    soloActivos: 1,
+  })
+  return mapProductosToOptions(response.data)
+}
+
 function onBalonSelected(index: number, value: number | string | null | undefined) {
   const linea = lineas[index]
   if (!linea) return
@@ -1854,7 +2451,7 @@ function onBalonSelected(index: number, value: number | string | null | undefine
   if (value == null || value === '') {
     linea.idBalon = ''
     linea.balonLabel = null
-    linea.glosa = undefined
+    linea.glosa = ''
     linea.pesoKg = ''
     if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
     return
@@ -1922,7 +2519,7 @@ function onProductoSelected(index: number, value: number | string | null | undef
     if (!linea.idBalon) {
       linea.idUnidadMedida = undefined
       linea.descripcion = undefined
-      linea.glosa = undefined
+      linea.glosa = ''
     }
     return
   }
@@ -1944,15 +2541,7 @@ function onProductoSelected(index: number, value: number | string | null | undef
 }
 
 function agregarLinea() {
-  lineas.push({
-    key: crypto.randomUUID(),
-    idBalon: '',
-    balonLabel: null,
-    idProducto: '',
-    productoLabel: null,
-    cantidad: 1,
-    pesoKg: '',
-  })
+  lineas.push(lineaVacia())
 }
 
 function quitarLinea(index: number) {
@@ -1968,9 +2557,16 @@ function resetLocal() {
   modoDestinatario.value = 'cliente'
   destinatarioNombreLibre.value = ''
   destinatarioDocumentoLibre.value = ''
+  destinatarioNombreManual.value = false
   destinatarioLibreError.value = ''
   destinatarioLibreErrorNombre.value = ''
   destinatarioLibreErrorDocumento.value = ''
+  modoRemitente.value = 'cliente'
+  remitenteNombreLibre.value = ''
+  remitenteDocumentoLibre.value = ''
+  remitenteNombreManual.value = false
+  remitenteLibreErrorNombre.value = ''
+  remitenteLibreErrorDocumento.value = ''
   idRemitente.value = ''
   remitenteError.value = ''
   choferLabel.value = null
@@ -1991,16 +2587,11 @@ function resetLocal() {
   endUbigeoSuppress()
   idDireccionLlegada.value = ''
   direccionesDestinatario.value = []
+  idDireccionOrigen.value = ''
+  direccionesRemitente.value = []
+  remitenteUbicacionCache.value = null
   almacenesFilters.value = { pagina: 1, limite: 100 }
-  lineas.splice(0, lineas.length, {
-    key: crypto.randomUUID(),
-    idBalon: '',
-    balonLabel: null,
-    idProducto: '',
-    productoLabel: null,
-    cantidad: 1,
-    pesoKg: '',
-  })
+  lineas.splice(0, lineas.length, lineaVacia())
   pesoBultosManual.value = false
   detallesError.value = ''
   distritoOrigenError.value = ''
@@ -2053,6 +2644,7 @@ watch(
     if (!id || !guia) return
 
     suppressDestinatarioReset.value = true
+    suppressRemitenteReset.value = true
     beginUbigeoSuppress()
 
     try {
@@ -2084,22 +2676,39 @@ watch(
         destinatarioLabel.value = guia.nombre_destinatario ?? null
         destinatarioNombreLibre.value = ''
         destinatarioDocumentoLibre.value = ''
+        destinatarioNombreManual.value = false
       } else {
         modoDestinatario.value = 'libre'
         destinatarioLabel.value = null
         destinatarioNombreLibre.value = guia.nombre_destinatario ?? ''
         destinatarioDocumentoLibre.value = guia.documento_destinatario ?? ''
+        destinatarioNombreManual.value = Boolean(guia.nombre_destinatario)
       }
       choferLabel.value = guia.nombre_chofer ?? null
       vehiculoLabel.value = guia.placa_vehiculo ?? null
       transportistaLabel.value = guia.nombre_transportista ?? null
 
       if (guia.codigo_tipo_guia === '31' && guia.id_cliente) {
+        modoRemitente.value = 'cliente'
         idRemitente.value = guia.id_cliente
         remitenteLabel.value = guia.nombre_cliente ?? null
-      } else {
+        remitenteNombreLibre.value = ''
+        remitenteDocumentoLibre.value = ''
+        remitenteNombreManual.value = false
+      } else if (guia.codigo_tipo_guia === '31' && (guia.nombre_cliente || guia.documento_cliente)) {
+        modoRemitente.value = 'libre'
         idRemitente.value = ''
         remitenteLabel.value = null
+        remitenteNombreLibre.value = guia.nombre_cliente ?? ''
+        remitenteDocumentoLibre.value = guia.documento_cliente ?? ''
+        remitenteNombreManual.value = Boolean(guia.nombre_cliente)
+      } else {
+        modoRemitente.value = 'cliente'
+        idRemitente.value = ''
+        remitenteLabel.value = null
+        remitenteNombreLibre.value = ''
+        remitenteDocumentoLibre.value = ''
+        remitenteNombreManual.value = false
       }
 
       almacenesFilters.value = {
@@ -2156,13 +2765,15 @@ watch(
               const idBalon = (d.id_balon ?? '') as number | ''
               const balon = idBalon ? balonesCache.get(Number(idBalon)) : undefined
               const tara = pesoCatalogoBalonKg(balon)
+              const tipo = inferTipoLinea(d)
               return {
                 key: crypto.randomUUID(),
+                tipo,
                 idBalon,
                 balonLabel: d.codigo_balon
                   ? `${d.codigo_balon}${d.nombre_producto ? ` · ${d.nombre_producto}` : ''}`
                   : null,
-                idProducto: d.id_producto,
+                idProducto: (d.id_producto ?? '') as number | '',
                 productoLabel: d.codigo_producto
                   ? `${d.codigo_producto} — ${d.nombre_producto ?? d.descripcion ?? ''}`
                   : (d.nombre_producto ?? d.descripcion ?? null),
@@ -2173,27 +2784,21 @@ watch(
                 glosa: d.glosa ?? d.descripcion ?? d.nombre_producto ?? undefined,
               }
             })
-          : [
-              {
-                key: crypto.randomUUID(),
-                idBalon: '' as const,
-                balonLabel: null,
-                idProducto: '' as const,
-                productoLabel: null,
-                cantidad: 1,
-                pesoKg: '' as const,
-              },
-            ]),
+          : [lineaVacia()]),
       )
 
       if (guia.id_destinatario) {
         await loadDireccionesDestinatario(guia.id_destinatario)
+      }
+      if (guia.codigo_tipo_guia === '31' && guia.id_cliente) {
+        await loadDireccionesRemitente(guia.id_cliente, { aplicarOrigen: false })
       }
 
       await nextTick()
     } finally {
       endUbigeoSuppress()
       suppressDestinatarioReset.value = false
+      suppressRemitenteReset.value = false
     }
   },
 )
@@ -2205,11 +2810,7 @@ const onSubmit = handleSubmit(async (formValues) => {
   const tipoOpt = tipoGuiaOptions.value.find((t) => t.value === formValues.idTipoGuiaRemision)
   const es31 = tipoOpt?.codigo === '31'
 
-  if (es31 && !idRemitente.value) {
-    remitenteError.value = 'Remitente obligatorio para GRE transportista (31)'
-    toastWarning('Selecciona el remitente de la mercancía')
-    return
-  }
+  if (es31 && !validarRemitenteForm()) return
 
   if (!validarDestinatarioForm()) return
 
@@ -2230,44 +2831,69 @@ const onSubmit = handleSubmit(async (formValues) => {
     return
   }
 
-  const detalles = lineas
-    .filter((l) => l.idProducto && Number(l.cantidad) > 0)
-    .map((l, i) => {
-      const glosa = (l.glosa || l.descripcion || '').trim() || undefined
-      return {
-        item: i + 1,
-        idProducto: Number(l.idProducto),
-        cantidad: Number(l.cantidad),
-        idUnidadMedida: l.idUnidadMedida ?? resolveUnidadBotellasId(),
-        descripcion: glosa,
-        glosa,
-        idBalon: l.idBalon ? Number(l.idBalon) : undefined,
-      }
-    })
-
-  if (detalles.length === 0) {
-    detallesError.value = 'Agrega al menos un envase o producto'
-    toastWarning('Agrega al menos un cilindro/producto')
+  const lineasConContenido = lineas.filter((l) => lineaTieneContenido(l))
+  if (lineasConContenido.length === 0) {
+    detallesError.value = 'Agrega al menos un cilindro, producto o descripción'
+    toastWarning('Agrega al menos un ítem a la guía')
     return
   }
 
-  const lineaSinPeso = lineas.find(
-    (l) =>
-      (l.idBalon || l.idProducto) &&
-      !(Number.isFinite(Number(l.pesoKg)) && Number(l.pesoKg) > 0),
+  const lineaCilindroSinProducto = lineasConContenido.find(
+    (l) => l.tipo === 'cilindro' && !l.idProducto,
+  )
+  if (lineaCilindroSinProducto) {
+    detallesError.value = 'El cilindro no tiene producto/gas asociado'
+    toastWarning('Selecciona el gas del cilindro o cambia el tipo de ítem')
+    return
+  }
+
+  const lineaLibreCorta = lineasConContenido.find(
+    (l) => l.tipo === 'libre' && (l.glosa?.trim().length ?? 0) < 3,
+  )
+  if (lineaLibreCorta) {
+    detallesError.value = 'La descripción libre debe tener al menos 3 caracteres'
+    toastWarning('Describe el ítem libre antes de guardar')
+    return
+  }
+
+  const lineaSinCantidad = lineasConContenido.find((l) => !(Number(l.cantidad) > 0))
+  if (lineaSinCantidad) {
+    detallesError.value = 'Cada ítem debe tener cantidad mayor a 0'
+    toastWarning('Revisa las cantidades de los ítems')
+    return
+  }
+
+  const lineaSinPeso = lineasConContenido.find(
+    (l) => !(Number.isFinite(Number(l.pesoKg)) && Number(l.pesoKg) > 0),
   )
   if (lineaSinPeso) {
     detallesError.value = 'Cada ítem debe tener peso en kg'
     toastWarning('Ingresa el peso (kg) de cada ítem antes de guardar')
     return
   }
+
+  const detalles = lineasConContenido.map((l, i) => {
+    const glosa = (l.glosa || l.descripcion || '').trim() || undefined
+    return {
+      item: i + 1,
+      idProducto: l.idProducto ? Number(l.idProducto) : undefined,
+      cantidad: Number(l.cantidad),
+      idUnidadMedida: l.idUnidadMedida ?? resolveUnidadBotellasId(),
+      descripcion: glosa,
+      glosa,
+      idBalon: l.idBalon ? Number(l.idBalon) : undefined,
+    }
+  })
   detallesError.value = ''
 
   if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
 
   const esLibre = modoDestinatario.value === 'libre'
+  const esRemitenteLibre = es31 && modoRemitente.value === 'libre'
   const idClientePayload = es31
-    ? Number(idRemitente.value)
+    ? esRemitenteLibre
+      ? undefined
+      : Number(idRemitente.value)
     : esLibre
       ? undefined
       : Number(formValues.idDestinatario)
@@ -2278,6 +2904,10 @@ const onSubmit = handleSubmit(async (formValues) => {
     idSucursal: Number(formValues.idSucursal),
     idAlmacen: Number(formValues.idAlmacen),
     idCliente: idClientePayload,
+    remitenteNombre: esRemitenteLibre ? remitenteNombreLibre.value.trim() : undefined,
+    remitenteDocumento: esRemitenteLibre
+      ? remitenteDocumentoLibre.value.replace(/\D/g, '')
+      : undefined,
     idMotivoTraslado: Number(formValues.idMotivoTraslado),
     idUnidadMedida: formValues.idUnidadMedida ? Number(formValues.idUnidadMedida) : undefined,
     pesoBruto: Number(formValues.pesoBruto) || pesoBultosCalculado.value.pesoBrutoKg || 0,

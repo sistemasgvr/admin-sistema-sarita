@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { actividadesQueryKeys } from '@/modules/operativa/actividades/constants/actividadesQueryKeys'
+import { comprobantesQueryKeys } from '@/modules/ventas/comprobantes/constants/comprobantesQueryKeys'
 import { actividadesService } from '@/modules/operativa/actividades/services/actividades.service'
 import type {
   CreateActividadPayload,
@@ -13,7 +14,9 @@ export function useCreateActividadMutation() {
   return useMutation({
     mutationFn: (payload: CreateActividadPayload) => actividadesService.crear(payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Actividad creada correctamente')
     },
     onError: (error) => {
@@ -30,10 +33,48 @@ export function useUpdateActividadMutation() {
       actividadesService.actualizar(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Actividad actualizada correctamente')
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo actualizar la actividad')
+    },
+  })
+}
+
+export function useCancelarActividadMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
+      actividadesService.cancelar(id, idUsuarioAuditoria),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
+      toastSuccess('Reparto cancelado. El comprobante quedó disponible.')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo cancelar la actividad')
+    },
+  })
+}
+
+export function useMarcarActividadRealizadaMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
+      actividadesService.marcarComoRealizada(id, idUsuarioAuditoria),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
+      toastSuccess('Actividad marcada como realizada')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo marcar la actividad como realizada')
     },
   })
 }
@@ -45,7 +86,9 @@ export function useDeleteActividadMutation() {
     mutationFn: ({ id, idUsuarioAuditoria }: { id: number; idUsuarioAuditoria: number }) =>
       actividadesService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Actividad eliminada correctamente')
     },
     onError: (error) => {

@@ -12,15 +12,14 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <button
+            <RouterLink
               v-if="canCreate"
-              type="button"
+              :to="{ name: 'admin-balones-movimientos-nuevo' }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-              @click="openCreateModal"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
               Nuevo
-            </button>
+            </RouterLink>
           </template>
         </AppListToolbar>
       </template>
@@ -65,15 +64,14 @@
 
       <template #actions="{ row }">
         <div class="inline-flex items-center justify-end gap-1.5">
-          <button
+          <RouterLink
             v-if="canView"
-            type="button"
+            :to="{ name: 'admin-balones-movimientos-detalle', params: { id: String(row.id) } }"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            @click="openDetailModal(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
-          </button>
+          </RouterLink>
           <AppActionMenu
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
@@ -90,18 +88,6 @@
         />
       </template>
     </AppTable>
-
-    <MovimientoBalonFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :movimiento-id="selectedMovimientoId"
-      @saved="onMovimientoSaved"
-    />
-
-    <MovimientoBalonDetailModal
-      v-model="detailModalOpen"
-      :movimiento-id="movimientoToViewId"
-    />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -145,14 +131,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import MovimientoBalonFormModal from '@/modules/balones/movimientos/components/MovimientoBalonFormModal.vue'
-import MovimientoBalonDetailModal from '@/modules/balones/movimientos/components/MovimientoBalonDetailModal.vue'
 import { useDeleteMovimientoBalonMutation } from '@/modules/balones/movimientos/composables/useMovimientoBalonMutations'
 import { useMovimientosBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
 import type {
   MovimientoBalon,
-  MovimientoBalonFormMode,
   MovimientoBalonListFilters,
 } from '@/modules/balones/movimientos/interfaces/movimiento-balon.interface'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
@@ -178,6 +162,7 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { formatDateTime } from '@/shared/utils/date'
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -201,13 +186,6 @@ const clientesQuery = useClientesQuery(clientesFilters)
 
 const listaTipoMovId = ref(ListaIds.TIPO_MOV_BALON)
 const tiposMovimientoQuery = useListaOpcionesQuery(listaTipoMovId)
-
-const formModalOpen = ref(false)
-const formMode = ref<MovimientoBalonFormMode>('create')
-const selectedMovimientoId = ref<number | null>(null)
-
-const detailModalOpen = ref(false)
-const movimientoToViewId = ref<number | null>(null)
 
 const deleteModalOpen = ref(false)
 const movimientoToDelete = ref<MovimientoBalon | null>(null)
@@ -324,21 +302,11 @@ watch([pagina, limite], () => {
   syncFilters()
 })
 
-const openCreateModal = () => {
-  formMode.value = 'create'
-  selectedMovimientoId.value = null
-  formModalOpen.value = true
-}
-
-const openEditModal = (row: MovimientoBalon) => {
-  formMode.value = 'edit'
-  selectedMovimientoId.value = row.id
-  formModalOpen.value = true
-}
-
-const openDetailModal = (row: MovimientoBalon) => {
-  movimientoToViewId.value = row.id
-  detailModalOpen.value = true
+const openEdit = (row: MovimientoBalon) => {
+  void router.push({
+    name: 'admin-balones-movimientos-editar',
+    params: { id: String(row.id) },
+  })
 }
 
 const openDeleteModal = (row: MovimientoBalon) => {
@@ -376,12 +344,8 @@ function actionItemsForRow(row: MovimientoBalon): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: MovimientoBalon) {
-  if (key === 'edit') openEditModal(row)
+  if (key === 'edit') openEdit(row)
   if (key === 'delete') openDeleteModal(row)
-}
-
-const onMovimientoSaved = () => {
-  movimientosQuery.refetch()
 }
 
 const confirmDelete = async () => {

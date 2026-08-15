@@ -49,12 +49,12 @@ import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { formatDateTime } from '@/shared/utils/date'
 
 const open = defineModel<boolean>({ default: false })
-const props = defineProps<{ fecha: string }>()
+const props = defineProps<{ fecha: string; idSucursal?: number | null }>()
 const emit = defineEmits<{ saved: [] }>()
 
 const form = reactive({
   fecha: props.fecha,
-  montoInicial: '0',
+  montoInicial: '',
   observacion: '',
 })
 const errorMonto = ref('')
@@ -65,7 +65,7 @@ const guardando = computed(() => mutation.isPending.value)
 watch(open, (v) => {
   if (v) {
     form.fecha = props.fecha
-    form.montoInicial = '0'
+    form.montoInicial = ''
     form.observacion = ''
     errorMonto.value = ''
     errorFecha.value = ''
@@ -86,7 +86,7 @@ async function submit() {
   errorFecha.value = ''
 
   try {
-    const existente = await cajaService.obtenerDia(form.fecha)
+    const existente = await cajaService.obtenerDia(form.fecha, props.idSucursal)
     if (existente?.id) {
       const cuando = existente.fechaApertura
         ? formatDateTime(existente.fechaApertura)
@@ -101,6 +101,7 @@ async function submit() {
     await mutation.mutateAsync({
       fecha: form.fecha,
       montoInicial: monto,
+      idSucursal: props.idSucursal ?? undefined,
       observacion: form.observacion || undefined,
     })
     toastSuccess('Caja abierta')

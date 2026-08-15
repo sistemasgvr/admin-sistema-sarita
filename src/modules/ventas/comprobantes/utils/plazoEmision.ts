@@ -2,6 +2,8 @@
  * Plazos SUNAT de emisión (días calendario desde la fecha del comprobante).
  * Factura (01): 3 días · Boleta (03): 5 días.
  */
+import { hoyIsoLima } from '@/shared/utils/date'
+
 export function diasPlazoEmision(codigoTipo?: string | null): number | null {
   const codigo = (codigoTipo ?? '').trim()
   if (codigo === '01') return 3
@@ -26,8 +28,8 @@ function parseFechaLocal(value: string): Date | null {
 }
 
 function hoyLocal(): Date {
-  const now = new Date()
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const [y, m, d] = hoyIsoLima().split('-').map(Number)
+  return new Date(y, m - 1, d)
 }
 
 function diffDias(desde: Date, hasta: Date): number {

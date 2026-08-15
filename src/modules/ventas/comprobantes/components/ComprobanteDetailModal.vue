@@ -43,6 +43,27 @@
             raw
           />
         </div>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Reparto</p>
+          <AppBadge
+            v-if="tieneRepartoVigente"
+            size="sm"
+            :color="esActividadRealizada(comprobante.nombre_estado_actividad) ? 'success' : 'primary'"
+            :icon="ICONS.truck"
+          >
+            {{ esTipoRepartoNombre(comprobante.nombre_tipo_actividad) ? 'Reparto' : 'Actividad' }}
+            <span v-if="comprobante.nombre_estado_actividad">
+              · {{ formatListaOpcionLabel(comprobante.nombre_estado_actividad) }}
+            </span>
+          </AppBadge>
+          <span v-else class="text-sm text-gray-500 dark:text-gray-400">Sin reparto</span>
+          <p
+            v-if="tieneRepartoVigente && comprobante.nombre_chofer_responsable"
+            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+          >
+            Chofer: {{ comprobante.nombre_chofer_responsable }}
+          </p>
+        </div>
       </div>
 
       <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
@@ -162,24 +183,53 @@
       >
         Cerrar
       </button>
+      <button
+        v-if="puedeAgregarReparto"
+        type="button"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
+        @click="emit('agregar-reparto', comprobante!)"
+      >
+        <AppIcon :name="ICONS.truck" :size="16" />
+        Agregar a reparto
+      </button>
+      <button
+        v-else-if="puedeCancelarReparto"
+        type="button"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-error-300 bg-white px-4 py-2.5 text-sm font-medium text-error-600 hover:bg-error-50 disabled:opacity-70 dark:border-error-500/40 dark:bg-gray-800 dark:text-error-400"
+        :disabled="cancelarMutation.isPending.value"
+        @click="cancelarReparto"
+      >
+        <AppIcon :name="ICONS.ban" :size="16" />
+        {{ cancelarMutation.isPending.value ? 'Cancelando...' : 'Cancelar reparto' }}
+      </button>
     </template>
   </AppModal>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useCancelarActividadMutation } from '@/modules/operativa/actividades/composables/useActividadMutations'
+import {
+  esActividadRealizada,
+  esTipoRepartoNombre,
+  tieneActividadVigente,
+} from '@/modules/operativa/actividades/utils/actividadTipo'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import type { Comprobante } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
   downloadBlob,
   openPdfPrintWindow,
   printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
-import { AppModal, ListaOpcionBadge } from '@/shared/components'
+import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const props = defineProps<{
   modelValue: boolean
@@ -188,7 +238,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
+  'agregar-reparto': [comprobante: Comprobante]
 }>()
+
+const authStore = useAuthStore()
+const cancelarMutation = useCancelarActividadMutation()
+const canCrearActividad = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
+)
+const canEditarActividad = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR),
+)
 
 const open = computed({
   get: () => props.modelValue,
@@ -212,6 +272,17 @@ watch(open, (isOpen) => {
 })
 
 const comprobante = computed(() => comprobanteQuery.data.value)
+const tieneRepartoVigente = computed(() => tieneActividadVigente(comprobante.value))
+const puedeAgregarReparto = computed(
+  () => canCrearActividad.value && Boolean(comprobante.value) && !tieneRepartoVigente.value,
+)
+const puedeCancelarReparto = computed(
+  () =>
+    canEditarActividad.value &&
+    tieneRepartoVigente.value &&
+    !esActividadRealizada(comprobante.value?.nombre_estado_actividad) &&
+    Boolean(comprobante.value?.id_actividad),
+)
 
 const puedePdf = computed(() => {
   const estado = comprobante.value?.nombre_estado_sunat?.toUpperCase()
@@ -258,6 +329,24 @@ async function imprimirPdf(formato: ComprobantePdfFormato) {
     toastApiError(error, 'No se pudo abrir para imprimir')
   } finally {
     pdfBusy.value = false
+  }
+}
+
+async function cancelarReparto() {
+  const id = comprobante.value?.id_actividad
+  const userId = authStore.user?.id
+  if (!id || !userId) return
+  if (
+    !window.confirm(
+      '¿Cancelar el reparto de este comprobante? Quedará disponible para programar otro.',
+    )
+  ) {
+    return
+  }
+  try {
+    await cancelarMutation.mutateAsync({ id, idUsuarioAuditoria: userId })
+  } catch {
+    // toast en mutation
   }
 }
 

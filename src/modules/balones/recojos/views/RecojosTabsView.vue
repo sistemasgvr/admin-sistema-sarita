@@ -1,25 +1,19 @@
 <template>
   <div>
     <PageBreadcrumb page-title="Recojos" :items="breadcrumbItems" />
-    <div class="mb-5 flex gap-2 border-b border-gray-200 dark:border-gray-800">
-      <button
-        v-for="item in tabs"
-        :key="item.value"
-        type="button"
-        class="inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium"
-        :class="tab === item.value ? 'border-brand-500 text-brand-600' : 'border-transparent text-gray-500'"
-        @click="tab = item.value"
-      >
-        <AppIcon :name="item.icon" :size="16" />
-        {{ item.label }}
-      </button>
-    </div>
+    <AppTabs
+      v-model="tab"
+      :tabs="tabs"
+      inline
+      aria-label="Recojos"
+      class="mb-5"
+    />
     <section v-if="tab === 'pendientes'" class="space-y-4">
       <AppListToolbar
         v-model:search="buscar"
         v-model:filters="dynamicFilters"
         :filter-fields="filterFields"
-        search-placeholder="Cliente, número o cilindro..."
+        search-placeholder="Cliente, préstamo, alquiler o cilindro..."
         @filter-change="onFiltersChange"
       />
       <AppTable
@@ -51,6 +45,9 @@
           </span>
         </template>
         <template #cell-fecha_retorno="{ value }">{{ String(value ?? '').slice(0, 10) || '—' }}</template>
+        <template #cell-dias_pendientes="{ value }">
+          {{ value == null || value === '' ? '—' : value }}
+        </template>
         <template #cell-programado="{ row }">
           <span
             v-if="row.tiene_recojo_programado"
@@ -90,6 +87,8 @@
       :id-alquiler="pendiente?.origen === 'ALQUILER' ? pendiente.id_origen : undefined"
       :tipo-origen="pendiente?.origen"
       :numero-origen="pendiente?.numero_origen"
+      :id-detalle="pendiente?.id_detalle"
+      :tipo-item="pendiente?.tipo_item"
       @saved="onProgramado"
     />
   </div>
@@ -108,16 +107,20 @@ import type {
   PendienteRecojoFilters,
 } from '@/modules/balones/recojos/interfaces/recojo.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import {
   AppListToolbar,
   AppPagination,
   AppTable,
+  AppTabs,
   ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
+import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const route = useRoute()
@@ -128,10 +131,10 @@ const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]) => {
   return value === 'visitas' ? 'visitas' : 'pendientes'
 }
 
-const tab = ref<'pendientes' | 'visitas'>(resolveTab(route.query.tab))
-const tabs = [
-  { value: 'pendientes' as const, label: 'Pendientes', icon: ICONS.clipboardList },
-  { value: 'visitas' as const, label: 'Visitas', icon: ICONS.truck },
+const tab = ref(resolveTab(route.query.tab))
+const tabs: AppTabItem[] = [
+  { key: 'pendientes', label: 'Pendientes', icon: ICONS.clipboardList },
+  { key: 'visitas', label: 'Visitas', icon: ICONS.truck },
 ]
 
 watch(tab, (value) => {
@@ -176,9 +179,23 @@ const columns: TableColumn[] = [
   { key: 'origen_numero', label: 'N° préstamo / alquiler' },
   { key: 'cilindro', label: 'Cilindro / producto' },
   { key: 'fecha_retorno', label: 'Fecha retorno' },
+  { key: 'dias_pendientes', label: 'Días' },
   { key: 'programado', label: 'Recojo' },
 ]
+const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
+const clientesQuery = useClientesQuery(clientesFilters)
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    placeholder: 'Seleccionar cliente',
+    disabled: clientesQuery.isLoading.value,
+    options: (clientesQuery.data.value?.data ?? []).map((c) => ({
+      value: c.id,
+      label: getClienteOptionLabel(c),
+    })),
+  },
   {
     key: 'tipoOrigen',
     label: 'Origen',
@@ -188,6 +205,11 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
       { value: 'PRESTAMO', label: 'Préstamo' },
       { value: 'ALQUILER', label: 'Alquiler' },
     ],
+  },
+  {
+    key: 'fechaHasta',
+    label: 'Hasta',
+    type: 'date',
   },
 ])
 
@@ -199,10 +221,12 @@ function syncFilters() {
     buscar: buscar.value.trim() || undefined,
     pagina: pagina.value,
     limite: limite.value,
+    idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
     tipoOrigen:
       active.tipoOrigen === 'PRESTAMO' || active.tipoOrigen === 'ALQUILER'
         ? active.tipoOrigen
         : undefined,
+    fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
   }
 }
 

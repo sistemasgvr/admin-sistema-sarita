@@ -23,6 +23,7 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <AppExportExcelButton :on-export="exportarExcel" />
             <div class="w-full sm:w-44">
               <AppSelect v-model="tipoFiltro" :options="tipoFiltroOptions" />
             </div>
@@ -149,6 +150,14 @@
             Servicio
           </AppBadge>
           <AppBadge
+            v-if="row.es_mantenimiento"
+            variant="light"
+            color="error"
+            title="Entra a taller de cilindro"
+          >
+            Taller
+          </AppBadge>
+          <AppBadge
             v-else-if="row.es_gas"
             color="success"
             variant="light"
@@ -273,6 +282,7 @@ import type {
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { esProductoSistema } from '@/modules/productos/articulos/utils/productosSistema'
+import { exportarProductosExcel } from '@/modules/productos/articulos/utils/exportarProductosExcel'
 import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
@@ -282,6 +292,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -472,6 +483,8 @@ const formatPrecio = (value: unknown) => {
     minimumFractionDigits: 2,
   }).format(amount)
 }
+
+const exportarExcel = () => exportarProductosExcel(filters.value)
 
 const loadCatalogos = async () => {
   try {

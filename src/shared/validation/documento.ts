@@ -32,6 +32,14 @@ export function sanitizeNumeroDocumento(tipo: string | null | undefined, raw: st
   return filtrado.slice(0, maxLengthDocumento(tipo))
 }
 
+/** DNI = 8 dígitos, RUC = 11. Útil cuando el formulario no pide tipo. */
+export function inferirTipoDocumentoPorNumero(numero?: string | null): 'DNI' | 'RUC' | null {
+  const digits = String(numero ?? '').replace(/\D/g, '')
+  if (digits.length === 8) return 'DNI'
+  if (digits.length === 11) return 'RUC'
+  return null
+}
+
 export function placeholderNumeroDocumento(tipo?: string | null): string {
   const t = normalizarTipo(tipo)
   if (t === 'DNI') return '12345678'

@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { balonesAccessPermissions } from '@/modules/balones/config/balones-menu'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
 export const balonesRoutes: RouteRecordRaw[] = [
@@ -63,6 +64,39 @@ export const balonesRoutes: RouteRecordRaw[] = [
           title: 'Tipos de balón',
           module: 'balones',
           permission: PermisoBanderas.TIPOS_BALON_LISTAR,
+        },
+      },
+      {
+        path: 'movimientos/nuevo',
+        name: 'admin-balones-movimientos-nuevo',
+        component: () =>
+          import('@/modules/balones/movimientos/views/MovimientoBalonFormView.vue'),
+        meta: {
+          title: 'Nuevo movimiento',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_BALON_CREAR,
+        },
+      },
+      {
+        path: 'movimientos/:id(\\d+)/editar',
+        name: 'admin-balones-movimientos-editar',
+        component: () =>
+          import('@/modules/balones/movimientos/views/MovimientoBalonFormView.vue'),
+        meta: {
+          title: 'Editar movimiento',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_BALON_EDITAR,
+        },
+      },
+      {
+        path: 'movimientos/:id(\\d+)',
+        name: 'admin-balones-movimientos-detalle',
+        component: () =>
+          import('@/modules/balones/movimientos/views/MovimientoBalonDetailView.vue'),
+        meta: {
+          title: 'Detalle del movimiento',
+          module: 'balones',
+          permission: PermisoBanderas.MOVIMIENTOS_BALON_VER,
         },
       },
       {
@@ -173,7 +207,8 @@ export const balonesRoutes: RouteRecordRaw[] = [
       {
         path: 'alquileres/nuevo',
         name: 'admin-balones-alquileres-nuevo',
-        component: () => import('@/modules/balones/alquileres/views/AlquilerFormView.vue'),
+        component: () =>
+          import('@/modules/balones/alquileres/views/AlquilerNuevoRedirectView.vue'),
         meta: {
           title: 'Nuevo alquiler',
           module: 'balones',
@@ -255,7 +290,7 @@ export const balonesRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Balones',
           module: 'balones',
-          permission: PermisoBanderas.BALONES_HUB_VER,
+          anyPermission: balonesAccessPermissions,
         },
       },
     ],

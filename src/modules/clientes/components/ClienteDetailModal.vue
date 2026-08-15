@@ -406,7 +406,9 @@
                       <th class="pb-2 pr-3">Motivo</th>
                       <th class="pb-2 pr-3">Estado</th>
                       <th class="pb-2 pr-3">Solicitante</th>
-                      <th class="pb-2 pr-3">Fecha</th>
+                      <th class="pb-2 pr-3">Autorizó</th>
+                      <th class="pb-2 pr-3">Fecha solicitud</th>
+                      <th class="pb-2 pr-3">Fecha autorización</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -438,8 +440,14 @@
                       <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">
                         {{ item.nombre_usuario_solicita ?? '—' }}
                       </td>
+                      <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">
+                        {{ item.nombre_usuario_autoriza ?? '—' }}
+                      </td>
                       <td class="whitespace-nowrap py-2 pr-3 text-gray-600 dark:text-gray-400">
                         {{ item.fecha_creacion ? formatDate(item.fecha_creacion) : '—' }}
+                      </td>
+                      <td class="whitespace-nowrap py-2 pr-3 text-gray-600 dark:text-gray-400">
+                        {{ item.fecha_autorizacion ? formatDate(item.fecha_autorizacion) : '—' }}
                       </td>
                     </tr>
                   </tbody>

@@ -8,12 +8,16 @@ import type {
 } from '@/modules/balones/recojos/interfaces/recojo.interface'
 import { prestamosQueryKeys } from '@/modules/balones/prestamos/constants/prestamosQueryKeys'
 import { prestamosDetalleQueryKeys } from '@/modules/balones/prestamos/constants/prestamosDetalleQueryKeys'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import { alquileresQueryKeys } from '@/modules/balones/alquileres/constants/alquileresQueryKeys'
+import { alquileresDetalleQueryKeys } from '@/modules/balones/alquileres/constants/alquileresDetalleQueryKeys'
+import { toastApiError, toastInfo, toastSuccess } from '@/shared/composables/useToast'
 
 function invalidateRecojoRelated(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: recojosQueryKeys.all })
   queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
   queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: alquileresDetalleQueryKeys.all })
 }
 
 export function useCreateRecojoMutation() {
@@ -59,10 +63,13 @@ export function useRegistrarResultadoRecojoMutation() {
       id: number
       payload: RegistrarResultadoRecojoPayload
     }) => recojosService.registrarResultado(id, payload),
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       invalidateRecojoRelated(queryClient)
       queryClient.invalidateQueries({ queryKey: recojosQueryKeys.detail(variables.id) })
       toastSuccess('Resultado de recojo registrado')
+      if ((data?.nombre_estado ?? '').toUpperCase() === 'REPROGRAMADO') {
+        toastInfo('Se creó una visita de seguimiento')
+      }
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar el resultado del recojo')

@@ -67,7 +67,7 @@
           <DetailSectionCard
             title="Vigencia"
             :icon="ICONS.calendar"
-            help="La fecha de fin pactada es obligatoria para programar el retorno / recojo."
+            help="La vigencia es del accesorio alquilado. El cilindro no se alquila: si se entrega, es un préstamo y el recojo va por Préstamos."
           >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <AppInput
@@ -104,7 +104,7 @@
           <DetailSectionCard
             title="Producto y cobro"
             :icon="ICONS.creditCard"
-            help="Solo productos alquilables con stock disponible en el almacén seleccionado. Si afecta stock, se descuenta 1 unidad al crear. La garantía/depósito es opcional: se sugiere desde precio_garantia del producto o catálogo; déjala en 0 si no se cobra."
+            help="Solo accesorios alquilables (regulador, etc.). No se alquila el envase. El cobro del periodo se hace en el POS o con Renovar."
           >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <ProductoSelectField
@@ -223,85 +223,53 @@
 
       <DetailSectionCard
         v-if="activeAlquilerId"
-        title="Cilindros vinculados"
+        title="Cilindros"
         :icon="ICONS.boxes"
         :full-width="true"
-        help="Recojos lista cilindros pendientes de devolver. Si este alquiler no tiene cilindros vinculados, no aparecerá en Pendientes de recojo."
+        help="El cilindro no se alquila. Si hay líneas aquí son registros antiguos: puedes devolverlas. Un envase nuevo se registra como préstamo."
       >
-        <template #actions>
-          <button
-            v-if="canCreateDetalle"
-            type="button"
-            class="inline-flex items-center gap-2 rounded-lg border border-brand-500 px-3 py-2 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
-            @click="openCreateDetalleModal"
-          >
-            <AppIcon :name="ICONS.plus" :size="16" />
-            Vincular cilindro
-          </button>
-        </template>
-
         <p
           v-if="detalleRows.length === 0"
-          class="mb-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          class="text-sm text-gray-500 dark:text-gray-400"
         >
-          0 cilindros: este alquiler no sale en Recojos hasta que vincules al menos uno.
+          Sin cilindros en este contrato. El recojo del envase se gestiona en Préstamos / Recojos.
         </p>
-        <p v-else class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-          {{ detalleRows.length }} cilindro(s) vinculado(s).
-        </p>
+        <template v-else>
+          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
+            {{ detalleRows.length }} cilindro(s) de registros anteriores.
+          </p>
 
-        <AppTable
-          bare
-          :columns="detalleColumns"
-          :rows="detalleRows"
-          row-key="id"
-          :loading="isLoadingDetalles"
-        >
-          <template #cell-codigo_balon="{ value }">
-            <span class="font-medium text-gray-800 dark:text-white/90">{{ value }}</span>
-          </template>
+          <AppTable
+            bare
+            :columns="detalleColumns"
+            :rows="detalleRows"
+            row-key="id"
+            :loading="isLoadingDetalles"
+          >
+            <template #cell-codigo_balon="{ value }">
+              <span class="font-medium text-gray-800 dark:text-white/90">{{ value }}</span>
+            </template>
+            <template #cell-fecha_devolucion="{ row }">
+              <span
+                v-if="row.fecha_devolucion"
+                class="whitespace-nowrap text-success-600 dark:text-success-400"
+              >
+                {{ String(row.fecha_devolucion).slice(0, 10) }}
+              </span>
+              <AppBadge v-else size="sm" color="warning">Pendiente</AppBadge>
+            </template>
 
-          <template #cell-fecha_devolucion="{ row }">
-            <span
-              v-if="row.fecha_devolucion"
-              class="whitespace-nowrap text-success-600 dark:text-success-400"
-            >
-              {{ String(row.fecha_devolucion).slice(0, 10) }}
-            </span>
-            <AppBadge v-else size="sm" color="warning">Pendiente</AppBadge>
-          </template>
-
-          <template #actions="{ row }">
-            <AppActionMenu
-              :items="detalleActionItemsForRow(row)"
-              title="Acciones del cilindro"
-              :execute="(key) => onDetalleActionSelect(key, row)"
-            />
-          </template>
-        </AppTable>
-      </DetailSectionCard>
-
-      <DetailSectionCard
-        v-else-if="isCreateMode"
-        title="Cilindros vinculados"
-        :icon="ICONS.boxes"
-        :full-width="true"
-        help="Tras guardar podrás vincular cilindros. Recojos solo muestra cilindros pendientes de devolver (si el alquiler queda en 0 cilindros, no aparece en Pendientes)."
-      >
-        <p class="text-center text-sm text-gray-400 dark:text-gray-500">
-          Primero guarda el alquiler; luego agrega cilindros si corresponde.
-        </p>
+            <template #actions="{ row }">
+              <AppActionMenu
+                :items="detalleActionItemsForRow(row)"
+                title="Acciones del cilindro"
+                :execute="(key) => onDetalleActionSelect(key, row)"
+              />
+            </template>
+          </AppTable>
+        </template>
       </DetailSectionCard>
     </div>
-
-    <AlquilerDetalleFormModal
-      v-if="activeAlquilerId"
-      v-model="detalleFormOpen"
-      :mode="detalleFormMode"
-      :alquiler-id="activeAlquilerId"
-      :detalle-id="selectedDetalleId"
-      @saved="onDetalleSaved"
-    />
 
     <AlquilerDevolverModal
       v-model="devolverDetalleModalOpen"
@@ -367,12 +335,10 @@ import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composab
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
-import AlquilerDetalleFormModal from '@/modules/balones/alquileres/components/AlquilerDetalleFormModal.vue'
 import AlquilerDevolverModal from '@/modules/balones/alquileres/components/AlquilerDevolverModal.vue'
 import type { AlquilerFormMode } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import type {
   AlquilerDetalle,
-  AlquilerDetalleFormMode,
   AlquilerDetalleListFilters,
 } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -385,7 +351,6 @@ import {
   AppTable,
   AppTextarea,
 } from '@/shared/components'
-import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -464,9 +429,6 @@ const idEstadoActivo = computed(
     )?.id ?? null,
 )
 
-const canCreateDetalle = computed(() =>
-  authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_CREAR),
-)
 const canEditDetalle = computed(
   () =>
     authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_EDITAR) ||
@@ -491,12 +453,6 @@ function detalleActionItemsForRow(row: AlquilerDetalle): ActionMenuItem[] {
       hidden: !canEditDetalle.value || !pendiente,
     },
     {
-      key: 'edit',
-      label: 'Cambiar cilindro',
-      icon: ICONS.pencil,
-      hidden: !canEditDetalle.value,
-    },
-    {
       key: 'delete',
       label: 'Quitar del alquiler',
       icon: ICONS.trash,
@@ -508,13 +464,8 @@ function detalleActionItemsForRow(row: AlquilerDetalle): ActionMenuItem[] {
 
 function onDetalleActionSelect(key: string, row: AlquilerDetalle) {
   if (key === 'devolver') openDevolverDetalleModal(row)
-  if (key === 'edit') openEditDetalleModal(row)
   if (key === 'delete') openDeleteDetalleModal(row)
 }
-
-const detalleFormOpen = ref(false)
-const detalleFormMode = ref<AlquilerDetalleFormMode>('create')
-const selectedDetalleId = ref<number | null>(null)
 
 const devolverDetalleModalOpen = ref(false)
 const detalleToDevolver = ref<AlquilerDetalle | null>(null)
@@ -853,18 +804,6 @@ const onSubmit = handleSubmit(async (values) => {
     // toast en mutation
   }
 })
-
-const openCreateDetalleModal = () => {
-  detalleFormMode.value = 'create'
-  selectedDetalleId.value = null
-  detalleFormOpen.value = true
-}
-
-const openEditDetalleModal = (row: AlquilerDetalle) => {
-  detalleFormMode.value = 'edit'
-  selectedDetalleId.value = row.id
-  detalleFormOpen.value = true
-}
 
 const openDevolverDetalleModal = (row: AlquilerDetalle) => {
   detalleToDevolver.value = {

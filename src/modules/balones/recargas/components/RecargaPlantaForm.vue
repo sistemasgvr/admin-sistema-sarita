@@ -540,6 +540,7 @@ const balonExtraFilters = computed(() => ({
   idPropietario: idPropietarioEmpresa.value,
   idEstadoContenido: idContenidoVacio.value,
   soloBajas: false,
+  idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
 }))
 
 const today = () => new Date().toISOString().slice(0, 10)

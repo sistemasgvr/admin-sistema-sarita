@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <AppSidebar />
-    <Backdrop />
+    <AppBackdrop />
     <div
       class="min-w-0 transition-all duration-300 ease-in-out"
       :class="[isExpanded || isHovered ? 'lg:ml-[290px]' : 'lg:ml-[90px]']"
@@ -17,7 +17,7 @@
 <script setup lang="ts">
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
-import Backdrop from './Backdrop.vue'
+import AppBackdrop from './AppBackdrop.vue'
 import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 const { isExpanded, isHovered } = useSidebar()

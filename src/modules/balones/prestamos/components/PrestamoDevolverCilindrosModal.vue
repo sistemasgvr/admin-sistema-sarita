@@ -130,9 +130,10 @@ watch(
 )
 
 function labelDetalle(detalle: PrestamoDetalle) {
-  if (detalle.codigo_balon) return detalle.codigo_balon
-  if (detalle.id_balon) return `Cilindro #${detalle.id_balon}`
-  if (detalle.nombre_producto) return detalle.nombre_producto
+  const gas = detalle.nombre_producto_gas || detalle.nombre_producto
+  if (detalle.codigo_balon) return gas ? `${detalle.codigo_balon} · ${gas}` : detalle.codigo_balon
+  if (detalle.id_balon) return gas ? `Cilindro #${detalle.id_balon} · ${gas}` : `Cilindro #${detalle.id_balon}`
+  if (gas) return gas
   return `Detalle #${detalle.id}`
 }
 

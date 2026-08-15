@@ -130,7 +130,7 @@ import type {
 } from '@/modules/finanzas/interfaces/cuenta.interface'
 import type { DuplicadoPagoInfo } from '@/modules/finanzas/interfaces/garantia.interface'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
+import { formatCurrency, normalizeMoneyInput, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
@@ -174,7 +174,7 @@ const form = reactive({
 const errores = reactive<{ monto?: string; fechaPago?: string }>({})
 
 const resetForm = () => {
-  form.monto = props.cuenta ? Number(props.cuenta.saldo).toFixed(2) : ''
+  form.monto = props.cuenta ? roundMoney(props.cuenta.saldo).toFixed(2) : ''
   // Si hoy es anterior a la emisión (caso raro), usa la fecha de emisión
   const h = hoy()
   form.fechaPago = props.cuenta?.fecha_emision && h < props.cuenta.fecha_emision
@@ -233,12 +233,12 @@ const validar = (): boolean => {
   let ok = true
 
   const monto = parseMoneyInput(form.monto)
-  const saldo = Number(props.cuenta?.saldo ?? 0)
+  const saldo = roundMoney(props.cuenta?.saldo)
 
   if (monto == null || monto <= 0) {
     errores.monto = 'Ingresa un monto válido mayor a cero'
     ok = false
-  } else if (monto > saldo + 0.0001) {
+  } else if (roundMoney(monto) > saldo) {
     errores.monto = `El monto no puede superar el saldo (${formatCurrency(saldo)})`
     ok = false
   }
@@ -263,7 +263,7 @@ const canForzarDuplicado = computed(() =>
 const ejecutarPago = async (forzar: boolean) => {
   const monto = parseMoneyInput(form.monto)
   if (monto == null || !props.cuenta) return
-  const montoFinal = Math.round(monto * 100) / 100
+  const montoFinal = roundMoney(monto)
 
   try {
     await mutation.mutateAsync({

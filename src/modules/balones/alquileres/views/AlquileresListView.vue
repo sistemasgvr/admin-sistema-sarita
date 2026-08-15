@@ -14,11 +14,11 @@
           <template #actions>
             <RouterLink
               v-if="canCreate"
-              :to="{ name: 'admin-balones-alquileres-nuevo' }"
+              :to="{ name: 'admin-ventas-pos', query: { tab: 'alquiler' } }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo
+              Alquilar en POS
             </RouterLink>
           </template>
         </AppListToolbar>
@@ -112,6 +112,7 @@
       :id-alquiler="alquilerToRecojo?.id"
       :numero-origen="alquilerToRecojo?.numero_alquiler"
       tipo-origen="ALQUILER"
+      tipo-item="REGULADOR"
       @saved="onDevolucionDesdeLista"
     />
 
@@ -378,6 +379,7 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
   const blockedDelete = row.puede_eliminar === false
   const activo = isAlquilerActivo(row)
   const tieneCilindros = Number(row.total_detalles ?? 0) > 0
+  const tieneAccesorio = Boolean(row.id_producto_regulador || row.id_producto_stock)
 
   return [
     {
@@ -392,7 +394,10 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
       label: 'Programar recojo',
       icon: ICONS.truck,
       disabled: busy,
-      hidden: !authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR) || !activo || !tieneCilindros,
+      hidden:
+        !authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR) ||
+        !activo ||
+        !tieneAccesorio,
     },
     {
       key: 'edit',

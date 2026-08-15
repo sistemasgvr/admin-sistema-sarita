@@ -23,7 +23,9 @@
         @change="emit('filter-change')"
       />
 
-      <slot name="actions" />
+      <div v-if="slots.actions" class="app-list-toolbar__actions flex items-center gap-2">
+        <slot name="actions" />
+      </div>
     </div>
   </div>
 </template>
@@ -76,3 +78,17 @@ const gridClass = computed(() => {
   return 'grid-cols-1'
 })
 </script>
+
+<style scoped>
+@media (max-width: 1023px) {
+  .app-list-toolbar__actions :deep(a),
+  .app-list-toolbar__actions :deep(button) {
+    gap: 0;
+    min-width: 2.5rem;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+    font-size: 0;
+    line-height: 0;
+  }
+}
+</style>

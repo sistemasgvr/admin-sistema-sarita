@@ -55,22 +55,22 @@
             {{ recojo.fecha_visita?.slice(0, 10) || '—' }}
           </dd>
         </div>
-        <div>
+        <div v-if="recojo.id_prestamo">
           <dt class="text-gray-500 dark:text-gray-400">Préstamo</dt>
           <dd class="text-gray-800 dark:text-white/90">
-            {{ recojo.numero_prestamo || (recojo.id_prestamo ? `#${recojo.id_prestamo}` : '—') }}
+            {{ recojo.numero_prestamo || `#${recojo.id_prestamo}` }}
           </dd>
         </div>
-        <div>
+        <div v-if="recojo.id_alquiler">
           <dt class="text-gray-500 dark:text-gray-400">Alquiler</dt>
           <dd class="text-gray-800 dark:text-white/90">
-            {{ recojo.numero_alquiler || (recojo.id_alquiler ? `#${recojo.id_alquiler}` : '—') }}
+            {{ recojo.numero_alquiler || `#${recojo.id_alquiler}` }}
           </dd>
         </div>
-        <div>
+        <div v-if="recojo.nombre_motivo_fallo">
           <dt class="text-gray-500 dark:text-gray-400">Motivo fallo</dt>
           <dd class="text-gray-800 dark:text-white/90">
-            {{ recojo.nombre_motivo_fallo || '—' }}
+            {{ recojo.nombre_motivo_fallo }}
           </dd>
         </div>
       </dl>
@@ -160,10 +160,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useUpdateRecojoMutation } from '@/modules/balones/recojos/composables/useRecojoMutations'
 import { useRecojoQuery } from '@/modules/balones/recojos/composables/useRecojosQuery'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppModal, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import {
   abrirRutaGoogleMaps,
   clienteTieneCoordenadas,
@@ -174,18 +177,33 @@ const props = defineProps<{
 }>()
 
 const open = defineModel<boolean>({ default: false })
+const authStore = useAuthStore()
+const updateMutation = useUpdateRecojoMutation()
 const idRef = computed(() => (open.value ? props.recojoId : null))
 const query = useRecojoQuery(idRef)
 const recojo = computed(() => query.data.value ?? null)
+const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_EDITAR))
 
 const puedeIniciarRuta = computed(() =>
   clienteTieneCoordenadas(recojo.value?.latitud, recojo.value?.longitud),
 )
 
-function iniciarRuta() {
+async function iniciarRuta() {
   const lat = Number(recojo.value?.latitud)
   const lng = Number(recojo.value?.longitud)
   if (!clienteTieneCoordenadas(lat, lng)) return
   abrirRutaGoogleMaps(lat, lng)
+  const userId = authStore.user?.id
+  if (
+    canEdit.value &&
+    userId &&
+    recojo.value &&
+    (recojo.value.nombre_estado ?? '').toUpperCase() === 'PROGRAMADO'
+  ) {
+    await updateMutation.mutateAsync({
+      id: recojo.value.id,
+      payload: { idUsuarioAuditoria: userId, estadoNombre: 'EN_RUTA' },
+    })
+  }
 }
 </script>

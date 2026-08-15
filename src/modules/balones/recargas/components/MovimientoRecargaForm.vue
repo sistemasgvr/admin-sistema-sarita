@@ -272,6 +272,7 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
+import type { BalonListFilters } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import {
   useCreateMovimientoRecargaMutation,
   useUpdateMovimientoRecargaMutation,
@@ -327,21 +328,18 @@ const idContenidoVacio = computed(
   () => contenidoQuery.data.value?.find((op) => op.nombre === 'VACIO')?.id,
 )
 
-const balonesFilters = ref<{
-  pagina: number
-  limite: number
-  idPropietario?: number
-  idEstadoContenido?: number
-}>({ pagina: 1, limite: 200 })
+const balonesFilters = ref<BalonListFilters>({ pagina: 1, limite: 200 })
 
 watch(
   [idPropietarioEmpresa, idContenidoVacio],
   ([propietario, vacio]) => {
     balonesFilters.value = {
+      ...balonesFilters.value,
       pagina: 1,
       limite: 200,
       idPropietario: propietario,
       idEstadoContenido: vacio,
+      soloBajas: false,
     }
   },
   { immediate: true },
@@ -426,6 +424,20 @@ const [fechaSalidaAlmacen, fechaSalidaAlmacenAttrs] = defineField('fechaSalidaAl
 const [idBalon, idBalonAttrs] = defineField('idBalon')
 const [idAlmacen] = defineField('idAlmacen')
 const [idProducto, idProductoAttrs] = defineField('idProducto')
+
+watch(
+  [idAlmacen, idProducto],
+  () => {
+    const idProd = Number(idProducto.value)
+    const idAlm = Number(idAlmacen.value)
+    balonesFilters.value = {
+      ...balonesFilters.value,
+      idAlmacen: Number.isFinite(idAlm) && idAlm > 0 ? idAlm : undefined,
+      idProductoGas: Number.isFinite(idProd) && idProd > 0 ? idProd : undefined,
+    }
+  },
+  { immediate: true },
+)
 const [capacidad, capacidadAttrs] = defineField('capacidad')
 const [idUnidadMedida, idUnidadMedidaAttrs] = defineField('idUnidadMedida')
 const [serieGuiaSalida, serieGuiaSalidaAttrs] = defineField('serieGuiaSalida')

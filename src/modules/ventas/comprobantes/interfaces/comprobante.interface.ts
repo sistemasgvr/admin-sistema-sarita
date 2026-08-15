@@ -27,6 +27,12 @@ export interface ComprobanteListItem {
   numero_comprobante_destino?: string | null
   codigo_tipo_comprobante_destino?: string | null
   nombre_tipo_comprobante_destino?: string | null
+  id_actividad?: number | null
+  titulo_actividad?: string | null
+  nombre_tipo_actividad?: string | null
+  nombre_estado_actividad?: string | null
+  nombre_chofer_responsable?: string | null
+  tiene_actividad?: boolean | null
 }
 
 export interface ComprobanteDetalle {
@@ -125,6 +131,91 @@ export interface CreateComprobantePayload {
   observaciones?: string
   /** Pestaña POS: accesorios|recarga|medicinal|industrial|mantenimiento */
   origenPos?: string
+  /** Recarga, préstamo, alquiler, garantía, mantenimiento y baja en la misma transacción del CPE */
+  efectosPos?: EfectosPosPayload
+}
+
+export interface EfectoPosGarantiaPayload {
+  monto: number
+  idProducto?: number
+  cantidadVenta?: number
+  idUnidadMedida?: number
+  fechaRegistro?: string
+  idMedioPago?: number
+  observacion?: string
+}
+
+export interface EfectoPosRecargaPayload {
+  idBalon: number
+  idProducto: number
+  capacidad?: number
+  idAlmacen?: number
+  observacion?: string
+  idBalonOrigen?: number
+}
+
+export interface EfectoPosPrestamoPayload {
+  idTipoPrestamo: number
+  idAlmacen?: number
+  fechaSalida?: string
+  fechaRetornoPactada?: string
+  titulo?: string
+  observacion?: string
+  idEstado?: number
+  idBalon: number
+  idProducto?: number
+  fechaEntregado?: string
+  fechaPrestamo?: string
+  fechaVencimiento?: string
+  observacionDetalle?: string
+  garantia?: EfectoPosGarantiaPayload
+}
+
+export interface EfectoPosAlquilerPayload {
+  idAlmacen: number
+  fechaInicio: string
+  fechaFinPactada?: string
+  tarifaDiaria?: number
+  totalCobrado?: number
+  idProductoRegulador?: number
+  idProductoStock?: number
+  observacion?: string
+  periodo?: {
+    fechaInicio: string
+    fechaFin: string
+    monto: number
+    idProducto?: number
+    observacion?: string
+  }
+  garantia?: EfectoPosGarantiaPayload
+}
+
+export interface EfectoPosMantenimientoPayload {
+  idBalon: number
+  fechaIngreso: string
+  idTipoMantenimiento?: number
+  descripcion?: string
+  costo?: number
+  observacion?: string
+}
+
+export interface EfectoPosBajaPayload {
+  idBalon: number
+  idMotivoBaja: number
+  montoVenta?: number
+  observacion?: string
+  fechaBaja?: string
+  aprobar?: boolean
+}
+
+export interface EfectosPosPayload {
+  recargas?: EfectoPosRecargaPayload[]
+  prestamos?: EfectoPosPrestamoPayload[]
+  alquileres?: EfectoPosAlquilerPayload[]
+  mantenimientos?: EfectoPosMantenimientoPayload[]
+  bajas?: EfectoPosBajaPayload[]
+  /** Opt-in: generar GRE remitente junto al préstamo de cilindro. */
+  generarGre?: boolean
 }
 
 export interface UpdateComprobantePayload {
@@ -295,7 +386,7 @@ export interface PosLineItem {
   esServicio?: boolean
   esAlquilable?: boolean
   /** Origen del flujo Añadir en POS. */
-  tipoPos?: 'accesorio' | 'gas' | 'alquiler' | 'mantenimiento'
+  tipoPos?: 'accesorio' | 'gas' | 'alquiler' | 'servicio' | 'mantenimiento'
   /** Balón vinculado (recarga, entrega de cilindro o mantenimiento). */
   idBalon?: number
   /** Balón EMPRESA origen que surte la recarga cliente. */

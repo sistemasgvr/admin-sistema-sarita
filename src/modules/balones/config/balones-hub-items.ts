@@ -71,8 +71,7 @@ export const balonesHubItems: BalonesHubItem[] = [
   {
     key: 'recojos',
     title: 'Recojos',
-    description:
-      'Visitas para recoger cilindros en préstamo: programar, registrar intento, extender fecha o devolver.',
+    description: 'Visitas para recoger envases en préstamo y accesorios en alquiler.',
     path: '/admin/balones/recojos',
     icon: ICONS.truck,
     permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
@@ -82,7 +81,7 @@ export const balonesHubItems: BalonesHubItem[] = [
     key: 'rutas-pueblos',
     title: 'Ruta pueblos',
     description:
-      'Control de libras ida/vuelta en rutas a pueblos: cruza m³ calculados vs ventas del repartidor (sin forzar GRE).',
+      'Control de libras ida/vuelta y cruce de m³ calculados vs ventas del repartidor.',
     path: '/admin/balones/rutas-pueblos',
     icon: ICONS.mapPin,
     permission: PermisoBanderas.RUTAS_PUEBLOS_LISTAR,

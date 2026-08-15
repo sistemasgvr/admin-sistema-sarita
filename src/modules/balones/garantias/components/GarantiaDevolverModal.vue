@@ -7,7 +7,7 @@
   >
     <div class="space-y-4">
       <AppSelect
-        v-model="idGarantia"
+        v-model="garantiaId"
         label="Garantía"
         placeholder="Selecciona garantía con saldo"
         required
@@ -114,7 +114,7 @@ const emit = defineEmits<{ saved: [] }>()
 const authStore = useAuthStore()
 const devolverMutation = useDevolverGarantiaMutation()
 
-const idGarantia = ref<number | ''>('')
+const garantiaId = ref<number | ''>('')
 const monto = ref(0)
 const fecha = ref(new Date().toISOString().slice(0, 10))
 const idComprobante = ref<number | ''>('')
@@ -140,13 +140,13 @@ const garantiaOptions = computed(() =>
 )
 
 const garantiaSeleccionada = computed(() =>
-  garantiasConSaldo.value.find((g) => g.id === idGarantia.value) ??
-  (garantiasQuery.data.value?.data ?? []).find((g) => g.id === idGarantia.value),
+  garantiasConSaldo.value.find((g) => g.id === garantiaId.value) ??
+  (garantiasQuery.data.value?.data ?? []).find((g) => g.id === garantiaId.value),
 )
 
 const puedeDevolver = computed(
   () =>
-    Boolean(idGarantia.value) &&
+    Boolean(garantiaId.value) &&
     Number(monto.value) > 0 &&
     Boolean(fecha.value) &&
     (!garantiaSeleccionada.value ||
@@ -163,7 +163,7 @@ watch(
       idCliente: props.idCliente ?? undefined,
       idPrestamo: props.idPrestamo ?? undefined,
     }
-    idGarantia.value = props.idGarantia ?? ''
+    garantiaId.value = props.idGarantia ?? ''
     fecha.value = new Date().toISOString().slice(0, 10)
     idComprobante.value = ''
     observacion.value = ''
@@ -172,20 +172,20 @@ watch(
 )
 
 watch(
-  () => [garantiasConSaldo.value, idGarantia.value, open.value] as const,
+  () => [garantiasConSaldo.value, garantiaId.value, open.value] as const,
   ([rows, selected, isOpen]) => {
     if (!isOpen) return
     if (!selected && rows.length === 1) {
-      idGarantia.value = rows[0].id
+      garantiaId.value = rows[0].id
     }
-    const g = rows.find((row) => row.id === (selected || idGarantia.value))
+    const g = rows.find((row) => row.id === (selected || garantiaId.value))
     if (g && Number(monto.value) <= 0) {
       monto.value = Number(g.monto_saldo)
     }
   },
 )
 
-watch(idGarantia, (value) => {
+watch(garantiaId, (value) => {
   const g = garantiasConSaldo.value.find((row) => row.id === value)
   if (g) {
     monto.value = Number(g.monto_saldo)
@@ -194,14 +194,14 @@ watch(idGarantia, (value) => {
 
 async function confirmar() {
   const userId = authStore.user?.id
-  if (!userId || !puedeDevolver.value || !idGarantia.value) {
+  if (!userId || !puedeDevolver.value || !garantiaId.value) {
     toastWarning('Indica garantía, monto válido y fecha')
     return
   }
 
   try {
     await devolverMutation.mutateAsync({
-      id: Number(idGarantia.value),
+      id: Number(garantiaId.value),
       payload: {
         idUsuarioAuditoria: userId,
         monto: Number(monto.value),

@@ -143,8 +143,8 @@
 import { computed, ref } from 'vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
-import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { productoEsMantenimientoTaller } from '@/modules/productos/articulos/utils/productoEsMantenimientoTaller'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
@@ -170,6 +170,7 @@ import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { hoyIsoLima } from '@/shared/utils/date'
 import { useQueryClient } from '@tanstack/vue-query'
 
 const {
@@ -210,7 +211,13 @@ const queryClient = useQueryClient()
 const emitMutation = useEmitirComprobanteMutation()
 const imprimiendoTicket = ref(false)
 
-const productosFilters = ref({ pagina: 1, limite: 200, esServicio: true, soloActivos: 1 })
+const productosFilters = ref({
+  pagina: 1,
+  limite: 200,
+  esServicio: true,
+  esMantenimiento: true,
+  soloActivos: 1,
+})
 const productosQuery = useProductosQuery(productosFilters)
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
@@ -221,7 +228,7 @@ const idTipoMantenimiento = ref<number | ''>('')
 const idProducto = ref<number | ''>('')
 const tipoMantenimientoBuscar = ref('')
 const servicioBuscar = ref('')
-const fechaIngreso = ref(new Date().toISOString().slice(0, 10))
+const fechaIngreso = ref(hoyIsoLima())
 const costo = ref(0)
 const descripcion = ref('')
 const observacion = ref('')
@@ -233,7 +240,9 @@ const comprobanteGuardadoNumero = ref<string | null>(null)
 
 const tipoMantenimientoOptions = computed(() => toSelectOptions(tiposMantenimientoQuery.data.value))
 
-const serviciosMantenimiento = computed(() => productosQuery.data.value?.data ?? [])
+const serviciosMantenimiento = computed(() =>
+  (productosQuery.data.value?.data ?? []).filter(productoEsMantenimientoTaller),
+)
 
 const servicioOptions = computed(() =>
   serviciosMantenimiento.value.map((producto) => ({
@@ -316,28 +325,21 @@ async function registrarMantenimiento() {
       glosa: observacion.value || 'Mantenimiento de cilindro',
       observaciones: clienteDescripcion.value || undefined,
       origenPos: OrigenPos.MANTENIMIENTO,
+      efectosPos: {
+        mantenimientos: [
+          {
+            idBalon: Number(idBalon.value),
+            fechaIngreso: fechaIngreso.value,
+            idTipoMantenimiento: idTipoMantenimiento.value
+              ? Number(idTipoMantenimiento.value)
+              : undefined,
+            descripcion: descripcion.value || producto.nombre,
+            costo: Number(costo.value),
+            observacion: observacion.value || undefined,
+          },
+        ],
+      },
     })
-
-    try {
-      await mantenimientosService.crear({
-        idUsuarioAuditoria: userId,
-        idBalon: Number(idBalon.value),
-        fechaIngreso: fechaIngreso.value,
-        idTipoMantenimiento: idTipoMantenimiento.value
-          ? Number(idTipoMantenimiento.value)
-          : undefined,
-        descripcion: descripcion.value || producto.nombre,
-        costo: Number(costo.value),
-        idComprobanteVenta: comprobante.id,
-        observacion: observacion.value || undefined,
-      })
-    } catch (error) {
-      toastApiError(
-        error,
-        `Comprobante ${comprobante.serie}-${comprobante.numero} creado, pero falló el registro de mantenimiento`,
-      )
-      return
-    }
 
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() }),
@@ -363,7 +365,7 @@ async function limpiarFormulario() {
   idProducto.value = ''
   tipoMantenimientoBuscar.value = ''
   servicioBuscar.value = ''
-  fechaIngreso.value = new Date().toISOString().slice(0, 10)
+  fechaIngreso.value = hoyIsoLima()
   costo.value = 0
   descripcion.value = ''
   observacion.value = ''

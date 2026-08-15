@@ -12,7 +12,7 @@
       Cargando comprobante...
     </div>
 
-    <div v-else-if="comprobante" class="space-y-4">
+    <div v-else-if="comprobanteDetalle" class="space-y-4">
       <!-- Identidad del documento -->
       <div
         class="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03]"
@@ -20,16 +20,16 @@
         <div class="min-w-0">
           <p class="text-xs text-gray-500 dark:text-gray-400">Documento</p>
           <p class="text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
-            {{ comprobante.serie }}-{{ comprobante.numero }}
+            {{ comprobanteDetalle.serie }}-{{ comprobanteDetalle.numero }}
           </p>
           <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
             <ListaOpcionBadge
-              v-if="comprobante.nombre_tipo_comprobante || comprobante.codigo_tipo_comprobante"
-              :value="comprobante.nombre_tipo_comprobante ?? comprobante.codigo_tipo_comprobante"
+              v-if="comprobanteDetalle.nombre_tipo_comprobante || comprobanteDetalle.codigo_tipo_comprobante"
+              :value="comprobanteDetalle.nombre_tipo_comprobante ?? comprobanteDetalle.codigo_tipo_comprobante"
             />
             <ListaOpcionBadge
-              v-if="comprobante.nombre_estado_sunat"
-              :value="comprobante.nombre_estado_sunat"
+              v-if="comprobanteDetalle.nombre_estado_sunat"
+              :value="comprobanteDetalle.nombre_estado_sunat"
             />
           </div>
         </div>
@@ -396,12 +396,12 @@ const open = computed({
   set: (value: boolean) => emit('update:modelValue', value),
 })
 
-const comprobante = computed(() => comprobanteQuery.data.value ?? null)
+const comprobanteDetalle = computed(() => comprobanteQuery.data.value ?? null)
 
 const esVsd = computed(() =>
   esVentaSinDocumentoTipo({
-    codigo: comprobante.value?.codigo_tipo_comprobante ?? props.comprobante?.codigo_tipo_comprobante,
-    nombre: comprobante.value?.nombre_tipo_comprobante ?? props.comprobante?.nombre_tipo_comprobante,
+    codigo: comprobanteDetalle.value?.codigo_tipo_comprobante ?? props.comprobante?.codigo_tipo_comprobante,
+    nombre: comprobanteDetalle.value?.nombre_tipo_comprobante ?? props.comprobante?.nombre_tipo_comprobante,
   }),
 )
 

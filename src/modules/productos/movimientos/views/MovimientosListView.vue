@@ -51,6 +51,7 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
+            <AppExportExcelButton :on-export="exportarExcel" />
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-productos-movimientos-nuevo' }"
@@ -220,6 +221,7 @@ import { productosService } from '@/modules/productos/articulos/services/product
 import MovimientoInventarioDetailModal from '@/modules/productos/movimientos/components/MovimientoInventarioDetailModal.vue'
 import { useDeleteMovimientoInventarioMutation } from '@/modules/productos/movimientos/composables/useMovimientoInventarioMutations'
 import { useMovimientosInventarioQuery } from '@/modules/productos/movimientos/composables/useMovimientosInventarioQuery'
+import { exportarMovimientosExcel } from '@/modules/productos/movimientos/utils/exportarMovimientosExcel'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
 import type {
   MovimientoInventario,
@@ -229,6 +231,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppExportExcelButton,
   AppListToolbar,
   AppModal,
   AppPagination,
@@ -434,6 +437,8 @@ const formatFecha = (value?: string | null) => {
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium' }).format(date)
 }
+
+const exportarExcel = () => exportarMovimientosExcel(filters.value)
 
 const loadCatalogos = async () => {
   isLoadingCatalogos.value = true

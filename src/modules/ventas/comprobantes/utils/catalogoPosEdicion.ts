@@ -71,7 +71,7 @@ export function labelCatalogoPosEdicion(catalogo: CatalogoPosEdicion): string {
     case 'recarga':
       return 'Catálogo Recarga / gases (POS)'
     case 'servicios':
-      return 'Catálogo Mantenimiento / servicios (POS)'
+      return 'Catálogo Servicios (POS)'
     case 'medicinal':
       return 'Catálogo Medicinal (productos y servicios del kit)'
     default:

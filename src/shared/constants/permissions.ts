@@ -269,7 +269,7 @@ export const PermisoBanderas = {
   COMPRAS_VER: 'compras.ver',
   COMPRAS_CREAR: 'compras.crear',
   COMPRAS_EDITAR: 'compras.editar',
-  COMPRAS_ELIMINAR: 'compras_eliminar',
+  COMPRAS_ELIMINAR: 'compras.eliminar',
 
   DASHBOARD_VER_CLIENTES: 'dashboard.ver_clientes',
   DASHBOARD_VER_BALONES: 'dashboard.ver_balones',
@@ -312,4 +312,28 @@ export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBan
 export function hasPermissionFlag(permisos: string[], permission?: string): boolean {
   if (!permission) return true
   return permisos.includes(PermisoBanderas.AUTH_TODO) || permisos.includes(permission)
+}
+
+/**
+ * Acceso de menú o ruta.
+ * - `anyPermission`: basta con uno (OR)
+ * - `permission`: bandera única
+ * - sin banderas: visible (p. ej. Dashboard), salvo `requireExplicit`
+ */
+export function canAccessByPermissions(
+  permisos: string[],
+  options?: {
+    permission?: string | null
+    anyPermission?: string[] | null
+    requireExplicit?: boolean
+  },
+): boolean {
+  const permission = options?.permission ?? undefined
+  const anyPermission = options?.anyPermission?.filter(Boolean) ?? []
+
+  if (anyPermission.length > 0) {
+    return anyPermission.some((flag) => hasPermissionFlag(permisos, flag))
+  }
+  if (!permission) return !options?.requireExplicit
+  return hasPermissionFlag(permisos, permission)
 }

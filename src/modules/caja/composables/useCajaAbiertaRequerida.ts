@@ -1,12 +1,10 @@
 import { computed, ref, type Ref } from 'vue'
 import { useCajaDiaQuery, useCajaPendienteCierreQuery } from '@/modules/caja/composables/useCajaQuery'
-import { formatListDate } from '@/shared/utils/date'
+import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 import { toastWarning } from '@/shared/composables/useToast'
 
 function hoyLocal(): string {
-  const d = new Date()
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  return hoyIsoLima()
 }
 
 /** Regla operativa: ventas y movimientos requieren caja ABIERTA del día (arqueo Z diario). */

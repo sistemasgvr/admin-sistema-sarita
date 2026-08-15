@@ -152,6 +152,8 @@ export interface CreateCompraPayload {
   idCondicionPago?: number
   declararSunat?: boolean
   glosa?: string
+  fechaVencimiento?: string
+  cuotas?: { fechaPago: string; monto?: number }[]
   detalles: CreateCompraDetallePayload[]
 }
 
@@ -161,6 +163,8 @@ export interface ActualizarCompraCabeceraPayload {
   idCondicionPago?: number
   idCategoriaGasto?: number
   declararSunat?: boolean
+  fechaVencimiento?: string
+  cuotas?: { fechaPago: string; monto?: number }[]
 }
 
 export interface CreateCompraDetalleLineaPayload {
@@ -194,6 +198,11 @@ export interface CompraLineaForm {
   idUnidadMedida?: number | null
   nombreUnidadMedida?: string | null
   esGas?: boolean
+  esServicio?: boolean
+  esAlquilable?: boolean
+  nombreCategoria?: string | null
+  marca?: string | null
+  presentacion?: string | null
   /** Snapshot UI: si el producto genera ingreso al registrar la compra */
   afectaStock?: boolean
   /** Cilindros de la orden de recarga que alimentan esta línea de gas. */

@@ -1,8 +1,10 @@
 <template>
   <button
     type="button"
-    class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+    class="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] lg:h-auto lg:w-auto lg:px-4 lg:py-2.5"
     :disabled="disabled || isExporting"
+    :title="isExporting ? 'Exportando...' : label"
+    :aria-label="isExporting ? 'Exportando...' : label"
     @click="handleClick"
   >
     <AppIcon
@@ -12,7 +14,7 @@
       class="animate-spin"
     />
     <IconExcel v-else class="h-[18px] w-[18px] shrink-0" />
-    {{ isExporting ? 'Exportando...' : label }}
+    <span class="hidden lg:inline">{{ isExporting ? 'Exportando...' : label }}</span>
   </button>
 </template>
 

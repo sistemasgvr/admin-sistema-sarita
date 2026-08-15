@@ -2,19 +2,19 @@ import { ApiError } from '@/shared/api/errors/api.error'
 import { toast } from 'vue-sonner'
 
 export function toastSuccess(message: string) {
-  toast.success(message)
+  toast.success(message, { duration: 3500 })
 }
 
 export function toastError(message: string) {
-  toast.error(message)
+  toast.error(message, { duration: 5500 })
 }
 
 export function toastInfo(message: string) {
-  toast.info(message)
+  toast.info(message, { duration: 4000 })
 }
 
 export function toastWarning(message: string) {
-  toast.warning(message)
+  toast.warning(message, { duration: 5500 })
 }
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
@@ -39,7 +39,7 @@ function resolveErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function toastApiError(error: unknown, fallback = 'Ocurrió un error inesperado') {
-  toast.error(resolveErrorMessage(error, fallback))
+  toast.error(resolveErrorMessage(error, fallback), { duration: 5500 })
 }
 
 export function getApiErrorMessage(

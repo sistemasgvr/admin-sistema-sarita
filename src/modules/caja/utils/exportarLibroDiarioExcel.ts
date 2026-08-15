@@ -1,27 +1,11 @@
-import { downloadExcelWorkbook, REPORT_COLORS } from '@/shared/utils/exportExcel'
+import { downloadExcelWorkbook } from '@/shared/utils/exportExcel'
 import type { LibroDiario } from '@/modules/caja/interfaces/caja.interface'
 
 function money(value: number | null | undefined): number {
   return Number(value ?? 0)
 }
 
-function rangoLabel(libro: LibroDiario): string {
-  const desde = libro.fechaDesde
-  const hasta = libro.fechaHasta || libro.fechaDesde
-  return desde === hasta ? desde : `${desde} a ${hasta}`
-}
-
-function clienteLabel(libro: LibroDiario): string {
-  if (!libro.idCliente) return ''
-  const nombre =
-    libro.ventas.find((v) => v.idCliente === libro.idCliente)?.cliente ||
-    libro.cobranzas.find((c) => c.idCliente === libro.idCliente)?.cliente
-  return nombre ? ` · ${nombre}` : ` · Cliente #${libro.idCliente}`
-}
-
 export async function exportarLibroDiarioExcel(libro: LibroDiario) {
-  const rango = rangoLabel(libro)
-  const tituloBase = `Libro diario · ${rango}${clienteLabel(libro)}`
   const t = libro.totales
 
   await downloadExcelWorkbook({
@@ -29,8 +13,6 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
     sheets: [
       {
         name: 'Resumen',
-        title: tituloBase,
-        accentColor: REPORT_COLORS.acento,
         columns: [
           { key: 'concepto', header: 'Concepto', width: 28, value: (r) => r.concepto },
           { key: 'monto', header: 'Monto', width: 14, value: (r) => r.monto },
@@ -45,8 +27,6 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
       },
       {
         name: 'Ventas',
-        title: `${tituloBase} · Ventas (${libro.ventas.length})`,
-        accentColor: REPORT_COLORS.exito,
         columns: [
           { key: 'fecha', header: 'Fecha', width: 12, value: (r) => r.fecha },
           { key: 'comprobante', header: 'Comprobante', width: 16, value: (r) => r.serieNumero },
@@ -66,8 +46,6 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
       },
       {
         name: 'Cobranzas',
-        title: `${tituloBase} · Cobranzas (${libro.cobranzas.length})`,
-        accentColor: REPORT_COLORS.acento,
         columns: [
           { key: 'fecha', header: 'Fecha', width: 12, value: (r) => r.fechaPago },
           { key: 'cliente', header: 'Cliente', width: 28, value: (r) => r.cliente },
@@ -80,8 +58,6 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
       },
       {
         name: 'Gastos',
-        title: `${tituloBase} · Gastos (${libro.gastos.length})`,
-        accentColor: REPORT_COLORS.alerta,
         columns: [
           { key: 'fecha', header: 'Fecha', width: 12, value: (r) => r.fecha },
           { key: 'origen', header: 'Origen', width: 12, value: (r) => r.origen },
@@ -94,8 +70,6 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
       },
       {
         name: 'Depósitos',
-        title: `${tituloBase} · Depósitos (${libro.depositos.length})`,
-        accentColor: 'FFF59E0B',
         columns: [
           { key: 'fecha', header: 'Fecha', width: 12, value: (r) => r.fecha },
           { key: 'cuenta', header: 'Cuenta', width: 22, value: (r) => r.cuentaBancaria },
@@ -108,8 +82,6 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
       },
       {
         name: 'Observaciones',
-        title: `${tituloBase} · Observaciones (${libro.observaciones.length})`,
-        accentColor: REPORT_COLORS.gris500,
         columns: [
           { key: 'fecha', header: 'Fecha', width: 12, value: (r) => r.fecha },
           { key: 'texto', header: 'Observación', width: 50, value: (r) => r.texto },

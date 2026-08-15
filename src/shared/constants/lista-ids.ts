@@ -70,7 +70,7 @@ export const ListaIds = {
   ESTADO_ACTIVIDAD: 49,
   /** gen_lista.nombre = TipoSolicitud */
   TIPO_SOLICITUD: 51,
-  /** gen_lista.nombre = TipoComprobanteCompra (Factura, Boleta, etc.) */
+  /** gen_lista.nombre = TipoComprobante (catálogo SUNAT 01; ventas + compras) */
   TIPO_COMPROBANTE: 33, 
   /** gen_lista.nombre = TipoRegistroCompra (COMPRA, GASTO, etc.) */
   TIPO_REGISTRO: 54,

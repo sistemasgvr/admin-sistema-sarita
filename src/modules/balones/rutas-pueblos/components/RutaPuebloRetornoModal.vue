@@ -2,10 +2,10 @@
   <AppModal
     v-model="open"
     title="Registrar retorno"
-    subtitle="Registra las libras de retorno por cilindro."
+    subtitle="Puedes guardar un subconjunto. Los ya retornados quedan bloqueados."
     size="lg"
   >
-    <div v-if="rutaQuery.isLoading.value" class="py-8 text-center text-sm text-gray-500">
+    <div v-if="rutaQuery.isLoading.value && filas.length === 0" class="py-8 text-center text-sm text-gray-500">
       Cargando…
     </div>
     <div v-else class="space-y-3">
@@ -30,20 +30,24 @@
           step="0.01"
           min="0"
           :max="Number(det.lb_salida)"
-          required
+          :disabled="det.yaRetornado"
+          :required="!det.yaRetornado"
         />
         <div class="flex items-end pb-1 text-xs text-gray-500">
-          Usado ≈
-          {{
-            Math.max(0, Number(det.lb_salida) - Number(det.lbRetorno || 0)).toFixed(2)
-          }}
-          lb /
-          {{
-            (
-              Math.max(0, Number(det.lb_salida) - Number(det.lbRetorno || 0)) * factorDe(det)
-            ).toFixed(3)
-          }}
-          m³
+          <template v-if="det.yaRetornado">Ya retornado</template>
+          <template v-else>
+            Usado ≈
+            {{
+              Math.max(0, Number(det.lb_salida) - Number(det.lbRetorno || 0)).toFixed(2)
+            }}
+            lb /
+            {{
+              (
+                Math.max(0, Number(det.lb_salida) - Number(det.lbRetorno || 0)) * factorDe(det)
+              ).toFixed(3)
+            }}
+            m³
+          </template>
         </div>
       </div>
     </div>
@@ -59,7 +63,7 @@
       <button
         type="button"
         class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
-        :disabled="retornoMutation.isPending.value || filas.length === 0"
+        :disabled="retornoMutation.isPending.value || !canSaveSubset"
         @click="guardar"
       >
         Guardar retorno
@@ -72,7 +76,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRutaPuebloQuery } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosQuery'
 import { useRegistrarRetornoRutaPuebloMutation } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosMutations'
-import type { RutaPuebloDetalle } from '@/modules/balones/rutas-pueblos/interfaces/ruta-pueblo.interface'
+import type { RutaPueblo, RutaPuebloDetalle } from '@/modules/balones/rutas-pueblos/interfaces/ruta-pueblo.interface'
 import { AppInput, AppModal } from '@/shared/components'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
@@ -92,12 +96,14 @@ type Fila = {
   codigo_balon?: string | null
   lb_salida: number | string
   lbRetorno: string
+  yaRetornado: boolean
   factor_lb_m3_tipo?: number | string | null
   capacidad_tipo?: number | string | null
   capacidad_lb_tipo?: number | string | null
 }
 
 const filas = ref<Fila[]>([])
+const hydratedForId = ref<number | null>(null)
 
 function factorDe(det: Pick<Fila, 'factor_lb_m3_tipo' | 'capacidad_tipo' | 'capacidad_lb_tipo'>) {
   const fromTipo = Number(det.factor_lb_m3_tipo)
@@ -108,20 +114,56 @@ function factorDe(det: Pick<Fila, 'factor_lb_m3_tipo' | 'capacidad_tipo' | 'capa
   return Number(ruta.value?.factor_lb_m3 || 0)
 }
 
-watch(
-  () => rutaQuery.data.value,
-  (data) => {
-    if (!data?.detalles) return
-    filas.value = data.detalles.map((d: RutaPuebloDetalle) => ({
+function mapFilas(data: RutaPueblo): Fila[] {
+  return (data.detalles ?? []).map((d: RutaPuebloDetalle) => {
+    const yaRetornado = d.lb_retorno != null && d.lb_retorno !== ''
+    return {
       id_balon: d.id_balon,
       codigo_balon: d.codigo_balon,
       lb_salida: d.lb_salida,
-      lbRetorno: d.lb_retorno != null ? String(d.lb_retorno) : '',
+      lbRetorno: yaRetornado ? String(d.lb_retorno) : '',
+      yaRetornado,
       factor_lb_m3_tipo: d.factor_lb_m3_tipo,
       capacidad_tipo: d.capacidad_tipo,
       capacidad_lb_tipo: d.capacidad_lb_tipo,
-    }))
+    }
+  })
+}
+
+function hydrateFromRuta(force: boolean) {
+  const data = rutaQuery.data.value
+  const id = props.rutaId
+  if (!open.value || !data?.detalles || !id) return
+  if (!force && hydratedForId.value === id && filas.value.length > 0) return
+  filas.value = mapFilas(data)
+  hydratedForId.value = id
+}
+
+watch(
+  () => [open.value, props.rutaId] as const,
+  ([isOpen, id]) => {
+    if (!isOpen) {
+      filas.value = []
+      hydratedForId.value = null
+      return
+    }
+    if (hydratedForId.value !== id) {
+      filas.value = []
+      hydratedForId.value = null
+    }
+    hydrateFromRuta(true)
   },
+)
+
+watch(
+  () => rutaQuery.data.value,
+  () => {
+    hydrateFromRuta(false)
+  },
+)
+
+const canSaveSubset = computed(() =>
+  filas.value.some((f) => !f.yaRetornado && f.lbRetorno !== ''),
 )
 
 async function guardar() {
@@ -129,7 +171,13 @@ async function guardar() {
   const id = props.rutaId
   if (!userId || !id) return
 
-  const detalles = filas.value.map((f) => ({
+  const pendientes = filas.value.filter((f) => !f.yaRetornado && f.lbRetorno !== '')
+  if (pendientes.length === 0) {
+    toastWarning('Indica libras de retorno en al menos un cilindro pendiente')
+    return
+  }
+
+  const detalles = pendientes.map((f) => ({
     idBalon: f.id_balon,
     lbRetorno: Number(f.lbRetorno),
   }))
@@ -139,7 +187,7 @@ async function guardar() {
     return
   }
 
-  const sobreSalida = filas.value.find(
+  const sobreSalida = pendientes.find(
     (f) => Number(f.lbRetorno) > Number(f.lb_salida) + 1e-9,
   )
   if (sobreSalida) {
