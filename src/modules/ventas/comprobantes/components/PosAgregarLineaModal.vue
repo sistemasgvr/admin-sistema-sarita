@@ -33,10 +33,10 @@
           mode="cliente"
           :id-cliente="idCliente"
           :extra-filters="extraFiltersProductoGas"
-          label="Balón del cliente"
-          placeholder="Prestado o propio (opcional)"
-          register-label="Registrar balón propio del cliente"
-          empty-text="Sin balones. Registra el del cliente si aplica."
+          label="Cilindro del cliente"
+          placeholder="Opcional: código o serie"
+          register-label="Registrar cilindro del cliente"
+          empty-text="Sin cilindros. Regístralo si aplica."
         />
         <AppInput
           v-model="capacidad"
@@ -47,13 +47,14 @@
           placeholder="Opcional"
         />
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          El stock de gas se descuenta del almacén. El balón solo vincula la recarga al cilindro.
+          El gas se descuenta del almacén. El cilindro sirve para saber cuál recargaste.
         </p>
       </template>
 
       <template v-else-if="esAlquilable">
-        <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
-          Alquiler de regulador/accesorio. El cilindro, si se entrega, queda en préstamo.
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          Alquiler de regulador o accesorio. El cilindro, si se entrega, se presta (el cliente lo
+          devuelve).
         </p>
         <PosBalonSelectField
           v-model="idBalon"
@@ -171,13 +172,13 @@ const titulo = computed(() => {
 
 const ayuda = computed(() => {
   if (esGas.value) {
-    return 'Configura cantidad de gas y, si aplica, el balón a recargar.'
+    return 'Indica cuánto gas cobras y, si aplica, el cilindro del cliente.'
   }
   if (esAlquilable.value) {
-    return 'Alquiler de regulador/accesorio y periodo. Cilindro opcional = préstamo.'
+    return 'Alquiler del accesorio. Si entregas un cilindro, el cliente lo devuelve después.'
   }
   if (props.producto?.es_servicio) {
-    return 'Servicio sin stock de almacén. Ajusta cantidad y precio.'
+    return 'Servicio. Ajusta cantidad y precio.'
   }
   return 'Ajusta cantidad y precio antes de agregar.'
 })

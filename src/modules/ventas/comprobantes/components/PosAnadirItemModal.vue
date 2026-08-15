@@ -49,19 +49,16 @@
 
     <!-- Paso 3: configurar -->
     <div v-else-if="paso === 'config' && producto" class="space-y-4">
-      <p class="text-sm text-gray-500 dark:text-gray-400">{{ ayudaConfig }}</p>
+      <p v-if="tipo !== 'gas' && tipo !== 'alquiler'" class="text-sm text-gray-500 dark:text-gray-400">{{ ayudaConfig }}</p>
 
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div v-if="tipo !== 'gas' && tipo !== 'alquiler'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CantidadUnidadInput
           v-if="tipo !== 'mantenimiento'"
           v-model="cantidad"
           name="pos-anadir-cantidad"
           :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
-          :es-gas="tipo === 'gas'"
-          :label="tipo === 'gas' ? 'Cantidad / m³' : 'Cantidad'"
-          :disabled="cantidadBloqueadaPorBalon"
-          :error="errorCantidadVsBalon || undefined"
-          :hint="hintCantidadBalon"
+          :es-gas="false"
+          label="Cantidad"
         />
         <AppInput
           v-model="precioUnitario"
@@ -76,15 +73,22 @@
 
       <template v-if="tipo === 'gas'">
         <div>
-          <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            ¿Qué pasa con el cilindro?
+          <p class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+            {{
+              continuarConPrestamoGas
+                ? 'Préstamo del cilindro'
+                : '1. ¿Qué hace el cliente?'
+            }}
           </p>
-          <div class="grid grid-cols-2 gap-2">
+          <div
+            class="grid gap-2"
+            :class="escenariosGasVisibles.length >= 3 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'"
+          >
             <button
-              v-for="opcion in escenariosGas"
+              v-for="opcion in escenariosGasVisibles"
               :key="opcion.key"
               type="button"
-              class="flex items-start gap-2 rounded-xl border px-2.5 py-2.5 text-left transition sm:gap-3 sm:px-3 sm:py-3"
+              class="flex items-start gap-2.5 rounded-xl border px-3 py-3 text-left transition"
               :class="
                 escenarioGas === opcion.key
                   ? 'border-brand-500 bg-brand-50/60 dark:border-brand-500 dark:bg-brand-500/10'
@@ -93,20 +97,20 @@
               @click="setEscenarioGas(opcion.key)"
             >
               <span
-                class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-8 sm:w-8"
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
                 :class="
                   escenarioGas === opcion.key
                     ? 'bg-brand-500 text-white'
                     : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-300'
                 "
               >
-                <AppIcon :name="opcion.icon" :size="15" />
+                <AppIcon :name="opcion.icon" :size="16" />
               </span>
               <span class="min-w-0">
                 <span class="block text-sm font-semibold leading-snug text-gray-800 dark:text-white/90">
                   {{ opcion.label }}
                 </span>
-                <span class="mt-0.5 block text-[11px] leading-snug text-gray-500 dark:text-gray-400 sm:text-xs">
+                <span class="mt-0.5 block text-xs leading-snug text-gray-500 dark:text-gray-400">
                   {{ opcion.help }}
                 </span>
               </span>
@@ -115,11 +119,14 @@
         </div>
 
         <template v-if="escenarioGas === 'balon_cliente'">
+          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+            2. Elige el cilindro que trae
+          </p>
           <p
             v-if="esClientesVarios"
             class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
           >
-            La recarga con balón del cliente requiere un cliente identificado.
+            Primero elige un cliente con nombre (no “Clientes varios”).
           </p>
           <PosBalonSelectField
             v-model="idBalon"
@@ -127,31 +134,21 @@
             mode="cliente"
             :id-cliente="idCliente"
             :extra-filters="extraFiltersProductoGas"
-            label="Balón del cliente"
-            placeholder="Prestado o propio del cliente"
-            register-label="Registrar balón propio del cliente"
-            empty-text="Sin balones. Registra el del cliente."
+            label="Cilindro del cliente"
+            placeholder="Buscar código o serie"
+            register-label="Registrar cilindro del cliente"
+            empty-text="No hay cilindros de este cliente. Regístralo con el +."
             required
             @selected="onBalonClienteSelected"
           />
-          <AppInput
-            v-model="capacidad"
-            label="Capacidad cilindro"
-            type="number"
-            :min="0"
-            :step="NUMBER_STEP.measure"
-            placeholder="Se completa al elegir el balón"
-            :disabled="cantidadBloqueadaPorBalon"
-            hint="Se toma del balón del cliente. El gas puede salir de varios balones empresa (FIFO)."
-          />
-          <AppSelect
-            v-model="idBalonPreferido"
-            label="Priorizar balón empresa"
-            placeholder="Automático (FIFO)"
-            :options="origenOptions"
-            :disabled="cargandoOrigenes || !producto"
-            hint="Opcional. Si el primero no alcanza, se completa con el siguiente."
-          />
+          <p
+            v-if="capacidadBalonSeleccionado"
+            class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
+          >
+            Este cilindro es de
+            <span class="font-semibold">{{ capacidadBalonSeleccionado }} m³</span>
+            (esa cantidad se cobrará).
+          </p>
           <p
             v-if="errorOrigenes"
             class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
@@ -162,71 +159,75 @@
             v-else-if="cargandoOrigenes"
             class="text-xs text-gray-500 dark:text-gray-400"
           >
-            Calculando orígenes...
+            Buscando de dónde salir el gas...
           </p>
           <p
             v-else-if="sugerenciaOrigenLabel"
-            class="rounded-lg bg-brand-50 px-3 py-2 text-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-300"
+            class="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
           >
-            Se tomará de (FIFO): {{ sugerenciaOrigenLabel }}
+            El gas se descontará de:
+            <span class="font-semibold">{{ sugerenciaOrigenLabel }}</span>
           </p>
+          <details class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
+            <summary class="cursor-pointer text-sm text-gray-600 dark:text-gray-400">
+              Elegir otro cilindro de la empresa (opcional)
+            </summary>
+            <div class="mt-3">
+              <AppSelect
+                v-model="idBalonPreferido"
+                label="Usar primero este cilindro lleno"
+                placeholder="Automático (el más antiguo)"
+                :options="origenOptions"
+                :disabled="cargandoOrigenes || !producto"
+              />
+            </div>
+          </details>
         </template>
 
         <template v-else-if="escenarioGas === 'entregar_prestamo'">
-          <div
-            class="rounded-xl border border-violet-200 bg-violet-50/50 px-3 py-2.5 dark:border-violet-500/30 dark:bg-violet-500/10"
+          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+            2. Elige el cilindro que le entregamos
+          </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            Cobras el gas. El cilindro es de la empresa y el cliente lo devuelve después.
+          </p>
+          <p
+            v-if="esClientesVarios"
+            class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
           >
-            <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
-              Gas + préstamo del cilindro
-            </p>
-            <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
-              Cobras el gas y, si aplica, la garantía (editable abajo). El cilindro se entrega en
-              préstamo; el alquiler de accesorios se registra aparte.
-            </p>
-            <p class="mt-1.5 text-xs font-medium text-violet-700 dark:text-violet-300">
-              Cliente:
-              {{
-                nombreCliente?.trim() ||
-                (idCliente ? `Cliente #${idCliente}` : 'Selecciona el cliente en el comprobante')
-              }}
-            </p>
-            <p
-              v-if="esClientesVarios"
-              class="mt-1 text-xs font-medium text-error-600 dark:text-error-400"
-            >
-              No se puede prestar a Clientes Varios. Elige un cliente identificado en el
-              comprobante.
-            </p>
-          </div>
-
+            Primero elige un cliente con nombre (no “Clientes varios”).
+          </p>
           <PosBalonSelectField
             v-model="idBalon"
             v-model:etiqueta="etiquetaBalon"
             mode="alquiler"
             :id-almacen="idAlmacen"
             :extra-filters="extraFiltersProductoGas"
-            label="Cilindro empresa a prestar"
-            placeholder="Cilindro en almacén"
-            empty-text="Sin cilindros disponibles en almacén."
+            label="Cilindro de la empresa"
+            placeholder="Buscar en almacén"
+            empty-text="No hay cilindros llenos de este gas en el almacén."
             required
             @selected="onBalonEmpresaSelected"
           />
+          <p
+            v-if="capacidadBalonSeleccionado"
+            class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
+          >
+            Este cilindro es de
+            <span class="font-semibold">{{ capacidadBalonSeleccionado }} m³</span>
+            (esa cantidad se cobrará de gas).
+          </p>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput v-model="fechaInicio" label="Fecha entrega" type="date" required />
-            <AppInput
-              v-model="fechaFin"
-              label="Retorno pactado"
-              type="date"
-              hint="Opcional"
-            />
+            <AppInput v-model="fechaInicio" label="Fecha de entrega" type="date" required />
+            <AppInput v-model="fechaFin" label="Fecha de devolución" type="date" />
           </div>
           <AppInput
             v-model="montoGarantia"
-            label="Garantía / depósito"
+            label="Garantía (dinero que deja)"
             type="number"
             :min="NUMBER_MIN.money"
             :step="NUMBER_STEP.money"
-            hint="Prefill del producto o catálogo. Déjalo en 0 si no se cobra (p. ej. canje)."
+            hint="0 si no se cobra. Se puede devolver cuando traiga el cilindro."
           />
           <p
             v-if="origenMontoGarantia"
@@ -242,25 +243,12 @@
         </template>
 
         <template v-else-if="escenarioGas === 'comprar_balon'">
-          <div
-            class="rounded-xl border border-brand-200 bg-brand-50/40 px-3 py-2.5 dark:border-brand-500/30 dark:bg-brand-500/10"
-          >
-            <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
-              Venta del envase + gas
-            </p>
-            <p class="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
-              Elige el cilindro y el precio del envase. Se factura gas + venta de envase; el
-              cilindro queda vendido al cliente.
-            </p>
-            <p class="mt-1.5 text-xs font-medium text-violet-700 dark:text-violet-300">
-              Cliente:
-              {{
-                nombreCliente?.trim() ||
-                (idCliente ? `Cliente #${idCliente}` : 'Selecciona el cliente en el comprobante')
-              }}
-            </p>
-          </div>
-
+          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+            2. Elige el cilindro que se vende
+          </p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">
+            El cliente se lleva el cilindro. Se cobra el gas y el envase por separado.
+          </p>
           <PosBalonSelectField
             v-model="idBalon"
             v-model:etiqueta="etiquetaBalon"
@@ -268,21 +256,27 @@
             :id-almacen="idAlmacen"
             :extra-filters="extraFiltersProductoGas"
             label="Cilindro a vender"
-            placeholder="Solo cilindros de la empresa en almacén"
-            empty-text="Sin cilindros de empresa disponibles."
+            placeholder="Buscar en almacén"
+            empty-text="No hay cilindros de este gas en el almacén."
             required
             @selected="onBalonEmpresaSelected"
           />
-
+          <p
+            v-if="capacidadBalonSeleccionado"
+            class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
+          >
+            Este cilindro es de
+            <span class="font-semibold">{{ capacidadBalonSeleccionado }} m³</span>
+            (esa cantidad se cobrará de gas).
+          </p>
           <AppInput
             v-model="precioBalon"
-            label="Precio venta envase"
+            label="Precio del envase (cilindro vacío)"
             type="number"
             :min="NUMBER_MIN.money"
             :step="NUMBER_STEP.money"
             required
           />
-
           <div
             class="grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-700 dark:bg-white/[0.03]"
           >
@@ -299,7 +293,7 @@
               </p>
             </div>
             <div class="text-right">
-              <p class="text-gray-500 dark:text-gray-400">Total ítem</p>
+              <p class="text-gray-500 dark:text-gray-400">Total</p>
               <p class="font-semibold tabular-nums text-brand-600 dark:text-brand-400">
                 {{ formatMoney(importe) }}
               </p>
@@ -307,20 +301,58 @@
           </div>
         </template>
 
+        <div v-if="escenarioGas" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <CantidadUnidadInput
+            v-if="!cantidadBloqueadaPorBalon"
+            v-model="cantidad"
+            name="pos-anadir-cantidad"
+            :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
+            es-gas
+            label="Cantidad de gas (m³)"
+            :error="errorCantidadVsBalon || undefined"
+            :hint="hintCantidadBalon"
+          />
+          <AppInput
+            v-model="precioUnitario"
+            label="Precio por m³"
+            type="number"
+            :min="NUMBER_MIN.money"
+            :step="NUMBER_STEP.money"
+            required
+            :class="cantidadBloqueadaPorBalon ? 'sm:col-span-2' : ''"
+          />
+        </div>
       </template>
 
       <template v-else-if="tipo === 'alquiler'">
+        <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+          1. Alquiler del accesorio
+        </p>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" required />
-          <AppInput v-model="fechaFin" label="Fin pactado" type="date" required />
+          <CantidadUnidadInput
+            v-model="cantidad"
+            name="pos-anadir-cantidad"
+            :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
+            label="Cantidad"
+          />
+          <AppInput
+            v-model="precioUnitario"
+            label="Precio del alquiler"
+            type="number"
+            :min="NUMBER_MIN.money"
+            :step="NUMBER_STEP.money"
+            required
+          />
+          <AppInput v-model="fechaInicio" label="Desde" type="date" required />
+          <AppInput v-model="fechaFin" label="Hasta (lo devuelve)" type="date" required />
         </div>
         <AppInput
           v-model="montoGarantia"
-          label="Garantía / depósito"
+          label="Garantía (dinero que deja)"
           type="number"
           :min="NUMBER_MIN.money"
           :step="NUMBER_STEP.money"
-          hint="Prefill del producto o catálogo. Déjalo en 0 si no se cobra."
+          hint="0 si no se cobra."
         />
         <p
           v-if="origenMontoGarantia"
@@ -333,22 +365,80 @@
           v-model:id-medio-pago="idMedioPagoGarantia"
           v-model:observacion="observacionGarantia"
         />
-        <p class="rounded-lg bg-violet-50/60 px-3 py-2 text-xs text-violet-800 dark:bg-violet-500/10 dark:text-violet-200">
-          Se alquila el <strong>producto alquilable</strong>. El cilindro <strong>no se alquila</strong>:
-          si también entregas uno, queda en <strong>préstamo</strong> (mismo comprobante).
-        </p>
-        <PosBalonSelectField
-          v-model="idBalon"
-          v-model:etiqueta="etiquetaBalon"
-          mode="alquiler"
-          :id-almacen="idAlmacen"
-          label="Cilindro a prestar (opcional)"
-          placeholder="Solo si también entregas un cilindro en préstamo"
-          empty-text="Sin cilindros en almacén."
-        />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          Si eliges cilindro, se crea préstamo (no alquiler del balón).
-        </p>
+
+        <div v-if="!modoEdicion">
+          <p class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+            2. ¿También le das un cilindro?
+          </p>
+          <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              class="flex items-start gap-2.5 rounded-xl border px-3 py-3 text-left transition"
+              :class="
+                !entregarCilindroAlquiler
+                  ? 'border-brand-500 bg-brand-50/60 dark:border-brand-500 dark:bg-brand-500/10'
+                  : 'border-gray-200 hover:border-brand-300 dark:border-gray-700 dark:hover:border-brand-500'
+              "
+              @click="setEntregarCilindroAlquiler(false)"
+            >
+              <span
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                :class="
+                  !entregarCilindroAlquiler
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-300'
+                "
+              >
+                <AppIcon :name="ICONS.package" :size="16" />
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-gray-800 dark:text-white/90">
+                  Solo el accesorio
+                </span>
+                <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                  El cliente ya tiene cilindro, o no necesita uno.
+                </span>
+              </span>
+            </button>
+            <button
+              v-if="puedePrestarCilindro"
+              type="button"
+              class="flex items-start gap-2.5 rounded-xl border px-3 py-3 text-left transition"
+              :class="
+                entregarCilindroAlquiler
+                  ? 'border-brand-500 bg-brand-50/60 dark:border-brand-500 dark:bg-brand-500/10'
+                  : 'border-gray-200 hover:border-brand-300 dark:border-gray-700 dark:hover:border-brand-500'
+              "
+              @click="setEntregarCilindroAlquiler(true)"
+            >
+              <span
+                class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                :class="
+                  entregarCilindroAlquiler
+                    ? 'bg-brand-500 text-white'
+                    : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-300'
+                "
+              >
+                <AppIcon :name="ICONS.cylinder" :size="16" />
+              </span>
+              <span class="min-w-0">
+                <span class="block text-sm font-semibold text-gray-800 dark:text-white/90">
+                  Sí, prestar cilindro
+                </span>
+                <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                  Primero se agrega el alquiler. Luego eliges el gas y el precio.
+                </span>
+              </span>
+            </button>
+          </div>
+          <p
+            v-if="entregarCilindroAlquiler"
+            class="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+          >
+            Al continuar, el regulador entra al carrito y te pediremos el gas del cilindro (precio,
+            m³ y qué envase sale).
+          </p>
+        </div>
       </template>
 
       <template v-else-if="tipo === 'mantenimiento'">
@@ -356,7 +446,7 @@
           v-if="esClientesVarios"
           class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
         >
-          El mantenimiento requiere un cliente identificado (se hace seguimiento del cilindro).
+          El mantenimiento requiere un cliente con nombre (no “Clientes varios”).
         </p>
         <PosBalonSelectField
           v-model="idBalon"
@@ -364,9 +454,9 @@
           mode="cliente"
           :id-cliente="idCliente"
           label="Cilindro del cliente"
-          placeholder="Propio o prestado"
+          placeholder="Buscar código o serie"
           register-label="Registrar cilindro del cliente"
-          empty-text="Sin cilindros del cliente."
+          empty-text="No hay cilindros de este cliente. Regístralo con el +."
           required
         />
         <AppSelectSearch
@@ -389,12 +479,7 @@
       <AppInput v-model="observacion" label="Nota del ítem" placeholder="Opcional" />
 
       <p
-        v-if="
-          !(
-            tipo === 'gas' &&
-            (escenarioGas === 'comprar_balon' || escenarioGas === 'entregar_prestamo')
-          )
-        "
+        v-if="!(tipo === 'gas' && escenarioGas === 'comprar_balon')"
         class="text-right text-sm font-medium tabular-nums text-gray-700 dark:text-gray-300"
       >
         Importe: {{ formatMoney(importe) }}
@@ -417,7 +502,7 @@
         @click="confirmar"
       >
         <AppIcon :name="ICONS.plus" :size="16" />
-        {{ modoEdicion ? 'Actualizar ítem' : 'Agregar al carrito' }}
+        {{ textoConfirmar }}
       </button>
     </template>
   </AppModal>
@@ -572,6 +657,8 @@ const tipoMantenimientoBuscar = ref('')
 const fechaIngreso = ref(hoyIsoLima())
 const descripcionMantenimiento = ref('')
 const escenarioGas = ref<EscenarioGas | null>(null)
+const entregarCilindroAlquiler = ref(false)
+const continuarConPrestamoGas = ref(false)
 const montoGarantia = ref<number | string>(0)
 const origenMontoGarantia = ref('')
 const idMedioPagoGarantia = ref<string | number>('')
@@ -633,7 +720,7 @@ const hintCantidadBalon = computed(() => {
   if (!escenarioUsaBalon.value) return undefined
   const cap = capacidadBalonSeleccionado.value
   if (cap != null && cap > 0) {
-    return `${cap} m³ — se toma de la capacidad del cilindro`
+    return `${cap} m³ — se toma del cilindro elegido`
   }
   return 'Se completa al elegir el cilindro'
 })
@@ -795,8 +882,8 @@ const escenariosGas = computed(() => {
   }[] = [
     {
       key: 'balon_cliente',
-      label: 'Recarga (balón cliente)',
-      help: 'El cliente trae su cilindro (propio o prestado) y se recarga.',
+      label: 'Trae su cilindro',
+      help: 'Lo recargamos y se lo lleva.',
       icon: ICONS.users,
     },
   ]
@@ -804,8 +891,8 @@ const escenariosGas = computed(() => {
   if (authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR)) {
     opciones.push({
       key: 'entregar_prestamo',
-      label: 'Entregar / préstamo',
-      help: 'Cilindro empresa en préstamo. Cobras gas + garantía (editable).',
+      label: 'Le prestamos uno',
+      help: 'Cilindro de la empresa. Lo devuelve después.',
       icon: ICONS.cylinder,
     })
   }
@@ -813,13 +900,22 @@ const escenariosGas = computed(() => {
   if (authStore.hasPermission(PermisoBanderas.BAJAS_BALON_SOLICITAR)) {
     opciones.push({
       key: 'comprar_balon',
-      label: 'Vender envase + gas',
-      help: 'El cliente se queda con el cilindro.',
+      label: 'Se lo vende',
+      help: 'Se queda con el cilindro.',
       icon: ICONS.shoppingcard,
     })
   }
 
   return opciones
+})
+
+const puedePrestarCilindro = computed(() =>
+  authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR),
+)
+
+const escenariosGasVisibles = computed(() => {
+  if (!continuarConPrestamoGas.value) return escenariosGas.value
+  return escenariosGas.value.filter((opcion) => opcion.key === 'entregar_prestamo')
 })
 
 function setEscenarioGas(key: EscenarioGas) {
@@ -896,6 +992,26 @@ function setEscenarioGas(key: EscenarioGas) {
   }
 }
 
+function setEntregarCilindroAlquiler(value: boolean) {
+  if (value) {
+    if (!props.idAlmacen) {
+      toastWarning('Selecciona un almacén en el comprobante para elegir el cilindro')
+      return
+    }
+    if (!props.idCliente) {
+      toastWarning('Selecciona el cliente al que se presta el cilindro')
+      return
+    }
+    if (props.esClientesVarios) {
+      toastWarning(
+        'No se puede prestar un cilindro a Clientes Varios. Selecciona un cliente identificado.',
+      )
+      return
+    }
+  }
+  entregarCilindroAlquiler.value = value
+}
+
 async function prefillMontoGarantia(prod?: Producto | null) {
   if (!prod) {
     montoGarantia.value = 0
@@ -926,8 +1042,8 @@ async function prefillMontoGarantia(prod?: Producto | null) {
   montoGarantia.value = sugerido
   origenMontoGarantia.value =
     sugerido > 0
-      ? `Sugerido S/ ${sugerido.toFixed(2)} desde ${origen}`
-      : 'Sin precio_garantia configurado — ingresa el monto o déjalo en 0'
+      ? `Sugerido S/ ${sugerido.toFixed(2)} (${origen})`
+      : 'Sin monto sugerido — escríbelo o déjalo en 0'
 }
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
@@ -949,8 +1065,8 @@ const tiposDisponibles = computed(() => {
   if (authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR)) {
     opciones.push({
       key: 'accesorio',
-      label: 'Accesorio / producto',
-      help: 'Válvulas, descartables, reguladores de venta, etc.',
+      label: 'Producto o accesorio',
+      help: 'Válvulas, reguladores de venta, descartables…',
       icon: ICONS.package,
     })
   }
@@ -961,8 +1077,8 @@ const tiposDisponibles = computed(() => {
   ) {
     opciones.push({
       key: 'gas',
-      label: 'Gas / recarga',
-      help: 'Cobrar gas y opcionalmente vincular el balón del cliente.',
+      label: 'Gas',
+      help: 'Recarga, préstamo de cilindro o venta del envase.',
       icon: ICONS.cylinder,
     })
   }
@@ -970,8 +1086,8 @@ const tiposDisponibles = computed(() => {
   if (authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR)) {
     opciones.push({
       key: 'alquiler',
-      label: 'Alquiler',
-      help: 'Regulador u accesorio alquilable. Cilindro opcional = préstamo.',
+      label: 'Alquiler de accesorio',
+      help: 'Regulador u otro equipo. El cilindro, si se entrega, se presta.',
       icon: ICONS.calendar,
     })
   }
@@ -980,7 +1096,7 @@ const tiposDisponibles = computed(() => {
     opciones.push({
       key: 'mantenimiento',
       label: 'Mantenimiento',
-      help: 'Servicio de taller (P.H., válvula…) con cilindro del cliente.',
+      help: 'Prueba hidráulica, válvula u otro trabajo de taller.',
       icon: ICONS.construction,
     })
   }
@@ -1144,6 +1260,7 @@ const titulo = computed(() => {
   if (modoEdicion.value) return 'Editar ítem'
   if (paso.value === 'tipo') return '¿Qué deseas añadir?'
   if (paso.value === 'catalogo') {
+    if (continuarConPrestamoGas.value) return 'Elegir gas del cilindro a prestar'
     if (tipo.value === 'gas') return 'Elegir gas'
     if (tipo.value === 'alquiler') return 'Elegir alquiler'
     if (tipo.value === 'mantenimiento') return 'Elegir servicio'
@@ -1153,20 +1270,29 @@ const titulo = computed(() => {
 })
 
 const subtitulo = computed(() => {
-  if (paso.value === 'config' && producto.value) return producto.value.codigo
-  if (paso.value === 'catalogo') return 'Selecciona un ítem del catálogo'
-  return 'Cada ítem se registra de forma independiente'
+  if (paso.value === 'config' && producto.value) {
+    if (tipo.value === 'gas') {
+      return continuarConPrestamoGas.value
+        ? 'El accesorio ya está en el carrito. Ahora el cilindro con gas.'
+        : 'Elige qué hace el cliente con el cilindro'
+    }
+    if (tipo.value === 'alquiler') return 'Solo se alquila el accesorio'
+    return producto.value.codigo
+  }
+  if (paso.value === 'catalogo') {
+    return continuarConPrestamoGas.value
+      ? 'Toca el gas que vas a entregar con el cilindro'
+      : 'Toca un producto para continuar'
+  }
+  return ''
 })
 
 const ayudaConfig = computed(() => {
-  if (tipo.value === 'gas') {
-    return 'Precio del gas primero. Luego: recarga (balón del cliente), préstamo de cilindro empresa, o venta del envase.'
-  }
   if (tipo.value === 'alquiler') {
-    return 'Alquiler de regulador/accesorio. El cilindro no se alquila: si lo eliges, se presta.'
+    return 'Indica fechas y, si aplica, la garantía.'
   }
   if (tipo.value === 'mantenimiento') {
-    return 'Queda pendiente en taller hasta finalizarlo en Balones / Mantenimientos.'
+    return 'Queda en taller hasta que lo finalicen en Balones → Mantenimientos.'
   }
   return 'Ajusta cantidad y precio.'
 })
@@ -1226,8 +1352,17 @@ const puedeConfirmar = computed(() => {
 
 const textoSecundario = computed(() => {
   if (paso.value === 'tipo' || modoEdicion.value) return 'Cancelar'
+  if (paso.value === 'catalogo' && continuarConPrestamoGas.value) return 'Cerrar'
   if (paso.value === 'catalogo') return 'Atrás'
   return 'Atrás'
+})
+
+const textoConfirmar = computed(() => {
+  if (modoEdicion.value) return 'Actualizar ítem'
+  if (tipo.value === 'alquiler' && entregarCilindroAlquiler.value) {
+    return 'Agregar y elegir gas'
+  }
+  return 'Agregar al carrito'
 })
 
 function filtrosPorTipo(t: PosAnadirTipo): Partial<ProductoListFilters> {
@@ -1315,6 +1450,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     nombreProductoAlquiler.value = fromLinea.nombreProductoAlquiler || ''
     const esAlquilerLinea =
       fromLinea.tipoPos === 'alquiler' || Boolean(fromLinea.esAlquilable)
+    entregarCilindroAlquiler.value = esAlquilerLinea && Boolean(fromLinea.idBalon)
     if (escenarioGas.value === 'entregar_prestamo' || esAlquilerLinea) {
       if (fromLinea.montoGarantia != null) {
         montoGarantia.value = Number(fromLinea.montoGarantia)
@@ -1354,6 +1490,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   fechaIngreso.value = hoyIsoLima()
   descripcionMantenimiento.value = fromProducto?.nombre || ''
   escenarioGas.value = null
+  entregarCilindroAlquiler.value = false
   montoGarantia.value = 0
   origenMontoGarantia.value = ''
   idMedioPagoGarantia.value = ''
@@ -1404,6 +1541,9 @@ function elegirProducto(p: Producto) {
   producto.value = p
   resetConfig(p)
   paso.value = 'config'
+  if (continuarConPrestamoGas.value && tipo.value === 'gas') {
+    setEscenarioGas('entregar_prestamo')
+  }
 }
 
 function onSecundario() {
@@ -1414,6 +1554,11 @@ function onSecundario() {
   if (paso.value === 'config') {
     paso.value = 'catalogo'
     producto.value = null
+    return
+  }
+  if (continuarConPrestamoGas.value) {
+    continuarConPrestamoGas.value = false
+    open.value = false
     return
   }
   paso.value = 'tipo'
@@ -1529,7 +1674,7 @@ async function confirmar() {
     observacionLinea: observacion.value.trim() || undefined,
   }
 
-  if (idBalon.value) {
+  if (idBalon.value && tipo.value !== 'alquiler') {
     payload.idBalon = Number(idBalon.value)
     payload.etiquetaBalon = etiquetaBalon.value.trim() || undefined
   }
@@ -1580,7 +1725,18 @@ async function confirmar() {
     }
   }
 
+  const seguirConPrestamo =
+    tipo.value === 'alquiler' && entregarCilindroAlquiler.value && !modoEdicion.value
+
   emit('confirm', payload)
+
+  if (seguirConPrestamo) {
+    continuarConPrestamoGas.value = true
+    elegirTipo('gas')
+    return
+  }
+
+  continuarConPrestamoGas.value = false
   open.value = false
 }
 
@@ -1606,6 +1762,7 @@ watch(
       return
     }
 
+    continuarConPrestamoGas.value = false
     paso.value = 'tipo'
     tipo.value = null
     producto.value = null

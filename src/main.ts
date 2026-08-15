@@ -1,6 +1,5 @@
 import { createApp } from 'vue'
 import { configure } from 'vee-validate'
-import { Toaster } from 'vue-sonner'
 import 'vue-sonner/style.css'
 import './assets/main.css'
 import App from './App.vue'
@@ -57,5 +56,4 @@ configureApiClient({
   },
 })
 
-app.component('AppToaster', Toaster)
 app.mount('#app')

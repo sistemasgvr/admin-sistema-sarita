@@ -282,13 +282,20 @@ const cardHelp = computed(() =>
 const helpDocumentoOrigen =
   'Opcional. Vincula el movimiento a un documento de origen si aplica.'
 
+function esTipoTraslado(idTipo: unknown) {
+  const id = Number(idTipo)
+  if (!Number.isFinite(id) || id <= 0) return false
+  const opcion = tiposMovimientoQuery.data.value?.find((item) => item.id === id)
+  return String(opcion?.nombre ?? '').toUpperCase() === 'TRASLADO'
+}
+
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       fecha: requiredString('La fecha'),
       idAlmacen: requiredSelect('El almacén'),
-      idAlmacenDestino: yup.mixed<string | number>().when([], {
-        is: () => esTraslado.value,
+      idAlmacenDestino: yup.mixed<string | number>().when('idTipoMovimiento', {
+        is: (idTipo: unknown) => esTipoTraslado(idTipo),
         then: (schema) =>
           schema
             .transform((value) => (value === '' ? undefined : value))
@@ -354,12 +361,7 @@ const [idTipoDocumentoRef, idTipoDocumentoRefAttrs] = defineField('idTipoDocumen
 const [idDocumentoRef, idDocumentoRefAttrs] = defineField('idDocumentoRef')
 const [glosa, glosaAttrs] = defineField('glosa')
 
-const esTraslado = computed(() => {
-  const id = Number(idTipoMovimiento.value)
-  if (!Number.isFinite(id) || id <= 0) return false
-  const opcion = tiposMovimientoQuery.data.value?.find((item) => item.id === id)
-  return String(opcion?.nombre ?? '').toUpperCase() === 'TRASLADO'
-})
+const esTraslado = computed(() => esTipoTraslado(idTipoMovimiento.value))
 
 watch(
   () => [props.active, props.mode, idProducto.value] as const,
