@@ -1,36 +1,75 @@
 <template>
   <div>
     <PageBreadcrumb page-title="Dashboard" />
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      <div
-        v-for="card in summaryCards"
-        :key="card.label"
-        class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
-      >
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ card.label }}</p>
-        <p class="mt-2 text-2xl font-semibold text-gray-800 dark:text-white/90">{{ card.value }}</p>
-      </div>
-    </div>
-    <div
-      class="mt-6 rounded-2xl border border-gray-200 bg-white px-5 py-8 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10"
-    >
-      <h3 class="mb-2 text-lg font-semibold text-gray-800 dark:text-white/90">
-        Bienvenido al panel de administración
-      </h3>
-      <p class="text-sm text-gray-500 dark:text-gray-400">
-        Desde aquí podrás gestionar clientes y más módulos del sistema Oxígeno Sarita.
-      </p>
-    </div>
+
+    <DashboardFiltrosGenerales class="mb-6" />
+
+    <AppTabs
+      v-model="activeTab"
+      :tabs="tabs"
+      inline
+      full-width
+      aria-label="Dashboard"
+      class="mb-6"
+    />
+
+    <KeepAlive>
+      <DashboardPanelPrincipalView v-if="activeTab === 'panel'" />
+      <DashboardGestionClientesView v-else-if="activeTab === 'clientes'" />
+      <DashboardAnaliticaProductosView v-else-if="activeTab === 'productos'" />
+      <DashboardControlCilindrosView v-else-if="activeTab === 'cilindros'" />
+    </KeepAlive>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { AppTabs } from '@/shared/components'
+import { ICONS } from '@/shared/constants/icons'
+import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
+import DashboardFiltrosGenerales from '@/modules/dashboard/components/DashboardFiltrosGenerales.vue'
+import DashboardPanelPrincipalView from '@/modules/dashboard/views/DashboardPanelPrincipalView.vue'
+import DashboardGestionClientesView from '@/modules/dashboard/views/DashboardGestionClientesView.vue'
+import DashboardAnaliticaProductosView from '@/modules/dashboard/views/DashboardAnaliticaProductosView.vue'
+import DashboardControlCilindrosView from '@/modules/dashboard/views/DashboardControlCilindrosView.vue'
 
-const summaryCards = [
-  { label: 'Clientes activos', value: '—' },
-  { label: 'Pedidos del mes', value: '—' },
-  { label: 'Cilindros en stock', value: '—' },
-  { label: 'Entregas pendientes', value: '—' },
+const tabs: AppTabItem[] = [
+  { key: 'panel', label: 'Panel Principal', icon: ICONS.dashboard },
+  { key: 'clientes', label: 'Gestión de clientes', icon: ICONS.users },
+  { key: 'productos', label: 'Analítica de productos', icon: ICONS.boxes },
+  { key: 'cilindros', label: 'Control de cilindros', icon: ICONS.cylinder },
 ]
+
+const route = useRoute()
+const router = useRouter()
+
+const resolveTabFromRoute = (): string => {
+  const raw = route.query.tab
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return typeof value === 'string' && tabs.some((tab) => tab.key === value)
+    ? value
+    : (tabs[0]?.key ?? '')
+}
+
+const activeTab = ref(resolveTabFromRoute())
+
+watch(activeTab, (tab) => {
+  const current = route.query.tab
+  const currentValue = Array.isArray(current) ? current[0] : current
+  if (currentValue !== tab) {
+    router.replace({ query: { ...route.query, tab } })
+  }
+})
+
+watch(
+  () => route.query.tab,
+  () => {
+    const resolved = resolveTabFromRoute()
+    if (activeTab.value !== resolved) {
+      activeTab.value = resolved
+    }
+  },
+)
 </script>

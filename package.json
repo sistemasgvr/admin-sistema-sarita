@@ -24,6 +24,7 @@
     "@iconify/vue": "^5.0.1",
     "@tanstack/vue-query": "^5.101.2",
     "@vee-validate/yup": "^4.15.1",
+    "apexcharts": "^6.8.0",
     "axios": "^1.18.1",
     "dropzone": "^6.0.0-beta.2",
     "exceljs": "^4.4.0",
@@ -35,6 +36,7 @@
     "vue": "^3.5.38",
     "vue-router": "^5.1.0",
     "vue-sonner": "^2.0.9",
+    "vue3-apexcharts": "^1.11.1",
     "yup": "^1.7.1"
   },
   "devDependencies": {
