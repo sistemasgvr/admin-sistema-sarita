@@ -26,3 +26,9 @@ dist-ssr
 
 # Planificación interna (no versionar)
 docs/planificacion/
+
+# Playwright (e2e)
+/e2e
+/playwright.config.ts
+/playwright-report
+/test-results
