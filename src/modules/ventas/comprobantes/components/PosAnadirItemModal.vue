@@ -450,12 +450,6 @@
       </template>
 
       <template v-else-if="tipo === 'servicio' && esTallerProducto">
-        <p
-          v-if="esClientesVarios"
-          class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
-        >
-          El mantenimiento requiere un cliente con nombre (no “Clientes varios”).
-        </p>
         <PosBalonSelectField
           v-model="idBalon"
           v-model:etiqueta="etiquetaBalon"
@@ -1555,13 +1549,17 @@ function elegirProducto(p: Producto) {
     toastWarning(`${p.nombre} no tiene stock disponible`)
     return
   }
-  if (
-    tipo.value === 'servicio' &&
-    productoEsMantenimientoTaller(p) &&
-    !authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR)
-  ) {
-    toastWarning('No tienes permiso para registrar mantenimientos de cilindro')
-    return
+  if (tipo.value === 'servicio' && productoEsMantenimientoTaller(p)) {
+    if (!props.idCliente || props.esClientesVarios) {
+      toastWarning(
+        'El taller requiere un cliente identificado. Elige el cliente en el comprobante (no Clientes varios) y vuelve a intentar.',
+      )
+      return
+    }
+    if (!authStore.hasPermission(PermisoBanderas.MANTENIMIENTOS_BALON_CREAR)) {
+      toastWarning('No tienes permiso para registrar este servicio de taller')
+      return
+    }
   }
   producto.value = p
   resetConfig(p)
@@ -1677,7 +1675,7 @@ async function confirmar() {
   }
   if (esTallerProducto.value && props.esClientesVarios) {
     toastWarning(
-      'No se puede registrar un mantenimiento a Clientes Varios. Selecciona un cliente identificado.',
+      'El taller requiere un cliente identificado. Elige el cliente en el comprobante (no Clientes varios).',
     )
     return
   }
