@@ -104,8 +104,13 @@
     </div>
 
     <!-- Vista escritorio: tabla -->
-    <div class="hidden w-full min-w-0 overflow-x-auto custom-scrollbar md:block">
-      <table class="w-full">
+    <div class="relative hidden w-full min-w-0 md:block">
+      <div
+        ref="scrollerRef"
+        class="overflow-x-auto custom-scrollbar"
+        @scroll="updateScrollOverflow"
+      >
+      <table class="w-full min-w-[56rem]">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-700">
             <th
@@ -191,6 +196,12 @@
           </tr>
         </tbody>
       </table>
+      </div>
+      <div
+        v-if="canScrollRight"
+        class="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-white to-transparent dark:from-gray-900"
+        aria-hidden="true"
+      />
     </div>
 
     <slot name="footer" />
@@ -198,7 +209,7 @@
 </template>
 
 <script setup lang="ts" generic="T extends object">
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, onUpdated, ref } from 'vue'
 import type { TableColumn, TableRowKey } from '@/shared/interfaces/table.interface'
 import {
   formatTableCellValue,
@@ -243,4 +254,35 @@ const mobileLayout = computed(() =>
 const totalColumns = computed(
   () => visibleColumns.value.length + (props.showActions ? 1 : 0),
 )
+
+const scrollerRef = ref<HTMLElement | null>(null)
+const canScrollRight = ref(false)
+let resizeObserver: ResizeObserver | null = null
+
+function updateScrollOverflow() {
+  const el = scrollerRef.value
+  if (!el) {
+    canScrollRight.value = false
+    return
+  }
+  canScrollRight.value = el.scrollWidth - el.clientWidth - el.scrollLeft > 8
+}
+
+onMounted(() => {
+  updateScrollOverflow()
+  if (scrollerRef.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => updateScrollOverflow())
+    resizeObserver.observe(scrollerRef.value)
+  }
+  window.addEventListener('resize', updateScrollOverflow)
+})
+
+onUpdated(() => {
+  void nextTick(updateScrollOverflow)
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  window.removeEventListener('resize', updateScrollOverflow)
+})
 </script>

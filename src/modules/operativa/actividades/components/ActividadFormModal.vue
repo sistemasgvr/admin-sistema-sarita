@@ -249,6 +249,7 @@ import type {
   ActividadItem,
   ActividadItemPayload,
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
+import { horaFinEsPosterior } from '@/modules/operativa/actividades/utils/actividadHorario'
 import {
   esTipoRepartoNombre,
   idOpcionPorNombre,
@@ -480,9 +481,30 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateFiel
               return value != null && Number(value) > 0
             },
           ),
-        idTipoActividad: yup.number().required('El tipo de actividad es obligatorio'),
-        idPrioridad: yup.number().required('La prioridad es obligatoria'),
-        idEstadoActividad: yup.number().required('El estado es obligatorio'),
+        idTipoActividad: yup
+          .number()
+          .required('El tipo de actividad es obligatorio')
+          .test('tipo-catalogo', 'El tipo de actividad no es válido', (value) => {
+            const opciones = tipoActividadOptions.value
+            if (!value || !opciones.length) return true
+            return opciones.some((option) => Number(option.value) === Number(value))
+          }),
+        idPrioridad: yup
+          .number()
+          .required('La prioridad es obligatoria')
+          .test('prioridad-catalogo', 'La prioridad no es válida', (value) => {
+            const opciones = prioridadOptions.value
+            if (!value || !opciones.length) return true
+            return opciones.some((option) => Number(option.value) === Number(value))
+          }),
+        idEstadoActividad: yup
+          .number()
+          .required('El estado es obligatorio')
+          .test('estado-catalogo', 'El estado no es válido', (value) => {
+            const opciones = estadoActividadOptions.value
+            if (!value || !opciones.length) return true
+            return opciones.some((option) => Number(option.value) === Number(value))
+          }),
         fechaProgramada: requiredString('La fecha programada'),
         horaInicioEstimada: requiredString('La hora de inicio'),
         horaFinEstimada: requiredString('La hora de fin').test(
@@ -490,8 +512,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateFiel
           'La hora de fin debe ser posterior a la hora de inicio',
           function (value) {
             const horaInicio = (this.parent as { horaInicioEstimada?: string }).horaInicioEstimada
-            if (!value || !horaInicio) return true
-            return value > horaInicio
+            return horaFinEsPosterior(horaInicio, value)
           },
         ),
         fechaHoraCierre: optionalString(),

@@ -24,7 +24,12 @@
       <div
         class="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800"
       >
-        <p class="text-sm font-semibold text-gray-800 dark:text-white/90">Ranking</p>
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">Ranking</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Solo se cuentan actividades realizadas. Usa el filtro Estado para ver otro alcance.
+          </p>
+        </div>
         <div class="flex flex-wrap gap-4 text-xs text-gray-500 dark:text-gray-400">
           <span>
             <span class="font-semibold tabular-nums text-gray-800 dark:text-white/90">{{ totalActividades }}</span>

@@ -148,9 +148,9 @@ const displayLabel = computed(() => {
   const selected = props.options.find(
     (option) => String(option.value) === String(model.value),
   )
-
-  // Evita mostrar el placeholder si hay valor pero aún no está en options
-  return selected?.label ?? String(model.value)
+  if (selected) return selected.label
+  if (!props.options.length) return props.placeholder ?? 'Seleccionar'
+  return 'Opción no válida'
 })
 
 const buttonAttrs = computed(() => {
