@@ -1,9 +1,5 @@
 <template>
-  <div
-    @keydown="bloquearTeclasMontoInvalidas"
-    @paste="bloquearPegadoMontoInvalido"
-    @focusout="emit('blur')"
-  >
+  <div @paste="bloquearPegadoMontoInvalido" @focusout="emit('blur')">
     <input
       :id="id"
       v-model="model"
@@ -15,12 +11,14 @@
       :readonly="readonly"
       :required="required"
       :class="inputClasses"
+      @focus="onFocus"
+      @keydown="onKeydown"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 import { useFormControlClasses } from '@/shared/composables/useFormControlClasses'
 import {
   bloquearPegadoMontoInvalido,
@@ -41,7 +39,7 @@ const props = withDefaults(
   { state: 'default', placeholder: '0.00' },
 )
 
-const emit = defineEmits<{ blur: [] }>()
+const emit = defineEmits<{ blur: []; focus: [] }>()
 
 const model = defineModel<string>({ default: '' })
 
@@ -50,4 +48,15 @@ const controlState = computed<FormControlState>(() =>
 )
 
 const inputClasses = useFormControlClasses(controlState, () => ({}))
+
+function onFocus(event: FocusEvent) {
+  const input = event.target as HTMLInputElement
+  // Seleccionar todo para que el siguiente dígito reemplace el valor (p. ej. 0.00 → 5).
+  nextTick(() => input.select())
+  emit('focus')
+}
+
+function onKeydown(event: KeyboardEvent) {
+  bloquearTeclasMontoInvalidas(event)
+}
 </script>

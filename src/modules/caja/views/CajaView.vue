@@ -349,7 +349,14 @@
         </div>
       </template>
 
-      <AbrirCajaModal v-model="showAbrir" :fecha="fecha" :id-sucursal="idSucursal" />
+      <AbrirCajaModal
+        v-model="showAbrir"
+        :fecha="fecha"
+        :id-sucursal="idSucursal"
+        :es-reapertura="sesion?.estadoCaja === 'CERRADA'"
+        :id-sesion="sesion?.id"
+        :monto-inicial-anterior="sesion?.montoInicial"
+      />
       <CerrarCajaModal
         v-if="sesion?.id"
         v-model="showCerrar"

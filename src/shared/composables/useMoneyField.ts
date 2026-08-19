@@ -16,19 +16,29 @@ export function useMoneyField(
   opts: ValidacionMontoMonedaOpts = {},
 ) {
   const error = ref('')
+  const enfocado = ref(false)
 
   const valido = computed(() => esMontoMonedaValido(model.value ?? '', opts))
 
-  watch(
-    model,
-    (v) => {
-      error.value = mensajeErrorMontoMoneda(v ?? '', opts) ?? ''
-    },
-    { immediate: true },
-  )
+  function actualizarError() {
+    const v = model.value ?? ''
+    if (enfocado.value && !v.trim()) {
+      error.value = ''
+      return
+    }
+    error.value = mensajeErrorMontoMoneda(v, opts) ?? ''
+  }
+
+  watch(model, actualizarError, { immediate: true })
+
+  function onFocus() {
+    enfocado.value = true
+    actualizarError()
+  }
 
   /** Formatea a 2 decimales solo si el valor ya es válido; si no, conserva el texto y el error. */
   function onBlur() {
+    enfocado.value = false
     const raw = model.value ?? ''
     const msg = mensajeErrorMontoMoneda(raw, opts)
     if (msg) {
@@ -37,7 +47,8 @@ export function useMoneyField(
     }
     const n = parseMoneyInput(raw)
     if (n != null) model.value = roundMoney(n).toFixed(2)
+    actualizarError()
   }
 
-  return { error, valido, onBlur }
+  return { error, valido, onBlur, onFocus }
 }

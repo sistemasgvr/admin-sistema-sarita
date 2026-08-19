@@ -53,7 +53,9 @@ export function useAbrirCajaMutation() {
     mutationFn: (payload: AbrirCajaPayload) =>
       cajaService.abrir({ ...payload, idUsuarioAuditoria: auth.user?.id }),
     onSuccess: () => invalidateCajaQueries(queryClient),
-    onError: (error) => toastApiError(error, 'No se pudo abrir la caja'),
+    onError: () => {
+      /* El modal muestra el toast con contexto abrir/reabrir */
+    },
   })
 }
 

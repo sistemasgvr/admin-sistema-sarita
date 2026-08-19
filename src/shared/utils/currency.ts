@@ -142,6 +142,10 @@ export function mensajeErrorMontoMoneda(
   return null
 }
 
+function nextTickSelection(input: HTMLInputElement, pos: number) {
+  queueMicrotask(() => input.setSelectionRange(pos, pos))
+}
+
 /** Bloquea signos, caracteres no numéricos y más de 2 decimales mientras se escribe. */
 export function bloquearTeclasMontoInvalidas(e: KeyboardEvent) {
   if (e.key.length > 1) return
@@ -160,6 +164,24 @@ export function bloquearTeclasMontoInvalidas(e: KeyboardEvent) {
 
   const start = input.selectionStart ?? input.value.length
   const end = input.selectionEnd ?? input.value.length
+  const tieneSeleccion = start !== end
+
+  // Sobre "0.00" / "0": un dígito sin selección reemplaza en lugar de append (0.005 → bloqueado).
+  if (
+    !tieneSeleccion &&
+    e.key.length === 1 &&
+    /^\d$/.test(e.key)
+  ) {
+    const n = parseMoneyInput(input.value)
+    if (n === 0) {
+      e.preventDefault()
+      input.value = e.key
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      nextTickSelection(input, 1)
+      return
+    }
+  }
+
   const candidato = input.value.slice(0, start) + e.key + input.value.slice(end)
   const limpio = limpiarTextoMonto(candidato)
 

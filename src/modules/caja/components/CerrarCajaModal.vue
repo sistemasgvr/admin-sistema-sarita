@@ -109,7 +109,8 @@ const diffClass = computed(() => {
 
 watch(open, (v) => {
   if (v) {
-    form.monto = roundMoney(props.cajaEsperada ?? 0).toFixed(2)
+    const esperada = roundMoney(props.cajaEsperada ?? 0)
+    form.monto = esperada > 0 ? esperada.toFixed(2) : ''
     form.observacion = ''
     errorObs.value = ''
   }
