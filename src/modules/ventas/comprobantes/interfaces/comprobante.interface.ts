@@ -284,6 +284,7 @@ export interface ResumenDiarioPreview {
   cantidad: number
   total: number
   items: ComprobanteResumenDiarioItem[]
+  yaInformados?: boolean
 }
 
 export interface ResumenDiarioListItem {

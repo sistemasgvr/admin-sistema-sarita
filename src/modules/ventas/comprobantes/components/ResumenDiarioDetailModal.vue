@@ -33,7 +33,17 @@
       <DetailCardsLayout :loading="false" :sections="sections" />
 
       <DetailSectionCard title="Comprobantes incluidos" :icon="ICONS.clipboardList" :full-width="true">
-        <div class="overflow-auto rounded-xl border border-gray-200 dark:border-gray-800">
+        <div
+          v-if="Number(resumenData.cantidad_docs ?? 0) > 0 && !resumenData.detalles.length"
+          class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+        >
+          El resumen indica {{ resumenData.cantidad_docs }} documento(s) incluidos, pero no se encontraron detalles.
+        </div>
+
+        <div
+          v-else
+          class="overflow-auto rounded-xl border border-gray-200 dark:border-gray-800"
+        >
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 dark:bg-white/5">
               <tr>
@@ -50,7 +60,11 @@
                 class="border-t border-gray-100 dark:border-gray-800"
               >
                 <td class="px-3 py-2 font-medium text-gray-800 dark:text-white/90">
-                  {{ detalle.serie }}-{{ detalle.numero }}
+                  {{
+                    detalle.serie && detalle.numero
+                      ? `${detalle.serie}-${detalle.numero}`
+                      : 'Comprobante no encontrado'
+                  }}
                 </td>
                 <td class="px-3 py-2">{{ detalle.nombre_cliente ?? '—' }}</td>
                 <td class="px-3 py-2">

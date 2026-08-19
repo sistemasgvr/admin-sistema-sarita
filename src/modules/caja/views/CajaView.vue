@@ -65,12 +65,28 @@
 
           <div class="flex w-full flex-wrap gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:items-end">
             <button
-              v-if="canAbrir && !sesion?.id && !pendienteCierre"
+              v-if="canAbrir && !sesion?.id && !pendienteCierreSucursal"
               type="button"
-              class="flex-1 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:flex-none"
+              class="flex-1 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+              :disabled="idSucursal == null"
+              :title="idSucursal == null ? 'Selecciona una sucursal para abrir caja' : 'Abrir caja'"
               @click="showAbrir = true"
             >
               Abrir caja
+            </button>
+            <button
+              v-if="
+                canAbrir &&
+                sesion?.estadoCaja === 'CERRADA' &&
+                !pendienteCierreSucursal
+              "
+              type="button"
+              class="flex-1 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
+              :disabled="idSucursal == null"
+              :title="idSucursal == null ? 'Selecciona una sucursal para reabrir caja' : 'Reabrir caja'"
+              @click="showAbrir = true"
+            >
+              Reabrir caja
             </button>
             <button
               v-if="canGasto && sesion?.estadoCaja === 'ABIERTA'"
@@ -120,15 +136,20 @@
           </div>
         </div>
         <button
-          v-if="fechaPendienteCerrar && fecha !== fechaPendienteCerrar"
+          v-if="debeIrAPendienteCerrar"
           type="button"
           class="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
-          @click="fecha = fechaPendienteCerrar"
+          @click="irAPendienteCerrar"
         >
           Ir a cerrar {{ formatListDate(fechaPendienteCerrar) }}
         </button>
         <button
-          v-else-if="canCerrar && sesion?.estadoCaja === 'ABIERTA' && esFechaPendiente"
+          v-else-if="
+            canCerrar &&
+            sesion?.estadoCaja === 'ABIERTA' &&
+            esFechaPendiente &&
+            esSucursalPendiente
+          "
           type="button"
           class="shrink-0 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
           @click="showCerrar = true"
@@ -462,7 +483,10 @@ const anularTipo = ref<'gasto' | 'deposito' | null>(null)
 const anularId = ref<number | null>(null)
 
 const query = useCajaDiaQuery(fecha, idSucursal)
-const pendienteQuery = useCajaPendienteCierreQuery(idSucursal)
+// The "Caja del día" snapshot must remain sucursal-scoped, but the pending-close
+// warning banner must be sucursal-global.
+const pendienteQuerySucursal = useCajaPendienteCierreQuery(idSucursal)
+const pendienteQueryGlobal = useCajaPendienteCierreQuery()
 const eliminarGastoMutation = useEliminarCajaGastoMutation()
 const eliminarDepositoMutation = useEliminarCajaDepositoMutation()
 const sesion = computed(() => query.data.value)
@@ -470,24 +494,46 @@ const isLoading = computed(() => query.isLoading.value)
 const isError = computed(() => query.isError.value)
 const cajaAbierta = computed(() => sesion.value?.estadoCaja === 'ABIERTA')
 
-const pendienteCierre = computed(() => pendienteQuery.data.value?.data?.[0] ?? null)
+const pendienteCierreSucursal = computed(
+  () => pendienteQuerySucursal.data.value?.data?.[0] ?? null,
+)
+const pendienteCierreGlobal = computed(
+  () => pendienteQueryGlobal.data.value?.data?.[0] ?? null,
+)
+const pendienteIdSucursal = computed(() => pendienteCierreGlobal.value?.idSucursal ?? null)
 const fechaPendienteCerrar = computed(() =>
-  pendienteCierre.value?.fecha
-    ? String(pendienteCierre.value.fecha).slice(0, 10)
+  pendienteCierreGlobal.value?.fecha
+    ? String(pendienteCierreGlobal.value.fecha).slice(0, 10)
     : null,
 )
 const esFechaPendiente = computed(
   () => Boolean(fechaPendienteCerrar.value) && fecha.value === fechaPendienteCerrar.value,
 )
+const esSucursalPendiente = computed(
+  () => idSucursal.value === pendienteIdSucursal.value,
+)
 const bannerPendiente = computed(() => {
-  if (!pendienteCierre.value || !fechaPendienteCerrar.value) return null
+  if (!pendienteCierreGlobal.value || !fechaPendienteCerrar.value) return null
   const f = formatListDate(fechaPendienteCerrar.value)
-  const dias = pendienteCierre.value.diasAbierta ?? 1
+  const dias = pendienteCierreGlobal.value.diasAbierta ?? 1
   if (esFechaPendiente.value) {
     return `Esta caja del ${f} quedó abierta (${dias} día${dias === 1 ? '' : 's'}). Haz el arqueo y ciérrala para poder abrir la de hoy.`
   }
   return `Hay una caja sin cerrar del ${f} (${dias} día${dias === 1 ? '' : 's'}). Ciérrala antes de abrir u operar la de hoy.`
 })
+const debeIrAPendienteCerrar = computed(
+  () =>
+    Boolean(fechaPendienteCerrar.value) &&
+    (!esFechaPendiente.value || !esSucursalPendiente.value),
+)
+
+function irAPendienteCerrar() {
+  if (!fechaPendienteCerrar.value) return
+  // Move the UI to the pending-close session (date + its sucursal),
+  // while keeping the rest of "Caja del día" logic sucursal-scoped.
+  fecha.value = fechaPendienteCerrar.value
+  idSucursal.value = pendienteIdSucursal.value
+}
 const anulando = computed(
   () =>
     eliminarGastoMutation.isPending.value || eliminarDepositoMutation.isPending.value,

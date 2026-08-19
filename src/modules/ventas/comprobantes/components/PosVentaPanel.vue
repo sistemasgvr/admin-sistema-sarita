@@ -384,7 +384,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
@@ -1347,13 +1347,34 @@ async function limpiarFormulario() {
   lineas.value = []
   glosa.value = ''
   generarGre.value = false
-  idAlmacen.value = ''
+
+  // Reset UI del POS (no dejar un modal de edición/añadido abierto).
+  anadirOpen.value = false
   lineaEditando.value = null
   productoEdicion.value = null
+  inicioPreferidoAnadir.value = null
+
+  // Reset de campos operativos.
+  idAlmacen.value = ''
   productosPorId.value = new Map()
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null
   comprobanteGuardadoNumero.value = null
+
+  // Reset Tipo de comprobante a boleta (03) para la siguiente venta.
+  // Nota: dejamos que el watch existente sincronice `serie` y el correlativo.
+  const boleta = tipoComprobanteOptions.value.find((opt) => opt.codigo === '03')
+  if (boleta) {
+    // Forzar que el watch dispare aunque ya estemos en boleta.
+    idTipoComprobante.value = ''
+    await nextTick()
+    idTipoComprobante.value = boleta.value
+    await nextTick()
+  } else {
+    // Fallback: limpiar para que el composable aplique su default si existe.
+    idTipoComprobante.value = ''
+  }
+
   await reiniciarTrasOperacion()
   await almacenesQuery.refetch()
   aplicarAlmacenPorDefecto()

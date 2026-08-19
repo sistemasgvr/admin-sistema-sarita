@@ -87,7 +87,11 @@ async function submit() {
 
   try {
     const existente = await cajaService.obtenerDia(form.fecha, props.idSucursal)
-    if (existente?.id) {
+    const estadoExistente = existente?.estadoCaja ?? null
+    const estaCerrada = estadoExistente === 'CERRADA'
+    const estaAbierta = estadoExistente === 'ABIERTA'
+
+    if (existente?.id && estaAbierta) {
       const cuando = existente.fechaApertura
         ? formatDateTime(existente.fechaApertura)
         : form.fecha
@@ -98,13 +102,26 @@ async function submit() {
       return
     }
 
+    if (existente?.id && !estaCerrada) {
+      const cuando = existente.fechaApertura
+        ? formatDateTime(existente.fechaApertura)
+        : form.fecha
+      errorFecha.value = `Ya hay sesión el ${cuando}`
+      toastWarning(
+        `Ya existe una caja para esa fecha (apertura ${cuando}). No se puede abrir en este estado.`,
+      )
+      return
+    }
+
+    const reabrir = Boolean(existente?.id && estaCerrada)
+
     await mutation.mutateAsync({
       fecha: form.fecha,
       montoInicial: monto,
       idSucursal: props.idSucursal ?? undefined,
       observacion: form.observacion || undefined,
     })
-    toastSuccess('Caja abierta')
+    toastSuccess(reabrir ? 'Caja reabierta' : 'Caja abierta')
     open.value = false
     emit('saved')
   } catch {

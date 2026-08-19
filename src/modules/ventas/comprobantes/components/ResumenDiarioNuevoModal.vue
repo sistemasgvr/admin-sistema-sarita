@@ -71,7 +71,12 @@
             v-if="!preview.items.length"
             class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
           >
-            No hay boletas ni notas de crédito (serie B) para esa fecha.
+            <template v-if="preview.yaInformados">
+              Los comprobantes ya fueron informados.
+            </template>
+            <template v-else>
+              No hay boletas ni notas de crédito (serie B) para esa fecha.
+            </template>
           </div>
 
           <div
