@@ -96,7 +96,14 @@
         >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppInput v-model="fechaIngreso" label="Fecha ingreso" type="date" />
-            <AppInput v-model="costo" label="Costo / importe" type="number" min="0" step="0.01" />
+            <AppFormField label="Costo / importe" required :error="errorCosto">
+              <MoneyInput
+                v-model="costo"
+                placeholder="0.00"
+                :state="errorCosto ? 'error' : 'default'"
+                @blur="onBlurCosto"
+              />
+            </AppFormField>
           </div>
 
           <div class="mt-5 space-y-4">
@@ -163,14 +170,17 @@ import {
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
 import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
-import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppInput, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { hoyIsoLima } from '@/shared/utils/date'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 import { useQueryClient } from '@tanstack/vue-query'
 
 const {
@@ -229,7 +239,12 @@ const idProducto = ref<number | ''>('')
 const tipoMantenimientoBuscar = ref('')
 const servicioBuscar = ref('')
 const fechaIngreso = ref(hoyIsoLima())
-const costo = ref(0)
+const costo = ref('')
+const {
+  error: errorCosto,
+  valido: costoValido,
+  onBlur: onBlurCosto,
+} = useMoneyField(costo, { min: 0, allowZero: true })
 const descripcion = ref('')
 const observacion = ref('')
 const guardando = ref(false)
@@ -251,7 +266,9 @@ const servicioOptions = computed(() =>
   })),
 )
 
-const totales = computed(() => calcularTotalesDesdeImporte(Number(costo.value || 0)))
+const totales = computed(() =>
+  calcularTotalesDesdeImporte(parseMoneyInput(costo.value) ?? 0),
+)
 
 const motivoNoGuardar = computed(() => {
   if (comprobanteGuardadoId.value) return null
@@ -260,7 +277,7 @@ const motivoNoGuardar = computed(() => {
   if (!idBalon.value) return 'Selecciona el cilindro'
   if (!idProducto.value) return 'Selecciona el servicio'
   if (!fechaIngreso.value) return 'Indica la fecha de ingreso'
-  if (Number(costo.value) < 0) return 'El costo no puede ser negativo'
+  if (!costoValido.value) return errorCosto.value || 'Costo inválido'
   return null
 })
 
@@ -270,7 +287,7 @@ function onServicioChange() {
   const producto = serviciosMantenimiento.value.find((item) => item.id === Number(idProducto.value))
   if (!producto) return
 
-  costo.value = Number(producto.precio ?? 0)
+  costo.value = roundMoney(Number(producto.precio ?? 0)).toFixed(2)
   if (!descripcion.value) {
     descripcion.value = producto.nombre
   }
@@ -297,6 +314,9 @@ async function registrarMantenimiento() {
 
   guardando.value = true
 
+  onBlurCosto()
+  const costoNormalizado = roundMoney(parseMoneyInput(costo.value) ?? 0)
+
   try {
     const comprobante = await comprobantesService.crear({
       idUsuarioAuditoria: userId,
@@ -309,7 +329,7 @@ async function registrarMantenimiento() {
         {
           idProducto: producto.id,
           cantidad: 1,
-          precioUnitario: Number(costo.value),
+          precioUnitario: costoNormalizado,
           descuento: 0,
           porcentajeIgv: 18,
           idAfectacionIgv: idAfectacionGravado.value,
@@ -334,7 +354,7 @@ async function registrarMantenimiento() {
               ? Number(idTipoMantenimiento.value)
               : undefined,
             descripcion: descripcion.value || producto.nombre,
-            costo: Number(costo.value),
+            costo: costoNormalizado,
             observacion: observacion.value || undefined,
           },
         ],
@@ -366,7 +386,7 @@ async function limpiarFormulario() {
   tipoMantenimientoBuscar.value = ''
   servicioBuscar.value = ''
   fechaIngreso.value = hoyIsoLima()
-  costo.value = 0
+  costo.value = ''
   descripcion.value = ''
   observacion.value = ''
   comprobanteGuardadoId.value = null

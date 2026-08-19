@@ -5,8 +5,13 @@
         <AppInput v-model="form.concepto" placeholder="Combustible, flete, vigilancia..." />
       </AppFormField>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppFormField label="Monto" required :error="errores.monto">
-          <AppInput v-model="form.monto" type="text" inputmode="decimal" placeholder="0.00" />
+        <AppFormField label="Monto" required :error="errorMonto">
+          <MoneyInput
+            v-model="form.monto"
+            placeholder="0.00"
+            :state="errorMonto ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
         </AppFormField>
         <AppFormField label="Medio de pago" optional>
           <AppSelect v-model="form.idMedioPago" :options="medioOptions" placeholder="Efectivo / Yape..." />
@@ -30,8 +35,8 @@
       </button>
       <button
         type="button"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70 sm:w-auto"
-        :disabled="guardando"
+        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        :disabled="guardando || !formularioValido"
         @click="submit"
       >
         {{ guardando ? 'Guardando...' : 'Registrar gasto' }}
@@ -41,12 +46,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { computed, reactive, toRef, watch } from 'vue'
+import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useCrearCajaGastoMutation } from '@/modules/caja/composables/useCajaQuery'
 import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
-import { parseMoneyInput } from '@/shared/utils/currency'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
+import { mensajeErrorMontoMoneda, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const open = defineModel<boolean>({ default: false })
@@ -60,12 +66,21 @@ const form = reactive({
   numeroOperacion: '',
   observacion: '',
 })
-const errores = reactive({ concepto: '', monto: '' })
+const errores = reactive({ concepto: '' })
 const mutation = useCrearCajaGastoMutation()
 const mediosQuery = useMediosPagoQuery()
 const guardando = computed(() => mutation.isPending.value)
 const medioOptions = computed<SelectOption[]>(() =>
   (mediosQuery.data.value ?? []).map((m) => ({ value: m.id, label: m.nombre })),
+)
+
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(
+  toRef(form, 'monto'),
+  { min: 0.01 },
+)
+
+const formularioValido = computed(
+  () => form.concepto.trim().length > 0 && montoValido.value,
 )
 
 watch(open, (v) => {
@@ -76,20 +91,20 @@ watch(open, (v) => {
     form.numeroOperacion = ''
     form.observacion = ''
     errores.concepto = ''
-    errores.monto = ''
   }
 })
 
 async function submit() {
   errores.concepto = form.concepto.trim() ? '' : 'Obligatorio'
-  const monto = parseMoneyInput(form.monto)
-  errores.monto = monto != null && monto > 0 ? '' : 'Monto inválido'
-  if (errores.concepto || errores.monto) return
+  if (mensajeErrorMontoMoneda(form.monto, { min: 0.01 })) return
+  if (errores.concepto) return
+
+  const monto = roundMoney(parseMoneyInput(form.monto))
 
   await mutation.mutateAsync({
     fecha: props.fecha,
     concepto: form.concepto.trim(),
-    monto: monto!,
+    monto,
     idMedioPago: form.idMedioPago,
     numeroOperacion: form.numeroOperacion || undefined,
     observacion: form.observacion || undefined,

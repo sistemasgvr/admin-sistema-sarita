@@ -122,13 +122,13 @@
                 :nombre-unidad="linea.nombreUnidadMedida ?? 'UNID'"
                 label="Cant"
               />
-              <AppInput
-                v-model="linea.precioUnitario"
-                label="P. unit."
-                type="number"
-                :min="NUMBER_MIN.money"
-                :step="NUMBER_STEP.money"
-              />
+              <AppFormField label="P. unit.">
+                <MoneyInput
+                  v-model="linea.precioUnitario"
+                  placeholder="0.00"
+                  @blur="blurPrecioLinea(linea)"
+                />
+              </AppFormField>
             </div>
 
             <p class="mt-2 text-right text-sm font-medium tabular-nums text-gray-700 dark:text-gray-300">
@@ -201,13 +201,18 @@ import {
 import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
-import { AppInput, AppSelect } from '@/shared/components'
+import { AppInput, AppSelect, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import {
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
 const {
@@ -278,7 +283,9 @@ const glosa = ref('')
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
-const lineas = ref<PosLineItem[]>([])
+type PosLineItemEdit = Omit<PosLineItem, 'precioUnitario'> & { precioUnitario: string }
+
+const lineas = ref<PosLineItemEdit[]>([])
 
 const productosBase = computed(() => productosQuery.data.value?.data ?? [])
 
@@ -484,20 +491,22 @@ const motivoNoGuardar = computed(() => {
     ) {
       return `${linea.nombre}: cantidad inválida para la unidad`
     }
+    const errorPrecio = mensajeErrorMontoMoneda(linea.precioUnitario, { min: 0, allowZero: true })
+    if (errorPrecio) return `${linea.nombre}: ${errorPrecio}`
   }
   return null
 })
 
 const puedeGuardar = computed(() => !comprobanteGuardadoId.value && motivoNoGuardar.value === null)
 
-function crearLineaDesdeProducto(producto: Producto): PosLineItem {
+function crearLineaDesdeProducto(producto: Producto): PosLineItemEdit {
   return {
     key: crypto.randomUUID(),
     idProducto: producto.id,
     codigo: producto.codigo,
     nombre: producto.nombre,
     cantidad: 1,
-    precioUnitario: Number(producto.precio ?? 0),
+    precioUnitario: roundMoney(Number(producto.precio ?? 0)).toFixed(2),
     idAfectacionIgv: idAfectacionGravado.value,
     afectaStock: producto.afecta_stock !== false,
     stockDisponible: producto.stock_actual ?? null,
@@ -534,8 +543,13 @@ function quitarLinea(key: string) {
   lineas.value = lineas.value.filter((linea) => linea.key !== key)
 }
 
-function calcularImporteLinea(linea: PosLineItem) {
-  return Number(linea.cantidad || 0) * Number(linea.precioUnitario || 0)
+function calcularImporteLinea(linea: PosLineItemEdit) {
+  return Number(linea.cantidad || 0) * (parseMoneyInput(linea.precioUnitario) ?? 0)
+}
+
+function blurPrecioLinea(linea: PosLineItemEdit) {
+  const n = parseMoneyInput(linea.precioUnitario)
+  if (n != null) linea.precioUnitario = roundMoney(n).toFixed(2)
 }
 
 async function guardarComprobante() {
@@ -592,7 +606,7 @@ async function guardarComprobante() {
     detalles: lineasActivas.value.map((linea) => ({
       idProducto: Number(linea.idProducto),
       cantidad: Number(linea.cantidad),
-      precioUnitario: Number(linea.precioUnitario),
+      precioUnitario: roundMoney(parseMoneyInput(linea.precioUnitario) ?? 0),
       descuento: 0,
       porcentajeIgv: 18,
       idAfectacionIgv: linea.idAfectacionIgv ?? idAfectacionGravado.value,

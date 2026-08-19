@@ -6,6 +6,7 @@ import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { esClientesVarios } from '@/modules/clientes/utils/clientesVarios'
 import { useCondicionesPagoQuery } from '@/modules/configuracion/condiciones-pago/composables/useCondicionesPagoQuery'
+import type { CondicionPago } from '@/modules/configuracion/condiciones-pago/interfaces/condicion-pago.interface'
 import { useComprobanteCatalogosPosQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import {
   CODIGO_VENTA_SIN_DOC,
@@ -22,6 +23,19 @@ import {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { hoyIsoLima } from '@/shared/utils/date'
+
+function esCondicionContado(c: CondicionPago): boolean {
+  if ((c.codigo ?? '').toUpperCase() === 'CONTADO') return true
+  if (c.modalidad === 'CONTADO') return true
+  if (c.modalidad === 'CUOTAS' || Number(c.numero_cuotas ?? 0) > 1) return false
+  if (c.modalidad === 'CREDITO' || Number(c.dias_credito ?? 0) > 0) return false
+  return Number(c.dias_credito ?? 0) === 0 && Number(c.numero_cuotas ?? 1) <= 1
+}
+
+function resolverCondicionContado(lista: CondicionPago[]): CondicionPago | null {
+  if (!lista.length) return null
+  return lista.find(esCondicionContado) ?? lista[0]
+}
 
 export {
   seriePorDefectoDesdeCodigo,
@@ -224,10 +238,7 @@ export function usePosComprobanteForm(options?: {
     () => condicionesPagoQuery.data.value?.data,
     (lista) => {
       if (!lista?.length || idCondicionPago.value) return
-      const contado =
-        lista.find((item) => (item.codigo ?? '').toUpperCase() === 'CONTADO') ??
-        lista.find((item) => Number(item.dias_credito) === 0) ??
-        lista[0]
+      const contado = resolverCondicionContado(lista)
       if (contado) idCondicionPago.value = contado.id
     },
     { immediate: true },
@@ -386,11 +397,9 @@ export function usePosComprobanteForm(options?: {
     aplicarClientesVariosPorDefecto()
     fecha.value = hoyIsoLima()
     idMedioPago.value = ''
-    const contado = (condicionesPagoQuery.data.value?.data ?? []).find(
-      (item) =>
-        (item.codigo ?? '').toUpperCase() === 'CONTADO' || Number(item.dias_credito) === 0,
-    )
-    idCondicionPago.value = contado?.id ?? idCondicionPago.value
+    const lista = condicionesPagoQuery.data.value?.data ?? []
+    const contado = resolverCondicionContado(lista)
+    if (contado) idCondicionPago.value = contado.id
     await refrescarSiguienteNumero()
   }
 

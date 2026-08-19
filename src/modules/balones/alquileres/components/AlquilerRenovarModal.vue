@@ -30,7 +30,14 @@
           placeholder="Selecciona"
           :options="tipoComprobanteOptions"
         />
-        <AppInput v-model="monto" label="Monto periodo" type="number" min="0" step="0.01" />
+        <AppFormField label="Monto periodo" required :error="errorMonto">
+          <MoneyInput
+            v-model="monto"
+            placeholder="0.00"
+            :state="errorMonto ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
+        </AppFormField>
         <AppInput v-model="fechaInicio" label="Inicio periodo" type="date" />
         <AppInput v-model="fechaFin" label="Fin periodo" type="date" />
       </div>
@@ -65,8 +72,11 @@ import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/comp
 import { usePosComprobanteForm } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppInput, AppModal, AppSelect, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 
 const props = defineProps<{
   alquiler?: Alquiler | null
@@ -88,17 +98,21 @@ const {
   esNotaVenta,
 } = usePosComprobanteForm()
 
-const monto = ref(0)
+const monto = ref('')
 const fechaInicio = ref('')
 const fechaFin = ref('')
 const guardando = ref(false)
+
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(monto, {
+  min: 0.01,
+})
 
 const puedeRenovar = computed(
   () =>
     Boolean(props.alquiler?.id_producto_regulador) &&
     Boolean(props.alquiler?.id_cliente) &&
     Boolean(idTipoComprobante.value) &&
-    Number(monto.value) > 0 &&
+    montoValido.value &&
     Boolean(fechaInicio.value) &&
     Boolean(fechaFin.value),
 )
@@ -116,7 +130,8 @@ watch(
       : 14
     fechaInicio.value = inicio
     fechaFin.value = addDaysIso(inicio, dias - 1)
-    monto.value = Number(props.alquiler.tarifa_diaria ?? 0)
+    const tarifa = Number(props.alquiler.tarifa_diaria ?? 0)
+    monto.value = tarifa > 0 ? tarifa.toFixed(2) : ''
   },
 )
 
@@ -132,6 +147,8 @@ async function confirmar() {
     return
   }
 
+  const montoNum = roundMoney(parseMoneyInput(monto.value))
+
   guardando.value = true
   try {
     const comprobante = await createComprobanteMutation.mutateAsync({
@@ -144,7 +161,7 @@ async function confirmar() {
         {
           idProducto: Number(alquiler.id_producto_regulador),
           cantidad: 1,
-          precioUnitario: Number(monto.value),
+          precioUnitario: montoNum,
           descuento: 0,
           porcentajeIgv: 18,
           idAfectacionIgv: idAfectacionGravado.value,
@@ -159,7 +176,7 @@ async function confirmar() {
     await alquileresService.renovar(alquiler.id, {
       idUsuarioAuditoria: userId,
       idComprobante: comprobante.id,
-      monto: Number(monto.value),
+      monto: montoNum,
       fechaInicio: fechaInicio.value,
       fechaFin: fechaFin.value,
       observacion: 'Renovación regulador',

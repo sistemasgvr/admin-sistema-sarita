@@ -25,6 +25,7 @@
           :max="max"
           :step="step"
           :maxlength="maxlength"
+          :inputmode="inputmode"
           :class="inputClasses"
           @input="onSanitizeInput"
           @blur="emit('blur', $event)"
@@ -70,6 +71,7 @@ interface AppInputProps {
   max?: string | number
   step?: string | number
   maxlength?: string | number
+  inputmode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
   state?: FormControlState
   ///Filtra en tiempo real lo que el usuario escribe
   sanitize?: (value: string) => string

@@ -47,16 +47,15 @@
             v-bind="idClienteCompradorAttrs"
             :error="errors.idClienteComprador"
           />
-          <AppInput
-            v-model="montoVenta"
-            label="Monto venta"
-            type="number"
-            min="0"
-            step="0.01"
-            v-bind="montoVentaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.montoVenta"
-          />
+          <AppFormField label="Monto venta" optional :error="errorMontoVentaDisplay">
+            <MoneyInput
+              v-model="montoVenta"
+              placeholder="0.00"
+              :disabled="isSubmitting"
+              :state="errorMontoVentaDisplay ? 'error' : 'default'"
+              @blur="onBlurMontoVenta"
+            />
+          </AppFormField>
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <AppInput
@@ -108,7 +107,7 @@
         type="submit"
         form="balon-baja-form"
         class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || !formularioValido"
       >
         {{ isSubmitting ? 'Procesando...' : 'Enviar solicitud' }}
       </button>
@@ -127,9 +126,13 @@ import { useDarBajaBalonMutation } from '@/modules/balones/cilindros/composables
 import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredSelect } from '@/shared/validation'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
+import { yupMontoMoneda } from '@/shared/utils/yupMoney'
 
 const props = defineProps<{
   balonId?: number | null
@@ -175,13 +178,15 @@ const requiereMotivoDetalle = computed(
   () => motivoSeleccionado.value?.nombre?.toUpperCase() === 'OTROS',
 )
 
-const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+const moneyOpts = { min: 0, allowZero: true } as const
+
+const { defineField, handleSubmit, resetForm, errors, isSubmitting, meta } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       idMotivoBaja: requiredSelect('El motivo de baja'),
       motivoDetalle: optionalString().max(500, 'Máximo 500 caracteres'),
       idClienteComprador: optionalNumber(),
-      montoVenta: optionalNumber(),
+      montoVenta: yupMontoMoneda({ optional: true, ...moneyOpts }),
       serieComprobante: optionalString().max(10, 'Máximo 10 caracteres'),
       numeroComprobante: optionalString().max(15, 'Máximo 15 caracteres'),
       fechaBaja: optionalString(),
@@ -192,7 +197,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idMotivoBaja: undefined as number | undefined,
     motivoDetalle: '',
     idClienteComprador: undefined as number | undefined,
-    montoVenta: undefined as number | undefined,
+    montoVenta: '',
     serieComprobante: '',
     numeroComprobante: '',
     fechaBaja: new Date().toISOString().slice(0, 10),
@@ -203,7 +208,18 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 const [idMotivoBaja, idMotivoBajaAttrs] = defineField('idMotivoBaja')
 const [motivoDetalle, motivoDetalleAttrs] = defineField('motivoDetalle')
 const [idClienteComprador, idClienteCompradorAttrs] = defineField('idClienteComprador')
-const [montoVenta, montoVentaAttrs] = defineField('montoVenta')
+const [montoVenta] = defineField('montoVenta')
+const { error: errorMontoVenta, valido: montoVentaValidoRaw, onBlur: onBlurMontoVenta } =
+  useMoneyField(montoVenta, moneyOpts)
+const montoVentaValido = computed(
+  () => !(montoVenta.value ?? '').trim() || montoVentaValidoRaw.value,
+)
+const errorMontoVentaDisplay = computed(
+  () =>
+    errors.value.montoVenta ||
+    ((montoVenta.value ?? '').trim() ? errorMontoVenta.value : ''),
+)
+const formularioValido = computed(() => meta.value.valid && montoVentaValido.value)
 const [serieComprobante, serieComprobanteAttrs] = defineField('serieComprobante')
 const [numeroComprobante, numeroComprobanteAttrs] = defineField('numeroComprobante')
 const [fechaBaja, fechaBajaAttrs] = defineField('fechaBaja')
@@ -212,7 +228,7 @@ const [observacion, observacionAttrs] = defineField('observacion')
 watch(idMotivoBaja, () => {
   if (!esVenta.value) {
     idClienteComprador.value = undefined
-    montoVenta.value = undefined
+    montoVenta.value = ''
     serieComprobante.value = ''
     numeroComprobante.value = ''
   }
@@ -227,7 +243,7 @@ const resetFormState = () => {
       idMotivoBaja: undefined,
       motivoDetalle: '',
       idClienteComprador: undefined,
-      montoVenta: undefined,
+      montoVenta: '',
       serieComprobante: '',
       numeroComprobante: '',
       fechaBaja: new Date().toISOString().slice(0, 10),
@@ -256,7 +272,9 @@ const onSubmit = handleSubmit(async (values) => {
         idClienteComprador: values.idClienteComprador,
         serieComprobante: values.serieComprobante || undefined,
         numeroComprobante: values.numeroComprobante || undefined,
-        montoVenta: values.montoVenta,
+        montoVenta: values.montoVenta?.trim()
+          ? roundMoney(parseMoneyInput(values.montoVenta))
+          : undefined,
         observacion: values.observacion || undefined,
         fechaBaja: values.fechaBaja || undefined,
       },

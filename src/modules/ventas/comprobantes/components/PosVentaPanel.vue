@@ -394,6 +394,7 @@ import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables
 import PosCajaEstadoBanner from '@/modules/caja/components/PosCajaEstadoBanner.vue'
 import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
 import { hoyIsoLima } from '@/shared/utils/date'
+import { roundMoney } from '@/shared/utils/currency'
 import PosAnadirItemModal, {
   type PosLineaConfirmada,
 } from '@/modules/ventas/comprobantes/components/PosAnadirItemModal.vue'
@@ -785,12 +786,14 @@ function abrirEditarLinea(linea: PosLineItem) {
 }
 
 function onConfirmLinea(payload: PosLineaConfirmada) {
-  const { producto, tipo } = payload
+  const precioNormalizado = roundMoney(payload.precioUnitario)
+  const payloadNormalizado = { ...payload, precioUnitario: precioNormalizado }
+  const { producto, tipo } = payloadNormalizado
   productosPorId.value.set(producto.id, producto)
 
   if (lineaEditando.value) {
     const linea = lineaEditando.value
-    aplicarPayloadALinea(linea, payload)
+    aplicarPayloadALinea(linea, payloadNormalizado)
     toastSuccess(`${linea.nombre} actualizado`)
     lineaEditando.value = null
     productoEdicion.value = null
@@ -802,8 +805,8 @@ function onConfirmLinea(payload: PosLineaConfirmada) {
     idProducto: producto.id,
     codigo: producto.codigo,
     nombre: producto.nombre,
-    cantidad: payload.cantidad,
-    precioUnitario: payload.precioUnitario,
+    cantidad: payloadNormalizado.cantidad,
+    precioUnitario: precioNormalizado,
     idAfectacionIgv: idAfectacionGravado.value,
     afectaStock: productoAfectaStock(producto),
     stockDisponible: payload.stockDisponible ?? producto.stock_actual ?? null,
@@ -814,14 +817,14 @@ function onConfirmLinea(payload: PosLineaConfirmada) {
     tipoPos: tipo,
     esMantenimiento: tipo === 'mantenimiento',
   }
-  aplicarPayloadALinea(linea, payload)
+  aplicarPayloadALinea(linea, payloadNormalizado)
   lineas.value.push(linea)
   toastSuccess(`${producto.nombre} agregado`)
 }
 
 function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.cantidad = payload.cantidad
-  linea.precioUnitario = payload.precioUnitario
+  linea.precioUnitario = roundMoney(payload.precioUnitario)
   linea.idBalon = payload.idBalon
   linea.etiquetaBalon = payload.etiquetaBalon
   linea.idBalonOrigen = payload.idBalonOrigen
@@ -1107,7 +1110,7 @@ try {
       const base = {
         idProducto: Number(linea.idProducto),
         cantidad: Number(linea.cantidad),
-        precioUnitario: Number(linea.precioUnitario),
+        precioUnitario: roundMoney(Number(linea.precioUnitario)),
         descuento: 0,
         porcentajeIgv: 18,
         idAfectacionIgv: linea.idAfectacionIgv ?? idAfectacionGravado.value,

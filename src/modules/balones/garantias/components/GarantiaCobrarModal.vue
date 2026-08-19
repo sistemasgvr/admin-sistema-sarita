@@ -46,15 +46,17 @@
           required
           :options="tipoComprobanteOptions"
         />
-        <AppInput
-          v-model="monto"
-          label="Monto garantía"
-          type="number"
-          min="0"
-          step="0.01"
-          required
-          hint="Prefill desde precio_garantia del producto/catálogo; puedes sobrescribir."
-        />
+        <AppFormField label="Monto garantía" required :error="errorMonto">
+          <MoneyInput
+            v-model="monto"
+            placeholder="0.00"
+            :state="errorMonto ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
+        </AppFormField>
+        <p class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
+          Prefill desde precio_garantia del producto/catálogo; puedes sobrescribir.
+        </p>
       </div>
 
       <p
@@ -106,8 +108,11 @@ import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import { usePosComprobanteForm } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppModal, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastWarning } from '@/shared/composables/useToast'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 
 const props = defineProps<{
   idCliente?: number | null
@@ -134,13 +139,17 @@ const {
 const clienteId = ref<number | ''>('')
 const prestamoId = ref<number | ''>('')
 const productoId = ref<number | ''>('')
-const monto = ref(0)
+const monto = ref('')
 const origenMonto = ref('')
 const idMedioPago = ref<string | number>('')
 const observacionRecepcion = ref('')
 const guardando = ref(false)
 const clienteBuscar = ref('')
 const productoBuscar = ref('')
+
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(monto, {
+  min: 0.01,
+})
 
 const clientesFilters = ref({
   pagina: 1,
@@ -197,7 +206,7 @@ const puedeCobrar = computed(
     Boolean(clienteId.value) &&
     Boolean(productoId.value) &&
     Boolean(idTipoComprobante.value) &&
-    Number(monto.value) > 0 &&
+    montoValido.value &&
     Boolean(idMedioPago.value),
 )
 
@@ -252,7 +261,7 @@ watch(productoId, async (value) => {
   }
 
   if (sugerido > 0) {
-    monto.value = sugerido
+    monto.value = sugerido.toFixed(2)
     origenMonto.value = `S/ ${sugerido.toFixed(2)} desde ${origen}`
   } else {
     origenMonto.value = 'Sin precio_garantia en producto/catálogo — ingresa el monto manualmente'
@@ -266,7 +275,7 @@ watch(
     clienteId.value = props.idCliente ?? ''
     prestamoId.value = props.idPrestamo ?? ''
     productoId.value = props.idProducto ?? ''
-    monto.value = 0
+    monto.value = ''
     origenMonto.value = ''
     idMedioPago.value = ''
     observacionRecepcion.value = ''
@@ -294,6 +303,8 @@ async function confirmar() {
     return
   }
 
+  const montoNum = roundMoney(parseMoneyInput(monto.value))
+
   guardando.value = true
   try {
     const comprobante = await createComprobanteMutation.mutateAsync({
@@ -306,7 +317,7 @@ async function confirmar() {
         {
           idProducto: producto.id,
           cantidad: 1,
-          precioUnitario: Number(monto.value),
+          precioUnitario: montoNum,
           descuento: 0,
           porcentajeIgv: 18,
           idAfectacionIgv: idAfectacionGravado.value,
@@ -322,7 +333,7 @@ async function confirmar() {
     await createGarantiaMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idCliente: Number(clienteId.value),
-      monto: Number(monto.value),
+      monto: montoNum,
       idComprobante: comprobante.id,
       idPrestamo: prestamoId.value ? Number(prestamoId.value) : undefined,
       idProducto: producto.id,

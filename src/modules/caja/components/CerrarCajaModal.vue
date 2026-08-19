@@ -10,7 +10,12 @@
         <strong class="text-gray-800 dark:text-white/90">{{ formatCurrency(cajaEsperada) }}</strong>
       </p>
       <AppFormField label="Efectivo contado" required :error="errorMonto">
-        <AppInput v-model="form.monto" type="text" inputmode="decimal" placeholder="0.00" />
+        <MoneyInput
+          v-model="form.monto"
+          placeholder="0.00"
+          :state="errorMonto ? 'error' : 'default'"
+          @blur="onBlurMonto"
+        />
       </AppFormField>
       <AppFormField
         label="Observación de cierre"
@@ -46,8 +51,8 @@
       </button>
       <button
         type="button"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70 sm:w-auto"
-        :disabled="guardando"
+        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        :disabled="guardando || !formularioValido"
         @click="submit"
       >
         {{ guardando ? 'Cerrando...' : 'Cerrar caja' }}
@@ -57,11 +62,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { AppInput, AppModal, AppTextarea } from '@/shared/components'
+import { computed, reactive, ref, toRef, watch } from 'vue'
+import { AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useCerrarCajaMutation } from '@/modules/caja/composables/useCajaQuery'
-import { formatCurrency, parseMoneyInput } from '@/shared/utils/currency'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
+import {
+  formatCurrency,
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
 const open = defineModel<boolean>({ default: false })
@@ -69,15 +80,19 @@ const props = defineProps<{ idSesion: number; cajaEsperada: number }>()
 const emit = defineEmits<{ saved: [] }>()
 
 const form = reactive({ monto: '', observacion: '' })
-const errorMonto = ref('')
 const errorObs = ref('')
 const mutation = useCerrarCajaMutation()
 const guardando = computed(() => mutation.isPending.value)
 
+const { error: errorMonto, valido: formularioValido, onBlur: onBlurMonto } = useMoneyField(
+  toRef(form, 'monto'),
+  { min: 0, allowZero: true },
+)
+
 const diferenciaPreview = computed(() => {
   const m = parseMoneyInput(form.monto)
-  if (m == null) return null
-  return m - props.cajaEsperada
+  if (m == null || !formularioValido.value) return null
+  return roundMoney(m) - props.cajaEsperada
 })
 
 const requiereObservacion = computed(() => {
@@ -94,26 +109,23 @@ const diffClass = computed(() => {
 
 watch(open, (v) => {
   if (v) {
-    form.monto = String(props.cajaEsperada ?? 0)
+    form.monto = roundMoney(props.cajaEsperada ?? 0).toFixed(2)
     form.observacion = ''
-    errorMonto.value = ''
     errorObs.value = ''
   }
 })
 
 async function submit() {
-  const monto = parseMoneyInput(form.monto)
-  if (monto == null || monto < 0) {
-    errorMonto.value = 'Monto inválido'
-    return
-  }
-  errorMonto.value = ''
+  const msg = mensajeErrorMontoMoneda(form.monto, { min: 0, allowZero: true })
+  if (msg) return
 
   if (requiereObservacion.value && !form.observacion.trim()) {
     errorObs.value = 'Indica el motivo del sobrante o faltante'
     return
   }
   errorObs.value = ''
+
+  const monto = roundMoney(parseMoneyInput(form.monto))
 
   try {
     await mutation.mutateAsync({

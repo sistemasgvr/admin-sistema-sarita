@@ -122,18 +122,23 @@
                 class="sm:col-span-2"
               />
 
-              <AppInput
+              <AppFormField
                 v-if="isCreateMode"
-                v-model="montoGarantia"
                 label="Garantía / depósito"
-                type="number"
-                :min="NUMBER_MIN.money"
-                :step="NUMBER_STEP.money"
-                :disabled="isSubmitting"
-              />
+                optional
+                :error="errorMontoGarantiaDisplay"
+              >
+                <MoneyInput
+                  v-model="montoGarantia"
+                  placeholder="0.00"
+                  :disabled="isSubmitting"
+                  :state="errorMontoGarantiaDisplay ? 'error' : 'default'"
+                  @blur="onBlurMontoGarantia"
+                />
+              </AppFormField>
 
               <div
-                v-if="isCreateMode && Number(montoGarantia || 0) > 0"
+                v-if="isCreateMode && montoGarantiaNum > 0"
                 class="sm:col-span-2"
               >
                 <GarantiaRecepcionFields
@@ -143,29 +148,25 @@
                 />
               </div>
 
-              <AppInput
-                v-model="tarifaDiaria"
-                label="Tarifa periodo"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                v-bind="tarifaDiariaAttrs"
-                :disabled="isSubmitting"
-                :error="errors.tarifaDiaria"
-              />
+              <AppFormField label="Tarifa periodo" optional :error="errorTarifaDisplay">
+                <MoneyInput
+                  v-model="tarifaDiaria"
+                  placeholder="0.00"
+                  :disabled="isSubmitting"
+                  :state="errorTarifaDisplay ? 'error' : 'default'"
+                  @blur="onBlurTarifa"
+                />
+              </AppFormField>
 
-              <AppInput
-                v-model="totalCobrado"
-                label="Total cobrado"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                v-bind="totalCobradoAttrs"
-                :disabled="isSubmitting"
-                :error="errors.totalCobrado"
-              />
+              <AppFormField label="Total cobrado" optional :error="errorTotalCobradoDisplay">
+                <MoneyInput
+                  v-model="totalCobrado"
+                  placeholder="0.00"
+                  :disabled="isSubmitting"
+                  :state="errorTotalCobradoDisplay ? 'error' : 'default'"
+                  @blur="onBlurTotalCobrado"
+                />
+              </AppFormField>
 
               <AppInput
                 v-model="idComprobanteVenta"
@@ -208,7 +209,7 @@
           <button
             type="submit"
             class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || !formularioValido"
           >
             {{
               isSubmitting
@@ -350,16 +351,20 @@ import {
   AppSelect,
   AppTable,
   AppTextarea,
+  MoneyInput,
 } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { toastApiError, toastWarning } from '@/shared/composables/useToast'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
+import { yupMontoMoneda } from '@/shared/utils/yupMoney'
 import {
   optionalNumber,
   optionalString,
@@ -481,7 +486,9 @@ const optionalSelectNumber = () =>
     .transform((value) => (value === '' ? undefined : value))
     .optional()
 
-const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+const moneyOptsOptional = { min: 0, allowZero: true } as const
+
+const { defineField, handleSubmit, resetForm, errors, isSubmitting, meta } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       numeroAlquiler: optionalString().max(30, 'Máximo 30 caracteres'),
@@ -490,8 +497,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       fechaInicio: requiredString('La fecha de inicio'),
       fechaFinPactada: requiredString('La fecha de fin'),
       fechaFinReal: optionalString(),
-      tarifaDiaria: optionalNumber().min(0, 'Debe ser mayor o igual a cero'),
-      totalCobrado: optionalNumber().min(0, 'Debe ser mayor o igual a cero'),
+      tarifaDiaria: yupMontoMoneda({ optional: true, ...moneyOptsOptional }),
+      totalCobrado: yupMontoMoneda({ optional: true, ...moneyOptsOptional }),
       idEstado: optionalSelectNumber(),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
       idComprobanteVenta: optionalNumber().min(1, 'ID inválido'),
@@ -505,8 +512,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     fechaInicio: '',
     fechaFinPactada: '',
     fechaFinReal: '',
-    tarifaDiaria: undefined as number | undefined,
-    totalCobrado: undefined as number | undefined,
+    tarifaDiaria: '',
+    totalCobrado: '',
     idEstado: '' as string | number,
     observacion: '',
     idComprobanteVenta: undefined as number | undefined,
@@ -520,8 +527,30 @@ const [idAlmacen] = defineField('idAlmacen')
 const [fechaInicio, fechaInicioAttrs] = defineField('fechaInicio')
 const [fechaFinPactada, fechaFinPactadaAttrs] = defineField('fechaFinPactada')
 const [fechaFinReal, fechaFinRealAttrs] = defineField('fechaFinReal')
-const [tarifaDiaria, tarifaDiariaAttrs] = defineField('tarifaDiaria')
-const [totalCobrado, totalCobradoAttrs] = defineField('totalCobrado')
+const [tarifaDiaria] = defineField('tarifaDiaria')
+const [totalCobrado] = defineField('totalCobrado')
+const { error: errorTarifa, valido: tarifaValidoRaw, onBlur: onBlurTarifa } = useMoneyField(
+  tarifaDiaria,
+  moneyOptsOptional,
+)
+const tarifaDiariaValido = computed(
+  () => !(tarifaDiaria.value ?? '').trim() || tarifaValidoRaw.value,
+)
+const errorTarifaDisplay = computed(
+  () =>
+    errors.value.tarifaDiaria ||
+    ((tarifaDiaria.value ?? '').trim() ? errorTarifa.value : ''),
+)
+const { error: errorTotalCobrado, valido: totalCobradoValidoRaw, onBlur: onBlurTotalCobrado } =
+  useMoneyField(totalCobrado, moneyOptsOptional)
+const totalCobradoValido = computed(
+  () => !(totalCobrado.value ?? '').trim() || totalCobradoValidoRaw.value,
+)
+const errorTotalCobradoDisplay = computed(
+  () =>
+    errors.value.totalCobrado ||
+    ((totalCobrado.value ?? '').trim() ? errorTotalCobrado.value : ''),
+)
 const [idEstado, idEstadoAttrs] = defineField('idEstado')
 const [observacion, observacionAttrs] = defineField('observacion')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
@@ -537,9 +566,26 @@ watch(
 )
 
 const productoAlquilableBuscar = ref('')
-const montoGarantia = ref<number | string>(0)
+const montoGarantia = ref('')
 const idMedioPagoGarantia = ref<string | number>('')
 const observacionGarantia = ref('')
+
+const { error: errorMontoGarantia, valido: montoGarantiaValidoRaw, onBlur: onBlurMontoGarantia } =
+  useMoneyField(montoGarantia, moneyOptsOptional)
+const montoGarantiaValido = computed(
+  () => !montoGarantia.value.trim() || montoGarantiaValidoRaw.value,
+)
+const errorMontoGarantiaDisplay = computed(() =>
+  montoGarantia.value.trim() ? errorMontoGarantia.value : '',
+)
+const montoGarantiaNum = computed(() => roundMoney(parseMoneyInput(montoGarantia.value) ?? 0))
+const formularioValido = computed(
+  () =>
+    meta.value.valid &&
+    tarifaDiariaValido.value &&
+    totalCobradoValido.value &&
+    (!isCreateMode.value || montoGarantiaValido.value),
+)
 
 const productoAlquilableOptions = computed(() => {
   const data = alquilerQuery.data.value
@@ -576,13 +622,15 @@ async function prefillMontoGarantia(productoId: number) {
       // sin catálogo
     }
 
-    if (tarifaDiaria.value == null || Number(tarifaDiaria.value) === 0) {
-      tarifaDiaria.value = Number(prod.precio ?? 0) || undefined
+    const tarifaTexto = tarifaDiaria.value ?? ''
+    if (!tarifaTexto.trim() || roundMoney(parseMoneyInput(tarifaTexto) ?? 0) === 0) {
+      const precio = Number(prod.precio ?? 0)
+      tarifaDiaria.value = precio > 0 ? precio.toFixed(2) : ''
     }
 
-    montoGarantia.value = sugerido
+    montoGarantia.value = sugerido > 0 ? sugerido.toFixed(2) : '0.00'
   } catch {
-    montoGarantia.value = 0
+    montoGarantia.value = '0.00'
   }
 }
 
@@ -596,8 +644,8 @@ const buildPayloadFields = (values: {
   fechaInicio?: string
   fechaFinPactada?: string
   fechaFinReal?: string
-  tarifaDiaria?: number
-  totalCobrado?: number
+  tarifaDiaria?: string
+  totalCobrado?: string
   idEstado?: string | number
   observacion?: string
   idComprobanteVenta?: number
@@ -609,8 +657,12 @@ const buildPayloadFields = (values: {
   fechaInicio: values.fechaInicio || undefined,
   fechaFinPactada: values.fechaFinPactada || undefined,
   fechaFinReal: values.fechaFinReal || undefined,
-  tarifaDiaria: values.tarifaDiaria,
-  totalCobrado: values.totalCobrado,
+  tarifaDiaria: values.tarifaDiaria?.trim()
+    ? roundMoney(parseMoneyInput(values.tarifaDiaria))
+    : undefined,
+  totalCobrado: values.totalCobrado?.trim()
+    ? roundMoney(parseMoneyInput(values.totalCobrado))
+    : undefined,
   idEstado: toOptionalNumber(values.idEstado),
   observacion: values.observacion || undefined,
   idComprobanteVenta: values.idComprobanteVenta ? Number(values.idComprobanteVenta) : undefined,
@@ -629,8 +681,10 @@ const syncFormValues = () => {
       fechaInicio: toDateInput(data.fecha_inicio),
       fechaFinPactada: toDateInput(data.fecha_fin_pactada),
       fechaFinReal: toDateInput(data.fecha_fin_real),
-      tarifaDiaria: data.tarifa_diaria ?? undefined,
-      totalCobrado: data.total_cobrado ?? undefined,
+      tarifaDiaria:
+        data.tarifa_diaria != null ? roundMoney(data.tarifa_diaria).toFixed(2) : '',
+      totalCobrado:
+        data.total_cobrado != null ? roundMoney(data.total_cobrado).toFixed(2) : '',
       idEstado: data.id_estado ?? '',
       observacion: data.observacion ?? '',
       idComprobanteVenta: data.id_comprobante_venta ?? undefined,
@@ -660,15 +714,15 @@ const resetCreateForm = () => {
       fechaInicio: new Date().toISOString().slice(0, 10),
       fechaFinPactada: '',
       fechaFinReal: '',
-      tarifaDiaria: undefined,
-      totalCobrado: undefined,
+      tarifaDiaria: '',
+      totalCobrado: '',
       idEstado: idEstadoActivo.value ?? '',
       observacion: '',
       idComprobanteVenta: undefined,
       idProductoRegulador: '',
     },
   })
-  montoGarantia.value = 0
+  montoGarantia.value = '0.00'
   idMedioPagoGarantia.value = ''
   observacionGarantia.value = ''
   void cargarSiguienteNumero()
@@ -709,7 +763,7 @@ const onSubmit = handleSubmit(async (values) => {
         return
       }
 
-      const garantiaPendiente = Math.max(0, Number(montoGarantia.value || 0))
+      const garantiaPendiente = montoGarantiaNum.value
       if (garantiaPendiente > 0 && !idMedioPagoGarantia.value) {
         toastWarning('Indica el medio con el que se recibe la garantía')
         return
@@ -752,7 +806,7 @@ const onSubmit = handleSubmit(async (values) => {
         idProductoStock,
       })
 
-      const garantia = Math.max(0, Number(montoGarantia.value || 0))
+      const garantia = montoGarantiaNum.value
       if (garantia > 0) {
         try {
           await garantiasService.crear({
@@ -889,7 +943,7 @@ watch(idProductoRegulador, (value) => {
   if (!isCreateMode.value) return
   const id = Number(value)
   if (!id) {
-    montoGarantia.value = 0
+    montoGarantia.value = '0.00'
     idMedioPagoGarantia.value = ''
     observacionGarantia.value = ''
     return
@@ -901,7 +955,7 @@ watch(idAlmacen, (nuevo, anterior) => {
   if (!isCreateMode.value) return
   if (nuevo === anterior) return
   idProductoRegulador.value = ''
-  montoGarantia.value = 0
+  montoGarantia.value = '0.00'
   idMedioPagoGarantia.value = ''
   observacionGarantia.value = ''
 })

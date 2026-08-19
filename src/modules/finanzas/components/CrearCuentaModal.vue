@@ -146,18 +146,15 @@
         <AppFormField
           :label="esPlan ? 'Monto total del plan' : 'Monto'"
           required
-          :error="errores.monto"
+          :error="errorMontoDisplay"
           class="sm:col-span-2"
         >
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
-            <AppInput
-              v-model="form.monto"
-              type="text"
-              inputmode="decimal"
-              placeholder="0.00"
-              :state="errores.monto ? 'error' : 'default'"
-            />
-          </div>
+          <MoneyInput
+            v-model="form.monto"
+            placeholder="0.00"
+            :state="errorMontoDisplay ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
         </AppFormField>
       </div>
 
@@ -240,7 +237,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="guardando"
+        :disabled="guardando || !montoValido"
         @click="submit"
       >
         {{ guardando ? 'Guardando...' : ctaLabel }}
@@ -250,11 +247,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { computed, reactive, ref, toRef, watch } from 'vue'
+import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
@@ -266,7 +264,12 @@ import type { TipoCuenta } from '@/modules/finanzas/interfaces/cuenta.interface'
 import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
-import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
+import {
+  formatCurrency,
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 type ModoTercero = 'cliente' | 'proveedor' | 'libre'
@@ -427,7 +430,7 @@ interface FormState {
   terceroNombre: string
   fechaEmision: string
   fechaVencimiento: string
-  monto: string | number
+  monto: string
   numeroComprobante: string
   observacion: string
   // Plan de cuotas
@@ -452,6 +455,13 @@ const form = reactive<FormState>({
 })
 
 const errores = reactive<Record<string, string | undefined>>({})
+
+const moneyOpts = { min: 0.01 } as const
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(
+  toRef(form, 'monto'),
+  moneyOpts,
+)
+const errorMontoDisplay = computed(() => errores.monto || errorMonto.value)
 
 const resetForm = () => {
   esPlan.value = false
@@ -526,13 +536,6 @@ watch(
   },
 )
 watch(
-  () => form.monto,
-  (v) => {
-    const n = parseMoneyInput(v)
-    if (n != null && n > 0) errores.monto = undefined
-  },
-)
-watch(
   () => form.numeroCuotas,
   (v) => {
     const n = Number(v)
@@ -559,33 +562,6 @@ watch(
     if (t.length > 0 && v.length <= 500) errores.observacion = undefined
   },
 )
-
-/* ---------- Handlers de monto (input tipo texto para no perder comas) ---------- */
-const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  // Permite teclas de control (flechas, backspace, delete, tab, home, end, enter, esc, F1-F12)
-  if (e.key.length > 1) return
-  // Permite atajos con Ctrl/Meta (copiar, pegar, seleccionar todo)
-  if (e.ctrlKey || e.metaKey) return
-  // Bloquea signo negativo/positivo y notación científica
-  if (['-', '+', 'e', 'E'].includes(e.key)) {
-    e.preventDefault()
-    return
-  }
-  // Solo permite dígitos, punto y coma
-  if (!/[\d.,]/.test(e.key)) {
-    e.preventDefault()
-  }
-}
-const bloquearPegadoInvalido = (e: ClipboardEvent) => {
-  const texto = e.clipboardData?.getData('text') ?? ''
-  if (/[-+eE]/.test(texto)) e.preventDefault()
-}
-const normalizarMonto = () => {
-  const norm = normalizeMoneyInput(form.monto)
-  // Solo actualizar si el parser encontró un número válido; si no, dejar tal cual
-  // para que el usuario vea su input y lo corrija.
-  if (norm) form.monto = norm
-}
 
 /* ---------- Validación completa ---------- */
 const validar = (): boolean => {
@@ -631,12 +607,9 @@ const validar = (): boolean => {
     }
   }
 
-  // Monto (siempre) — usa el parser tolerante a comas de miles
-  const monto = parseMoneyInput(form.monto)
-  if (monto == null || monto <= 0) {
-    errores.monto = esPlan.value
-      ? 'Ingresa el monto total del plan (> 0)'
-      : 'Ingresa un monto válido mayor a cero'
+  const msgMonto = mensajeErrorMontoMoneda(form.monto, moneyOpts)
+  if (msgMonto) {
+    errores.monto = msgMonto
     ok = false
   }
 
@@ -683,16 +656,11 @@ const validar = (): boolean => {
 
 /* ---------- Submit ---------- */
 const submit = async () => {
-  normalizarMonto()
+  if (mensajeErrorMontoMoneda(form.monto, moneyOpts)) return
   if (!validar()) return
 
   const esRegistrado = modoTercero.value !== 'libre'
-  const montoParsed = parseMoneyInput(form.monto)
-  if (montoParsed == null || montoParsed <= 0) {
-    errores.monto = 'Ingresa un monto válido mayor a cero'
-    return
-  }
-  const montoFinal = Math.round(montoParsed * 100) / 100
+  const montoFinal = roundMoney(parseMoneyInput(form.monto))
 
   const terceroBase = {
     idTercero: esRegistrado ? (form.idTercero as number) : undefined,

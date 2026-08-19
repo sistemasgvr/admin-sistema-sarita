@@ -448,20 +448,22 @@
                         />
                       </td>
                       <td class="px-3 py-2.5">
-                        <input
-                          v-model.number="lin.precioUnitario"
-                          type="number"
-                          :min="NUMBER_MIN.money"
-                          :step="NUMBER_STEP.money"
-                          class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-1.5 text-right tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
+                        <MoneyInput
+                          v-model="precioNuevoInputs[lin.key]"
+                          placeholder="0.00"
                           :disabled="saving"
-                          aria-label="Precio unitario"
+                          :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                          @blur="onBlurPrecioNuevo(lin.key)"
                         />
                       </td>
                       <td
                         class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
                       >
-                        {{ formatMoney((Number(lin.precioUnitario) || 0) * Number(lin.cantidad)) }}
+                        {{
+                          formatMoney(
+                            (parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0) * Number(lin.cantidad),
+                          )
+                        }}
                       </td>
                       <td class="px-2 py-2.5 text-center">
                         <button
@@ -469,7 +471,7 @@
                           title="Quitar producto"
                           class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-error-50 hover:text-error-500 disabled:opacity-40 dark:hover:bg-error-500/10"
                           :disabled="saving"
-                          @click="lineas.splice(index, 1)"
+                          @click="quitarLineaNueva(index, lin.key)"
                         >
                           <AppIcon :name="ICONS.trash" :size="15" />
                         </button>
@@ -664,14 +666,12 @@
                       </td>
                       <td class="px-3 py-2.5">
                         <template v-if="puedeModificar && lineasDraft[det.id]">
-                          <input
-                            v-model.number="lineasDraft[det.id].precio"
-                            type="number"
-                            :min="NUMBER_MIN.money"
-                            :step="NUMBER_STEP.money"
-                            class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-1.5 text-right tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
+                          <MoneyInput
+                            v-model="lineasDraft[det.id].precio"
+                            placeholder="0.00"
                             :disabled="saving || lineaGuardando === det.id"
-                            aria-label="Precio unitario"
+                            :state="precioEditError(det.id) ? 'error' : 'default'"
+                            @blur="onBlurPrecioEdit(det.id)"
                           />
                         </template>
                         <span v-else class="tabular-nums">
@@ -683,7 +683,8 @@
                       >
                         {{
                           formatMoney(
-                            (Number(lineasDraft[det.id]?.precio ?? det.precio_unitario) || 0) *
+                            (parsePrecioLinea(lineasDraft[det.id]?.precio) ??
+                              (Number(det.precio_unitario) || 0)) *
                               Number(lineasDraft[det.id]?.cantidad ?? det.cantidad),
                           )
                         }}
@@ -808,7 +809,6 @@ import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ListaIds, TipoClienteIds } from '@/shared/constants/lista-ids'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import {
@@ -821,6 +821,7 @@ import {
   AppSelectWithCreate,
   AppSwitch,
   AppTextarea,
+  MoneyInput,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -828,6 +829,13 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalString } from '@/shared/validation'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { formatListDate } from '@/shared/utils/date'
+import {
+  esMontoMonedaValido,
+  esNumeroMonedaValido,
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const props = withDefaults(
@@ -1010,7 +1018,82 @@ const lineasExistentes = computed(() => compraData.value?.detalle ?? [])
 
 const lineaEliminando = ref<number | null>(null)
 const lineaGuardando = ref<number | null>(null)
-const lineasDraft = reactive<Record<number, { cantidad: number; precio: number }>>({})
+const lineasDraft = reactive<Record<number, { cantidad: number; precio: string }>>({})
+const precioNuevoInputs = reactive<Record<string, string>>({})
+
+const precioLineaOpts = { min: 0, allowZero: true } as const
+
+function montoPrecioAString(value: number | string | null | undefined): string {
+  const n = Number(value ?? 0)
+  if (!Number.isFinite(n) || n <= 0) return ''
+  return roundMoney(n).toFixed(2)
+}
+
+function parsePrecioLinea(raw: string | undefined): number | null {
+  const texto = String(raw ?? '').trim()
+  if (!texto) return null
+  return parseMoneyInput(texto)
+}
+
+function esPrecioLineaValido(raw: string | undefined): boolean {
+  const texto = String(raw ?? '').trim()
+  if (!texto) return true
+  return esMontoMonedaValido(texto, precioLineaOpts)
+}
+
+function precioNuevoError(key: string): string {
+  return mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts) ?? ''
+}
+
+function precioEditError(id: number): string {
+  return mensajeErrorMontoMoneda(lineasDraft[id]?.precio ?? '', precioLineaOpts) ?? ''
+}
+
+function onBlurPrecioNuevo(key: string) {
+  const msg = mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts)
+  if (msg) return
+  const n = parseMoneyInput(precioNuevoInputs[key])
+  if (n != null) precioNuevoInputs[key] = roundMoney(n).toFixed(2)
+}
+
+function onBlurPrecioEdit(id: number) {
+  const draft = lineasDraft[id]
+  if (!draft) return
+  const msg = mensajeErrorMontoMoneda(draft.precio, precioLineaOpts)
+  if (msg) return
+  const n = parseMoneyInput(draft.precio)
+  if (n != null) draft.precio = roundMoney(n).toFixed(2)
+}
+
+function quitarLineaNueva(index: number, key: string) {
+  lineas.splice(index, 1)
+  delete precioNuevoInputs[key]
+}
+
+function validarPreciosLineas(mostrarToast = true): boolean {
+  for (const lin of lineas) {
+    if (!esPrecioLineaValido(precioNuevoInputs[lin.key])) {
+      if (mostrarToast) {
+        toastWarning(
+          `Precio unitario inválido en ${lin.productoLabel}: solo hasta 2 decimales`,
+        )
+      }
+      return false
+    }
+  }
+  return true
+}
+
+function validarCuotasPlan(mostrarToast = true): boolean {
+  if (!esPlanCuotas.value || cuotasPlan.value.length <= 1) return true
+  for (const cuota of cuotasPlan.value) {
+    if (!esNumeroMonedaValido(cuota.monto, { min: 0.01 })) {
+      if (mostrarToast) toastWarning('Revisa los montos del plan de cuotas')
+      return false
+    }
+  }
+  return true
+}
 
 type CantidadInputExpose = {
   validate: () => Promise<{ valid: boolean }>
@@ -1195,6 +1278,7 @@ const recargaRetornoPrefillFor = ref<number | null>(null)
 function quitarLineasDeRecargaPlanta() {
   for (let i = lineas.length - 1; i >= 0; i--) {
     if (lineas[i].key.startsWith(RECARGA_LINEA_PREFIX)) {
+      delete precioNuevoInputs[lineas[i].key]
       lineas.splice(i, 1)
     }
   }
@@ -1230,6 +1314,10 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
       afectaStock: false,
       cilindrosRecarga: 1,
     })
+  }
+
+  for (const linea of grupos.values()) {
+    precioNuevoInputs[linea.key] = ''
   }
 
   lineas.push(...grupos.values())
@@ -1324,7 +1412,10 @@ const fechaParaCuotas = computed(() =>
   isEdit.value ? (cabecera.value?.fecha ?? '').slice(0, 10) : String(fecha.value || ''),
 )
 const totalLineas = computed(() =>
-  lineas.reduce((acc, lin) => acc + (Number(lin.precioUnitario) || 0) * Number(lin.cantidad), 0),
+  lineas.reduce((acc, lin) => {
+    const precio = parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0
+    return acc + precio * Number(lin.cantidad)
+  }, 0),
 )
 const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value))
 const totalParaCuotas = computed(() => {
@@ -1334,8 +1425,8 @@ const totalParaCuotas = computed(() => {
   return existentes.reduce((acc, det) => {
     const draft = lineasDraft[det.id]
     const cantidad = draft?.cantidad ?? det.cantidad
-    const precio = draft?.precio ?? det.precio_unitario ?? 0
-    return acc + Number(cantidad) * Number(precio)
+    const precio = parsePrecioLinea(draft?.precio) ?? Number(det.precio_unitario ?? 0)
+    return acc + Number(cantidad) * precio
   }, 0)
 })
 const cuotasPlan = ref<CuotaPreviewItem[]>([])
@@ -1441,7 +1532,7 @@ watch(
     for (const det of detalles) {
       lineasDraft[det.id] = {
         cantidad: Number(det.cantidad),
-        precio: Number(det.precio_unitario ?? 0),
+        precio: montoPrecioAString(det.precio_unitario),
       }
     }
   },
@@ -1451,8 +1542,9 @@ watch(
 function lineaDraftCambiada(det: CompraDetalle) {
   const draft = lineasDraft[det.id]
   if (!draft) return false
-  const precioOrig = det.precio_unitario == null ? 0 : Number(det.precio_unitario)
-  return Number(draft.cantidad) !== Number(det.cantidad) || Number(draft.precio) !== precioOrig
+  const precioOrig = det.precio_unitario == null ? 0 : roundMoney(Number(det.precio_unitario))
+  const precioDraft = roundMoney(parsePrecioLinea(draft.precio) ?? 0)
+  return Number(draft.cantidad) !== Number(det.cantidad) || precioDraft !== precioOrig
 }
 
 async function guardarLinea(det: CompraDetalle) {
@@ -1479,6 +1571,13 @@ async function guardarLinea(det: CompraDetalle) {
     toastWarning(errorCantidad)
     return
   }
+
+  if (!esPrecioLineaValido(draft.precio)) {
+    toastWarning('Precio unitario inválido: solo hasta 2 decimales')
+    return
+  }
+
+  const precio = roundMoney(parsePrecioLinea(draft.precio) ?? 0)
   lineaGuardando.value = det.id
   try {
     await actualizarDetalleMutation.mutateAsync({
@@ -1486,7 +1585,7 @@ async function guardarLinea(det: CompraDetalle) {
       payload: {
         idUsuarioAuditoria: userId,
         cantidad,
-        precioUnitario: Number(draft.precio),
+        precioUnitario: precio,
       },
     })
   } finally {
@@ -1572,6 +1671,8 @@ async function agregarProducto(producto: Producto) {
     presentacion: producto.presentacion ?? null,
     afectaStock: Boolean(producto.afecta_stock),
   })
+  const nuevaLinea = lineas[lineas.length - 1]
+  precioNuevoInputs[nuevaLinea.key] = montoPrecioAString(precioDefault)
   toastSuccess(`${producto.nombre} agregado`)
 }
 
@@ -1622,6 +1723,9 @@ function resetCreateForm() {
   recargaPlantaLineasSyncedFor.value = null
   desdeRecargaExterna.value = false
   lineas.splice(0, lineas.length)
+  for (const key of Object.keys(precioNuevoInputs)) {
+    delete precioNuevoInputs[key]
+  }
   proveedorBuscar.value = ''
   proveedorCreadoOption.value = null
   lineaProductoBuscar.value = ''
@@ -1678,18 +1782,23 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
     lineas.length,
     ...(data.detalle ?? [])
       .filter((d) => d.id_producto != null)
-      .map((d) => ({
-        key: crypto.randomUUID(),
-        idProducto: d.id_producto as number,
-        cantidad: Number(d.cantidad),
-        precioUnitario: Number(d.precio_unitario ?? 0),
-        productoLabel: d.codigo_producto
-          ? `${d.codigo_producto} - ${d.nombre_producto ?? ''}`
-          : (d.nombre_producto ?? d.descripcion),
-        idUnidadMedida: d.id_unidad_medida ?? null,
-        nombreUnidadMedida: d.unidad_medida ?? null,
-        afectaStock: Boolean(d.afecta_stock),
-      })),
+      .map((d) => {
+        const key = crypto.randomUUID()
+        const precio = Number(d.precio_unitario ?? 0)
+        precioNuevoInputs[key] = montoPrecioAString(precio)
+        return {
+          key,
+          idProducto: d.id_producto as number,
+          cantidad: Number(d.cantidad),
+          precioUnitario: precio,
+          productoLabel: d.codigo_producto
+            ? `${d.codigo_producto} - ${d.nombre_producto ?? ''}`
+            : (d.nombre_producto ?? d.descripcion),
+          idUnidadMedida: d.id_unidad_medida ?? null,
+          nombreUnidadMedida: d.unidad_medida ?? null,
+          afectaStock: Boolean(d.afecta_stock),
+        }
+      }),
   )
 }
 
@@ -1751,6 +1860,8 @@ const onSubmit = handleSubmit(async (values) => {
     value !== '' && value != null ? Number(value) : undefined
 
   if (isEdit.value && props.compraId) {
+    if (!validarCuotasPlan()) return
+
     const updated = await updateCabeceraMutation.mutateAsync({
       id: props.compraId,
       payload: {
@@ -1764,7 +1875,10 @@ const onSubmit = handleSubmit(async (values) => {
           : undefined,
         cuotas:
           esPlanCuotas.value && cuotasPlan.value.length > 1
-            ? cuotasPlan.value.map((c) => ({ fechaPago: c.fechaPago, monto: c.monto }))
+            ? cuotasPlan.value.map((c) => ({
+                fechaPago: c.fechaPago,
+                monto: roundMoney(c.monto),
+              }))
             : undefined,
       },
     })
@@ -1792,6 +1906,9 @@ const onSubmit = handleSubmit(async (values) => {
     }
   }
 
+  if (!validarPreciosLineas()) return
+  if (!validarCuotasPlan()) return
+
   if (
     toOptionalNumber(values.idRecargaPlanta) != null &&
     Boolean(values.guardarBalonesAlmacen)
@@ -1809,12 +1926,16 @@ const onSubmit = handleSubmit(async (values) => {
     }
   }
 
-  const detalles = lineas.map((l) => ({
-    idProducto: l.idProducto,
-    cantidad: Number(l.cantidad),
-    precioUnitario: Number(l.precioUnitario) || undefined,
-    idUnidadMedida: l.idUnidadMedida ?? undefined,
-  }))
+  const detalles = lineas.map((l) => {
+    const precioParsed = parsePrecioLinea(precioNuevoInputs[l.key])
+    return {
+      idProducto: l.idProducto,
+      cantidad: Number(l.cantidad),
+      precioUnitario:
+        precioParsed != null && precioParsed > 0 ? roundMoney(precioParsed) : undefined,
+      idUnidadMedida: l.idUnidadMedida ?? undefined,
+    }
+  })
 
   const conRecarga =
     desdeRecargaExterna.value && toOptionalNumber(values.idRecargaPlanta) != null
@@ -1861,7 +1982,10 @@ const onSubmit = handleSubmit(async (values) => {
       : undefined,
     cuotas:
       esPlanCuotas.value && cuotasPlan.value.length > 1
-        ? cuotasPlan.value.map((c) => ({ fechaPago: c.fechaPago, monto: c.monto }))
+        ? cuotasPlan.value.map((c) => ({
+            fechaPago: c.fechaPago,
+            monto: roundMoney(c.monto),
+          }))
         : undefined,
     detalles,
   })

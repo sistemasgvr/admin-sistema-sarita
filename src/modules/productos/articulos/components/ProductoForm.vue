@@ -246,43 +246,43 @@
             :error="errors.factorLbM3"
           />
 
-          <AppInput
-            v-model="precio"
-            label="Precio de venta"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            v-bind="precioAttrs"
-            :disabled="isSubmitting"
-            :error="errors.precio"
-          />
+          <AppFormField label="Precio de venta" :error="errors.precio">
+            <MoneyInput
+              v-model="precio"
+              v-bind="precioAttrs"
+              placeholder="0.00"
+              :disabled="isSubmitting"
+              :state="errors.precio ? 'error' : 'default'"
+              @blur="onMoneyBlur('precio', precioAttrs.onBlur)"
+            />
+          </AppFormField>
 
-          <AppInput
-            v-model="precioCompra"
-            label="Precio de compra"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            v-bind="precioCompraAttrs"
-            :disabled="isSubmitting || tipoItem === 'servicio'"
-            :error="errors.precioCompra"
-          />
+          <AppFormField label="Precio de compra" :error="errors.precioCompra">
+            <MoneyInput
+              v-model="precioCompra"
+              v-bind="precioCompraAttrs"
+              placeholder="0.00"
+              :disabled="isSubmitting || tipoItem === 'servicio'"
+              :state="errors.precioCompra ? 'error' : 'default'"
+              @blur="onMoneyBlur('precioCompra', precioCompraAttrs.onBlur)"
+            />
+          </AppFormField>
 
-          <AppInput
+          <AppFormField
             v-if="esAlquilable || tipoItem === 'producto'"
-            v-model="precioGarantia"
             label="Garantía / depósito"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            v-bind="precioGarantiaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.precioGarantia"
             help="Depósito reembolsable al prestar o alquilar. Prefill en POS; se puede dejar en 0."
-          />
+            :error="errors.precioGarantia"
+          >
+            <MoneyInput
+              v-model="precioGarantia"
+              v-bind="precioGarantiaAttrs"
+              placeholder="0.00"
+              :disabled="isSubmitting"
+              :state="errors.precioGarantia ? 'error' : 'default'"
+              @blur="onMoneyBlur('precioGarantia', precioGarantiaAttrs.onBlur)"
+            />
+          </AppFormField>
         </div>
       </DetailSectionCard>
 
@@ -388,9 +388,11 @@ import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/in
 import {
   AppCheckbox,
   AppDropzone,
+  AppFormField,
   AppInput,
   AppSelect,
   AppSelectWithCreate,
+  MoneyInput,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -400,8 +402,17 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
+import {
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
+import { yupMontoMoneda } from '@/shared/utils/yupMoney'
 
 type TipoItem = 'producto' | 'servicio'
+type MoneyField = 'precio' | 'precioCompra' | 'precioGarantia'
+
+const moneyFieldOpts = { min: 0, allowZero: true } as const
 
 const props = withDefaults(
   defineProps<{
@@ -500,9 +511,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
         esAlquilable: yup.boolean().default(false),
         esMantenimiento: yup.boolean().default(false),
         afectaStock: yup.boolean().default(true),
-        precio: optionalNumber().min(0, 'El precio de venta no puede ser negativo'),
-        precioCompra: optionalNumber().min(0, 'El precio de compra no puede ser negativo'),
-        precioGarantia: optionalNumber().min(0, 'La garantía no puede ser negativa'),
+        precio: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
+        precioCompra: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
+        precioGarantia: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
         factorKgM3: optionalNumber().min(0, 'El factor kg / m³ no puede ser negativo'),
         factorLbM3: optionalNumber().min(0, 'El factor lb / m³ no puede ser negativo'),
       }),
@@ -522,9 +533,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
       esAlquilable: false,
       esMantenimiento: false,
       afectaStock: true,
-      precio: undefined as number | undefined,
-      precioCompra: undefined as number | undefined,
-      precioGarantia: undefined as number | undefined,
+      precio: '',
+      precioCompra: '',
+      precioGarantia: '',
       factorKgM3: undefined as number | undefined,
       factorLbM3: undefined as number | undefined,
     },
@@ -550,6 +561,23 @@ const [precioGarantia, precioGarantiaAttrs] = defineField('precioGarantia')
 const [factorKgM3] = defineField('factorKgM3')
 const [factorLbM3] = defineField('factorLbM3')
 
+function formatMoneyField(value?: number | null): string {
+  if (value == null) return ''
+  return roundMoney(value).toFixed(2)
+}
+
+function onMoneyBlur(field: MoneyField, veeBlur?: (e: Event) => void) {
+  const raw = values[field] ?? ''
+  const texto = String(raw).trim()
+  if (!texto) {
+    setFieldValue(field, '')
+  } else if (!mensajeErrorMontoMoneda(texto, moneyFieldOpts)) {
+    const n = parseMoneyInput(texto)
+    if (n != null) setFieldValue(field, roundMoney(n).toFixed(2))
+  }
+  veeBlur?.(new Event('blur'))
+}
+
 const subCategoriaOptions = computed(() =>
   subCategorias.value
     .filter((subCategoria) =>
@@ -574,7 +602,7 @@ function setTipoItem(tipo: TipoItem) {
     setFieldValue('esServicio', true)
     setFieldValue('esGas', false)
     setFieldValue('afectaStock', false)
-    setFieldValue('precioCompra', undefined)
+    setFieldValue('precioCompra', '')
   } else {
     setFieldValue('esServicio', false)
     setFieldValue('esMantenimiento', false)
@@ -604,9 +632,9 @@ function syncFormFromProducto() {
       esMantenimiento: Boolean(data.es_mantenimiento),
       afectaStock:
         data.es_servicio || data.es_gas ? false : (data.afecta_stock ?? true),
-      precio: data.precio ?? undefined,
-      precioCompra: data.precio_compra ?? undefined,
-      precioGarantia: data.precio_garantia ?? undefined,
+      precio: formatMoneyField(data.precio),
+      precioCompra: formatMoneyField(data.precio_compra),
+      precioGarantia: formatMoneyField(data.precio_garantia),
       factorKgM3: data.factor_kg_m3 != null ? Number(data.factor_kg_m3) : undefined,
       factorLbM3: data.factor_lb_m3 != null ? Number(data.factor_lb_m3) : undefined,
     },
@@ -746,9 +774,11 @@ const onSubmit = handleSubmit(async (formValues) => {
         esServicioValue || Boolean(formValues.esGas)
           ? false
           : Boolean(formValues.afectaStock),
-      precio: formValues.precio ?? 0,
-      precioCompra: esServicioValue ? 0 : (formValues.precioCompra ?? 0),
-      precioGarantia: formValues.precioGarantia ?? 0,
+      precio: roundMoney(parseMoneyInput(formValues.precio) ?? 0),
+      precioCompra: esServicioValue
+        ? 0
+        : roundMoney(parseMoneyInput(formValues.precioCompra) ?? 0),
+      precioGarantia: roundMoney(parseMoneyInput(formValues.precioGarantia) ?? 0),
       factorKgM3:
         !esServicioValue && formValues.esGas && formValues.factorKgM3 != null
           ? Number(formValues.factorKgM3)

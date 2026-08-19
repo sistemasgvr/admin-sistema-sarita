@@ -45,14 +45,14 @@
       </div>
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <AppInput
-          v-model="monto"
-          label="Monto a devolver"
-          type="number"
-          min="0"
-          step="0.01"
-          required
-        />
+        <AppFormField label="Monto a devolver" required :error="errorMontoDisplay">
+          <MoneyInput
+            v-model="monto"
+            placeholder="0.00"
+            :state="errorMontoDisplay ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
+        </AppFormField>
         <AppInput v-model="fecha" label="Fecha" type="date" required />
         <AppInput
           v-model="idComprobante"
@@ -99,8 +99,15 @@ import { useDevolverGarantiaMutation } from '@/modules/balones/garantias/composa
 import { useGarantiasQuery } from '@/modules/balones/garantias/composables/useGarantiasQuery'
 import type { GarantiaListFilters } from '@/modules/balones/garantias/interfaces/garantia.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppInput, AppModal, AppSelect, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastWarning } from '@/shared/composables/useToast'
+import {
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 
 const props = defineProps<{
   idCliente?: number | null
@@ -115,10 +122,25 @@ const authStore = useAuthStore()
 const devolverMutation = useDevolverGarantiaMutation()
 
 const garantiaId = ref<number | ''>('')
-const monto = ref(0)
+const monto = ref('')
 const fecha = ref(new Date().toISOString().slice(0, 10))
 const idComprobante = ref<number | ''>('')
 const observacion = ref('')
+const errorSaldo = ref('')
+
+const moneyOpts = { min: 0.01 } as const
+const { error: errorMonto, valido: montoValidoRaw, onBlur: onBlurMonto } = useMoneyField(
+  monto,
+  moneyOpts,
+)
+const errorMontoDisplay = computed(() => errorSaldo.value || errorMonto.value)
+const montoValido = computed(() => {
+  if (!montoValidoRaw.value) return false
+  const g = garantiaSeleccionada.value
+  if (!g) return true
+  const montoNum = roundMoney(parseMoneyInput(monto.value))
+  return montoNum <= roundMoney(g.monto_saldo)
+})
 
 const filters = ref<GarantiaListFilters>({
   pagina: 1,
@@ -147,10 +169,8 @@ const garantiaSeleccionada = computed(() =>
 const puedeDevolver = computed(
   () =>
     Boolean(garantiaId.value) &&
-    Number(monto.value) > 0 &&
-    Boolean(fecha.value) &&
-    (!garantiaSeleccionada.value ||
-      Number(monto.value) <= Number(garantiaSeleccionada.value.monto_saldo)),
+    montoValido.value &&
+    Boolean(fecha.value),
 )
 
 watch(
@@ -167,7 +187,8 @@ watch(
     fecha.value = new Date().toISOString().slice(0, 10)
     idComprobante.value = ''
     observacion.value = ''
-    monto.value = 0
+    monto.value = ''
+    errorSaldo.value = ''
   },
 )
 
@@ -179,16 +200,30 @@ watch(
       garantiaId.value = rows[0].id
     }
     const g = rows.find((row) => row.id === (selected || garantiaId.value))
-    if (g && Number(monto.value) <= 0) {
-      monto.value = Number(g.monto_saldo)
+    if (g && !monto.value.trim()) {
+      monto.value = Number(g.monto_saldo).toFixed(2)
     }
   },
 )
 
 watch(garantiaId, (value) => {
+  errorSaldo.value = ''
   const g = garantiasConSaldo.value.find((row) => row.id === value)
   if (g) {
-    monto.value = Number(g.monto_saldo)
+    monto.value = Number(g.monto_saldo).toFixed(2)
+  }
+})
+
+watch(monto, () => {
+  errorSaldo.value = ''
+  const g = garantiaSeleccionada.value
+  if (!g || !monto.value.trim()) return
+  const msg = mensajeErrorMontoMoneda(monto.value, moneyOpts)
+  if (msg) return
+  const montoNum = roundMoney(parseMoneyInput(monto.value))
+  const saldo = roundMoney(g.monto_saldo)
+  if (montoNum > saldo) {
+    errorSaldo.value = `No puede superar el saldo (S/ ${saldo.toFixed(2)})`
   }
 })
 
@@ -198,13 +233,16 @@ async function confirmar() {
     toastWarning('Indica garantía, monto válido y fecha')
     return
   }
+  if (errorSaldo.value) return
+
+  const montoNum = roundMoney(parseMoneyInput(monto.value))
 
   try {
     await devolverMutation.mutateAsync({
       id: Number(garantiaId.value),
       payload: {
         idUsuarioAuditoria: userId,
-        monto: Number(monto.value),
+        monto: montoNum,
         idComprobante: idComprobante.value ? Number(idComprobante.value) : undefined,
         fecha: fecha.value,
         observacion: observacion.value.trim() || undefined,

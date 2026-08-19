@@ -119,13 +119,14 @@
               placeholder="Se completa al elegir el cilindro"
               :disabled="cantidadBloqueadaPorBalon"
             />
-            <AppInput
-              v-model="precioUnitario"
-              label="Precio por m³"
-              type="number"
-              :min="NUMBER_MIN.money"
-              :step="NUMBER_STEP.money"
-            />
+            <AppFormField label="Precio por m³" required :error="errorPrecioUnitario">
+              <MoneyInput
+                v-model="precioUnitario"
+                placeholder="0.00"
+                :state="errorPrecioUnitario ? 'error' : 'default'"
+                @blur="onBlurPrecioUnitario"
+              />
+            </AppFormField>
             <AppSelect
               v-model="idBalonPreferido"
               label="Cilindro de la empresa (opcional)"
@@ -217,13 +218,16 @@ import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
-import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppInput, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { getApiErrorMessage, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 
 const {
   authStore,
@@ -287,7 +291,12 @@ const extraFiltersProductoGas = computed(() =>
 const gasBuscar = ref('')
 const cantidad = ref(1)
 const capacidad = ref<number | ''>('')
-const precioUnitario = ref(0)
+const precioUnitario = ref('')
+const {
+  error: errorPrecioUnitario,
+  valido: precioUnitarioValido,
+  onBlur: onBlurPrecioUnitario,
+} = useMoneyField(precioUnitario, { min: 0, allowZero: true })
 const observacion = ref('')
 
 const origenOptions = computed(() =>
@@ -401,7 +410,9 @@ const productoOptions = computed(() =>
 )
 
 const totales = computed(() =>
-  calcularTotalesDesdeImporte(Number(cantidad.value || 0) * Number(precioUnitario.value || 0)),
+  calcularTotalesDesdeImporte(
+    Number(cantidad.value || 0) * (parseMoneyInput(precioUnitario.value) ?? 0),
+  ),
 )
 
 const motivoNoGuardar = computed(() => {
@@ -415,7 +426,7 @@ const motivoNoGuardar = computed(() => {
   if (errorOrigenes.value) return errorOrigenes.value
   if (!idBalonOrigen.value) return 'No hay asignación de balones empresa origen'
   if (!(Number(cantidad.value) > 0)) return 'La cantidad debe ser mayor a cero'
-  if (Number(precioUnitario.value) < 0) return 'El precio no puede ser negativo'
+  if (!precioUnitarioValido.value) return errorPrecioUnitario.value || 'Precio inválido'
   return null
 })
 
@@ -428,7 +439,7 @@ function onProductoChange() {
 
   if (!producto) return
 
-  precioUnitario.value = Number(producto.precio ?? 0)
+  precioUnitario.value = roundMoney(Number(producto.precio ?? 0)).toFixed(2)
 }
 
 async function registrarRecarga() {
@@ -457,12 +468,14 @@ async function registrarRecarga() {
     return
   }
 
+  onBlurPrecioUnitario()
+
   const result = await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     idCliente: Number(idCliente.value),
     idBalon: Number(idBalon.value),
     idProducto: Number(idProducto.value),
-    precioUnitario: Number(precioUnitario.value),
+    precioUnitario: roundMoney(parseMoneyInput(precioUnitario.value) ?? 0),
     cantidad: Number(cantidad.value),
     idTipoComprobante: Number(idTipoComprobante.value),
     serie: serie.value.trim(),
@@ -493,7 +506,7 @@ async function limpiarFormulario() {
   gasBuscar.value = ''
   cantidad.value = 1
   capacidad.value = ''
-  precioUnitario.value = 0
+  precioUnitario.value = ''
   observacion.value = ''
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null

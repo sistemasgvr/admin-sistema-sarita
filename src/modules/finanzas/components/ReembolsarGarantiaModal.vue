@@ -21,16 +21,13 @@
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppFormField label="Monto a devolver" required :error="errores.monto">
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
-            <AppInput
-              v-model="form.monto"
-              type="text"
-              inputmode="decimal"
-              placeholder="0.00"
-              :state="errores.monto ? 'error' : 'default'"
-            />
-          </div>
+        <AppFormField label="Monto a devolver" required :error="errorMontoDisplay">
+          <MoneyInput
+            v-model="form.monto"
+            placeholder="0.00"
+            :state="errorMontoDisplay ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
         </AppFormField>
 
         <AppFormField label="Fecha" required :error="errores.fecha">
@@ -76,7 +73,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="mutation.isPending.value"
+        :disabled="mutation.isPending.value || !montoValido"
         @click="submit"
       >
         {{ mutation.isPending.value ? 'Guardando...' : 'Registrar devolución' }}
@@ -86,15 +83,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { computed, reactive, toRef, watch } from 'vue'
+import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
 import { useReembolsarGarantiaMutation } from '@/modules/finanzas/composables/useGarantiaMutations'
 import type { Garantia } from '@/modules/finanzas/interfaces/garantia.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
+import {
+  formatCurrency,
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 
 const props = defineProps<{ garantia: Garantia | null }>()
 const emit = defineEmits<{ saved: [] }>()
@@ -110,12 +113,19 @@ const medioPagoOptions = computed<SelectOption[]>(() => [
 ])
 
 const form = reactive({
-  monto: '' as string | number,
+  monto: '',
   fecha: new Date().toISOString().slice(0, 10),
   idMedioReembolso: '' as string | number,
   observacion: '',
 })
 const errores = reactive<Record<string, string | undefined>>({})
+
+const moneyOpts = { min: 0.01 } as const
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(
+  toRef(form, 'monto'),
+  moneyOpts,
+)
+const errorMontoDisplay = computed(() => errores.monto || errorMonto.value)
 
 watch(
   () => [open.value, props.garantia] as const,
@@ -129,33 +139,21 @@ watch(
   },
 )
 
-const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  if (e.key.length > 1) return
-  if (e.ctrlKey || e.metaKey) return
-  if (['-', '+', 'e', 'E'].includes(e.key)) { e.preventDefault(); return }
-  if (!/[\d.,]/.test(e.key)) e.preventDefault()
-}
-const bloquearPegadoInvalido = (e: ClipboardEvent) => {
-  const texto = e.clipboardData?.getData('text') ?? ''
-  if (/[-+eE]/.test(texto)) e.preventDefault()
-}
-const normalizarMonto = () => {
-  const norm = normalizeMoneyInput(form.monto)
-  if (norm) form.monto = norm
-}
-
 const validar = (): boolean => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
   let ok = true
   if (!form.fecha) { errores.fecha = 'La fecha es obligatoria'; ok = false }
-  const monto = parseMoneyInput(form.monto)
-  const saldo = Number(props.garantia?.monto_saldo ?? 0)
-  if (monto == null || monto <= 0) {
-    errores.monto = 'Ingresa un monto válido'
+  const msgMonto = mensajeErrorMontoMoneda(form.monto, moneyOpts)
+  if (msgMonto) {
+    errores.monto = msgMonto
     ok = false
-  } else if (monto > saldo) {
-    errores.monto = `No puede superar el saldo (${formatCurrency(saldo)})`
-    ok = false
+  } else {
+    const monto = roundMoney(parseMoneyInput(form.monto))
+    const saldo = roundMoney(props.garantia?.monto_saldo)
+    if (monto > saldo) {
+      errores.monto = `No puede superar el saldo (${formatCurrency(saldo)})`
+      ok = false
+    }
   }
   if (form.observacion.length > 500) { errores.observacion = 'Máximo 500 caracteres'; ok = false }
   return ok
@@ -163,14 +161,14 @@ const validar = (): boolean => {
 
 const submit = async () => {
   if (!props.garantia) return
-  normalizarMonto()
+  if (mensajeErrorMontoMoneda(form.monto, moneyOpts)) return
   if (!validar()) return
 
   try {
     await mutation.mutateAsync({
       id: props.garantia.id,
       payload: {
-        monto: Math.round((parseMoneyInput(form.monto) ?? 0) * 100) / 100,
+        monto: roundMoney(parseMoneyInput(form.monto)),
         fecha: form.fecha,
         idMedioReembolso: form.idMedioReembolso ? Number(form.idMedioReembolso) : undefined,
         observacion: form.observacion.trim() || undefined,

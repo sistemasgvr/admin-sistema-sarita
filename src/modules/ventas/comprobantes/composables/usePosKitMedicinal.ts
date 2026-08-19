@@ -1,4 +1,6 @@
 /** Roles de línea del kit medicinal inicial (oficina: ~285 = contenido + regulador + descartables + flete). */
+import { parseMoneyInput } from '@/shared/utils/currency'
+
 export type KitMedicinalRol = 'contenido' | 'regulador' | 'descartable' | 'flete'
 
 export interface KitMedicinalLinea {
@@ -7,7 +9,7 @@ export interface KitMedicinalLinea {
   idProducto: number | ''
   buscar: string
   cantidad: number
-  precioUnitario: number
+  precioUnitario: string
   codigo: string
   nombre: string
 }
@@ -29,7 +31,7 @@ export function crearLineaKit(
     idProducto: '',
     buscar: '',
     cantidad: defaults?.cantidad ?? 1,
-    precioUnitario: defaults?.precioUnitario ?? 0,
+    precioUnitario: defaults?.precioUnitario ?? '0.00',
     codigo: '',
     nombre: '',
   }
@@ -45,7 +47,7 @@ export function crearKitMedicinalInicial(): KitMedicinalLinea[] {
 
 export function importeLineaKit(linea: KitMedicinalLinea): number {
   const cant = Number(linea.cantidad) || 0
-  const precio = Number(linea.precioUnitario) || 0
+  const precio = parseMoneyInput(linea.precioUnitario) ?? 0
   return Math.round(cant * precio * 100) / 100
 }
 

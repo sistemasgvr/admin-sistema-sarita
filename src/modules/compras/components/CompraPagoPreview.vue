@@ -99,16 +99,22 @@
                 />
               </td>
               <td class="px-3 py-1.5">
-                <input
-                  :value="cuota.monto"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="w-full min-w-[6rem] rounded-lg border border-gray-300 bg-transparent px-2 py-1 text-right tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
-                  :disabled="disabled"
-                  :aria-label="`Monto cuota ${cuota.numero}`"
-                  @input="onMontoRow(index, Number(($event.target as HTMLInputElement).value))"
-                />
+                <div class="min-w-[6rem]">
+                  <MoneyInput
+                    v-model="montoTexts[index]"
+                    placeholder="0.00"
+                    :disabled="disabled"
+                    :state="montoErrors[index] ? 'error' : 'default'"
+                    @focus="editingIndex = index"
+                    @blur="onMontoBlur(index)"
+                  />
+                </div>
+                <p
+                  v-if="montoErrors[index]"
+                  class="mt-0.5 text-right text-[10px] text-error-500"
+                >
+                  {{ montoErrors[index] }}
+                </p>
               </td>
             </tr>
           </tbody>
@@ -126,12 +132,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   aplicarPrimeraCuota,
   type CuotaPreviewItem,
 } from '@/modules/compras/utils/previewCuotasCompra'
-import { AppHelpTip, AppInput } from '@/shared/components'
+import { AppHelpTip, AppInput, MoneyInput } from '@/shared/components'
+import {
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 
 const props = withDefaults(
@@ -155,8 +166,49 @@ const diaMesModel = computed(() =>
   diaMesPagoModel.value > 0 ? String(diaMesPagoModel.value) : '',
 )
 
+const montoTexts = ref<string[]>([])
+const montoErrors = ref<Record<number, string>>({})
+const editingIndex = ref<number | null>(null)
+
+const moneyOpts = { min: 0.01 } as const
+
+watch(
+  () => cuotasModel.value,
+  (cuotas) => {
+    if (montoTexts.value.length !== cuotas.length) {
+      montoTexts.value = cuotas.map((c) => roundMoney(c.monto).toFixed(2))
+      montoErrors.value = {}
+      return
+    }
+    cuotas.forEach((c, i) => {
+      if (editingIndex.value === i) return
+      const parsed = parseMoneyInput(montoTexts.value[i])
+      if (parsed == null || Math.abs(roundMoney(parsed) - roundMoney(c.monto)) > 0.001) {
+        montoTexts.value[i] = roundMoney(c.monto).toFixed(2)
+      }
+    })
+  },
+  { deep: true, immediate: true },
+)
+
+watch(montoTexts, (texts) => {
+  texts.forEach((text, index) => {
+    if (editingIndex.value !== index) return
+    const msg = mensajeErrorMontoMoneda(text, moneyOpts)
+    montoErrors.value[index] = msg ?? ''
+    if (!msg) {
+      const n = parseMoneyInput(text)
+      if (n != null) {
+        cuotasModel.value = cuotasModel.value.map((item, i) =>
+          i === index ? { ...item, monto: roundMoney(n) } : item,
+        )
+      }
+    }
+  })
+}, { deep: true })
+
 const sumaCuotas = computed(() =>
-  cuotasModel.value.reduce((acc, item) => acc + (Number(item.monto) || 0), 0),
+  cuotasModel.value.reduce((acc, item) => acc + roundMoney(item.monto), 0),
 )
 const sumaDistinta = computed(
   () =>
@@ -193,11 +245,29 @@ function onFechaRow(index: number, fecha: string) {
   )
 }
 
-function onMontoRow(index: number, monto: number) {
-  const value = Number.isFinite(monto) ? monto : 0
+function commitMontoRow(index: number, raw: string) {
+  const msg = mensajeErrorMontoMoneda(raw, moneyOpts)
+  if (msg) {
+    montoErrors.value[index] = msg
+    return false
+  }
+  const n = parseMoneyInput(raw)
+  if (n == null) {
+    montoErrors.value[index] = 'Monto inválido'
+    return false
+  }
+  const monto = roundMoney(n)
+  montoTexts.value[index] = monto.toFixed(2)
+  montoErrors.value[index] = ''
   cuotasModel.value = cuotasModel.value.map((item, i) =>
-    i === index ? { ...item, monto: value } : item,
+    i === index ? { ...item, monto } : item,
   )
+  return true
+}
+
+function onMontoBlur(index: number) {
+  editingIndex.value = null
+  commitMontoRow(index, montoTexts.value[index] ?? '')
 }
 
 function formatMoney(value: number) {

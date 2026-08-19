@@ -118,17 +118,15 @@
                 :disabled="isSubmitting"
               />
 
-              <AppInput
-                v-model="costo"
-                label="Costo"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-                v-bind="costoAttrs"
-                :disabled="isSubmitting"
-                :error="errors.costo"
-              />
+              <AppFormField label="Costo" optional :error="errorCostoDisplay">
+                <MoneyInput
+                  v-model="costo"
+                  placeholder="0.00"
+                  :disabled="isSubmitting"
+                  :state="errorCostoDisplay ? 'error' : 'default'"
+                  @blur="onBlurCosto"
+                />
+              </AppFormField>
             </div>
 
             <AppTextarea
@@ -264,7 +262,7 @@
         <button
           type="submit"
           class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-          :disabled="isSubmitting"
+          :disabled="isSubmitting || !formularioValido"
         >
           {{
             isSubmitting
@@ -307,14 +305,18 @@ import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composab
 import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppCheckbox, AppInput, AppSelect, AppSelectSearch, AppTextarea } from '@/shared/components'
+import { AppCheckbox, AppInput, AppSelect, AppSelectSearch, AppTextarea, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
+import { yupMontoMoneda } from '@/shared/utils/yupMoney'
 
 interface MantenimientoFormProps {
   mode: MantenimientoFormMode
@@ -458,7 +460,9 @@ const optionalSelectNumber = () =>
     .transform((value) => (value === '' ? undefined : value))
     .optional()
 
-const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+const moneyOpts = { min: 0, allowZero: true } as const
+
+const { defineField, handleSubmit, resetForm, errors, isSubmitting, meta } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       idBalon: optionalSelectNumber(),
@@ -467,7 +471,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       fechaIngreso: requiredString('La fecha de ingreso'),
       fechaSalida: optionalString(),
       descripcion: optionalString().max(500, 'Máximo 500 caracteres'),
-      costo: optionalNumber().min(0, 'Debe ser mayor o igual a cero'),
+      costo: yupMontoMoneda({ optional: true, ...moneyOpts }),
       esExterno: yup.boolean().optional(),
       idProveedor: optionalSelectNumber(),
       idComprobanteVenta: optionalNumber().min(1, 'ID inválido'),
@@ -486,7 +490,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     fechaIngreso: today(),
     fechaSalida: '',
     descripcion: '',
-    costo: undefined as number | undefined,
+    costo: '',
     esExterno: false,
     idProveedor: '' as string | number,
     idComprobanteVenta: undefined as number | undefined,
@@ -505,7 +509,19 @@ const [idEstado, idEstadoAttrs] = defineField('idEstado')
 const [fechaIngreso, fechaIngresoAttrs] = defineField('fechaIngreso')
 const [fechaSalida, fechaSalidaAttrs] = defineField('fechaSalida')
 const [descripcion, descripcionAttrs] = defineField('descripcion')
-const [costo, costoAttrs] = defineField('costo')
+const [costo] = defineField('costo')
+const { error: errorCosto, valido: costoValidoRaw, onBlur: onBlurCosto } = useMoneyField(
+  costo,
+  moneyOpts,
+)
+const costoValido = computed(
+  () => !(costo.value ?? '').trim() || costoValidoRaw.value,
+)
+const errorCostoDisplay = computed(
+  () =>
+    errors.value.costo || ((costo.value ?? '').trim() ? errorCosto.value : ''),
+)
+const formularioValido = computed(() => meta.value.valid && costoValido.value)
 const [esExterno] = defineField('esExterno')
 const [idProveedor] = defineField('idProveedor')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
@@ -525,7 +541,7 @@ const buildPayloadFields = (values: {
   fechaIngreso?: string
   fechaSalida?: string
   descripcion?: string
-  costo?: number
+  costo?: string
   esExterno?: boolean
   idProveedor?: string | number
   idComprobanteVenta?: number
@@ -541,7 +557,9 @@ const buildPayloadFields = (values: {
   fechaIngreso: values.fechaIngreso || undefined,
   fechaSalida: values.fechaSalida || undefined,
   descripcion: values.descripcion || undefined,
-  costo: values.costo,
+  costo: values.costo?.trim()
+    ? roundMoney(parseMoneyInput(values.costo))
+    : undefined,
   esExterno: values.esExterno ?? false,
   idProveedor: values.esExterno ? toOptionalNumber(values.idProveedor) : undefined,
   idComprobanteVenta: values.idComprobanteVenta ? Number(values.idComprobanteVenta) : undefined,
@@ -569,7 +587,7 @@ const syncFormValues = () => {
       fechaIngreso: toDateInput(data?.fecha_ingreso) || today(),
       fechaSalida: toDateInput(data?.fecha_salida),
       descripcion: data?.descripcion ?? '',
-      costo: data?.costo ?? undefined,
+      costo: data?.costo != null ? roundMoney(data.costo).toFixed(2) : '',
       esExterno: data?.es_externo ?? false,
       idProveedor: data?.id_proveedor ?? '',
       idComprobanteVenta: data?.id_comprobante_venta ?? undefined,

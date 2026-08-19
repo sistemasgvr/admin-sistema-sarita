@@ -28,16 +28,13 @@
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppFormField label="Monto" required :error="errores.monto">
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
-            <AppInput
-              v-model="form.monto"
-              type="text"
-              inputmode="decimal"
-              placeholder="0.00"
-              :state="errores.monto ? 'error' : 'default'"
-            />
-          </div>
+        <AppFormField label="Monto" required :error="errorMontoDisplay">
+          <MoneyInput
+            v-model="form.monto"
+            placeholder="0.00"
+            :state="errorMontoDisplay ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
         </AppFormField>
 
         <AppFormField label="Fecha de pago" required :error="errores.fechaPago">
@@ -79,7 +76,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="mutation.isPending.value"
+        :disabled="mutation.isPending.value || !formularioValido"
         @click="submit"
       >
         {{ mutation.isPending.value ? 'Guardando...' : ctaLabel }}
@@ -117,9 +114,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { AppConfirmDialog, AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { computed, reactive, ref, toRef, watch } from 'vue'
+import { AppConfirmDialog, AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
 import { useRegistrarPagoMutation } from '@/modules/finanzas/composables/usePagoMutations'
@@ -130,7 +128,12 @@ import type {
 } from '@/modules/finanzas/interfaces/cuenta.interface'
 import type { DuplicadoPagoInfo } from '@/modules/finanzas/interfaces/garantia.interface'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { formatCurrency, normalizeMoneyInput, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
+import {
+  formatCurrency,
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
@@ -164,7 +167,7 @@ const hoy = () => new Date().toISOString().slice(0, 10)
 const fechaEmisionMin = computed(() => props.cuenta?.fecha_emision ?? undefined)
 
 const form = reactive({
-  monto: '' as string | number,
+  monto: '',
   fechaPago: hoy(),
   idMedioPago: '' as string | number,
   referencia: '',
@@ -172,6 +175,19 @@ const form = reactive({
 })
 
 const errores = reactive<{ monto?: string; fechaPago?: string }>({})
+
+const moneyOpts = { min: 0.01 } as const
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(
+  toRef(form, 'monto'),
+  moneyOpts,
+)
+const errorMontoDisplay = computed(() => errores.monto || errorMonto.value)
+const formularioValido = computed(
+  () =>
+    montoValido.value &&
+    Boolean(form.fechaPago) &&
+    (!props.cuenta?.fecha_emision || form.fechaPago >= props.cuenta.fecha_emision),
+)
 
 const resetForm = () => {
   form.monto = props.cuenta ? roundMoney(props.cuenta.saldo).toFixed(2) : ''
@@ -191,15 +207,6 @@ watch(open, (isOpen) => {
   if (isOpen) resetForm()
 })
 
-/* Validación reactiva */
-watch(
-  () => form.monto,
-  (v) => {
-    const n = parseMoneyInput(v)
-    if (n != null && n > 0) errores.monto = undefined
-  },
-)
-
 watch(
   () => form.fechaPago,
   (v) => {
@@ -208,37 +215,21 @@ watch(
   },
 )
 
-/* Handlers de monto (input text para no perder comas de miles) */
-const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  if (e.key.length > 1) return
-  if (e.ctrlKey || e.metaKey) return
-  if (['-', '+', 'e', 'E'].includes(e.key)) {
-    e.preventDefault()
-    return
-  }
-  if (!/[\d.,]/.test(e.key)) e.preventDefault()
-}
-const bloquearPegadoInvalido = (e: ClipboardEvent) => {
-  const texto = e.clipboardData?.getData('text') ?? ''
-  if (/[-+eE]/.test(texto)) e.preventDefault()
-}
-const normalizarMonto = () => {
-  const norm = normalizeMoneyInput(form.monto)
-  if (norm) form.monto = norm
-}
-
 const validar = (): boolean => {
   errores.monto = undefined
   errores.fechaPago = undefined
   let ok = true
 
+  const msgMonto = mensajeErrorMontoMoneda(form.monto, moneyOpts)
+  if (msgMonto) {
+    errores.monto = msgMonto
+    ok = false
+  }
+
   const monto = parseMoneyInput(form.monto)
   const saldo = roundMoney(props.cuenta?.saldo)
 
-  if (monto == null || monto <= 0) {
-    errores.monto = 'Ingresa un monto válido mayor a cero'
-    ok = false
-  } else if (roundMoney(monto) > saldo) {
+  if (ok && monto != null && roundMoney(monto) > saldo) {
     errores.monto = `El monto no puede superar el saldo (${formatCurrency(saldo)})`
     ok = false
   }
@@ -261,9 +252,8 @@ const canForzarDuplicado = computed(() =>
 )
 
 const ejecutarPago = async (forzar: boolean) => {
-  const monto = parseMoneyInput(form.monto)
-  if (monto == null || !props.cuenta) return
-  const montoFinal = roundMoney(monto)
+  if (mensajeErrorMontoMoneda(form.monto, moneyOpts) || !props.cuenta) return
+  const montoFinal = roundMoney(parseMoneyInput(form.monto))
 
   try {
     await mutation.mutateAsync({
@@ -287,18 +277,17 @@ const ejecutarPago = async (forzar: boolean) => {
 
 const submit = async () => {
   if (!props.cuenta) return
-  normalizarMonto()
+  if (mensajeErrorMontoMoneda(form.monto, moneyOpts)) return
   if (!validar()) return
 
-  const monto = parseMoneyInput(form.monto)
-  if (monto == null) return
+  const monto = roundMoney(parseMoneyInput(form.monto))
 
   // Chequeo previo de duplicado
   try {
     const info = await finanzasService.verificarDuplicadoPago({
       idCuenta: props.cuenta.id,
       fechaPago: form.fechaPago,
-      monto: Math.round(monto * 100) / 100,
+      monto,
       numeroComprobante:
         props.cuenta.comprobante?.trim() ||
         props.cuenta.numero_comprobante?.trim() ||

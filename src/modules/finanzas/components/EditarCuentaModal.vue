@@ -43,16 +43,13 @@
           />
         </AppFormField>
 
-        <AppFormField label="Monto" required :error="errores.monto">
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarMonto">
-            <AppInput
-              v-model="form.monto"
-              type="text"
-              inputmode="decimal"
-              placeholder="0.00"
-              :state="errores.monto ? 'error' : 'default'"
-            />
-          </div>
+        <AppFormField label="Monto" required :error="errorMontoDisplay">
+          <MoneyInput
+            v-model="form.monto"
+            placeholder="0.00"
+            :state="errorMontoDisplay ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
         </AppFormField>
       </template>
 
@@ -103,7 +100,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="mutation.isPending.value"
+        :disabled="mutation.isPending.value || !formularioValido"
         @click="submit"
       >
         {{ mutation.isPending.value ? 'Guardando...' : 'Guardar cambios' }}
@@ -113,10 +110,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { AppInput, AppModal, AppTextarea } from '@/shared/components'
+import { computed, reactive, toRef, watch } from 'vue'
+import { AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useActualizarCuentaMutation } from '@/modules/finanzas/composables/usePagoMutations'
 import type {
@@ -125,7 +123,12 @@ import type {
   TipoCuenta,
 } from '@/modules/finanzas/interfaces/cuenta.interface'
 import { ICONS } from '@/shared/constants/icons'
-import { formatCurrency, normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
+import {
+  formatCurrency,
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 
 const props = defineProps<{
   cuenta: CuentaFinanciera | null
@@ -161,7 +164,7 @@ const fechaEmisionMin = computed(() => props.cuenta?.fecha_emision ?? undefined)
 interface FormState {
   fechaEmision: string
   fechaVencimiento: string
-  monto: string | number
+  monto: string
   numeroComprobante: string
   descripcion: string
   observacion: string
@@ -177,6 +180,16 @@ const form = reactive<FormState>({
 })
 
 const errores = reactive<Record<string, string | undefined>>({})
+
+const moneyOpts = { min: 0.01 } as const
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(
+  toRef(form, 'monto'),
+  moneyOpts,
+)
+const errorMontoDisplay = computed(() => errores.monto || errorMonto.value)
+const formularioValido = computed(
+  () => restringido.value || (montoValido.value && Boolean(form.fechaEmision)),
+)
 
 const cargarDesdeCuenta = () => {
   const c = props.cuenta
@@ -213,13 +226,6 @@ watch(
   },
 )
 watch(
-  () => form.monto,
-  (v) => {
-    const n = parseMoneyInput(v)
-    if (n != null && n > 0) errores.monto = undefined
-  },
-)
-watch(
   () => form.numeroComprobante,
   (v) => {
     if (v.length <= 50) errores.numeroComprobante = undefined
@@ -238,25 +244,6 @@ watch(
   },
 )
 
-/* Handlers monto (input text para no perder comas de miles) */
-const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  if (e.key.length > 1) return
-  if (e.ctrlKey || e.metaKey) return
-  if (['-', '+', 'e', 'E'].includes(e.key)) {
-    e.preventDefault()
-    return
-  }
-  if (!/[\d.,]/.test(e.key)) e.preventDefault()
-}
-const bloquearPegadoInvalido = (e: ClipboardEvent) => {
-  const texto = e.clipboardData?.getData('text') ?? ''
-  if (/[-+eE]/.test(texto)) e.preventDefault()
-}
-const normalizarMonto = () => {
-  const norm = normalizeMoneyInput(form.monto)
-  if (norm) form.monto = norm
-}
-
 const validar = (): boolean => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
   let ok = true
@@ -266,9 +253,9 @@ const validar = (): boolean => {
       errores.fechaEmision = 'La fecha de emisión es obligatoria'
       ok = false
     }
-    const monto = parseMoneyInput(form.monto)
-    if (monto == null || monto <= 0) {
-      errores.monto = 'Ingresa un monto válido mayor a cero'
+    const msgMonto = mensajeErrorMontoMoneda(form.monto, moneyOpts)
+    if (msgMonto) {
+      errores.monto = msgMonto
       ok = false
     }
   }
@@ -296,7 +283,7 @@ const validar = (): boolean => {
 
 const submit = async () => {
   if (!props.cuenta) return
-  normalizarMonto()
+  if (!restringido.value && mensajeErrorMontoMoneda(form.monto, moneyOpts)) return
   if (!validar()) return
 
   const original = props.cuenta
@@ -310,9 +297,9 @@ const submit = async () => {
     if (form.fechaEmision !== (original.fecha_emision ?? '')) {
       payload.fechaEmision = form.fechaEmision
     }
-    const nuevoMonto = parseMoneyInput(form.monto)
-    if (nuevoMonto != null && Math.abs(nuevoMonto - Number(original.monto_pendiente)) > 0.0001) {
-      payload.monto = Math.round(nuevoMonto * 100) / 100
+    const nuevoMonto = roundMoney(parseMoneyInput(form.monto))
+    if (Math.abs(nuevoMonto - Number(original.monto_pendiente)) > 0.0001) {
+      payload.monto = nuevoMonto
     }
   }
 
