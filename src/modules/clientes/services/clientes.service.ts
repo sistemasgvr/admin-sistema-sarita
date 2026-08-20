@@ -10,6 +10,7 @@ import type {
   ClienteListFilters,
   ClienteMapa,
   ClienteMapaFilters,
+  ClienteRelacionadosExport,
   CreateClientePayload,
   DeleteClienteResponse,
   RestaurarClienteResponse,
@@ -62,5 +63,11 @@ export const clientesService = {
     return apiGet<ValidarDocumentoResponse>('/clientes/validar-documento', {
       params: filters,
     })
+  },
+
+  // Reemplaza el patrón N+1 (4 llamadas por cliente) usado antes por la exportación a
+  // Excel: una sola llamada trae direcciones/vehículos/choferes/cuentas de todo el lote.
+  exportarRelacionados(ids: number[]) {
+    return apiPost<ClienteRelacionadosExport>('/clientes/exportar-relacionados', { ids })
   },
 }

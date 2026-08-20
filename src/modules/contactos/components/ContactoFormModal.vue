@@ -14,7 +14,9 @@
           :disabled="isSubmitting" />
         <div class="sm:col-span-2">
           <ConsultaDocumentoInput v-model="numeroDocumentoBusqueda" :tipo-documento="tipoDocumentoBusqueda"
-            label="Número de documento" :disabled="isSubmitting" @dni-encontrado="aplicarDatosDni"
+            label="Número de documento"
+            help="Solo para autocompletar nombre/apellidos desde RENIEC o SUNAT; el contacto no guarda este documento."
+            :disabled="isSubmitting" @dni-encontrado="aplicarDatosDni"
             @ruc-encontrado="aplicarDatosRuc" />
         </div>
       </div>

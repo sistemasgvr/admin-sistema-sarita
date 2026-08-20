@@ -45,7 +45,10 @@
     </div>
 
     <div v-if="isLoading" class="text-theme-sm text-gray-500">Cargando libro diario...</div>
-    <div v-else-if="isError" class="text-theme-sm text-red-600">No se pudo cargar el libro diario.</div>
+    <div v-else-if="isError" class="text-theme-sm text-red-600">
+      No se pudo cargar el libro diario{{ errorDetalle ? `: ${errorDetalle}` : '.' }}
+      Revisa el rango de fechas o usa "Limpiar todo" en los filtros.
+    </div>
 
     <template v-else-if="libro">
       <AppSummaryCards :cards="resumenCards" :columns="5" />
@@ -237,6 +240,7 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
 import { hoyIsoLima } from '@/shared/utils/date'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { ApiError } from '@/shared/api/errors/api.error'
 
 function hoyLocal(): string {
   return hoyIsoLima()
@@ -299,6 +303,11 @@ const query = useLibroDiarioQuery(filtersRef)
 const libro = computed(() => query.data.value)
 const isLoading = computed(() => query.isLoading.value)
 const isError = computed(() => query.isError.value)
+const errorDetalle = computed(() => {
+  const error = query.error.value
+  if (error instanceof ApiError) return error.errors?.[0] ?? error.message
+  return null
+})
 
 const canObservacion = computed(() => auth.hasPermission(PermisoBanderas.CAJA_OBSERVACION))
 const nuevaObs = ref('')

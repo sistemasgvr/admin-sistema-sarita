@@ -245,13 +245,17 @@ const breakdownFiltersBase = computed<CuentaBancariaListFilters>(() => ({
   pagina: 1,
   limite: 1,
 }))
+const todosFilters = computed<CuentaBancariaListFilters>(() => ({ ...breakdownFiltersBase.value }))
 const activosFilters = computed<CuentaBancariaListFilters>(() => ({ ...breakdownFiltersBase.value, isActivos: 1 }))
 const inactivosFilters = computed<CuentaBancariaListFilters>(() => ({ ...breakdownFiltersBase.value, isActivos: 0 }))
+const todosQuery = useCuentasBancariasQuery(todosFilters)
 const activosQuery = useCuentasBancariasQuery(activosFilters)
 const inactivosQuery = useCuentasBancariasQuery(inactivosFilters)
 
 const summaryChips = computed<SummaryChip[]>(() => [
-  { label: 'Total cuentas', value: query.data.value?.meta?.total ?? 0, color: 'primary' },
+  // Antes usaba `query` (la de la tabla, que respeta el filtro de Estado activo);
+  // mismo defecto que en Clientes/Direcciones: "Total" mostraba solo el subconjunto filtrado.
+  { label: 'Total cuentas', value: todosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
   { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
   { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
 ])

@@ -69,7 +69,7 @@
               v-else-if="fieldDef(row.fieldKey)?.type === 'date'"
               :model-value="asTextValue(row.value)"
               type="date"
-              @update:model-value="(value) => updateRowValue(row, value)"
+              @update:model-value="(value) => updateDateRowValue(row, value)"
             />
 
             <div
@@ -181,6 +181,29 @@ const updateRowValue = (
 ) => {
   row.value = value
   onValueChange()
+}
+
+// Un <input type="date"> "debería" solo emitir '' o YYYY-MM-DD, pero hay un bug de
+// larga data en Chromium: si el usuario teclea los dígitos seguidos sin pasar de
+// segmento en segmento, el año puede terminar con un dígito de más (ej. "12026").
+// Ese valor viaja tal cual hasta el backend y rompe la vista con un error genérico
+// (ver AuthListado "No se pudo cargar el libro diario"). Se descarta aquí, en el
+// único punto por el que pasan todos los filtros de fecha de la app, en vez de
+// validar en cada vista que use un filtro de tipo 'date'.
+const FECHA_ISO_RE = /^\d{4}-\d{2}-\d{2}$/
+const isFechaValida = (value: string) => {
+  if (!FECHA_ISO_RE.test(value)) return false
+  const anio = Number(value.slice(0, 4))
+  return anio >= 1900 && anio <= 2100
+}
+
+const updateDateRowValue = (
+  row: { value: string | number | boolean | null },
+  value: string | number | null,
+) => {
+  const texto = String(value ?? '')
+  if (texto !== '' && !isFechaValida(texto)) return
+  updateRowValue(row, value)
 }
 
 const onCheckboxChange = (row: { value: string | number | boolean | null }, checked: boolean) => {

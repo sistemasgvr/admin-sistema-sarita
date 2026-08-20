@@ -27,22 +27,24 @@
     </div>
 
     <ul v-else class="divide-y divide-gray-100 dark:divide-gray-800">
-      <li
-        v-for="item in registros"
-        :key="item.id"
-        class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-      >
-        <div class="min-w-0">
-          <p class="truncate text-theme-sm font-medium text-gray-700 dark:text-gray-200">
-            {{ item.nombre_producto }}
-          </p>
-          <p class="text-theme-xs text-error-500">
-            Quedan: {{ formatNumber(item.stock) }} {{ item.nombre_unidad_medida || 'unid.' }}
-          </p>
-        </div>
-        <AppBadge color="error" variant="light" size="sm" class="shrink-0">
-          Bajo mínimo
-        </AppBadge>
+      <li v-for="item in registros" :key="item.id">
+        <RouterLink
+          :to="{ name: 'admin-productos-stock-detalle', params: { id: item.id } }"
+          :title="`Ver detalle de stock de ${item.nombre_producto}`"
+          class="flex items-center justify-between gap-3 rounded-lg py-2.5 -mx-1.5 px-1.5 transition hover:bg-gray-50 dark:hover:bg-white/5"
+        >
+          <div class="min-w-0">
+            <p class="truncate text-theme-sm font-medium text-gray-700 hover:underline dark:text-gray-200">
+              {{ item.nombre_producto }}
+            </p>
+            <p class="text-theme-xs text-error-500">
+              Quedan: {{ formatNumber(item.stock) }} {{ item.nombre_unidad_medida || 'unid.' }}
+            </p>
+          </div>
+          <AppBadge color="error" variant="light" size="sm" class="shrink-0">
+            Bajo mínimo
+          </AppBadge>
+        </RouterLink>
       </li>
     </ul>
   </div>
@@ -50,8 +52,8 @@
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppBadge } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import type { Stock } from '@/modules/productos/stock/interfaces/stock.interface'
 import { formatNumber } from '@/shared/utils/currency'

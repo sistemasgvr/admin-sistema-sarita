@@ -101,6 +101,18 @@
           <p v-if="errores.terceroNombre" class="mt-1 text-theme-xs text-error-500">
             {{ errores.terceroNombre }}
           </p>
+          <p v-else-if="terceroDuplicado" class="mt-1 text-theme-xs text-warning-600 dark:text-warning-400">
+            Ya existe un tercero registrado como
+            <button
+              type="button"
+              class="font-medium underline underline-offset-2"
+              @click="usarTerceroSugerido"
+            >
+              "{{ terceroDuplicado }}"
+            </button>
+            — probablemente el mismo, solo con distinta escritura. Si es así, usa esa grafía para no
+            duplicar el saldo.
+          </p>
           <p v-else class="mt-1 text-theme-xs text-gray-400 dark:text-gray-500">
             {{ ayudaNombre }}
           </p>
@@ -262,6 +274,7 @@ import {
   useCrearCuentaCuotasMutation,
   useCrearCuentaMutation,
 } from '@/modules/finanzas/composables/usePagoMutations'
+import { finanzasService } from '@/modules/finanzas/services/finanzas.service'
 import type { TipoCuenta } from '@/modules/finanzas/interfaces/cuenta.interface'
 import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import { ICONS } from '@/shared/constants/icons'
@@ -497,6 +510,53 @@ watch(
     if (t.length >= 2 && t.length <= 255) errores.terceroNombre = undefined
   },
 )
+
+// ---------- Aviso de posible duplicado por mayúsculas/minúsculas (modo "Nombre libre") ----------
+// El nombre libre no pasa por ningún catálogo, así que "bcp" y "BCP" quedan como dos
+// terceros distintos en los saldos y reportes. En vez de forzar una capitalización
+// (podría no ser la que el negocio realmente usa), avisamos si ya existe un tercero
+// con el mismo nombre salvo mayúsculas/espacios, para que el usuario reutilice esa
+// grafía si corresponde al mismo tercero.
+const terceroDuplicado = ref<string | null>(null)
+let duplicadoTimer: ReturnType<typeof setTimeout> | undefined
+let duplicadoSeq = 0
+
+const buscarTerceroDuplicado = async (nombre: string) => {
+  const seq = ++duplicadoSeq
+  const objetivo = nombre.trim().toLowerCase()
+  try {
+    const resultado = await finanzasService.listarSaldosPorTercero(props.tipo, {
+      buscar: nombre.trim(),
+      limite: 5,
+    })
+    if (seq !== duplicadoSeq) return
+    const coincidencia = resultado.data.find(
+      (s) => s.tercero.trim().toLowerCase() === objetivo && s.tercero.trim() !== nombre.trim(),
+    )
+    terceroDuplicado.value = coincidencia?.tercero ?? null
+  } catch {
+    if (seq === duplicadoSeq) terceroDuplicado.value = null
+  }
+}
+
+watch(
+  () => (modoTercero.value === 'libre' ? form.terceroNombre : ''),
+  (v) => {
+    clearTimeout(duplicadoTimer)
+    const t = v.trim()
+    if (t.length < 2) {
+      terceroDuplicado.value = null
+      return
+    }
+    duplicadoTimer = setTimeout(() => void buscarTerceroDuplicado(t), 400)
+  },
+)
+
+const usarTerceroSugerido = () => {
+  if (!terceroDuplicado.value) return
+  form.terceroNombre = terceroDuplicado.value
+  terceroDuplicado.value = null
+}
 watch(
   () => form.fechaEmision,
   (v) => {

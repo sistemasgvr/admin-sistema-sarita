@@ -16,6 +16,7 @@
         "
         :placeholder="displayPlaceholder"
         :disabled="disabled"
+        :required="required"
         :value="query"
         autocomplete="off"
         @input="onInput"
@@ -24,7 +25,7 @@
         @keydown.down.prevent="highlightNext"
         @keydown.up.prevent="highlightPrev"
         @keydown.enter.prevent="selectHighlighted"
-        @keydown.esc="closeMenu"
+        @keydown.esc="handleEscape"
       />
 
       <button
@@ -246,6 +247,13 @@ const onClick = () => {
 const closeMenu = () => {
   menuOpen.value = false
   setQueryFromSelection()
+}
+
+// Escape solo debe cerrar el menú de sugerencias, no descartar lo que el usuario ya
+// escribió (closeMenu() sí revierte a la selección vigente, correcto para click-outside,
+// pero como "cancelar" explícito el usuario espera conservar el texto).
+const handleEscape = () => {
+  menuOpen.value = false
 }
 
 const selectOption = (option: SelectOption) => {

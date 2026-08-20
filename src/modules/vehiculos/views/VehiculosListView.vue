@@ -254,13 +254,17 @@ const breakdownFiltersBase = computed<VehiculoListFilters>(() => ({
   pagina: 1,
   limite: 1,
 }))
+const todosFilters = computed<VehiculoListFilters>(() => ({ ...breakdownFiltersBase.value }))
 const activosFilters = computed<VehiculoListFilters>(() => ({ ...breakdownFiltersBase.value, isActivos: 1 }))
 const inactivosFilters = computed<VehiculoListFilters>(() => ({ ...breakdownFiltersBase.value, isActivos: 0 }))
+const todosQuery = useVehiculosQuery(todosFilters)
 const activosQuery = useVehiculosQuery(activosFilters)
 const inactivosQuery = useVehiculosQuery(inactivosFilters)
 
 const summaryChips = computed<SummaryChip[]>(() => [
-  { label: 'Total vehículos', value: vehiculosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
+  // Antes usaba vehiculosQuery (la de la tabla, que respeta el filtro de Estado activo);
+  // mismo defecto que en Clientes/Direcciones: "Total" mostraba solo el subconjunto filtrado.
+  { label: 'Total vehículos', value: todosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
   { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
   { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
 ])

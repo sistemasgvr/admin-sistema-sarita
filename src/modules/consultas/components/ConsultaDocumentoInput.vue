@@ -72,9 +72,7 @@ interface ConsultaDocumentoInputProps {
   tipoDocumento?: string | null
   label?: string
   placeholder?: string
-  /** Tooltip junto al label. */
   help?: string
-  /** @deprecated Usar `help` (tooltip). Se mantiene por compatibilidad. */
   hint?: string
   required?: boolean
   disabled?: boolean
