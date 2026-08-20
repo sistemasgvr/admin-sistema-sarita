@@ -2,23 +2,13 @@ import { downloadExcelWorkbook, type ExcelColumn } from '@/shared/utils/exportEx
 import { toastInfo } from '@/shared/composables/useToast'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { getClienteNombrePrincipal } from '@/modules/clientes/utils/clienteNombre'
-import {
-  estadoTexto,
-  fetchAll,
-  nombreClienteRelacionado,
-  processInBatches,
-  siNo,
-} from '@/modules/clientes/utils/exportExcelHelpers'
+import { estadoTexto, fetchAll, nombreClienteRelacionado, siNo } from '@/modules/clientes/utils/exportExcelHelpers'
 import type { Cliente, ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import type { Direccion } from '@/modules/direcciones/interfaces/direccion.interface'
 import type { Vehiculo } from '@/modules/vehiculos/interfaces/vehiculo.interface'
 import type { Chofer } from '@/modules/choferes/interfaces/chofer.interface'
 import type { CuentaBancaria } from '@/modules/cuentas-bancarias/interfaces/cuenta-bancaria.interface'
-import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
-import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
-import { choferesService } from '@/modules/choferes/services/choferes.service'
-import { cuentasBancariasService } from '@/modules/cuentas-bancarias/services/cuentas-bancarias.service'
-  
+
 function conNivelDeGrupo<T>(registros: T[]): (T & { outlineLevel: number })[] {
   return registros.map((registro, index) => ({ ...registro, outlineLevel: index === 0 ? 0 : 1 }))
 }
@@ -268,6 +258,45 @@ function buildCuentaRows(cuentas: CuentaBancaria[]): CuentaRow[] {
 }
 
 
+// Tamaño de lote para /clientes/exportar-relacionados (bien por debajo del ArrayMaxSize
+// del backend). Con esto, exportar 190 clientes pasa de ~760 llamadas HTTP (4 por
+// cliente) a 1 sola; un catálogo de miles de clientes sigue siendo un puñado de llamadas
+// en vez de miles.
+const LOTE_IDS_RELACIONADOS = 500
+
+async function fetchRelacionadosEnLotes(idsCliente: number[]) {
+  const direcciones: Direccion[] = []
+  const vehiculos: Vehiculo[] = []
+  const choferes: Chofer[] = []
+  const cuentasBancarias: CuentaBancaria[] = []
+
+  for (let i = 0; i < idsCliente.length; i += LOTE_IDS_RELACIONADOS) {
+    const lote = idsCliente.slice(i, i + LOTE_IDS_RELACIONADOS)
+    const resultado = await clientesService.exportarRelacionados(lote)
+    direcciones.push(...resultado.direcciones)
+    vehiculos.push(...resultado.vehiculos)
+    choferes.push(...resultado.choferes)
+    cuentasBancarias.push(...resultado.cuentasBancarias)
+  }
+
+  return { direcciones, vehiculos, choferes, cuentasBancarias }
+}
+
+/** Agrupa registros relacionados por id_cliente, respetando el orden de `clientes`. */
+function agruparPorCliente<T extends { id_cliente?: number | null }>(
+  registros: T[],
+  ordenIds: number[],
+): T[][] {
+  const porId = new Map<number, T[]>()
+  for (const registro of registros) {
+    if (registro.id_cliente == null) continue
+    const lista = porId.get(registro.id_cliente)
+    if (lista) lista.push(registro)
+    else porId.set(registro.id_cliente, [registro])
+  }
+  return ordenIds.map((id) => porId.get(id) ?? []).filter((grupo) => grupo.length > 0)
+}
+
 export async function exportarClientesExcel(filters: ClienteListFilters): Promise<void> {
   const baseFilters: ClienteListFilters = {
     buscar: filters.buscar,
@@ -282,28 +311,20 @@ export async function exportarClientesExcel(filters: ClienteListFilters): Promis
     return
   }
 
-  const porCliente = await processInBatches(clientes, 5, async (cliente) => {
-    const [direcciones, vehiculos, choferes, cuentas] = await Promise.all([
-      direccionesService.listar({ idCliente: cliente.id, pagina: 1, limite: 500 }),
-      vehiculosService.listar({ idCliente: cliente.id, pagina: 1, limite: 500 }),
-      choferesService.listar({ idCliente: cliente.id, pagina: 1, limite: 500 }),
-      cuentasBancariasService.listar({ idCliente: cliente.id, pagina: 1, limite: 500 }),
-    ])
-
-    return {
-      cliente,
-      direcciones: buildDireccionRows(direcciones.data),
-      vehiculos: buildVehiculoRows(vehiculos.data),
-      choferes: buildChoferRows(choferes.data),
-      cuentas: buildCuentaRows(cuentas.data),
-    }
-  })
+  const idsCliente = clientes.map((c) => c.id)
+  const relacionados = await fetchRelacionadosEnLotes(idsCliente)
 
   const clienteRows = clientes.map(buildClienteRow)
-  const direccionRows = porCliente.flatMap((p) => p.direcciones)
-  const vehiculoRows = porCliente.flatMap((p) => p.vehiculos)
-  const choferRows = porCliente.flatMap((p) => p.choferes)
-  const cuentaRows = porCliente.flatMap((p) => p.cuentas)
+  const direccionRows = agruparPorCliente(relacionados.direcciones, idsCliente).flatMap(
+    buildDireccionRows,
+  )
+  const vehiculoRows = agruparPorCliente(relacionados.vehiculos, idsCliente).flatMap(
+    buildVehiculoRows,
+  )
+  const choferRows = agruparPorCliente(relacionados.choferes, idsCliente).flatMap(buildChoferRows)
+  const cuentaRows = agruparPorCliente(relacionados.cuentasBancarias, idsCliente).flatMap(
+    buildCuentaRows,
+  )
 
   const fecha = new Date().toISOString().slice(0, 10)
 

@@ -238,13 +238,17 @@ const breakdownFiltersBase = computed<ContactoListFilters>(() => ({
   pagina: 1,
   limite: 1,
 }))
+const todosFilters = computed<ContactoListFilters>(() => ({ ...breakdownFiltersBase.value }))
 const activosFilters = computed<ContactoListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 1 }))
 const inactivosFilters = computed<ContactoListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 0 }))
+const todosQuery = useContactosQuery(todosFilters)
 const activosQuery = useContactosQuery(activosFilters)
 const inactivosQuery = useContactosQuery(inactivosFilters)
 
 const summaryChips = computed<SummaryChip[]>(() => [
-  { label: 'Total contactos', value: contactosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
+  // Antes usaba contactosQuery (la de la tabla, que respeta el filtro de Estado activo);
+  // mismo defecto que en Clientes/Direcciones: "Total" mostraba solo el subconjunto filtrado.
+  { label: 'Total contactos', value: todosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
   { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
   { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
 ])

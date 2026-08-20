@@ -81,10 +81,11 @@
         <button
           v-if="canDelete && row.estado === 1"
           type="button"
+          title="Desactivar dirección"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
-          <AppIcon :name="ICONS.trash" :size="16" />
+          <AppIcon :name="ICONS.archive" :size="16" />
         </button>
       </template>
 
@@ -111,12 +112,12 @@
 
     <AppModal
       v-model="deleteModalOpen"
-      title="Eliminar dirección"
-      subtitle="Esta acción desactivará la dirección en el sistema (baja lógica)."
+      title="Desactivar dirección"
+      subtitle="Esta acción desactivará la dirección en el sistema (baja lógica); no se elimina de forma permanente y puede reactivarse luego."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        ¿Confirmas que deseas eliminar
+        ¿Confirmas que deseas desactivar
         <span class="font-medium text-gray-800 dark:text-white/90">
           {{ direccionToDelete?.direccion }}
         </span>
@@ -138,7 +139,7 @@
           :disabled="deleteMutation.isPending.value"
           @click="confirmDelete"
         >
-          {{ deleteMutation.isPending.value ? 'Eliminando...' : 'Eliminar' }}
+          {{ deleteMutation.isPending.value ? 'Desactivando...' : 'Desactivar' }}
         </button>
       </template>
     </AppModal>
@@ -241,13 +242,18 @@ const breakdownFiltersBase = computed<DireccionListFilters>(() => ({
   pagina: 1,
   limite: 1,
 }))
+// Sin soloActivos: el total real (del subconjunto buscado/cliente), sin importar el
+// filtro de Estado activo en la tabla principal — mismo defecto y mismo fix que en
+// el listado general de Clientes (ClientesListView.vue).
+const todosFilters = computed<DireccionListFilters>(() => ({ ...breakdownFiltersBase.value }))
 const activosFilters = computed<DireccionListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 1 }))
 const inactivosFilters = computed<DireccionListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 0 }))
+const todosQuery = useDireccionesQuery(todosFilters)
 const activosQuery = useDireccionesQuery(activosFilters)
 const inactivosQuery = useDireccionesQuery(inactivosFilters)
 
 const summaryChips = computed<SummaryChip[]>(() => [
-  { label: 'Total direcciones', value: direccionesQuery.data.value?.meta?.total ?? 0, color: 'primary' },
+  { label: 'Total direcciones', value: todosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
   { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
   { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
 ])

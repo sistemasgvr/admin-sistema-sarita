@@ -318,13 +318,19 @@ const breakdownFiltersBase = computed<ClienteListFilters>(() => ({
   idTipoCliente:
     dynamicFilters.value.idTipoCliente != null ? Number(dynamicFilters.value.idTipoCliente) : undefined,
 }))
+// Sin soloActivos: el total real del sistema (o del subconjunto buscado/tipo), sin
+// importar el filtro de Estado que esté activo en la tabla principal.
+const todosFilters = computed<ClienteListFilters>(() => ({ ...breakdownFiltersBase.value }))
 const activosFilters = computed<ClienteListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 1 }))
 const inactivosFilters = computed<ClienteListFilters>(() => ({ ...breakdownFiltersBase.value, soloActivos: 0 }))
+const todosQuery = useClientesQuery(todosFilters)
 const activosQuery = useClientesQuery(activosFilters)
 const inactivosQuery = useClientesQuery(inactivosFilters)
 
 const summaryChips = computed<SummaryChip[]>(() => [
-  { label: 'Total clientes', value: clientesQuery.data.value?.meta?.total ?? 0, color: 'primary' },
+  // Antes usaba clientesQuery (la de la tabla, que sí respeta el filtro de Estado),
+  // por eso con Estado=Activos "Total" mostraba solo los activos (26) en vez de 190.
+  { label: 'Total clientes', value: todosQuery.data.value?.meta?.total ?? 0, color: 'primary' },
   { label: 'Activos', value: activosQuery.data.value?.meta?.total ?? 0, color: 'success' },
   { label: 'Inactivos', value: inactivosQuery.data.value?.meta?.total ?? 0, color: 'error' },
 ])

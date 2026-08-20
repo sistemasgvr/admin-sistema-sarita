@@ -225,15 +225,17 @@
       @confirm="confirmarEliminar"
     >
       <span>
-        ¿Confirmas eliminar esta cuenta? Esta acción es una <strong>baja lógica</strong>
-        y se puede revertir manualmente en la BD. No se permite eliminar cuentas con pagos aplicados.
+        ¿Confirmas eliminar esta cuenta? Se hace una <strong>baja lógica</strong>: el registro no se
+        borra, solo queda inactivo. Si necesitas revertirlo, contacta a soporte técnico. No se
+        permite eliminar cuentas con pagos aplicados.
       </span>
     </AppConfirmDialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   AppBadge,
   AppConfirmDialog,
@@ -276,6 +278,7 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const props = defineProps<{ tipo: TipoCuenta }>()
 
+const route = useRoute()
 const authStore = useAuthStore()
 
 const esCobrar = computed(() => props.tipo === 'COBRAR')
@@ -520,6 +523,18 @@ watch(buscar, () => {
 
 watch([pagina, limite], () => {
   syncFilters()
+})
+
+// Permite llegar desde afuera (ej. "Top clientes con mayor deuda" del dashboard) con
+// el tercero ya preseleccionado: /finanzas?idCliente=123
+onMounted(() => {
+  const raw = route.query.idCliente
+  const idCliente = Number(Array.isArray(raw) ? raw[0] : raw)
+  if (!Number.isFinite(idCliente) || idCliente <= 0) return
+  // Mantiene el estado por defecto (con saldo pendiente): quien llega desde el
+  // dashboard quiere ver justamente la deuda pendiente de ese tercero.
+  dynamicFilters.value = { ...dynamicFilters.value, idTercero: idCliente }
+  syncFilters({ pagina: 1 })
 })
 
 /* Modales */

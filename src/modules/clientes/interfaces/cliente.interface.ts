@@ -1,3 +1,8 @@
+import type { Direccion } from '@/modules/direcciones/interfaces/direccion.interface'
+import type { Vehiculo } from '@/modules/vehiculos/interfaces/vehiculo.interface'
+import type { Chofer } from '@/modules/choferes/interfaces/chofer.interface'
+import type { CuentaBancaria } from '@/modules/cuentas-bancarias/interfaces/cuenta-bancaria.interface'
+
 export interface Cliente {
   id: number
   codigo_interno: string
@@ -155,4 +160,14 @@ export interface ValidarDocumentoFilters {
 
 export interface ValidarDocumentoResponse {
   existe: boolean
+}
+
+// Respuesta de POST /clientes/exportar-relacionados: direcciones, vehículos, choferes
+// y cuentas bancarias de un lote de clientes en una sola llamada (usado por la
+// exportación a Excel para evitar el patrón N+1 de una llamada por relación por cliente).
+export interface ClienteRelacionadosExport {
+  direcciones: Direccion[]
+  vehiculos: Vehiculo[]
+  choferes: Chofer[]
+  cuentasBancarias: CuentaBancaria[]
 }
