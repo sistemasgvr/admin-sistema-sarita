@@ -1,8 +1,19 @@
 <template>
-  <div class="flex w-full flex-col gap-2 sm:gap-3">
-    <!-- Fila 1: búsqueda (+ extras como pistola) -->
-    <div v-if="showSearch" class="flex min-w-0 items-center gap-2">
-      <div class="min-w-0 flex-1 lg:max-w-md">
+  <div
+    class="flex w-full"
+    :class="
+      inline
+        ? 'flex-wrap items-center gap-2'
+        : 'flex-col gap-2 sm:gap-3 lg:flex-row lg:flex-wrap lg:items-center lg:gap-2'
+    "
+  >
+    <!-- Búsqueda (+ extras como pistola). En lg+ (o inline) comparte fila con filtros/acciones. -->
+    <div
+      v-if="showSearch"
+      class="flex min-w-0 items-center gap-2"
+      :class="inline ? 'min-w-[12rem] flex-1' : 'lg:min-w-[12rem] lg:flex-1'"
+    >
+      <div class="min-w-0 flex-1">
         <AppInput
           v-model="search"
           type="search"
@@ -14,11 +25,14 @@
       </div>
     </div>
 
-    <!-- Fila 2: filtros + herramientas + acciones (mismo flujo, altura uniforme) -->
+    <!-- Filtros + herramientas + acciones (altura uniforme) -->
     <div
       v-if="hasTrailingActions"
       class="app-list-toolbar__bar flex flex-wrap items-center gap-2"
-      :class="alignEndOnDesktop ? 'lg:justify-end' : ''"
+      :class="[
+        inline ? 'shrink-0' : 'lg:shrink-0',
+        !inline && alignEndOnDesktop ? 'lg:ml-auto' : '',
+      ]"
     >
       <AppDynamicFilters
         v-if="filterFields?.length"
@@ -55,14 +69,17 @@ const props = withDefaults(
     searchPlaceholder?: string
     showSearch?: boolean
     preloadAllFields?: boolean
-    /** En desktop alinea controles a la derecha (listados con pocas acciones). */
+    /** En desktop empuja filtros/acciones a la derecha de la búsqueda. */
     alignEndOnDesktop?: boolean
+    /** Siempre una sola fila (p. ej. pickers del POS). */
+    inline?: boolean
   }>(),
   {
     searchPlaceholder: 'Buscar...',
     showSearch: true,
     preloadAllFields: true,
     alignEndOnDesktop: true,
+    inline: false,
   },
 )
 
@@ -111,21 +128,33 @@ const hasTrailingActions = computed(
   justify-content: center;
 }
 
-/* Wrappers de selects (w-full sm:w-40, etc.): no empujar toda la fila */
-.app-list-toolbar__bar :deep(> div.w-full),
-.app-list-toolbar__bar :deep(> div[class*='w-full']),
-.app-list-toolbar__bar :deep(> div[class*='sm:w-']) {
-  flex: 1 1 9.5rem;
-  width: auto !important;
-  min-width: min(100%, 9.5rem);
-  max-width: 100%;
+/* Selects: reparte espacio solo por debajo de lg (móvil/tablet) */
+@media (max-width: 1023px) {
+  .app-list-toolbar__bar :deep(> div.w-full),
+  .app-list-toolbar__bar :deep(> div[class*='w-full']),
+  .app-list-toolbar__bar :deep(> div[class*='sm:w-']),
+  .app-list-toolbar__bar :deep(> div[class*='min-w-']) {
+    flex: 1 1 9.5rem;
+    width: auto !important;
+    min-width: min(100%, 9.5rem);
+    max-width: 100%;
+  }
+
+  .app-list-toolbar__bar :deep(> div.w-full .relative > button),
+  .app-list-toolbar__bar :deep(> div[class*='w-full'] .relative > button),
+  .app-list-toolbar__bar :deep(> div[class*='sm:w-'] .relative > button),
+  .app-list-toolbar__bar :deep(> div[class*='min-w-'] .relative > button) {
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
-.app-list-toolbar__bar :deep(> div.w-full .relative > button),
-.app-list-toolbar__bar :deep(> div[class*='w-full'] .relative > button),
-.app-list-toolbar__bar :deep(> div[class*='sm:w-'] .relative > button) {
-  height: 2.75rem;
-  min-height: 2.75rem;
+@media (min-width: 1024px) {
+  .app-list-toolbar__bar :deep(> div[class*='min-w-'] .relative > button),
+  .app-list-toolbar__bar :deep(> div[class*='sm:w-'] .relative > button) {
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
 }
 
 /* Móvil: CTAs (enlaces) reparte el espacio de forma pareja */

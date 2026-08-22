@@ -1,4 +1,4 @@
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, toValue, type Ref } from 'vue'
 import { useCajaDiaQuery, useCajaPendienteCierreQuery } from '@/modules/caja/composables/useCajaQuery'
 import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 import { toastWarning } from '@/shared/composables/useToast'
@@ -7,13 +7,18 @@ function hoyLocal(): string {
   return hoyIsoLima()
 }
 
-/** Regla operativa: ventas y movimientos requieren caja ABIERTA del día (arqueo Z diario). */
+/** Regla operativa: ventas y movimientos requieren caja ABIERTA del día (arqueo Z diario) por sucursal. */
 export function useCajaAbiertaRequerida(
   fecha: Ref<string>,
   idSucursal: Ref<number | null | undefined> = ref(null),
 ) {
   const query = useCajaDiaQuery(fecha, idSucursal)
   const pendienteQuery = useCajaPendienteCierreQuery(idSucursal)
+
+  const sucursalLista = computed(() => {
+    const id = toValue(idSucursal)
+    return id == null || Number.isNaN(Number(id)) ? null : Number(id)
+  })
 
   const sesion = computed(() => query.data.value)
   const estadoCaja = computed(() => sesion.value?.estadoCaja ?? null)
@@ -34,6 +39,8 @@ export function useCajaAbiertaRequerida(
 
   const mensajeBloqueo = computed(() => {
     if (query.isLoading.value || pendienteQuery.isLoading.value) return null
+    // Sin sucursal no se puede validar (la caja es por fecha + sucursal).
+    if (sucursalLista.value == null) return null
 
     if (sesionEsPendiente.value) {
       const f = formatListDate(sesion.value?.fecha)
@@ -55,9 +62,15 @@ export function useCajaAbiertaRequerida(
   })
 
   /** ABIERTA del día consultado y no arrastrada de un día anterior. */
-  const puedeOperar = computed(() => cajaAbierta.value && !sesionEsPendiente.value)
+  const puedeOperar = computed(
+    () => sucursalLista.value != null && cajaAbierta.value && !sesionEsPendiente.value,
+  )
 
   function assertCajaAbierta(): boolean {
+    if (sucursalLista.value == null) {
+      toastWarning('Selecciona un almacén para validar la caja de su sucursal')
+      return false
+    }
     if (query.isLoading.value || pendienteQuery.isLoading.value) {
       toastWarning('Verificando estado de caja...')
       return false

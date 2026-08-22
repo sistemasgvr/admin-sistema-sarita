@@ -467,21 +467,6 @@ const {
   clienteDescripcion,
 } = usePosComprobanteForm()
 
-const {
-  cajaCerrada,
-  puedeOperar,
-  hayPendienteCierre,
-  sesionEsPendiente,
-  pendienteCierre,
-  mensajeBloqueo: mensajeBloqueoCaja,
-  assertCajaAbierta,
-} = useCajaAbiertaRequerida(fecha)
-
-const fechaCajaPendiente = computed(() => {
-  if (sesionEsPendiente.value) return String(fecha.value).slice(0, 10)
-  return pendienteCierre.value?.fecha ? String(pendienteCierre.value.fecha).slice(0, 10) : null
-})
-
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
 const imprimiendoTicket = ref(false)
@@ -527,6 +512,30 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+
+/** Caja es por fecha + sucursal; se toma del almacén seleccionado en el POS. */
+const idSucursalCaja = computed(() => {
+  const id = idAlmacen.value
+  if (id === '' || id == null) return null
+  const alm = almacenesData.value?.find((a) => a.id === Number(id))
+  const suc = alm?.id_sucursal
+  return suc == null ? null : Number(suc)
+})
+
+const {
+  cajaCerrada,
+  puedeOperar,
+  hayPendienteCierre,
+  sesionEsPendiente,
+  pendienteCierre,
+  mensajeBloqueo: mensajeBloqueoCaja,
+  assertCajaAbierta,
+} = useCajaAbiertaRequerida(fecha, idSucursalCaja)
+
+const fechaCajaPendiente = computed(() => {
+  if (sesionEsPendiente.value) return String(fecha.value).slice(0, 10)
+  return pendienteCierre.value?.fecha ? String(pendienteCierre.value.fecha).slice(0, 10) : null
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -1314,6 +1323,7 @@ try {
       numero: numero.value || undefined,
       fecha: fecha.value,
       idCliente: Number(idCliente.value),
+      idSucursal: idSucursalCaja.value ?? undefined,
       idAlmacen: idAlmacenNum,
       detalles,
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,

@@ -24,9 +24,6 @@
         >
           <template #actions>
             <AppExportExcelButton :on-export="exportarExcel" />
-            <div class="min-w-[9.5rem] flex-1 sm:w-44 sm:flex-none">
-              <AppSelect v-model="tipoFiltro" :options="tipoFiltroOptions" />
-            </div>
             <div class="min-w-[9.5rem] flex-1 sm:w-40 sm:flex-none">
               <AppSelect v-model="mostrarProductos" :options="estadoFiltroOptions" />
             </div>
@@ -324,7 +321,6 @@ const buscar = ref('')
 const pagina = ref(1)
 const limite = ref(10)
 const mostrarProductos = ref<ProductoEstadoFiltro>('activos')
-const tipoFiltro = ref<'todos' | 'accesorio' | 'gas' | 'servicio'>('todos')
 
 const estadoFiltroOptions: SelectOption[] = [
   { label: 'Activos', value: 'activos' },
@@ -332,25 +328,8 @@ const estadoFiltroOptions: SelectOption[] = [
   { label: 'Todos', value: 'todos' },
 ]
 
-const tipoFiltroOptions: SelectOption[] = [
-  { label: 'Tipo: todos', value: 'todos' },
-  { label: 'Accesorios', value: 'accesorio' },
-  { label: 'Gases (catálogo)', value: 'gas' },
-  { label: 'Servicios', value: 'servicio' },
-]
-
-const pageHelpText = computed(() => {
-  switch (tipoFiltro.value) {
-    case 'gas':
-      return 'Aquí solo defines el precio del gas para vender. La cantidad disponible se ve en Balones / Stock de gas.'
-    case 'accesorio':
-      return 'Estos productos sí tienen stock físico. Las cantidades se controlan en Productos / Stock accesorios.'
-    case 'servicio':
-      return 'Servicios como flete, mantenimiento o alquiler de regulador. No manejan stock.'
-    default:
-      return 'Accesorio: tiene stock en almacén. Gas: solo precio (cantidad en Balones / Stock de gas). Servicio: no usa stock.'
-  }
-})
+const pageHelpText =
+  'Accesorio: tiene stock en almacén. Gas: solo precio (cantidad en Balones / Stock de gas). Servicio: no usa stock. Filtra por categoría o subcategoría con el ícono de filtros.'
 
 const buildSoloActivos = (value: ProductoEstadoFiltro): number | null | undefined => {
   switch (value) {
@@ -526,24 +505,6 @@ onMounted(async () => {
 const syncFilters = () => {
   const active = dynamicFilters.value
 
-  let esGas: boolean | undefined
-  let esServicio: boolean | undefined
-  switch (tipoFiltro.value) {
-    case 'gas':
-      esGas = true
-      esServicio = false
-      break
-    case 'accesorio':
-      esGas = false
-      esServicio = false
-      break
-    case 'servicio':
-      esServicio = true
-      break
-    default:
-      break
-  }
-
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
@@ -551,8 +512,6 @@ const syncFilters = () => {
     idCategoria: active.idCategoria != null ? Number(active.idCategoria) : undefined,
     idSubCategoria:
       active.idSubCategoria != null ? Number(active.idSubCategoria) : undefined,
-    esGas,
-    esServicio,
     soloActivos: buildSoloActivos(mostrarProductos.value),
     incluirImagenes: true,
   }
@@ -591,11 +550,6 @@ watch([pagina, limite], () => {
 })
 
 watch(mostrarProductos, () => {
-  pagina.value = 1
-  syncFilters()
-})
-
-watch(tipoFiltro, () => {
   pagina.value = 1
   syncFilters()
 })

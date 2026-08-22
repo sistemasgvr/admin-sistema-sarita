@@ -126,6 +126,7 @@ export interface CreateComprobantePayload {
   idMedioPago?: number
   idCondicionPago?: number
   fechaVencimiento?: string
+  idSucursal?: number
   idAlmacen?: number
   glosa?: string
   observaciones?: string

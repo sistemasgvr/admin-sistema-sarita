@@ -61,15 +61,30 @@
             </div>
           </div>
 
-          <AppInput
-            v-model="codigo"
-            label="Código"
-            placeholder="GAS-OX-001"
-            required
-            v-bind="codigoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.codigo"
-          />
+          <div class="flex min-w-0 items-start gap-2">
+            <div class="min-w-0 flex-1">
+              <AppInput
+                v-model="codigo"
+                label="Código"
+                placeholder="PRO-001"
+                required
+                help="Se asigna automáticamente (PRO / SER / GAS). No se edita a mano; usa Generar para el siguiente correlativo."
+                v-bind="codigoAttrs"
+                :disabled="true"
+                :error="errors.codigo"
+              />
+            </div>
+            <button
+              v-if="!esProductoDeSistema && !isEdit"
+              type="button"
+              class="mt-[1.625rem] inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-brand-500 px-3.5 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="isSubmitting || isGeneratingCodigo"
+              title="Generar siguiente código"
+              @click="generarCodigoProducto(true)"
+            >
+              {{ isGeneratingCodigo ? '…' : 'Generar' }}
+            </button>
+          </div>
 
           <AppInput
             v-model="nombre"
@@ -291,9 +306,9 @@
           </AppFormField>
 
           <AppFormField
-            v-if="esAlquilable || tipoItem === 'producto'"
+            v-if="muestraGarantiaDeposito"
             label="Garantía / depósito"
-            help="Depósito reembolsable al prestar o alquilar. Prefill en POS; se puede dejar en 0."
+            help="Depósito reembolsable al alquilar un accesorio o prestar un cilindro (gas). No aplica a productos de venta/stock normal."
             :error="errors.precioGarantia"
           >
             <MoneyInput
@@ -468,6 +483,7 @@ const subCategorias = ref<SubCategoriaProducto[]>([])
 const tipoItem = ref<TipoItem>('producto')
 const pendingImages = ref<File[]>([])
 const isGeneratingUbicacion = ref(false)
+const isGeneratingCodigo = ref(false)
 const barcodeScanOpen = ref(false)
 const formHydrated = ref(false)
 const categoriaModalOpen = ref(false)
@@ -582,6 +598,11 @@ const [afectaStock] = defineField('afectaStock')
 const [precio, precioAttrs] = defineField('precio')
 const [precioCompra, precioCompraAttrs] = defineField('precioCompra')
 const [precioGarantia, precioGarantiaAttrs] = defineField('precioGarantia')
+
+/** Garantía solo aplica a alquiler de accesorio o préstamo de cilindro (gas). */
+const muestraGarantiaDeposito = computed(
+  () => Boolean(esAlquilable.value) || Boolean(esGas.value),
+)
 const [factorKgM3] = defineField('factorKgM3')
 const [factorLbM3] = defineField('factorLbM3')
 
@@ -620,7 +641,7 @@ function tipoItemCardClass(tipo: TipoItem) {
     : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-800 dark:bg-white/[0.03] dark:hover:border-gray-700'
 }
 
-function setTipoItem(tipo: TipoItem) {
+function setTipoItem(tipo: TipoItem, options?: { regenerarCodigo?: boolean }) {
   tipoItem.value = tipo
   if (tipo === 'servicio') {
     setFieldValue('esServicio', true)
@@ -631,6 +652,38 @@ function setTipoItem(tipo: TipoItem) {
     setFieldValue('esServicio', false)
     setFieldValue('esMantenimiento', false)
     setFieldValue('afectaStock', true)
+  }
+  if (
+    options?.regenerarCodigo !== false &&
+    !isEdit.value &&
+    esCodigoAutoGenerado(codigo.value)
+  ) {
+    void generarCodigoProducto(false)
+  }
+}
+
+function esCodigoAutoGenerado(value: string | undefined | null): boolean {
+  const codigoActual = (value ?? '').trim().toUpperCase()
+  return codigoActual === '' || /^(PRO|SER|GAS)-\d+$/.test(codigoActual)
+}
+
+async function generarCodigoProducto(mostrarToast: boolean) {
+  if (esProductoDeSistema.value) return
+
+  isGeneratingCodigo.value = true
+  try {
+    const result = await productosService.generarCodigoProducto({
+      esServicio: tipoItem.value === 'servicio',
+      esGas: tipoItem.value === 'producto' && Boolean(esGas.value),
+    })
+    codigo.value = result.codigo
+    if (mostrarToast) {
+      toastSuccess(`Código asignado: ${result.codigo}`)
+    }
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el código del producto')
+  } finally {
+    isGeneratingCodigo.value = false
   }
 }
 
@@ -807,7 +860,10 @@ const onSubmit = handleSubmit(async (formValues) => {
       precioCompra: esServicioValue
         ? 0
         : roundMoney(parseMoneyInput(formValues.precioCompra) ?? 0),
-      precioGarantia: roundMoney(parseMoneyInput(formValues.precioGarantia) ?? 0),
+      precioGarantia:
+        formValues.esAlquilable || (!esServicioValue && formValues.esGas)
+          ? roundMoney(parseMoneyInput(formValues.precioGarantia) ?? 0)
+          : 0,
       factorKgM3:
         !esServicioValue && formValues.esGas && formValues.factorKgM3 != null
           ? Number(formValues.factorKgM3)
@@ -847,12 +903,13 @@ onMounted(async () => {
 
 watch(
   () => props.active,
-  (isActive) => {
+  async (isActive) => {
     if (isActive && props.mode === 'create') {
-      setTipoItem('producto')
       resetForm()
       pendingImages.value = []
+      setTipoItem('producto', { regenerarCodigo: false })
       formHydrated.value = true
+      await generarCodigoProducto(false)
     }
   },
   { immediate: true },
@@ -870,10 +927,19 @@ watch(
 
 watch(esGas, (esGasValue) => {
   if (esGasValue) setFieldValue('afectaStock', false)
+  if (!isEdit.value && esCodigoAutoGenerado(codigo.value)) {
+    void generarCodigoProducto(false)
+  }
+  if (!esGasValue && !esAlquilable.value) {
+    setFieldValue('precioGarantia', '')
+  }
 })
 
 watch(esAlquilable, (alquilable) => {
   if (alquilable) setFieldValue('esMantenimiento', false)
+  if (!alquilable && !esGas.value) {
+    setFieldValue('precioGarantia', '')
+  }
 })
 
 watch(idCategoria, (categoriaId, previousCategoriaId) => {

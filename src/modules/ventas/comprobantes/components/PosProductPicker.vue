@@ -1,9 +1,9 @@
 <template>
   <div class="rounded-xl border border-gray-200 dark:border-gray-800">
     <div
-      class="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800 lg:flex-row lg:items-center"
+      class="flex flex-col gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-800 sm:flex-row sm:items-center sm:gap-3"
     >
-      <div class="flex shrink-0 items-center gap-2.5">
+      <div class="flex h-11 shrink-0 items-center gap-2.5">
         <span
           class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
         >
@@ -21,6 +21,8 @@
         v-model:search="search"
         v-model:filters="filters"
         class="min-w-0 flex-1"
+        inline
+        :align-end-on-desktop="false"
         :filter-fields="filterFields"
         search-placeholder="Código, ubicación, nombre o marca..."
         @filter-change="emit('filter-change')"
