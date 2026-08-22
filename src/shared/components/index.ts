@@ -1,5 +1,6 @@
 export { default as AppCheckbox } from '@/shared/components/form/AppCheckbox.vue'
 export { default as AppSwitch } from '@/shared/components/form/AppSwitch.vue'
+export { default as AppDatePicker } from '@/shared/components/form/AppDatePicker.vue'
 export { default as AppDateRangePicker } from '@/shared/components/form/AppDateRangePicker.vue'
 export { default as AppDropzone } from '@/shared/components/form/AppDropzone.vue'
 export { default as AppFileInput } from '@/shared/components/form/AppFileInput.vue'

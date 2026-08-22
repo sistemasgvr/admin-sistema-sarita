@@ -80,6 +80,8 @@ export const ListaIds = {
   MONEDA: 56,
   /** gen_lista.nombre = EstadoRecargaPlanta */
   ESTADO_RECARGA_PLANTA: 60,
+  /** gen_lista.nombre = CategoriaVencimiento (BPA, SALUBRIDAD, DEFENSA_CIVIL, SANEAMIENTO_AMBIENTAL, EXTINTORES, SOAT, INSPECCION, MUNICIPAL, SEGURIDAD, CERTIFICADO, OTRO) */
+  CATEGORIA_VENCIMIENTO: 42,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds

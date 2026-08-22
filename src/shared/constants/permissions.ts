@@ -305,6 +305,12 @@ export const PermisoBanderas = {
   CAJA_REGISTRAR_DEPOSITO: 'caja.registrar_deposito',
   CAJA_OBSERVACION: 'caja.observacion',
   CAJA_LIBRO_DIARIO: 'caja.libro_diario',
+
+  DOCUMENTOS_VENCIMIENTO_LISTAR: 'documentos_vencimiento.listar',
+  DOCUMENTOS_VENCIMIENTO_VER: 'documentos_vencimiento.ver',
+  DOCUMENTOS_VENCIMIENTO_CREAR: 'documentos_vencimiento.crear',
+  DOCUMENTOS_VENCIMIENTO_EDITAR: 'documentos_vencimiento.editar',
+  DOCUMENTOS_VENCIMIENTO_ELIMINAR: 'documentos_vencimiento.eliminar',
 } as const
 
 export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBanderas]
