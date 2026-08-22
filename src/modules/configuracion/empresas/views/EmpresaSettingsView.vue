@@ -135,8 +135,6 @@
         </p>
       </div>
     </div>
-
-    <DocumentosVencimientoCard v-if="canVerDocumentosVencimiento" class="mt-6" />
   </div>
 </template>
 
@@ -146,7 +144,6 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import DocumentosVencimientoCard from '@/modules/documentos-vencimiento/components/DocumentosVencimientoCard.vue'
 import {
   CONFIGURACION_HUB_PATH,
   configuracionBreadcrumbItems,
@@ -212,10 +209,6 @@ const canSave = computed(() => {
 
   return authStore.hasPermission(PermisoBanderas.EMPRESAS_CREAR)
 })
-
-const canVerDocumentosVencimiento = computed(() =>
-  authStore.hasPermission(PermisoBanderas.DOCUMENTOS_VENCIMIENTO_LISTAR),
-)
 
 const syncFormValues = () => {
   resetForm({

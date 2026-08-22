@@ -21,6 +21,8 @@ import { cuentasBancariasRoutes } from '@/modules/cuentas-bancarias/router'
 import { operativaRoutes } from '@/modules/operativa/router'
 import { finanzasRoutes } from '@/modules/finanzas/router'
 import { comprasRoutes } from '@/modules/compras/router'
+import { documentosVencimientoRoutes } from '@/modules/documentos-vencimiento/router'
+import { trabajadoresRoutes } from '@/modules/trabajadores/router'
 
 const adminChildren: RouteRecordRaw[] = [
   {
@@ -44,6 +46,8 @@ const adminChildren: RouteRecordRaw[] = [
   ...operativaRoutes,
   ...finanzasRoutes,
   ...comprasRoutes,
+  ...documentosVencimientoRoutes,
+  ...trabajadoresRoutes,
   {
     path: ':pathMatch(.*)*',
     name: 'admin-not-found',

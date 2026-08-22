@@ -6,6 +6,7 @@ import { PermisoBanderas, type PermissionBandera } from '@/shared/constants/perm
 import { clientesMenuSubItems } from '@/modules/clientes/config/clientes-menu'
 import { finanzasMenuSubItems } from '@/modules/finanzas/config/finanzas-menu'
 import { configuracionMenuSubItems } from '@/modules/configuracion/config/configuracion-menu'
+import { gestionEmpresaMenuSubItems } from '@/modules/documentos-vencimiento/config/documentos-vencimiento-menu'
 
 export interface AdminMenuSubItem {
   name: string
@@ -102,6 +103,11 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         path: '/admin/configuracion',
         permission: PermisoBanderas.CONFIGURACION_VER,
         subItems: configuracionMenuSubItems,
+      },
+      {
+        icon: ICONS.building,
+        name: 'Gestión Empresa',
+        subItems: gestionEmpresaMenuSubItems,
       },
     ],
   },

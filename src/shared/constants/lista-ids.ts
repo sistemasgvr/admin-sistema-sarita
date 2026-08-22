@@ -82,6 +82,10 @@ export const ListaIds = {
   ESTADO_RECARGA_PLANTA: 60,
   /** gen_lista.nombre = CategoriaVencimiento (BPA, SALUBRIDAD, DEFENSA_CIVIL, SANEAMIENTO_AMBIENTAL, EXTINTORES, SOAT, INSPECCION, MUNICIPAL, SEGURIDAD, CERTIFICADO, OTRO) */
   CATEGORIA_VENCIMIENTO: 42,
+  /** gen_lista.nombre = AREAS_TRABAJADOR (Padrón de Personal) */
+  AREAS_TRABAJADOR: 67,
+  /** gen_lista.nombre = CARGOS_TRABAJADOR (Padrón de Personal) */
+  CARGOS_TRABAJADOR: 68,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds
