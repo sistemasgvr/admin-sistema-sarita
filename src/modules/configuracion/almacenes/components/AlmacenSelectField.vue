@@ -3,6 +3,7 @@
     :can-create="canCreate"
     create-title="Nuevo almacén"
     :disabled="disabled"
+    :has-label="Boolean(label?.trim())"
     @create="modalOpen = true"
   >
     <AppSelectSearch

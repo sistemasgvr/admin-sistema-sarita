@@ -3,6 +3,7 @@
     :can-create="canCreate"
     :create-title="createTitle"
     :disabled="disabled"
+    :has-label="Boolean(label?.trim())"
     @create="onCreate"
   >
     <AppSelectSearch

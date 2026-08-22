@@ -9,11 +9,6 @@ export const balonesAccessPermissions: PermissionBandera[] = [
 ]
 
 export const balonesMenuSubItems: AdminMenuSubItem[] = [
-  {
-    name: 'General',
-    path: '/admin/balones',
-    permission: PermisoBanderas.BALONES_HUB_VER,
-  },
   ...balonesMenuItems
     .filter((item) => item.implemented)
     .map((item) => ({

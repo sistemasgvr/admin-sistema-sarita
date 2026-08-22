@@ -71,38 +71,77 @@
                 placeholder="Selecciona tipo"
                 required
                 v-bind="idTipoMovimientoAttrs"
-                :disabled="isSubmitting || tiposMovimientoQuery.isFetching.value"
+                :disabled="
+                  isSubmitting ||
+                  tiposMovimientoQuery.isFetching.value ||
+                  tipoMovimientoSelectLocked
+                "
                 :error="errors.idTipoMovimiento"
                 :options="tipoMovimientoOptions"
               />
 
-              <ProductoSelectField
-                v-model="idProducto"
-                v-model:search="productoBuscar"
-                label="Producto"
-                placeholder="Selecciona un accesorio con stock"
-                :afecta-stock="true"
-                :es-servicio="false"
-                :es-gas="false"
+              <AppFormField
+                v-if="esAjuste"
+                label="Sentido del ajuste"
                 required
-                class="sm:col-span-2"
-                :disabled="isSubmitting"
-                :error="errors.idProducto"
-                help="Solo accesorios. El gas se controla en Balones / Stock de gas."
-              />
+                help="Si aumenta o disminuye el saldo actual en el almacén."
+                :hint="hintSentidoAjuste"
+                :error="errors.sentidoAjuste"
+              >
+                <div
+                  class="inline-flex w-full rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800"
+                  role="radiogroup"
+                  aria-label="Sentido del ajuste"
+                >
+                  <button
+                    v-for="opt in sentidoAjusteOptions"
+                    :key="opt.value"
+                    type="button"
+                    role="radio"
+                    :aria-checked="sentidoAjuste === opt.value"
+                    :disabled="isSubmitting"
+                    :class="[
+                      'inline-flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2.5 text-xs font-medium transition',
+                      sentidoAjuste === opt.value
+                        ? 'bg-white text-brand-600 shadow-theme-xs dark:bg-gray-900 dark:text-brand-400'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                    ]"
+                    @click="sentidoAjuste = opt.value"
+                  >
+                    {{ opt.label }}
+                  </button>
+                </div>
+              </AppFormField>
 
-              <AppInput
-                v-model="cantidad"
-                label="Cantidad"
-                type="number"
-                :min="minCantidad"
-                :step="stepCantidad"
-                required
-                v-bind="cantidadAttrs"
-                :disabled="isSubmitting"
-                :error="errors.cantidad"
-                :hint="hintCantidad"
-              />
+              <template v-if="!esTraslado">
+                <ProductoSelectField
+                  v-model="idProducto"
+                  v-model:search="productoBuscar"
+                  label="Producto"
+                  placeholder="Selecciona un accesorio con stock"
+                  :afecta-stock="true"
+                  :es-servicio="false"
+                  :es-gas="false"
+                  required
+                  class="lg:col-span-2"
+                  :disabled="isSubmitting"
+                  :error="errors.idProducto"
+                  help="Solo accesorios. El gas se controla en Balones / Stock de gas."
+                />
+
+                <AppInput
+                  v-model="cantidad"
+                  label="Cantidad"
+                  type="number"
+                  :min="minCantidad"
+                  :step="stepCantidad"
+                  required
+                  v-bind="cantidadAttrs"
+                  :disabled="isSubmitting"
+                  :error="errors.cantidad"
+                  :hint="hintCantidadAjuste"
+                />
+              </template>
             </template>
 
             <AppSelect
@@ -133,10 +172,116 @@
               label="Glosa"
               placeholder="Detalle del movimiento"
               optional
+              class="sm:col-span-2 lg:col-span-1"
               v-bind="glosaAttrs"
               :disabled="isSubmitting"
+              :hint="hintGlosa"
             />
           </div>
+        </DetailSectionCard>
+
+        <DetailSectionCard
+          v-if="mode === 'create' && esTraslado"
+          title="Productos a trasladar"
+          :icon="ICONS.boxes"
+          :full-width="true"
+          help="Agrega uno o más productos. Cada producto solo puede aparecer una vez. Se resta en el origen y se suma en el destino."
+        >
+          <template #actions>
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              {{ trasladoLineas.length }}
+              {{ trasladoLineas.length === 1 ? 'línea' : 'líneas' }}
+            </span>
+          </template>
+
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Cantidad siempre mayor a cero. Mínimo una línea.
+            </p>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-600 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20"
+              :disabled="isSubmitting"
+              @click="agregarTrasladoLinea"
+            >
+              <AppIcon :name="ICONS.plus" :size="16" />
+              Agregar producto
+            </button>
+          </div>
+
+          <div
+            class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
+          >
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 dark:bg-white/5">
+                  <tr>
+                    <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                      Producto
+                    </th>
+                    <th
+                      class="w-36 px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300"
+                    >
+                      Cantidad
+                    </th>
+                    <th class="w-12 px-2 py-2.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(lin, index) in trasladoLineas"
+                    :key="lin.key"
+                    class="border-t border-gray-100 dark:border-gray-800"
+                  >
+                    <td class="px-3 py-2.5 align-top">
+                      <ProductoSelectField
+                        :model-value="lin.idProducto"
+                        :search="lin.productoBuscar"
+                        label=""
+                        placeholder="Selecciona producto"
+                        :afecta-stock="true"
+                        :es-servicio="false"
+                        :es-gas="false"
+                        required
+                        :disabled="isSubmitting"
+                        :error="lin.errorProducto"
+                        @update:model-value="(v) => onTrasladoProductoChange(index, v)"
+                        @update:search="(v) => (lin.productoBuscar = v)"
+                      />
+                    </td>
+                    <td class="px-3 py-2.5 align-top">
+                      <AppInput
+                        v-model="lin.cantidad"
+                        type="number"
+                        min="0.0001"
+                        step="any"
+                        required
+                        :disabled="isSubmitting"
+                        :error="lin.errorCantidad"
+                      />
+                    </td>
+                    <td class="px-2 py-2.5 text-center align-top">
+                      <button
+                        type="button"
+                        title="Quitar producto"
+                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-error-50 hover:text-error-500 disabled:opacity-40 dark:hover:bg-error-500/10"
+                        :disabled="isSubmitting || trasladoLineas.length <= 1"
+                        @click="quitarTrasladoLinea(index)"
+                      >
+                        <AppIcon :name="ICONS.trash" :size="15" />
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p
+            v-if="trasladoLineasError"
+            class="mt-2 text-theme-xs text-error-500"
+          >
+            {{ trasladoLineasError }}
+          </p>
         </DetailSectionCard>
       </FormCardsLayout>
 
@@ -154,13 +299,7 @@
           class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="isSubmitting"
         >
-          {{
-            isSubmitting
-              ? 'Guardando...'
-              : mode === 'create'
-                ? 'Registrar movimiento'
-                : 'Guardar cambios'
-          }}
+          {{ submitLabel }}
         </button>
       </div>
     </form>
@@ -168,7 +307,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -178,16 +317,22 @@ import AlmacenSelectField from '@/modules/configuracion/almacenes/components/Alm
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import {
   useCreateMovimientoInventarioMutation,
+  useCreateTrasladoLoteMutation,
   useUpdateMovimientoInventarioMutation,
 } from '@/modules/productos/movimientos/composables/useMovimientoInventarioMutations'
 import { useMovimientoInventarioQuery } from '@/modules/productos/movimientos/composables/useMovimientosInventarioQuery'
-import type { MovimientoInventarioFormMode } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
-import { AppInput, AppSelect } from '@/shared/components'
+import type {
+  MovimientoInventarioFormMode,
+  SentidoAjuste,
+} from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { AppFormField, AppInput, AppSelect } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { toastWarning } from '@/shared/composables/useToast'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import {
   formatCantidadPorUnidad,
@@ -203,6 +348,17 @@ import {
   requiredString,
 } from '@/shared/validation'
 
+type TipoMovimientoManual = 'AJUSTE' | 'TRASLADO'
+
+interface TrasladoLineaForm {
+  key: string
+  idProducto: string | number
+  cantidad: number | undefined
+  productoBuscar: string
+  errorProducto?: string
+  errorCantidad?: string
+}
+
 interface MovimientoInventarioFormProps {
   mode: MovimientoInventarioFormMode
   movimientoId?: number | null
@@ -210,6 +366,8 @@ interface MovimientoInventarioFormProps {
   /** Prefill desde query (ej. Stock / Registrar movimiento) */
   initialIdProducto?: number | null
   initialIdAlmacen?: number | null
+  /** Prefill tipo desde query (`AJUSTE` | `TRASLADO`) */
+  initialTipoNombre?: TipoMovimientoManual | null
 }
 
 const props = withDefaults(defineProps<MovimientoInventarioFormProps>(), {
@@ -217,6 +375,7 @@ const props = withDefaults(defineProps<MovimientoInventarioFormProps>(), {
   active: true,
   initialIdProducto: null,
   initialIdAlmacen: null,
+  initialTipoNombre: null,
 })
 
 const emit = defineEmits<{
@@ -230,6 +389,7 @@ const tiposMovimientoQuery = useListaOpcionesQuery(listaTipoMovId)
 const tiposDocumentoQuery = useListaOpcionesQuery(listaTipoDocId)
 
 const createMutation = useCreateMovimientoInventarioMutation()
+const createTrasladoLoteMutation = useCreateTrasladoLoteMutation()
 const updateMutation = useUpdateMovimientoInventarioMutation()
 
 const movimientoIdRef = computed(() => props.movimientoId)
@@ -243,9 +403,42 @@ const isLoadingMovimiento = computed(
 const productoBuscar = ref('')
 const nombreUnidadMedida = ref<string | null>(null)
 const esGasProducto = ref(false)
+const trasladoLineas = reactive<TrasladoLineaForm[]>([])
+const trasladoLineasError = ref('')
+let lineaKeySeq = 0
+
+const sentidoAjusteOptions: { value: SentidoAjuste; label: string }[] = [
+  { value: 'MAS', label: 'Sumar stock (más)' },
+  { value: 'MENOS', label: 'Restar stock (menos)' },
+]
+
+/** Tipos que el usuario puede crear a mano (ingresos→Compras, salidas→Ventas). */
+function normalizeTipoNombre(nombre: string): string {
+  return String(nombre ?? '')
+    .trim()
+    .toUpperCase()
+}
+
+function canonicoTipoManual(nombre: string): TipoMovimientoManual | null {
+  const n = normalizeTipoNombre(nombre)
+  if (n === 'AJUSTE' || n === 'AJUSTE DE STOCK') return 'AJUSTE'
+  // Código actual detecta traslados por nombre TRASLADO; TRASPASO es alias opcional.
+  if (n === 'TRASLADO' || n === 'TRASPASO') return 'TRASLADO'
+  return null
+}
+
+function esTipoManualPermitido(nombre: string): boolean {
+  return canonicoTipoManual(nombre) != null
+}
+
+const tiposMovimientoManuales = computed(
+  () => (tiposMovimientoQuery.data.value ?? []).filter((item) => esTipoManualPermitido(item.nombre)),
+)
 
 const tipoMovimientoOptions = computed(() =>
-  toSelectOptions(tiposMovimientoQuery.data.value),
+  props.mode === 'create'
+    ? toSelectOptions(tiposMovimientoManuales.value)
+    : toSelectOptions(tiposMovimientoQuery.data.value),
 )
 
 const tipoDocumentoOptions = computed(() => [
@@ -267,26 +460,143 @@ const stepCantidad = computed(() =>
 const minCantidad = computed(() =>
   minCantidadPorUnidad(nombreUnidadMedida.value, esGasProducto.value),
 )
-const hintCantidad = computed(() =>
-  unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)
-    ? 'UNID / piezas: solo números enteros'
-    : undefined,
-)
 
-const cardHelp = computed(() =>
-  props.mode === 'edit'
-    ? 'Almacén, producto, tipo y cantidad no se modifican. Solo fecha, documento de referencia y glosa.'
-    : 'Ingresos, salidas, traslados o ajustes de accesorios. Un traslado resta origen y suma destino.',
-)
+const cardHelp = computed(() => {
+  if (props.mode === 'edit') {
+    return 'Almacén, producto, tipo y cantidad no se modifican. Solo fecha, documento de referencia y glosa.'
+  }
+  if (esTraslado.value) {
+    return 'Traslado entre almacenes: resta en origen y suma en destino. Puedes incluir varios productos en un solo registro.'
+  }
+  if (esAjuste.value) {
+    return 'Ajuste de stock: indica si sumas o restas cantidad al saldo actual. Los ingresos se registran en Compras y las salidas en Ventas.'
+  }
+  return 'Ajuste o traslado de stock. Los ingresos se registran en Compras y las salidas en Ventas.'
+})
 
 const helpDocumentoOrigen =
   'Opcional. Vincula el movimiento a un documento de origen si aplica.'
+
+function resolveIdTipoPorNombreCanonico(
+  tipo: TipoMovimientoManual | null | undefined,
+): number | '' {
+  if (!tipo) return ''
+  const match = tiposMovimientoManuales.value.find(
+    (item) => canonicoTipoManual(item.nombre) === tipo,
+  )
+  return match?.id ?? ''
+}
+
+const tipoMovimientoSelectLocked = computed(
+  () =>
+    props.mode === 'create' &&
+    props.initialTipoNombre != null &&
+    resolveIdTipoPorNombreCanonico(props.initialTipoNombre) !== '',
+)
 
 function esTipoTraslado(idTipo: unknown) {
   const id = Number(idTipo)
   if (!Number.isFinite(id) || id <= 0) return false
   const opcion = tiposMovimientoQuery.data.value?.find((item) => item.id === id)
-  return String(opcion?.nombre ?? '').toUpperCase() === 'TRASLADO'
+  return canonicoTipoManual(opcion?.nombre ?? '') === 'TRASLADO'
+}
+
+function esTipoAjuste(idTipo: unknown) {
+  const id = Number(idTipo)
+  if (!Number.isFinite(id) || id <= 0) return false
+  const opcion = tiposMovimientoQuery.data.value?.find((item) => item.id === id)
+  return canonicoTipoManual(opcion?.nombre ?? '') === 'AJUSTE'
+}
+
+function crearTrasladoLinea(
+  partial?: Partial<Pick<TrasladoLineaForm, 'idProducto' | 'cantidad'>>,
+): TrasladoLineaForm {
+  lineaKeySeq += 1
+  return {
+    key: `tl-${lineaKeySeq}`,
+    idProducto: partial?.idProducto ?? '',
+    cantidad: partial?.cantidad,
+    productoBuscar: '',
+  }
+}
+
+function resetTrasladoLineas(prefillProducto?: number | null) {
+  trasladoLineas.splice(0, trasladoLineas.length)
+  trasladoLineasError.value = ''
+  trasladoLineas.push(
+    crearTrasladoLinea({
+      idProducto: prefillProducto && prefillProducto > 0 ? prefillProducto : '',
+    }),
+  )
+}
+
+function agregarTrasladoLinea() {
+  trasladoLineas.push(crearTrasladoLinea())
+  trasladoLineasError.value = ''
+}
+
+function quitarTrasladoLinea(index: number) {
+  if (trasladoLineas.length <= 1) return
+  trasladoLineas.splice(index, 1)
+  trasladoLineasError.value = ''
+}
+
+function onTrasladoProductoChange(index: number, value: string | number | null | undefined) {
+  const lin = trasladoLineas[index]
+  if (!lin) return
+  const next = value ?? ''
+  const id = Number(next)
+  if (Number.isFinite(id) && id > 0) {
+    const dup = trasladoLineas.some(
+      (other, i) => i !== index && Number(other.idProducto) === id,
+    )
+    if (dup) {
+      lin.idProducto = ''
+      lin.errorProducto = 'Este producto ya está en el traslado'
+      toastWarning('No puedes repetir el mismo producto en el traslado')
+      return
+    }
+  }
+  lin.idProducto = next
+  lin.errorProducto = undefined
+  trasladoLineasError.value = ''
+}
+
+function validarTrasladoLineas(): boolean {
+  let ok = true
+  trasladoLineasError.value = ''
+  const seen = new Set<number>()
+
+  for (const lin of trasladoLineas) {
+    lin.errorProducto = undefined
+    lin.errorCantidad = undefined
+
+    const id = Number(lin.idProducto)
+    if (!Number.isFinite(id) || id <= 0) {
+      lin.errorProducto = 'Selecciona un producto'
+      ok = false
+    } else if (seen.has(id)) {
+      lin.errorProducto = 'Producto duplicado'
+      ok = false
+    } else {
+      seen.add(id)
+    }
+
+    const cant =
+      lin.cantidad == null || (lin.cantidad as unknown) === ''
+        ? NaN
+        : Number(lin.cantidad)
+    if (!Number.isFinite(cant) || cant <= 0) {
+      lin.errorCantidad = 'Debe ser mayor a cero'
+      ok = false
+    }
+  }
+
+  if (!ok) {
+    trasladoLineasError.value = 'Revisa las líneas del traslado'
+    toastWarning('Revisa productos y cantidades del traslado')
+  }
+  return ok
 }
 
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
@@ -309,8 +619,22 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
             ),
         otherwise: (schema) => schema.optional(),
       }),
-      idProducto: requiredSelect('El producto'),
+      idProducto: yup.mixed<string | number>().when('idTipoMovimiento', {
+        is: (idTipo: unknown) => !esTipoTraslado(idTipo),
+        then: () => requiredSelect('El producto'),
+        otherwise: (schema) => schema.optional(),
+      }),
       idTipoMovimiento: requiredSelect('El tipo de movimiento'),
+      sentidoAjuste: yup
+        .mixed<SentidoAjuste>()
+        .when('idTipoMovimiento', {
+          is: (idTipo: unknown) => esTipoAjuste(idTipo),
+          then: (schema) =>
+            schema
+              .oneOf(['MAS', 'MENOS'], 'Selecciona el sentido del ajuste')
+              .required('El sentido del ajuste es obligatorio'),
+          otherwise: (schema) => schema.optional(),
+        }),
       cantidad: yup
         .number()
         .transform((_value, originalValue) => {
@@ -318,17 +642,23 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
           const n = typeof originalValue === 'number' ? originalValue : Number(originalValue)
           return Number.isFinite(n) ? n : undefined
         })
-        .typeError('La cantidad debe ser un número')
-        .required('La cantidad es obligatoria')
-        .moreThan(0, 'La cantidad debe ser mayor a cero')
-        .test('unidad-entera', MSG_CANTIDAD_UNID_ENTERA, function (value) {
-          if (value == null || !Number.isFinite(value)) return true
-          if (!unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)) {
-            return true
-          }
-          return Math.abs(value - Math.round(value)) < 1e-9
-            ? true
-            : this.createError({ message: MSG_CANTIDAD_UNID_ENTERA })
+        .when('idTipoMovimiento', {
+          is: (idTipo: unknown) => !esTipoTraslado(idTipo),
+          then: (schema) =>
+            schema
+              .typeError('La cantidad debe ser un número')
+              .required('La cantidad es obligatoria')
+              .moreThan(0, 'La cantidad debe ser mayor a cero')
+              .test('unidad-entera', MSG_CANTIDAD_UNID_ENTERA, function (value) {
+                if (value == null || !Number.isFinite(value)) return true
+                if (!unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)) {
+                  return true
+                }
+                return Math.abs(value - Math.round(value)) < 1e-9
+                  ? true
+                  : this.createError({ message: MSG_CANTIDAD_UNID_ENTERA })
+              }),
+          otherwise: (schema) => schema.optional().nullable(),
         }),
       idTipoDocumentoRef: yup
         .mixed<string | number>()
@@ -344,6 +674,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idAlmacenDestino: '' as string | number,
     idProducto: '' as string | number,
     idTipoMovimiento: '' as string | number,
+    sentidoAjuste: 'MAS' as SentidoAjuste,
     cantidad: undefined as number | undefined,
     idTipoDocumentoRef: '' as string | number,
     idDocumentoRef: undefined as number | undefined,
@@ -356,17 +687,58 @@ const [idAlmacen] = defineField('idAlmacen')
 const [idAlmacenDestino] = defineField('idAlmacenDestino')
 const [idProducto] = defineField('idProducto')
 const [idTipoMovimiento, idTipoMovimientoAttrs] = defineField('idTipoMovimiento')
+const [sentidoAjuste] = defineField('sentidoAjuste')
 const [cantidad, cantidadAttrs] = defineField('cantidad')
 const [idTipoDocumentoRef, idTipoDocumentoRefAttrs] = defineField('idTipoDocumentoRef')
 const [idDocumentoRef, idDocumentoRefAttrs] = defineField('idDocumentoRef')
 const [glosa, glosaAttrs] = defineField('glosa')
 
 const esTraslado = computed(() => esTipoTraslado(idTipoMovimiento.value))
+const esAjuste = computed(() => esTipoAjuste(idTipoMovimiento.value))
+
+const hintSentidoAjuste = computed(() =>
+  sentidoAjuste.value === 'MENOS'
+    ? 'Efecto: disminuye el saldo actual en el almacén.'
+    : 'Efecto: aumenta el saldo actual en el almacén.',
+)
+
+const hintCantidadAjuste = computed(() => {
+  const unidadHint = unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)
+    ? 'UNID / piezas: solo números enteros. '
+    : ''
+  if (!esAjuste.value) return unidadHint || undefined
+  const efecto =
+    sentidoAjuste.value === 'MENOS'
+      ? 'Se restará esta cantidad del saldo.'
+      : 'Se sumará esta cantidad al saldo.'
+  return `${unidadHint}${efecto}`.trim()
+})
+
+const hintGlosa = computed(() => {
+  if (props.mode !== 'create') return undefined
+  if (esAjuste.value) {
+    return sentidoAjuste.value === 'MENOS'
+      ? 'Opcional. Ej.: ajuste por merma / conteo físico.'
+      : 'Opcional. Ej.: ajuste por sobrante / conteo físico.'
+  }
+  if (esTraslado.value) {
+    return 'Opcional. Aplica a todas las líneas del traslado.'
+  }
+  return undefined
+})
+
+const submitLabel = computed(() => {
+  if (isSubmitting.value) return 'Guardando...'
+  if (props.mode === 'edit') return 'Guardar cambios'
+  if (esAjuste.value) return 'Registrar ajuste'
+  if (esTraslado.value) return 'Registrar traslado'
+  return 'Registrar movimiento'
+})
 
 watch(
   () => [props.active, props.mode, idProducto.value] as const,
   async ([active, mode, productoId]) => {
-    if (!active || mode !== 'create') return
+    if (!active || mode !== 'create' || esTraslado.value) return
     const id = Number(productoId)
     if (!Number.isFinite(id) || id <= 0) {
       nombreUnidadMedida.value = null
@@ -384,6 +756,13 @@ watch(
   },
 )
 
+watch(esTraslado, (traslado, wasTraslado) => {
+  if (props.mode !== 'create' || !props.active) return
+  if (traslado && !wasTraslado) {
+    resetTrasladoLineas(props.initialIdProducto)
+  }
+})
+
 const syncFormValues = () => {
   const data = movimiento.value
   resetForm({
@@ -394,6 +773,7 @@ const syncFormValues = () => {
       idAlmacenDestino: data?.id_almacen_destino ?? '',
       idProducto: data?.id_producto ?? '',
       idTipoMovimiento: data?.id_tipo_movimiento ?? '',
+      sentidoAjuste: 'MAS',
       cantidad: data?.cantidad ?? 1,
       idTipoDocumentoRef: data?.id_tipo_documento_ref ?? '',
       idDocumentoRef: data?.id_documento_ref ?? undefined,
@@ -409,19 +789,27 @@ watch(
     if (props.mode === 'create') {
       nombreUnidadMedida.value = null
       esGasProducto.value = false
+      const tipoId = resolveIdTipoPorNombreCanonico(props.initialTipoNombre)
       resetForm({
         values: {
           fecha: today(),
           idAlmacen: props.initialIdAlmacen ?? '',
           idAlmacenDestino: '',
           idProducto: props.initialIdProducto ?? '',
-          idTipoMovimiento: '',
+          idTipoMovimiento: tipoId,
+          sentidoAjuste: 'MAS',
           cantidad: undefined,
           idTipoDocumentoRef: '',
           idDocumentoRef: undefined,
           glosa: '',
         },
       })
+      if (props.initialTipoNombre === 'TRASLADO' || esTipoTraslado(tipoId)) {
+        resetTrasladoLineas(props.initialIdProducto)
+      } else {
+        trasladoLineas.splice(0, trasladoLineas.length)
+        trasladoLineasError.value = ''
+      }
       return
     }
     if (movimiento.value) {
@@ -439,6 +827,26 @@ watch(
   { immediate: true },
 )
 
+/** Cuando las opciones de tipo llegan después del reset, preseleccionar desde query. */
+watch(
+  () =>
+    [
+      props.active,
+      props.mode,
+      props.initialTipoNombre,
+      tiposMovimientoManuales.value.map((t) => t.id).join(','),
+    ] as const,
+  ([active, mode, tipoNombre]) => {
+    if (!active || mode !== 'create' || !tipoNombre) return
+    const id = resolveIdTipoPorNombreCanonico(tipoNombre)
+    if (id === '' || Number(idTipoMovimiento.value) === Number(id)) return
+    idTipoMovimiento.value = id
+    if (tipoNombre === 'TRASLADO' && trasladoLineas.length === 0) {
+      resetTrasladoLineas(props.initialIdProducto)
+    }
+  },
+)
+
 const onSubmit = handleSubmit(async (values) => {
   try {
     const tipoDocRef = values.idTipoDocumentoRef
@@ -446,19 +854,40 @@ const onSubmit = handleSubmit(async (values) => {
       : undefined
 
     if (props.mode === 'create') {
-      await createMutation.mutateAsync({
-        fecha: values.fecha,
-        idAlmacen: Number(values.idAlmacen),
-        idAlmacenDestino: esTraslado.value
-          ? Number(values.idAlmacenDestino)
-          : undefined,
-        idProducto: Number(values.idProducto),
-        idTipoMovimiento: Number(values.idTipoMovimiento),
-        cantidad: Number(values.cantidad),
-        idDocumentoRef: values.idDocumentoRef ? Number(values.idDocumentoRef) : undefined,
-        idTipoDocumentoRef: tipoDocRef,
-        glosa: values.glosa || undefined,
-      })
+      const esTrasladoCreate = esTipoTraslado(values.idTipoMovimiento)
+      const esAjusteCreate = esTipoAjuste(values.idTipoMovimiento)
+
+      if (esTrasladoCreate) {
+        if (!validarTrasladoLineas()) return
+
+        await createTrasladoLoteMutation.mutateAsync({
+          fecha: values.fecha,
+          idAlmacen: Number(values.idAlmacen),
+          idAlmacenDestino: Number(values.idAlmacenDestino),
+          idTipoMovimiento: Number(values.idTipoMovimiento),
+          glosa: values.glosa || undefined,
+          idDocumentoRef: values.idDocumentoRef ? Number(values.idDocumentoRef) : undefined,
+          idTipoDocumentoRef: tipoDocRef,
+          detalles: trasladoLineas.map((lin) => ({
+            idProducto: Number(lin.idProducto),
+            cantidad: Number(lin.cantidad),
+          })),
+        })
+      } else {
+        await createMutation.mutateAsync({
+          fecha: values.fecha,
+          idAlmacen: Number(values.idAlmacen),
+          idProducto: Number(values.idProducto),
+          idTipoMovimiento: Number(values.idTipoMovimiento),
+          cantidad: Number(values.cantidad),
+          idDocumentoRef: values.idDocumentoRef ? Number(values.idDocumentoRef) : undefined,
+          idTipoDocumentoRef: tipoDocRef,
+          glosa: values.glosa || undefined,
+          ...(esAjusteCreate
+            ? { sentidoAjuste: (values.sentidoAjuste as SentidoAjuste) ?? 'MAS' }
+            : {}),
+        })
+      }
     } else if (props.movimientoId) {
       await updateMutation.mutateAsync({
         id: props.movimientoId,

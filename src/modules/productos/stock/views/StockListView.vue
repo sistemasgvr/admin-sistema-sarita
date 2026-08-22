@@ -1,9 +1,9 @@
 <template>
   <div>
     <PageBreadcrumb
-      page-title="Stock accesorios"
+      page-title="Stock"
       :items="breadcrumbItems"
-      help="Saldo actual por almacén. Al crear un accesorio el stock inicia en 0. Para subir o bajar cantidad usa Movimientos (ingreso, salida o ajuste)."
+      help="Saldo actual por almacén. Ajusta o traslada desde aquí. Los ingresos entran por Compras y las salidas por Ventas."
     />
 
     <AppSummaryCards :cards="resumenCards" />
@@ -29,11 +29,19 @@
             </div>
             <RouterLink
               v-if="canCreateMovimiento"
-              :to="{ name: 'admin-productos-movimientos-nuevo' }"
+              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'AJUSTE' } }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
-              <AppIcon :name="ICONS.plus" :size="18" />
-              Movimiento
+              <AppIcon :name="ICONS.pencil" :size="18" />
+              Ajuste
+            </RouterLink>
+            <RouterLink
+              v-if="canCreateMovimiento"
+              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'TRASLADO' } }"
+              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+            >
+              <AppIcon :name="ICONS.arrowLeftRight" :size="18" />
+              Traslado
             </RouterLink>
             <RouterLink
               v-if="canListMovimientos"
@@ -175,7 +183,7 @@
         <span class="font-medium">{{ stockToDelete?.nombre_producto }}</span>
         en
         <span class="font-medium">{{ stockToDelete?.nombre_almacen }}</span>
-        porque la cantidad debe ser cero. Registra un movimiento hasta dejarlo en cero e
+        porque la cantidad debe ser cero. Registra un ajuste hasta dejarlo en cero e
         inténtalo de nuevo.
       </div>
 
@@ -512,8 +520,15 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
       hidden: !(canListMovimientos.value && activo),
     },
     {
-      key: 'movimiento',
-      label: 'Registrar movimiento',
+      key: 'ajuste',
+      label: 'Ajuste',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !(canCreateMovimiento.value && activo),
+    },
+    {
+      key: 'traslado',
+      label: 'Traslado',
       icon: ICONS.arrowLeftRight,
       disabled: busy,
       hidden: !(canCreateMovimiento.value && activo),
@@ -521,7 +536,7 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
     {
       key: 'minimo',
       label: 'Stock mínimo',
-      icon: ICONS.pencil,
+      icon: ICONS.gauge,
       disabled: busy,
       hidden: !(canEdit.value && activo),
     },
@@ -558,10 +573,21 @@ function onActionSelect(key: string, row: Stock) {
         },
       })
       return
-    case 'movimiento':
+    case 'ajuste':
       void router.push({
         name: 'admin-productos-movimientos-nuevo',
         query: {
+          tipo: 'AJUSTE',
+          idProducto: String(row.id_producto),
+          idAlmacen: String(row.id_almacen),
+        },
+      })
+      return
+    case 'traslado':
+      void router.push({
+        name: 'admin-productos-movimientos-nuevo',
+        query: {
+          tipo: 'TRASLADO',
           idProducto: String(row.id_producto),
           idAlmacen: String(row.id_almacen),
         },

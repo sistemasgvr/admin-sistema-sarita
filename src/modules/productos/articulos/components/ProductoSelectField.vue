@@ -4,6 +4,7 @@
       :can-create="canCreate"
       :create-title="createTitle"
       :disabled="disabled"
+      :has-label="Boolean(label?.trim())"
       @create="modalOpen = true"
     >
       <AppSelectSearch

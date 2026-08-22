@@ -175,22 +175,46 @@ const submenuKey = (groupIndex: number, itemIndex: number) => `${groupIndex}-${i
 const matchesRoute = (path: string) =>
   route.path === path || route.path.startsWith(`${path}/`)
 
+/** Path forzado desde meta de ruta (ej. movimientos → Stock). */
+const sidebarActivePathFromRoute = () => {
+  const raw = route.meta.sidebarActivePath
+  return typeof raw === 'string' && raw.length > 0 ? raw : null
+}
+
 /** Resalta hubs y rutas hijas (ej. /admin/configuracion → /admin/configuracion/sucursales). */
 const isActive = (path: string) => matchesRoute(path)
+
+const submenuItemMatchScore = (item: AdminMenuSubItem): number => {
+  const forced = sidebarActivePathFromRoute()
+  if (forced && (item.path === forced || matchesRoute(item.path) && forced.startsWith(item.path))) {
+    return item.path.length + 2000
+  }
+  if (matchesRoute(item.path)) {
+    // Preferir coincidencia directa del path del ítem.
+    return item.path.length + 1000
+  }
+  let best = 0
+  for (const prefix of item.activeMatchPaths ?? []) {
+    if (matchesRoute(prefix)) best = Math.max(best, prefix.length)
+  }
+  return best
+}
 
 /**
  * En submenús con rutas anidadas (ej. /admin/clientes y /admin/clientes/choferes),
  * gana la coincidencia más específica para no resaltar dos ítems a la vez.
+ * También contempla `activeMatchPaths` y `meta.sidebarActivePath`.
  */
 const isSubmenuRouteActive = (path: string, siblings: AdminMenuSubItem[] = []) => {
-  if (!matchesRoute(path)) return false
+  const forced = sidebarActivePathFromRoute()
+  if (forced) return path === forced
 
-  const bestMatch = siblings
-    .map((sibling) => sibling.path)
-    .filter((siblingPath) => matchesRoute(siblingPath))
-    .sort((a, b) => b.length - a.length)[0]
+  const scored = siblings
+    .map((sibling) => ({ path: sibling.path, score: submenuItemMatchScore(sibling) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
 
-  return (bestMatch ?? path) === path
+  return scored[0]?.path === path
 }
 
 const isParentItemActive = (item: AdminMenuItem) => {

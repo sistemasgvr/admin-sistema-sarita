@@ -94,9 +94,11 @@ export const productosRoutes: RouteRecordRaw[] = [
         component: () =>
           import('@/modules/productos/movimientos/views/MovimientosListView.vue'),
         meta: {
-          title: 'Movimientos (accesorios)',
+          title: 'Historial de movimientos',
           module: 'productos',
           permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
+          // Operación de Stock (ajustes/traslados): resaltar Stock en el sidebar.
+          sidebarActivePath: '/admin/productos/stock',
         },
       },
       {
@@ -108,6 +110,7 @@ export const productosRoutes: RouteRecordRaw[] = [
           title: 'Nuevo movimiento',
           module: 'productos',
           permission: PermisoBanderas.MOVIMIENTOS_CREAR,
+          sidebarActivePath: '/admin/productos/stock',
         },
       },
       {
@@ -119,6 +122,7 @@ export const productosRoutes: RouteRecordRaw[] = [
           title: 'Editar movimiento',
           module: 'productos',
           permission: PermisoBanderas.MOVIMIENTOS_EDITAR,
+          sidebarActivePath: '/admin/productos/stock',
         },
       },
       {

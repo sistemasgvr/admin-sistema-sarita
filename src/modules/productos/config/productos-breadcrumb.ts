@@ -7,22 +7,22 @@ export const PRODUCTOS_MOVIMIENTOS_PATH = '/admin/productos/movimientos'
 
 export function productosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return [
-    { label: 'Productos', to: PRODUCTOS_HUB_PATH },
+    { label: 'Almacenes', to: PRODUCTOS_HUB_PATH },
     { label: pageTitle },
   ]
 }
 
 export function productosStockBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return [
-    { label: 'Productos', to: PRODUCTOS_HUB_PATH },
-    { label: 'Stock accesorios', to: PRODUCTOS_STOCK_PATH },
+    { label: 'Almacenes', to: PRODUCTOS_HUB_PATH },
+    { label: 'Stock', to: PRODUCTOS_STOCK_PATH },
     { label: pageTitle },
   ]
 }
 
 export function productosArticulosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return [
-    { label: 'Productos', to: PRODUCTOS_HUB_PATH },
+    { label: 'Almacenes', to: PRODUCTOS_HUB_PATH },
     { label: 'Catálogo', to: PRODUCTOS_ARTICULOS_PATH },
     { label: pageTitle },
   ]
@@ -30,7 +30,7 @@ export function productosArticulosBreadcrumbItems(pageTitle: string): Breadcrumb
 
 export function productosMovimientosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return [
-    { label: 'Productos', to: PRODUCTOS_HUB_PATH },
+    { label: 'Almacenes', to: PRODUCTOS_HUB_PATH },
     { label: 'Movimientos', to: PRODUCTOS_MOVIMIENTOS_PATH },
     { label: pageTitle },
   ]

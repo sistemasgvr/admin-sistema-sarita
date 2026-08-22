@@ -38,6 +38,8 @@ export interface MovimientoInventarioListFilters {
   fechaHasta?: string
 }
 
+export type SentidoAjuste = 'MAS' | 'MENOS'
+
 export interface CreateMovimientoInventarioPayload {
   fecha: string
   idProducto: number
@@ -48,6 +50,24 @@ export interface CreateMovimientoInventarioPayload {
   idTipoDocumentoRef?: number
   idAlmacenDestino?: number
   glosa?: string
+  /** Solo AJUSTE: suma o resta la cantidad del saldo actual. */
+  sentidoAjuste?: SentidoAjuste
+}
+
+export interface TrasladoLoteDetalle {
+  idProducto: number
+  cantidad: number
+}
+
+export interface CreateTrasladoLotePayload {
+  fecha: string
+  idAlmacen: number
+  idAlmacenDestino: number
+  idTipoMovimiento: number
+  glosa?: string
+  idDocumentoRef?: number
+  idTipoDocumentoRef?: number
+  detalles: TrasladoLoteDetalle[]
 }
 
 export interface UpdateMovimientoInventarioPayload {

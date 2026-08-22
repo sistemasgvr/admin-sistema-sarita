@@ -4,6 +4,7 @@ import { movimientosInventarioService } from '@/modules/productos/movimientos/se
 import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
 import type {
   CreateMovimientoInventarioPayload,
+  CreateTrasladoLotePayload,
   UpdateMovimientoInventarioPayload,
 } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -21,6 +22,23 @@ export function useCreateMovimientoInventarioMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar el movimiento')
+    },
+  })
+}
+
+export function useCreateTrasladoLoteMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CreateTrasladoLotePayload) =>
+      movimientosInventarioService.crearTrasladoLote(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: movimientosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
+      toastSuccess('Traslado registrado correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo registrar el traslado')
     },
   })
 }

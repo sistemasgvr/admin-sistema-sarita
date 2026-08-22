@@ -3,6 +3,7 @@
     :can-create="canRegister && !disabled && !balonSelectDisabled"
     :create-title="registerLabel"
     :disabled="disabled || balonSelectDisabled"
+    :has-label="Boolean(label?.trim())"
     @create="balonModalOpen = true"
   >
     <AppSelectSearch
