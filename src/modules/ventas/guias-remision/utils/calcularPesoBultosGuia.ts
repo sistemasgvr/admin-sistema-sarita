@@ -7,7 +7,8 @@ import type { Balon } from '@/modules/balones/cilindros/interfaces/balon.interfa
  *
  * Prioridad de peso por línea:
  * 1) `pesoKg` capturado en el formulario (obligatorio si no hay tara en BD)
- * 2) tara del tipo (`peso_tipo_balon`)
+ * 2) peso aproximado del cilindro (`peso_aproximado_kg` / `peso_guia_kg`)
+ * 3) tara del tipo (`peso_tipo_balon`)
  */
 export type LineaPesoBultosInput = {
   idBalon?: number | '' | null
@@ -26,6 +27,8 @@ export type PesoBultosCalculado = {
 
 export function pesoCatalogoBalonKg(balon: Balon | undefined): number | null {
   if (!balon) return null
+  const aproximado = Number(balon.peso_aproximado_kg ?? balon.peso_guia_kg)
+  if (Number.isFinite(aproximado) && aproximado > 0) return aproximado
   const tara = Number(balon.peso_tipo_balon)
   return Number.isFinite(tara) && tara > 0 ? tara : null
 }

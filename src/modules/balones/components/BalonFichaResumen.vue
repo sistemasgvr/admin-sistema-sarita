@@ -105,6 +105,15 @@ const lineaTecnica = computed(() => {
   if (balon.nombre_marca_cilindro) {
     parts.push(formatListaOpcionLabel(balon.nombre_marca_cilindro))
   }
+  if (balon.tipo_valvula?.trim()) {
+    parts.push(balon.tipo_valvula.trim())
+  }
+  if (balon.peso_aproximado_kg != null) {
+    parts.push(`${Number(balon.peso_aproximado_kg)} kg`)
+  }
+  if (balon.sello_inspeccion?.trim()) {
+    parts.push(`Sello ${balon.sello_inspeccion.trim()}`)
+  }
   return parts.join(' · ')
 })
 

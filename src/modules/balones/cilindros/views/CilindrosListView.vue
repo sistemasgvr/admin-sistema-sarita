@@ -77,6 +77,12 @@
           search-placeholder="Código, libro, tipo..."
           @filter-change="onFiltersChange"
         >
+          <template #search-extra>
+            <BalonBarcodeScanButton
+              title="Escanear cilindro"
+              @captured="onCodigoScanned"
+            />
+          </template>
           <template #actions>
             <AppExportExcelButton
               label="Exportar Excel"
@@ -130,11 +136,19 @@
           </template>
           <span v-else class="font-normal text-gray-400">—</span>
         </p>
-        <div class="mt-1">
+        <div class="mt-1 flex flex-wrap gap-1">
           <AppBadge v-if="row.nombre_marca_cilindro" size="sm" color="neutral">
             {{ row.nombre_marca_cilindro }}
           </AppBadge>
-          <span v-else class="text-theme-xs text-gray-400">—</span>
+          <AppBadge v-if="row.tipo_valvula" size="sm" color="neutral" :title="row.tipo_valvula">
+            {{ row.tipo_valvula }}
+          </AppBadge>
+          <span
+            v-if="!row.nombre_marca_cilindro && !row.tipo_valvula"
+            class="text-theme-xs text-gray-400"
+          >
+            —
+          </span>
         </div>
       </template>
 
@@ -319,6 +333,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import BalonBajaModal from '@/modules/balones/cilindros/components/BalonBajaModal.vue'
+import BalonBarcodeScanButton from '@/modules/balones/cilindros/components/BalonBarcodeScanButton.vue'
 import {
   useDeleteBalonMutation,
   useRestaurarBalonMutation,
@@ -334,6 +349,9 @@ import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcr
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
+import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
@@ -349,7 +367,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
-import { ListaIds } from '@/shared/constants/lista-ids'
+import { ListaIds, TipoClienteIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
@@ -421,6 +439,40 @@ const tiposBalonQuery = useTiposBalonQuery(tiposBalonFilters)
 
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+
+const plantasFilters = ref<ClienteListFilters>({
+  pagina: 1,
+  limite: 200,
+  soloActivos: 1,
+  idTipoCliente: TipoClienteIds.PROVEEDOR,
+})
+const plantasQuery = useClientesQuery(plantasFilters)
+const plantasClienteProveedorFilters = ref<ClienteListFilters>({
+  pagina: 1,
+  limite: 200,
+  soloActivos: 1,
+  idTipoCliente: TipoClienteIds.CLIENTE_PROVEEDOR,
+})
+const plantasClienteProveedorQuery = useClientesQuery(plantasClienteProveedorFilters)
+
+const plantaOptions = computed(() => {
+  const map = new Map<number, string>()
+  for (const cliente of [
+    ...(plantasQuery.data.value?.data ?? []),
+    ...(plantasClienteProveedorQuery.data.value?.data ?? []),
+  ]) {
+    if (!map.has(cliente.id)) {
+      map.set(cliente.id, getClienteOptionLabel(cliente))
+    }
+  }
+  return [...map.entries()]
+    .map(([value, label]) => ({ label, value }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'es'))
+})
+
+const plantasLoading = computed(
+  () => plantasQuery.isFetching.value || plantasClienteProveedorQuery.isFetching.value,
+)
 
 const activeFilterChips = computed(() => {
   const chips: { key: ScopedFilterChipKey; label: string; value: string }[] = []
@@ -566,8 +618,14 @@ const puedeRestaurar = (balon: Balon) =>
 
 const phPorVencerOptions = [
   { label: '30 días', value: 30 },
+  { label: '45 días', value: 45 },
   { label: '60 días', value: 60 },
   { label: '90 días', value: 90 },
+]
+
+const tipoValvulaFilterOptions = [
+  { label: 'Americana', value: 'Americana' },
+  { label: 'China', value: 'China' },
 ]
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
@@ -600,6 +658,22 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
       label: almacen.nombre,
       value: almacen.id,
     })),
+  },
+  {
+    key: 'idPlanta',
+    label: 'Planta',
+    type: 'select',
+    placeholder: 'Seleccionar planta',
+    searchable: true,
+    disabled: plantasLoading.value,
+    options: plantaOptions.value,
+  },
+  {
+    key: 'tipoValvula',
+    label: 'Tipo válvula',
+    type: 'select',
+    placeholder: 'Americana / China...',
+    options: tipoValvulaFilterOptions,
   },
   {
     key: 'idEstadoBalon',
@@ -664,6 +738,11 @@ let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const syncFilters = () => {
   const active = dynamicFilters.value
+  const tipoValvulaRaw = active.tipoValvula
+  const tipoValvula =
+    typeof tipoValvulaRaw === 'string' && tipoValvulaRaw.trim()
+      ? tipoValvulaRaw.trim()
+      : undefined
 
   filters.value = {
     buscar: buscar.value.trim(),
@@ -673,6 +752,8 @@ const syncFilters = () => {
     idMarcaCilindro:
       active.idMarcaCilindro != null ? Number(active.idMarcaCilindro) : undefined,
     idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    idPlanta: active.idPlanta != null ? Number(active.idPlanta) : undefined,
+    tipoValvula,
     idEstadoBalon: active.idEstadoBalon != null ? Number(active.idEstadoBalon) : undefined,
     idEstadoContenido:
       active.idEstadoContenido != null ? Number(active.idEstadoContenido) : undefined,
@@ -850,6 +931,7 @@ const exportExcelFile = async () => {
   const result = await balonesPropietarioService.listar({
     buscar: filters.value.buscar,
     idAlmacen: filters.value.idAlmacen,
+    idPlanta: filters.value.idPlanta,
     tipoPropietario: resolveTipoPropietarioFiltro(),
     excluirBajas: filters.value.soloBajas !== true,
     pagina: 1,
@@ -859,6 +941,13 @@ const exportExcelFile = async () => {
     detalle: result.data ?? [],
     resumen: (result.meta?.resumen ?? {}) as BalonPropietarioResumen,
   })
+}
+
+const onCodigoScanned = (codigo: string) => {
+  clearTimeout(buscarTimeout)
+  buscar.value = codigo.trim()
+  pagina.value = 1
+  syncFilters()
 }
 
 const goToEdit = (balon: Balon) => {
