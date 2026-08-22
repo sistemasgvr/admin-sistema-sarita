@@ -27,7 +27,7 @@
           :maxlength="maxlength"
           :inputmode="inputmode"
           :class="inputClasses"
-          @input="onSanitizeInput"
+          @input="onInput"
           @blur="emit('blur', $event)"
         />
 
@@ -73,7 +73,7 @@ interface AppInputProps {
   maxlength?: string | number
   inputmode?: 'none' | 'text' | 'decimal' | 'numeric' | 'tel' | 'search' | 'email' | 'url'
   state?: FormControlState
-  ///Filtra en tiempo real lo que el usuario escribe
+  /** Filtra en tiempo real lo que el usuario escribe */
   sanitize?: (value: string) => string
 }
 
@@ -90,16 +90,34 @@ const model = defineModel<string | number | null>({ default: '' })
 
 const showPassword = ref(false)
 
-function onSanitizeInput(event: Event) {
-  if (!props.sanitize) return
+function toFiniteNumber(value: string | number | null | undefined): number | null {
+  if (value === '' || value == null) return null
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function onInput(event: Event) {
+  if ((event as InputEvent).isComposing) return
 
   const target = event.target as HTMLInputElement
-  if (target.value === '' || (event as InputEvent).isComposing) return
+  let next = target.value
 
-  const sanitized = props.sanitize(target.value)
-  if (sanitized !== target.value) {
-    target.value = sanitized
-    model.value = sanitized
+  if (props.sanitize && next !== '') {
+    next = props.sanitize(next)
+  }
+
+  // number + max: limitar en tiempo real (el atributo HTML no bloquea el tecleo)
+  if (props.type === 'number' && next !== '') {
+    const n = toFiniteNumber(next)
+    const maxN = toFiniteNumber(props.max)
+    if (n != null && maxN != null && n > maxN) {
+      next = String(maxN)
+    }
+  }
+
+  if (next !== target.value) {
+    target.value = next
+    model.value = props.type === 'number' && next !== '' ? Number(next) : next
   }
 }
 

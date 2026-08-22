@@ -318,6 +318,7 @@
                 :loading="productosQuery.isFetching.value"
                 :disabled="saving"
                 @created="onProductoCreado"
+                @scanned="onProductoCreado"
               />
             </div>
 
@@ -593,6 +594,7 @@
                 :loading="productosQuery.isFetching.value"
                 :disabled="saving"
                 @created="onProductoCreado"
+                @scanned="onProductoCreado"
               />
             </div>
 

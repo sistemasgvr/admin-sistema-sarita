@@ -74,18 +74,27 @@
               :loading="tiposMantenimientoQuery.isFetching.value"
               :disabled="tiposMantenimientoQuery.isFetching.value"
             />
-            <AppSelectSearch
-              v-model="idProducto"
-              v-model:search="servicioBuscar"
-              label="Servicio"
-              placeholder="Selecciona servicio"
-              search-placeholder="Código o nombre..."
-              :options="servicioOptions"
-              :loading="productosQuery.isLoading.value"
-              :disabled="productosQuery.isLoading.value"
-              required
-              @update:model-value="onServicioChange"
-            />
+            <div class="flex items-end gap-2">
+              <div class="min-w-0 flex-1">
+                <AppSelectSearch
+                  v-model="idProducto"
+                  v-model:search="servicioBuscar"
+                  label="Servicio"
+                  placeholder="Selecciona servicio"
+                  search-placeholder="Código o nombre..."
+                  :options="servicioOptions"
+                  :loading="productosQuery.isLoading.value"
+                  :disabled="productosQuery.isLoading.value"
+                  required
+                  @update:model-value="onServicioChange"
+                />
+              </div>
+              <ProductoBarcodeScanButton
+                :filters="scanFiltersServicio"
+                :disabled="productosQuery.isLoading.value"
+                @scanned="onServicioScanned"
+              />
+            </div>
           </div>
         </DetailSectionCard>
 
@@ -150,7 +159,9 @@
 import { computed, ref } from 'vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productoEsMantenimientoTaller } from '@/modules/productos/articulos/utils/productoEsMantenimientoTaller'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
@@ -229,6 +240,11 @@ const productosFilters = ref({
   soloActivos: 1,
 })
 const productosQuery = useProductosQuery(productosFilters)
+const scanFiltersServicio = {
+  esServicio: true as const,
+  esMantenimiento: true as const,
+  soloActivos: 1 as const,
+}
 
 const listaTipoMantenimientoId = ref(ListaIds.TIPO_MANTENIMIENTO)
 const tiposMantenimientoQuery = useListaOpcionesQuery(listaTipoMantenimientoId)
@@ -236,6 +252,7 @@ const tiposMantenimientoQuery = useListaOpcionesQuery(listaTipoMantenimientoId)
 const idBalon = ref<number | ''>('')
 const idTipoMantenimiento = ref<number | ''>('')
 const idProducto = ref<number | ''>('')
+const servicioEscaneadoProducto = ref<Producto | null>(null)
 const tipoMantenimientoBuscar = ref('')
 const servicioBuscar = ref('')
 const fechaIngreso = ref(hoyIsoLima())
@@ -255,9 +272,14 @@ const comprobanteGuardadoNumero = ref<string | null>(null)
 
 const tipoMantenimientoOptions = computed(() => toSelectOptions(tiposMantenimientoQuery.data.value))
 
-const serviciosMantenimiento = computed(() =>
-  (productosQuery.data.value?.data ?? []).filter(productoEsMantenimientoTaller),
-)
+const serviciosMantenimiento = computed(() => {
+  const base = (productosQuery.data.value?.data ?? []).filter(productoEsMantenimientoTaller)
+  const extra = servicioEscaneadoProducto.value
+  if (extra && productoEsMantenimientoTaller(extra) && !base.some((item) => item.id === extra.id)) {
+    return [extra, ...base]
+  }
+  return base
+})
 
 const servicioOptions = computed(() =>
   serviciosMantenimiento.value.map((producto) => ({
@@ -291,6 +313,21 @@ function onServicioChange() {
   if (!descripcion.value) {
     descripcion.value = producto.nombre
   }
+}
+
+function onServicioScanned(producto: Producto) {
+  if (!productoEsMantenimientoTaller(producto)) {
+    toastWarning('El código no corresponde a un servicio de mantenimiento de taller')
+    return
+  }
+  servicioEscaneadoProducto.value = producto
+  idProducto.value = producto.id
+  servicioBuscar.value = ''
+  costo.value = roundMoney(Number(producto.precio ?? 0)).toFixed(2)
+  if (!descripcion.value) {
+    descripcion.value = producto.nombre
+  }
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
 }
 
 async function registrarMantenimiento() {
@@ -383,6 +420,7 @@ async function limpiarFormulario() {
   idBalon.value = ''
   idTipoMantenimiento.value = ''
   idProducto.value = ''
+  servicioEscaneadoProducto.value = null
   tipoMantenimientoBuscar.value = ''
   servicioBuscar.value = ''
   fechaIngreso.value = hoyIsoLima()

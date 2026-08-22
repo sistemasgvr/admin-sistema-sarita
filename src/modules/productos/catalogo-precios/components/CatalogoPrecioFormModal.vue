@@ -53,15 +53,23 @@
 
         <DetailSectionCard title="Producto y presentación" :icon="ICONS.package">
           <div class="space-y-4">
-            <AppSelect
-              v-model="idProducto"
-              label="Producto asociado"
-              placeholder="Opcional"
-              v-bind="idProductoAttrs"
-              :disabled="isSubmitting"
-              :options="productoOptions"
-            />
-
+            <div class="flex items-end gap-2">
+              <div class="min-w-0 flex-1">
+                <AppSelect
+                  v-model="idProducto"
+                  label="Producto asociado"
+                  placeholder="Opcional"
+                  v-bind="idProductoAttrs"
+                  :disabled="isSubmitting"
+                  :options="productoOptions"
+                />
+              </div>
+              <ProductoBarcodeScanButton
+                :filters="scanFiltersProducto"
+                :disabled="isSubmitting"
+                @scanned="onProductoScanned"
+              />
+            </div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="clasificacion"
@@ -207,6 +215,7 @@ import type {
   CatalogoPrecioFormMode,
 } from '@/modules/productos/catalogo-precios/interfaces/catalogo-precio.interface'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import { AppFormField, AppInput, AppModal, AppSelect, MoneyInput } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
@@ -220,6 +229,7 @@ import {
   roundMoney,
 } from '@/shared/utils/currency'
 import { yupMontoMoneda } from '@/shared/utils/yupMoney'
+import { toastSuccess } from '@/shared/composables/useToast'
 
 type MoneyField = 'costoProducto' | 'costoFlete' | 'precioFinal' | 'precioGarantia'
 
@@ -254,13 +264,24 @@ const tipoCatalogoOptions = computed(() =>
   })),
 )
 
-const productoOptions = computed(() => [
-  { value: '', label: 'Sin producto' },
-  ...props.productos.map((producto) => ({
+const productoEscaneado = ref<Producto | null>(null)
+const scanFiltersProducto = { soloActivos: 1 as const }
+
+const productoOptions = computed(() => {
+  const base = props.productos.map((producto) => ({
     value: producto.id,
     label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-])
+  }))
+  const extra = productoEscaneado.value
+  if (extra && !base.some((item) => item.value === extra.id)) {
+    return [
+      { value: '', label: 'Sin producto' },
+      { value: extra.id, label: `${extra.codigo} — ${extra.nombre}` },
+      ...base,
+    ]
+  }
+  return [{ value: '', label: 'Sin producto' }, ...base]
+})
 
 const unidadMedidaOptions = computed(() => [
   { value: '', label: 'Sin unidad' },
@@ -384,6 +405,7 @@ const buildPayload = (values: {
 })
 
 const syncFormValues = () => {
+  productoEscaneado.value = null
   resetForm({
     values: {
       idTipoCatalogo: props.catalogoPrecio?.id_tipo_catalogo ?? undefined,
@@ -402,6 +424,15 @@ const syncFormValues = () => {
       precioGarantia: formatMoneyField(props.catalogoPrecio?.precio_garantia),
     },
   })
+}
+
+function onProductoScanned(producto: Producto) {
+  productoEscaneado.value = producto
+  setFieldValue('idProducto', producto.id)
+  if (!values.nombreItem?.trim()) {
+    setFieldValue('nombreItem', producto.nombre)
+  }
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
 }
 
 const handleClose = () => {

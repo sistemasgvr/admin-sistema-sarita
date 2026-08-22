@@ -26,20 +26,27 @@
           :options="prestamoOptions"
           :disabled="!clienteId || prestamosQuery.isFetching.value"
         />
-        <AppSelectSearch
-          v-model="productoId"
-          v-model:search="productoBuscar"
-          label="Producto / tipo envase"
-          placeholder="Selecciona producto (no servicios)"
-          search-placeholder="Código o nombre..."
-          class="sm:col-span-2"
-          required
-          remote
-          :options="productoOptions"
-          :loading="productosQuery.isFetching.value"
-          hint="Solo productos. Los servicios no aplican a garantía industrial."
-        />
-        <AppSelect
+        <div class="flex items-end gap-2 sm:col-span-2">
+          <div class="min-w-0 flex-1">
+            <AppSelectSearch
+              v-model="productoId"
+              v-model:search="productoBuscar"
+              label="Producto / tipo envase"
+              placeholder="Selecciona producto (no servicios)"
+              search-placeholder="Código o nombre..."
+              required
+              remote
+              :options="productoOptions"
+              :loading="productosQuery.isFetching.value"
+              hint="Solo productos. Los servicios no aplican a garantía industrial."
+            />
+          </div>
+          <ProductoBarcodeScanButton
+            :filters="scanFiltersProducto"
+            :disabled="productosQuery.isFetching.value"
+            @scanned="onProductoScanned"
+          />
+        </div>        <AppSelect
           v-model="idTipoComprobante"
           label="Comprobante"
           placeholder="Selecciona"
@@ -102,7 +109,11 @@ import type { PrestamoListFilters } from '@/modules/balones/prestamos/interfaces
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
-import type { ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
+import type {
+  Producto,
+  ProductoListFilters,
+} from '@/modules/productos/articulos/interfaces/producto.interface'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
 import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
@@ -111,7 +122,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppModal, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
-import { toastWarning } from '@/shared/composables/useToast'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 
 const props = defineProps<{
@@ -174,6 +185,8 @@ const productosFilters = ref<ProductoListFilters>({
   buscar: undefined,
 })
 const productosQuery = useProductosQuery(productosFilters)
+const scanFiltersProducto = { esServicio: false as const, soloActivos: 1 as const }
+const productoEscaneado = ref<Producto | null>(null)
 
 const clienteOptions = computed(() =>
   (clientesQuery.data.value?.data ?? []).map((c) => ({
@@ -190,17 +203,44 @@ const prestamoOptions = computed(() => [
   })),
 ])
 
-const productoOptions = computed(() =>
-  (productosQuery.data.value?.data ?? []).map((p) => ({
-    value: p.id,
-    label: `${p.codigo ? `${p.codigo} — ` : ''}${p.nombre}${
-      p.precio_garantia != null && Number(p.precio_garantia) > 0
-        ? ` (garantía S/ ${Number(p.precio_garantia).toFixed(2)})`
-        : ''
-    }`,
-  })),
-)
+function labelProductoGarantia(p: Producto) {
+  return `${p.codigo ? `${p.codigo} — ` : ''}${p.nombre}${
+    p.precio_garantia != null && Number(p.precio_garantia) > 0
+      ? ` (garantía S/ ${Number(p.precio_garantia).toFixed(2)})`
+      : ''
+  }`
+}
 
+const productoOptions = computed(() => {
+  const base = (productosQuery.data.value?.data ?? []).map((p) => ({
+    value: p.id,
+    label: labelProductoGarantia(p),
+  }))
+  const extra = productoEscaneado.value
+  if (extra && !base.some((item) => item.value === extra.id)) {
+    return [{ value: extra.id, label: labelProductoGarantia(extra) }, ...base]
+  }
+  return base
+})
+
+function resolverProducto(id: number | ''): Producto | undefined {
+  if (!id) return undefined
+  return (
+    (productosQuery.data.value?.data ?? []).find((p) => p.id === id) ??
+    (productoEscaneado.value?.id === id ? productoEscaneado.value : undefined)
+  )
+}
+
+function onProductoScanned(producto: Producto) {
+  if (producto.es_servicio) {
+    toastWarning('Los servicios no aplican a garantía industrial')
+    return
+  }
+  productoEscaneado.value = producto
+  productoId.value = producto.id
+  productoBuscar.value = ''
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
+}
 const puedeCobrar = computed(
   () =>
     Boolean(clienteId.value) &&
@@ -239,7 +279,7 @@ watch(productoId, async (value) => {
     origenMonto.value = ''
     return
   }
-  const producto = (productosQuery.data.value?.data ?? []).find((p) => p.id === value)
+  const producto = resolverProducto(value)
   let sugerido = Number(producto?.precio_garantia ?? 0)
   let origen = sugerido > 0 ? `producto (${producto?.nombre})` : ''
 
@@ -275,6 +315,7 @@ watch(
     clienteId.value = props.idCliente ?? ''
     prestamoId.value = props.idPrestamo ?? ''
     productoId.value = props.idProducto ?? ''
+    productoEscaneado.value = null
     monto.value = ''
     origenMonto.value = ''
     idMedioPago.value = ''
@@ -295,9 +336,7 @@ async function confirmar() {
     return
   }
 
-  const producto = (productosQuery.data.value?.data ?? []).find(
-    (p) => p.id === productoId.value,
-  )
+  const producto = resolverProducto(productoId.value)
   if (!producto) {
     toastWarning('Selecciona un producto válido')
     return

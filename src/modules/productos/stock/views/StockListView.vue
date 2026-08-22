@@ -22,34 +22,50 @@
           search-placeholder="Almacén, código o producto..."
           @filter-change="onFiltersChange"
         >
+          <template #search-extra>
+            <ProductoBarcodeScanButton
+              title="Escanear producto"
+              :filters="{
+                soloActivos: 1,
+                afectaStock: true,
+                esGas: false,
+                esServicio: false,
+              }"
+              @scanned="onProductoScanned"
+            />
+          </template>
+
           <template #actions>
             <AppExportExcelButton :on-export="exportarExcel" />
-            <div class="w-full sm:w-40">
+            <div class="min-w-[9.5rem] flex-1 sm:w-40 sm:flex-none">
               <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
             </div>
             <RouterLink
               v-if="canCreateMovimiento"
               :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'AJUSTE' } }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
+              title="Ajuste"
             >
               <AppIcon :name="ICONS.pencil" :size="18" />
-              Ajuste
+              <span class="hidden sm:inline">Ajuste</span>
             </RouterLink>
             <RouterLink
               v-if="canCreateMovimiento"
               :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'TRASLADO' } }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
+              title="Traslado"
             >
               <AppIcon :name="ICONS.arrowLeftRight" :size="18" />
-              Traslado
+              <span class="hidden sm:inline">Traslado</span>
             </RouterLink>
             <RouterLink
               v-if="canListMovimientos"
               :to="{ name: 'admin-productos-movimientos' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+              title="Historial"
             >
               <AppIcon :name="ICONS.history" :size="18" />
-              Historial
+              <span class="hidden sm:inline">Historial</span>
             </RouterLink>
           </template>
         </AppListToolbar>
@@ -229,6 +245,8 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import {
   useDeleteStockMutation,
   useRestaurarStockMutation,
@@ -255,6 +273,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
+import { toastSuccess } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
@@ -405,6 +424,12 @@ const formatCantidad = (value: unknown, nombreUnidad?: string | null) =>
   formatCantidadPorUnidad(value, nombreUnidad)
 
 const exportarExcel = () => exportarStockExcel(filters.value)
+
+function onProductoScanned(producto: Producto) {
+  // El listado filtra por código/nombre de producto (no por codigo_barra en SQL)
+  buscar.value = producto.codigo
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
+}
 
 const loadCatalogos = async () => {
   isLoadingAlmacenes.value = true

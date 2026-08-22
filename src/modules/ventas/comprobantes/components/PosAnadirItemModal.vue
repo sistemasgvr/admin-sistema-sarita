@@ -44,6 +44,7 @@
         :stock-gas-listo="tipo !== 'gas' || !idAlmacen || stockGasQuery.isFetched.value"
         @filter-change="onFiltersChange"
         @add="elegirProducto"
+        @scanned="elegirProducto"
       />
     </div>
 

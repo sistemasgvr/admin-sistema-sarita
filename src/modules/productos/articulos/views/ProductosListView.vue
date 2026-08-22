@@ -24,28 +24,30 @@
         >
           <template #actions>
             <AppExportExcelButton :on-export="exportarExcel" />
-            <div class="w-full sm:w-44">
+            <div class="min-w-[9.5rem] flex-1 sm:w-44 sm:flex-none">
               <AppSelect v-model="tipoFiltro" :options="tipoFiltroOptions" />
             </div>
-            <div class="w-full sm:w-40">
+            <div class="min-w-[9.5rem] flex-1 sm:w-40 sm:flex-none">
               <AppSelect v-model="mostrarProductos" :options="estadoFiltroOptions" />
             </div>
             <button
               v-if="canView"
               type="button"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+              title="Imprimir ubicación"
               @click="printModalOpen = true"
             >
               <AppIcon :name="ICONS.printer" :size="18" />
-              Imprimir ubicación
+              <span class="hidden sm:inline">Imprimir ubicación</span>
             </button>
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-productos-articulos-nuevo' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
+              title="Nuevo"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo
+              <span class="hidden sm:inline">Nuevo</span>
             </RouterLink>
           </template>
         </AppListToolbar>

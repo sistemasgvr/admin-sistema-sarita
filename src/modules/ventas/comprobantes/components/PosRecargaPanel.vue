@@ -85,18 +85,27 @@
           help="Al elegir el cilindro se completa la cantidad (m³). El gas se descuenta de los cilindros llenos de la empresa."
         >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <AppSelectSearch
-              v-model="idProducto"
-              v-model:search="gasBuscar"
-              label="Gas"
-              placeholder="Selecciona gas"
-              search-placeholder="Código o nombre..."
-              :options="productoOptions"
-              :loading="productosQuery.isLoading.value"
-              :disabled="productosQuery.isLoading.value"
-              required
-              @update:model-value="onProductoChange"
-            />
+            <div class="flex items-end gap-2">
+              <div class="min-w-0 flex-1">
+                <AppSelectSearch
+                  v-model="idProducto"
+                  v-model:search="gasBuscar"
+                  label="Gas"
+                  placeholder="Selecciona gas"
+                  search-placeholder="Código o nombre..."
+                  :options="productoOptions"
+                  :loading="productosQuery.isLoading.value"
+                  :disabled="productosQuery.isLoading.value"
+                  required
+                  @update:model-value="onProductoChange"
+                />
+              </div>
+              <ProductoBarcodeScanButton
+                :filters="scanFiltersGas"
+                :disabled="productosQuery.isLoading.value"
+                @scanned="onGasScanned"
+              />
+            </div>
             <AppInput
               v-model="cantidad"
               label="Cantidad de gas (m³)"
@@ -204,7 +213,9 @@ import type { BalonOrigenRecarga } from '@/modules/balones/recargas/interfaces/m
 import { formatOrigenRecargaLabel } from '@/modules/balones/recargas/utils/formatOrigenRecargaLabel'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
@@ -276,6 +287,7 @@ async function onAlmacenCreated() {
 
 const productosFilters = ref({ pagina: 1, limite: 200, esGas: true })
 const productosQuery = useProductosQuery(productosFilters)
+const scanFiltersGas = { esGas: true as const, soloActivos: 1 as const }
 
 const idBalon = ref<number | ''>('')
 const idBalonOrigen = ref<number | ''>('')
@@ -285,6 +297,7 @@ const cargandoOrigenes = ref(false)
 const errorOrigenes = ref('')
 const sugerenciaOrigenLabel = ref('')
 const idProducto = ref<number | ''>('')
+const productoEscaneadoOption = ref<{ value: number; label: string } | null>(null)
 const extraFiltersProductoGas = computed(() =>
   idProducto.value ? { idProductoGas: Number(idProducto.value) } : undefined,
 )
@@ -402,12 +415,17 @@ const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
 
-const productoOptions = computed(() =>
-  (productosQuery.data.value?.data ?? []).map((producto) => ({
+const productoOptions = computed(() => {
+  const base = (productosQuery.data.value?.data ?? []).map((producto) => ({
     value: producto.id,
     label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-)
+  }))
+  const extra = productoEscaneadoOption.value
+  if (extra && !base.some((item) => item.value === extra.value)) {
+    return [extra, ...base]
+  }
+  return base
+})
 
 const totales = computed(() =>
   calcularTotalesDesdeImporte(
@@ -440,6 +458,17 @@ function onProductoChange() {
   if (!producto) return
 
   precioUnitario.value = roundMoney(Number(producto.precio ?? 0)).toFixed(2)
+}
+
+function onGasScanned(producto: Producto) {
+  productoEscaneadoOption.value = {
+    value: producto.id,
+    label: `${producto.codigo} — ${producto.nombre}`,
+  }
+  idProducto.value = producto.id
+  gasBuscar.value = ''
+  precioUnitario.value = roundMoney(Number(producto.precio ?? 0)).toFixed(2)
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
 }
 
 async function registrarRecarga() {
@@ -502,6 +531,7 @@ async function limpiarFormulario() {
   sugerenciaOrigenLabel.value = ''
   capacidadBalonSeleccionado.value = null
   idProducto.value = ''
+  productoEscaneadoOption.value = null
   idAlmacen.value = ''
   gasBuscar.value = ''
   cantidad.value = 1

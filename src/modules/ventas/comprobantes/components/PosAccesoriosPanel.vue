@@ -71,6 +71,7 @@
         :loading="productosQuery.isLoading.value || productosQuery.isFetching.value"
         @filter-change="onFiltersChange"
         @add="agregarProducto"
+        @scanned="agregarProducto"
       />
     </section>
 

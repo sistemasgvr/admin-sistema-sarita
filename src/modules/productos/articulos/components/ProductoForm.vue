@@ -81,13 +81,35 @@
             :error="errors.nombre"
           />
 
-          <AppInput
-            v-model="codigoBarra"
-            label="Código de barras"
-            optional
-            placeholder="Opcional"
-            v-bind="codigoBarraAttrs"
-            :disabled="isSubmitting"
+          <div class="flex min-w-0 items-start gap-2">
+            <div class="min-w-0 flex-1">
+              <AppInput
+                v-model="codigoBarra"
+                label="Código de barras"
+                optional
+                placeholder="Opcional"
+                help="Puedes escanearlo con la pistola usando el botón de al lado."
+                v-bind="codigoBarraAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
+            <button
+              type="button"
+              title="Escanear con pistola"
+              aria-label="Escanear código de barras"
+              class="mt-[1.625rem] inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-brand-500/40 dark:hover:bg-brand-500/10 dark:hover:text-brand-400"
+              :disabled="isSubmitting"
+              @click="barcodeScanOpen = true"
+            >
+              <AppIcon :name="ICONS.scanBarcode" :size="18" />
+            </button>
+          </div>
+
+          <BarcodeCaptureModal
+            v-model="barcodeScanOpen"
+            title="Escanear código de barras"
+            subtitle="Apunta la pistola al código del producto y pulsa Enter."
+            @captured="onCodigoBarraScanned"
           />
 
           <AppInput
@@ -367,6 +389,7 @@ import {
   useUpdateProductoMutation,
 } from '@/modules/productos/articulos/composables/useProductoMutations'
 import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
+import BarcodeCaptureModal from '@/modules/productos/articulos/components/BarcodeCaptureModal.vue'
 import { productoImagenesQueryKeys } from '@/modules/productos/articulos/constants/productoImagenesQueryKeys'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import type {
@@ -445,6 +468,7 @@ const subCategorias = ref<SubCategoriaProducto[]>([])
 const tipoItem = ref<TipoItem>('producto')
 const pendingImages = ref<File[]>([])
 const isGeneratingUbicacion = ref(false)
+const barcodeScanOpen = ref(false)
 const formHydrated = ref(false)
 const categoriaModalOpen = ref(false)
 const subCategoriaModalOpen = ref(false)
@@ -654,6 +678,11 @@ async function loadCatalogos() {
     categorias.value = []
     subCategorias.value = []
   }
+}
+
+function onCodigoBarraScanned(codigo: string) {
+  codigoBarra.value = codigo
+  toastSuccess(`Código de barras: ${codigo}`)
 }
 
 function onCategoriaCreated(categoria: CategoriaProducto) {

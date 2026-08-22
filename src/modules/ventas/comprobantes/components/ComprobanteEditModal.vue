@@ -77,19 +77,26 @@
           </span>
         </template>
 
-        <div class="mb-3">
-          <AppSelectSearch
-            v-model="idProductoAgregar"
-            v-model:search="productoBuscar"
-            remote
-            label="Agregar producto"
-            placeholder="Buscar y agregar al detalle"
-            search-placeholder="Código o nombre..."
-            :options="productoOptions"
-            :loading="isFetchingProductos"
+        <div class="mb-3 flex items-end gap-2">
+          <div class="min-w-0 flex-1">
+            <AppSelectSearch
+              v-model="idProductoAgregar"
+              v-model:search="productoBuscar"
+              remote
+              label="Agregar producto"
+              placeholder="Buscar y agregar al detalle"
+              search-placeholder="Código o nombre..."
+              :options="productoOptions"
+              :loading="isFetchingProductos"
+              :disabled="saving || !idAlmacen"
+              :hint="productoSelectHint"
+              :empty-text="productoSelectEmptyText"
+            />
+          </div>
+          <ProductoBarcodeScanButton
+            :filters="scanFiltersProducto"
             :disabled="saving || !idAlmacen"
-            :hint="productoSelectHint"
-            :empty-text="productoSelectEmptyText"
+            @scanned="onProductoScanned"
           />
         </div>
 
@@ -262,6 +269,8 @@ import type {
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
+import type { BuscarProductoPorCodigoFilters } from '@/modules/productos/articulos/utils/buscarProductoPorCodigo'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
@@ -379,6 +388,12 @@ function syncProductosFilters(buscar?: string) {
     ...filtrosPorCatalogoPos(catalogoPos.value),
   }
 }
+
+const scanFiltersProducto = computed<BuscarProductoPorCodigoFilters>(() => ({
+  soloActivos: 1,
+  idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
+  ...filtrosPorCatalogoPos(catalogoPos.value),
+}))
 
 watch(productoBuscar, (value) => {
   if (productoBuscarTimeout) clearTimeout(productoBuscarTimeout)
@@ -502,6 +517,14 @@ watch(idProductoAgregar, (id) => {
   }
   agregarProducto(producto)
 })
+
+function onProductoScanned(producto: Producto) {
+  if (!idAlmacen.value) {
+    toastWarning('Selecciona el almacén antes de agregar productos')
+    return
+  }
+  agregarProducto(producto)
+}
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)

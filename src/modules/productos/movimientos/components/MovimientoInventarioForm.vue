@@ -84,8 +84,7 @@
                 v-if="esAjuste"
                 label="Sentido del ajuste"
                 required
-                help="Si aumenta o disminuye el saldo actual en el almacén."
-                :hint="hintSentidoAjuste"
+                :help="helpSentidoAjuste"
                 :error="errors.sentidoAjuste"
               >
                 <div
@@ -134,12 +133,13 @@
                   label="Cantidad"
                   type="number"
                   :min="minCantidad"
+                  :max="maxCantidadAjuste"
                   :step="stepCantidad"
                   required
                   v-bind="cantidadAttrs"
                   :disabled="isSubmitting"
                   :error="errors.cantidad"
-                  :hint="hintCantidadAjuste"
+                  :help="helpCantidadAjuste"
                 />
               </template>
             </template>
@@ -175,7 +175,7 @@
               class="sm:col-span-2 lg:col-span-1"
               v-bind="glosaAttrs"
               :disabled="isSubmitting"
-              :hint="hintGlosa"
+              :help="helpGlosa"
             />
           </div>
         </DetailSectionCard>
@@ -185,7 +185,7 @@
           title="Productos a trasladar"
           :icon="ICONS.boxes"
           :full-width="true"
-          help="Agrega uno o más productos. Cada producto solo puede aparecer una vez. Se resta en el origen y se suma en el destino."
+          help="Agrega uno o más productos (mínimo una línea). Cada producto solo una vez. Cantidad mayor a cero y no mayor al stock del almacén origen."
         >
           <template #actions>
             <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -194,10 +194,7 @@
             </span>
           </template>
 
-          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              Cantidad siempre mayor a cero. Mínimo una línea.
-            </p>
+          <div class="mb-3 flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-600 transition hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400 dark:hover:bg-brand-500/20"
@@ -220,7 +217,7 @@
                       Producto
                     </th>
                     <th
-                      class="w-36 px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300"
+                      class="w-40 px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300"
                     >
                       Cantidad
                     </th>
@@ -251,13 +248,20 @@
                     </td>
                     <td class="px-3 py-2.5 align-top">
                       <AppInput
-                        v-model="lin.cantidad"
+                        :model-value="lin.cantidad"
                         type="number"
                         min="0.0001"
+                        :max="maxCantidadTrasladoLinea(lin)"
                         step="any"
                         required
-                        :disabled="isSubmitting"
+                        :disabled="
+                          isSubmitting ||
+                          !tieneAlmacenOrigen ||
+                          !lin.idProducto
+                        "
                         :error="lin.errorCantidad"
+                        :help="helpCantidadTrasladoLinea(lin)"
+                        @update:model-value="(v) => onTrasladoCantidadInput(index, v)"
                       />
                     </td>
                     <td class="px-2 py-2.5 text-center align-top">
@@ -325,6 +329,8 @@ import type {
   MovimientoInventarioFormMode,
   SentidoAjuste,
 } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
+import { useStockQuery } from '@/modules/productos/stock/composables/useStockQuery'
+import type { StockListFilters } from '@/modules/productos/stock/interfaces/stock.interface'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppFormField, AppInput, AppSelect } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -559,13 +565,54 @@ function onTrasladoProductoChange(index: number, value: string | number | null |
   }
   lin.idProducto = next
   lin.errorProducto = undefined
+  lin.errorCantidad = undefined
+  const stock = stockDisponibleEnAlmacen(next)
+  if (stock != null && lin.cantidad != null && Number(lin.cantidad) > stock) {
+    lin.cantidad = stock > 0 ? stock : undefined
+  }
   trasladoLineasError.value = ''
+}
+
+function onTrasladoCantidadInput(index: number, value: string | number | null | undefined) {
+  const lin = trasladoLineas[index]
+  if (!lin) return
+  if (value === '' || value == null) {
+    lin.cantidad = undefined
+    lin.errorCantidad = undefined
+    return
+  }
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n)) {
+    lin.cantidad = undefined
+    return
+  }
+  const stock = stockDisponibleEnAlmacen(lin.idProducto)
+  if (stock != null && n > stock) {
+    lin.cantidad = stock > 0 ? stock : undefined
+    lin.errorCantidad =
+      stock <= 0 ? 'Sin stock en el almacén origen' : undefined
+    return
+  }
+  lin.cantidad = n
+  lin.errorCantidad = undefined
 }
 
 function validarTrasladoLineas(): boolean {
   let ok = true
   trasladoLineasError.value = ''
   const seen = new Set<number>()
+
+  if (!tieneAlmacenOrigen.value) {
+    trasladoLineasError.value = 'Selecciona el almacén origen'
+    toastWarning('Selecciona el almacén origen para validar el stock')
+    return false
+  }
+
+  if (stockAlmacenQuery.isFetching.value || !stockAlmacenQuery.isFetched.value) {
+    trasladoLineasError.value = 'Cargando stock del almacén origen...'
+    toastWarning('Espera a que cargue el stock del almacén origen')
+    return false
+  }
 
   for (const lin of trasladoLineas) {
     lin.errorProducto = undefined
@@ -588,6 +635,22 @@ function validarTrasladoLineas(): boolean {
         : Number(lin.cantidad)
     if (!Number.isFinite(cant) || cant <= 0) {
       lin.errorCantidad = 'Debe ser mayor a cero'
+      ok = false
+      continue
+    }
+
+    const stock = stockDisponibleEnAlmacen(id)
+    if (stock != null && cant > stock) {
+      const info = stockPorProducto.value.get(id)
+      const formateado = formatCantidadPorUnidad(
+        stock,
+        info?.unidad ?? null,
+        info?.esGas ?? false,
+      )
+      lin.errorCantidad =
+        stock <= 0
+          ? 'Sin stock en el almacén origen'
+          : `Máximo disponible: ${formateado}`
       ok = false
     }
   }
@@ -657,6 +720,26 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
                 return Math.abs(value - Math.round(value)) < 1e-9
                   ? true
                   : this.createError({ message: MSG_CANTIDAD_UNID_ENTERA })
+              })
+              .test('stock-ajuste-menos', 'No puede dejar el stock en negativo', function (value) {
+                if (value == null || !Number.isFinite(value)) return true
+                if (!esTipoAjuste(this.parent.idTipoMovimiento)) return true
+                if (this.parent.sentidoAjuste !== 'MENOS') return true
+                const stock = stockDisponibleEnAlmacen(this.parent.idProducto)
+                if (stock == null) return true
+                if (value <= stock) return true
+                const info = stockPorProducto.value.get(Number(this.parent.idProducto))
+                const formateado = formatCantidadPorUnidad(
+                  stock,
+                  info?.unidad ?? null,
+                  info?.esGas ?? false,
+                )
+                return this.createError({
+                  message:
+                    stock <= 0
+                      ? 'Sin stock en el almacén'
+                      : `Máximo a restar: ${formateado}`,
+                })
               }),
           otherwise: (schema) => schema.optional().nullable(),
         }),
@@ -696,25 +779,126 @@ const [glosa, glosaAttrs] = defineField('glosa')
 const esTraslado = computed(() => esTipoTraslado(idTipoMovimiento.value))
 const esAjuste = computed(() => esTipoAjuste(idTipoMovimiento.value))
 
-const hintSentidoAjuste = computed(() =>
-  sentidoAjuste.value === 'MENOS'
-    ? 'Efecto: disminuye el saldo actual en el almacén.'
-    : 'Efecto: aumenta el saldo actual en el almacén.',
-)
-
-const hintCantidadAjuste = computed(() => {
-  const unidadHint = unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)
-    ? 'UNID / piezas: solo números enteros. '
-    : ''
-  if (!esAjuste.value) return unidadHint || undefined
-  const efecto =
-    sentidoAjuste.value === 'MENOS'
-      ? 'Se restará esta cantidad del saldo.'
-      : 'Se sumará esta cantidad al saldo.'
-  return `${unidadHint}${efecto}`.trim()
+const tieneAlmacenOrigen = computed(() => {
+  const id = Number(idAlmacen.value)
+  return Number.isFinite(id) && id > 0
 })
 
-const hintGlosa = computed(() => {
+const stockAlmacenFilters = computed<StockListFilters>(() => ({
+  idAlmacen: tieneAlmacenOrigen.value ? Number(idAlmacen.value) : undefined,
+  pagina: 1,
+  limite: 500,
+  soloActivos: 1,
+}))
+
+const stockAlmacenQuery = useStockQuery(
+  stockAlmacenFilters,
+  () =>
+    props.mode === 'create' &&
+    tieneAlmacenOrigen.value &&
+    (esTraslado.value || esAjuste.value),
+)
+
+/** stock disponible en el almacén seleccionado por id_producto */
+const stockPorProducto = computed(() => {
+  const map = new Map<number, { stock: number; unidad: string | null; esGas: boolean }>()
+  for (const row of stockAlmacenQuery.data.value?.data ?? []) {
+    map.set(Number(row.id_producto), {
+      stock: Number(row.stock) || 0,
+      unidad: row.nombre_unidad_medida ?? null,
+      esGas: Boolean(row.es_gas),
+    })
+  }
+  return map
+})
+
+function stockDisponibleEnAlmacen(
+  idProductoValue: string | number | null | undefined,
+): number | null {
+  if (!tieneAlmacenOrigen.value) return null
+  const id = Number(idProductoValue)
+  if (!Number.isFinite(id) || id <= 0) return null
+  const info = stockPorProducto.value.get(id)
+  if (!info) {
+    if (stockAlmacenQuery.isFetched.value) return 0
+    return null
+  }
+  return info.stock
+}
+
+function maxCantidadTrasladoLinea(lin: TrasladoLineaForm): number | undefined {
+  const stock = stockDisponibleEnAlmacen(lin.idProducto)
+  if (stock == null) return undefined
+  return stock > 0 ? stock : 0
+}
+
+function helpCantidadTrasladoLinea(lin: TrasladoLineaForm): string | undefined {
+  if (!tieneAlmacenOrigen.value) {
+    return 'Selecciona el almacén origen. La cantidad no puede superar el stock disponible.'
+  }
+  const id = Number(lin.idProducto)
+  if (!Number.isFinite(id) || id <= 0) {
+    return 'Selecciona un producto. La cantidad no puede superar el stock en origen.'
+  }
+  if (stockAlmacenQuery.isFetching.value && !stockAlmacenQuery.data.value) {
+    return 'Consultando stock del almacén origen...'
+  }
+  const info = stockPorProducto.value.get(id)
+  const stock = stockDisponibleEnAlmacen(id)
+  if (stock == null) return undefined
+  const formateado = formatCantidadPorUnidad(
+    stock,
+    info?.unidad ?? null,
+    info?.esGas ?? false,
+  )
+  if (stock <= 0) return `Sin stock en origen (${formateado}). No se puede trasladar.`
+  return `Disponible en origen: ${formateado}. No puedes superar esa cantidad.`
+}
+
+const stockDisponibleAjuste = computed(() => stockDisponibleEnAlmacen(idProducto.value))
+
+const maxCantidadAjuste = computed(() => {
+  if (!esAjuste.value || sentidoAjuste.value !== 'MENOS') return undefined
+  const stock = stockDisponibleAjuste.value
+  if (stock == null) return undefined
+  return stock > 0 ? stock : 0
+})
+
+const helpSentidoAjuste = computed(() =>
+  sentidoAjuste.value === 'MENOS'
+    ? 'Disminuye el saldo actual. No puede dejar el stock en negativo.'
+    : 'Aumenta el saldo actual del producto en el almacén.',
+)
+
+const helpCantidadAjuste = computed(() => {
+  const partes: string[] = []
+  if (unidadRequiereCantidadEntera(nombreUnidadMedida.value, esGasProducto.value)) {
+    partes.push('UNID / piezas: solo números enteros.')
+  }
+  if (esAjuste.value && sentidoAjuste.value === 'MENOS') {
+    const stock = stockDisponibleAjuste.value
+    if (stock != null) {
+      const info = stockPorProducto.value.get(Number(idProducto.value))
+      const formateado = formatCantidadPorUnidad(
+        stock,
+        info?.unidad ?? nombreUnidadMedida.value,
+        info?.esGas ?? esGasProducto.value,
+      )
+      partes.push(
+        stock <= 0
+          ? `Sin stock en el almacén (${formateado}).`
+          : `Disponible: ${formateado}. No puedes restar más.`,
+      )
+    } else {
+      partes.push('Se restará del saldo actual; no puede quedar negativo.')
+    }
+  } else if (esAjuste.value) {
+    partes.push('Se sumará esta cantidad al saldo actual.')
+  }
+  return partes.length ? partes.join(' ') : undefined
+})
+
+const helpGlosa = computed(() => {
   if (props.mode !== 'create') return undefined
   if (esAjuste.value) {
     return sentidoAjuste.value === 'MENOS'
@@ -762,6 +946,42 @@ watch(esTraslado, (traslado, wasTraslado) => {
     resetTrasladoLineas(props.initialIdProducto)
   }
 })
+
+watch(
+  () => [idAlmacen.value, stockPorProducto.value] as const,
+  () => {
+    if (props.mode !== 'create' || !esTraslado.value) return
+    for (const lin of trasladoLineas) {
+      const stock = stockDisponibleEnAlmacen(lin.idProducto)
+      if (stock == null || lin.cantidad == null) continue
+      if (Number(lin.cantidad) > stock) {
+        lin.cantidad = stock > 0 ? stock : undefined
+        lin.errorCantidad =
+          stock <= 0 ? 'Sin stock en el almacén origen' : undefined
+      }
+    }
+  },
+)
+
+watch(
+  () =>
+    [
+      cantidad.value,
+      sentidoAjuste.value,
+      stockDisponibleAjuste.value,
+      esAjuste.value,
+    ] as const,
+  () => {
+    if (props.mode !== 'create' || !esAjuste.value) return
+    if (sentidoAjuste.value !== 'MENOS') return
+    const stock = stockDisponibleAjuste.value
+    const cant = Number(cantidad.value)
+    if (stock == null || !Number.isFinite(cant)) return
+    if (cant > stock) {
+      cantidad.value = stock > 0 ? stock : undefined
+    }
+  },
+)
 
 const syncFormValues = () => {
   const data = movimiento.value
