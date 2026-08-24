@@ -96,3 +96,35 @@ export function useDeleteActividadMutation() {
     },
   })
 }
+
+export function useAsignarResponsableActividadMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idUsuarioAuditoria,
+      idUsuarioResponsable,
+      idChoferResponsable,
+    }: {
+      id: number
+      idUsuarioAuditoria: number
+      idUsuarioResponsable?: number | null
+      idChoferResponsable?: number | null
+    }) =>
+      actividadesService.asignarResponsable(id, {
+        idUsuarioAuditoria,
+        idUsuarioResponsable,
+        idChoferResponsable,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
+      toastSuccess('Responsable actualizado')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo actualizar el responsable de la actividad')
+    },
+  })
+}

@@ -32,6 +32,9 @@ export interface Actividad {
   id_comprobante?: number | null
   serie_comprobante?: string | null
   numero_comprobante?: string | null
+  id_guia_remision?: number | null
+  serie_guia_remision?: string | null
+  numero_guia_remision?: string | null
   id_estado_actividad: number
   nombre_estado_actividad?: string | null
   observaciones?: string | null
@@ -56,6 +59,7 @@ export interface ActividadListFilters {
   idEstado?: number
   idTipo?: number
   idPrioridad?: number
+  sinResponsable?: boolean
 }
 
 export interface ActividadItemPayload {
@@ -81,6 +85,7 @@ export interface ActividadPayload {
   idUsuarioResponsable?: number
   idChoferResponsable?: number
   idComprobante?: number
+  idGuiaRemision?: number
   items?: ActividadItemPayload[]
   idEstadoActividad: number
   observaciones?: string
@@ -96,11 +101,16 @@ export interface DeleteActividadResponse {
 
 export type ActividadFormMode = 'create' | 'edit'
 
-/** Prefill al crear un reparto desde una venta. */
+/** Prefill al crear un reparto desde una venta o guía de remisión. */
 export interface ActividadRepartoPrefill {
   titulo?: string | null
   clienteId?: number | null
   clienteLabel?: string | null
   idComprobante?: number | null
+  idGuiaRemision?: number | null
+  guiaLabel?: string | null
+  choferId?: number | null
+  choferLabel?: string | null
+  descripcion?: string | null
   items?: ActividadItem[]
 }

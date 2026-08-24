@@ -73,12 +73,6 @@ function descripcionEsCortaYClara(desc: string): boolean {
   return true
 }
 
-/**
- * Etiqueta legible para valores de gen_lista_opciones.
- * Prefiere descripcion corta (Vacío, Mostrador…). Si es un código SUNAT
- * numérico, lo deja entre paréntesis. Si la descripcion es un párrafo,
- * humaniza el código (EN_ALMACEN → En almacén).
- */
 export function formatListaOpcionLabel(
   nombre?: string | null | unknown,
   descripcion?: string | null | unknown,

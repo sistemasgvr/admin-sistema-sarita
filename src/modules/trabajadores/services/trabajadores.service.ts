@@ -35,4 +35,11 @@ export const trabajadoresService = {
       data: { idUsuarioAuditoria },
     })
   },
+
+  asignarUsuario(id: number, idUsuario: number, idUsuarioAuditoria: number) {
+    return apiPatch<Trabajador>(`/trabajadores/${id}`, {
+      idUsuarioAuditoria,
+      idUsuarioVinculo: idUsuario,
+    })
+  },
 }

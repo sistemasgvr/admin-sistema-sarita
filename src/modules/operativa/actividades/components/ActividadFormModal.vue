@@ -60,8 +60,8 @@
           v-model="idChoferResponsable"
           label="Chofer / repartidor"
           placeholder="Busca chofer de flota propia..."
-          required
-          :clearable="false"
+          :clearable="true"
+          empty-option-label="Sin asignar / Sin repartidor"
           :model-label="choferLabelActual"
           v-bind="idChoferResponsableAttrs"
           :disabled="isSubmitting"
@@ -160,11 +160,17 @@
         :error="errors.fechaHoraCierre"
       />
 
-      <div v-if="itemsPreview.length || defaultIdComprobante" class="rounded-xl border border-gray-200 p-3 dark:border-gray-800">
+      <div
+        v-if="itemsPreview.length || defaultIdComprobante || defaultIdGuiaRemision"
+        class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
+      >
         <p class="mb-2 text-sm font-medium text-gray-800 dark:text-white/90">
           Ítems del reparto
           <span v-if="comprobanteLabel" class="ml-1 text-xs font-normal text-gray-500">
             ({{ comprobanteLabel }})
+          </span>
+          <span v-if="guiaRemisionLabel" class="ml-1 text-xs font-normal text-gray-500">
+            (GRE {{ guiaRemisionLabel }})
           </span>
         </p>
         <p v-if="!itemsPreview.length" class="text-xs text-gray-500 dark:text-gray-400">
@@ -274,7 +280,12 @@ interface ActividadFormModalProps {
   defaultTitulo?: string | null
   defaultClienteId?: number | null
   defaultClienteLabel?: string | null
+  defaultChoferId?: number | null
+  defaultChoferLabel?: string | null
   defaultIdComprobante?: number | null
+  defaultIdGuiaRemision?: number | null
+  defaultGuiaRemisionLabel?: string | null
+  defaultDescripcion?: string | null
   defaultItems?: ActividadItem[]
 }
 
@@ -414,7 +425,7 @@ const usuarioLabelActual = computed(
   () => actividadActual.value?.nombre_usuario_responsable ?? null,
 )
 const choferLabelActual = computed(
-  () => actividadActual.value?.nombre_chofer_responsable ?? null,
+  () => actividadActual.value?.nombre_chofer_responsable ?? props.defaultChoferLabel ?? null,
 )
 
 const comprobanteLabel = computed(() => {
@@ -422,6 +433,13 @@ const comprobanteLabel = computed(() => {
   const numero = actividadActual.value?.numero_comprobante
   if (serie && numero) return `${serie}-${numero}`
   return props.defaultIdComprobante ? `Comprobante #${props.defaultIdComprobante}` : null
+})
+
+const guiaRemisionLabel = computed(() => {
+  const serie = actividadActual.value?.serie_guia_remision
+  const numero = actividadActual.value?.numero_guia_remision
+  if (serie && numero) return `${serie}-${numero}`
+  return props.defaultIdGuiaRemision ? `GRE #${props.defaultIdGuiaRemision}` : null
 })
 
 const itemsPreview = computed<ActividadItem[]>(() => {
@@ -469,18 +487,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateFiel
               return value != null && Number(value) > 0
             },
           ),
-        idChoferResponsable: yup
-          .number()
-          .nullable()
-          .test(
-            'chofer-si-reparto',
-            'El chofer / repartidor es obligatorio',
-            function (value) {
-              const idTipo = (this.parent as { idTipoActividad?: number }).idTipoActividad
-              if (!esRepartoSeleccionado(idTipo)) return true
-              return value != null && Number(value) > 0
-            },
-          ),
+        idChoferResponsable: yup.number().nullable(),
         idTipoActividad: yup
           .number()
           .required('El tipo de actividad es obligatorio')
@@ -577,10 +584,10 @@ const syncFormValues = () => {
   resetForm({
     values: {
       titulo: a?.titulo ?? props.defaultTitulo ?? '',
-      descripcion: a?.descripcion ?? '',
+      descripcion: a?.descripcion ?? props.defaultDescripcion ?? '',
       idCliente: a?.id_cliente ?? props.defaultClienteId ?? undefined,
       idUsuarioResponsable: a?.id_usuario_responsable ?? undefined,
-      idChoferResponsable: a?.id_chofer_responsable ?? undefined,
+      idChoferResponsable: a?.id_chofer_responsable ?? props.defaultChoferId ?? undefined,
       idTipoActividad:
         a?.id_tipo_actividad ??
         (props.lockTipoReparto ? tipoRepartoId.value : undefined),
@@ -630,8 +637,9 @@ const onSubmit = handleSubmit(async (values) => {
         : undefined,
       idChoferResponsable: values.idChoferResponsable
         ? Number(values.idChoferResponsable)
-        : undefined,
+        : null,
       idComprobante: defaultIdComprobante.value ?? undefined,
+      idGuiaRemision: props.defaultIdGuiaRemision ?? undefined,
       items: itemsFromPreview,
       idTipoActividad: Number(values.idTipoActividad),
       idPrioridad: Number(values.idPrioridad),

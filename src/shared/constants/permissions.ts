@@ -317,6 +317,12 @@ export const PermisoBanderas = {
   DOCUMENTOS_VENCIMIENTO_CREAR: 'documentos_vencimiento.crear',
   DOCUMENTOS_VENCIMIENTO_EDITAR: 'documentos_vencimiento.editar',
   DOCUMENTOS_VENCIMIENTO_ELIMINAR: 'documentos_vencimiento.eliminar',
+
+  ACTIVO_LISTAR: 'activo.listar',
+  ACTIVO_VER: 'activo.ver',
+  ACTIVO_CREAR: 'activo.crear',
+  ACTIVO_EDITAR: 'activo.editar',
+  ACTIVO_ELIMINAR: 'activo.eliminar',
 } as const
 
 export type PermissionBandera = (typeof PermisoBanderas)[keyof typeof PermisoBanderas]

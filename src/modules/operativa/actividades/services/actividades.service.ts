@@ -48,4 +48,15 @@ export const actividadesService = {
       idUsuarioAuditoria,
     })
   },
+
+  asignarResponsable(
+    id: number,
+    payload: {
+      idUsuarioAuditoria: number
+      idUsuarioResponsable?: number | null
+      idChoferResponsable?: number | null
+    },
+  ): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}/responsable`, payload)
+  },
 }

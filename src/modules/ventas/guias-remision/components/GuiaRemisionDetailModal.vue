@@ -137,6 +137,15 @@
         Cerrar
       </button>
       <button
+        v-if="guia && canGenerarReparto"
+        type="button"
+        class="flex w-full justify-center rounded-lg border border-brand-500 bg-white px-4 py-2.5 text-sm font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-70 dark:border-brand-500 dark:bg-gray-800 dark:text-brand-400 dark:hover:bg-white/5 sm:w-auto"
+        :disabled="downloadingPdf"
+        @click="emit('generar-reparto', guia)"
+      >
+        Generar reparto
+      </button>
+      <button
         v-if="guia"
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70 sm:w-auto"
@@ -158,13 +167,25 @@ import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/g
 import { AppModal, ListaOpcionBadge } from '@/shared/components'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import type { GuiaRemision } from '@/modules/ventas/guias-remision/interfaces/guia-remision.interface'
 
 const props = defineProps<{
   guiaId: number | null
 }>()
 
+const emit = defineEmits<{
+  'generar-reparto': [guia: GuiaRemision]
+}>()
+
 const open = defineModel<boolean>({ default: false })
 const downloadingPdf = ref(false)
+
+const authStore = useAuthStore()
+const canGenerarReparto = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
+)
 
 const idRef = computed(() => (open.value ? props.guiaId : null))
 const guiaQuery = useGuiaRemisionQuery(idRef)

@@ -1,6 +1,5 @@
 export type TableColumnAlign = 'left' | 'center' | 'right'
 
-/** Rol de la columna en la vista móvil (tarjetas). */
 export type TableColumnMobileRole = 'primary' | 'badge' | 'field' | 'hidden'
 
 export interface TableColumn<T = object> {
@@ -11,7 +10,6 @@ export interface TableColumn<T = object> {
   cellClass?: string
   formatter?: (value: unknown, row: T) => string
   hidden?: boolean
-  /** Vista móvil: primary (cabecera), badge (estado), field (grilla), hidden (ocultar). */
   mobile?: TableColumnMobileRole
 }
 

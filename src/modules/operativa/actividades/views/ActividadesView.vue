@@ -135,7 +135,7 @@
           <p v-else-if="row.nombre_usuario_responsable" class="truncate text-gray-800 dark:text-white/90">
             {{ row.nombre_usuario_responsable }}
           </p>
-          <span v-else class="text-gray-400">—</span>
+          <span v-else class="text-gray-400">Sin asignar</span>
         </template>
 
         <template #cell-prioridad="{ row }">
@@ -400,6 +400,16 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     disabled: prioridadQuery.isFetching.value,
     options: toSelectOptions(prioridadQuery.data.value),
   },
+  {
+    key: 'asignacion',
+    label: 'Asignación',
+    type: 'select',
+    placeholder: 'Todas',
+    options: [
+      { value: 'sin', label: 'Sin asignar' },
+      { value: 'con', label: 'Asignadas' },
+    ],
+  },
   { key: 'fechaDesde', label: 'Desde', type: 'date' },
   { key: 'fechaHasta', label: 'Hasta', type: 'date' },
 ])
@@ -453,6 +463,8 @@ function parseOptionalDate(value: unknown): string | undefined {
 
 function syncListFilters() {
   const active = dynamicFilters.value
+  const sinResponsable =
+    active.asignacion === 'sin' ? true : active.asignacion === 'con' ? false : undefined
   listFilters.value = {
     buscar: buscar.value.trim() || undefined,
     pagina: pagina.value,
@@ -460,6 +472,7 @@ function syncListFilters() {
     idEstado: parseOptionalId(active.idEstado),
     idTipo: parseOptionalId(active.idTipo),
     idPrioridad: parseOptionalId(active.idPrioridad),
+    sinResponsable,
     fechaDesde: parseOptionalDate(active.fechaDesde),
     fechaHasta: parseOptionalDate(active.fechaHasta),
   }
@@ -472,6 +485,12 @@ function syncCalendarSharedFilters() {
     idEstado: parseOptionalId(dynamicFilters.value.idEstado),
     idTipo: parseOptionalId(dynamicFilters.value.idTipo),
     idPrioridad: parseOptionalId(dynamicFilters.value.idPrioridad),
+    sinResponsable:
+      dynamicFilters.value.asignacion === 'sin'
+        ? true
+        : dynamicFilters.value.asignacion === 'con'
+          ? false
+          : undefined,
   }
 }
 
@@ -594,6 +613,12 @@ const onCalendarRangeChange = (range: { fechaDesde: string; fechaHasta: string }
     idEstado: parseOptionalId(dynamicFilters.value.idEstado),
     idTipo: parseOptionalId(dynamicFilters.value.idTipo),
     idPrioridad: parseOptionalId(dynamicFilters.value.idPrioridad),
+    sinResponsable:
+      dynamicFilters.value.asignacion === 'sin'
+        ? true
+        : dynamicFilters.value.asignacion === 'con'
+          ? false
+          : undefined,
     fechaDesde: range.fechaDesde,
     fechaHasta: range.fechaHasta,
   }
@@ -709,13 +734,6 @@ const marcarRealizada = async (actividad: Actividad) => {
 
 const cancelarActividad = async (actividad: Actividad) => {
   if (!currentUserId.value) return
-  if (
-    !window.confirm(
-      '¿Cancelar esta actividad? Si viene de una venta, el comprobante quedará disponible para otro reparto.',
-    )
-  ) {
-    return
-  }
   try {
     await cancelarMutation.mutateAsync({
       id: actividad.id,

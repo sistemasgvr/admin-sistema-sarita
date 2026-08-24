@@ -3,7 +3,7 @@
     v-model="open"
     :title="mode === 'create' ? 'Nuevo trabajador' : 'Editar trabajador'"
     subtitle="Registra los datos del trabajador en el padrón de personal (RR.HH.)."
-    size="xl"
+    size="lg"
     @close="handleClose"
   >
     <form id="trabajador-form" class="space-y-5" autocomplete="off" @submit="onSubmit">
@@ -11,6 +11,27 @@
       <section class="space-y-3">
         <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Datos personales</h4>
         <div class="grid gap-3 sm:grid-cols-3">
+            <AppSelect
+            v-model="idTipoDocumento"
+            label="Tipo de documento"
+            :placeholder="tipoDocumentoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            required
+            v-bind="idTipoDocumentoAttrs"
+            :disabled="isSubmitting || tipoDocumentoQuery.isLoading.value"
+            :error="errors.idTipoDocumento"
+            :options="tipoDocumentoOptions"
+          />
+          <ConsultaDocumentoInput
+            v-model="numeroDocumento"
+            :tipo-documento="tipoDocumentoSeleccionado?.nombre"
+            label="Número de documento"
+            required
+            :input-attrs="numeroDocumentoAttrs"
+            :disabled="isSubmitting"
+            :error="errors.numeroDocumento"
+            @dni-encontrado="aplicarDatosDni"
+            @ruc-encontrado="aplicarDatosRuc"
+          />
           <AppInput
             v-model="nombres"
             label="Nombres"
@@ -20,6 +41,9 @@
             :disabled="isSubmitting"
             :error="errors.nombres"
           />
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-3">
           <AppInput
             v-model="apellidoPaterno"
             label="Apellido paterno"
@@ -36,28 +60,6 @@
             :disabled="isSubmitting"
             :error="errors.apellidoMaterno"
           />
-        </div>
-
-        <div class="grid gap-3 sm:grid-cols-3">
-          <AppSelect
-            v-model="idTipoDocumento"
-            label="Tipo de documento"
-            :placeholder="tipoDocumentoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            required
-            v-bind="idTipoDocumentoAttrs"
-            :disabled="isSubmitting || tipoDocumentoQuery.isLoading.value"
-            :error="errors.idTipoDocumento"
-            :options="tipoDocumentoOptions"
-          />
-          <AppInput
-            v-model="numeroDocumento"
-            label="Número de documento"
-            placeholder="45678912"
-            required
-            v-bind="numeroDocumentoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroDocumento"
-          />
           <AppDatePicker
             v-model="fechaNacimiento"
             label="Fecha de nacimiento"
@@ -69,6 +71,18 @@
         <p v-if="edadCalculada !== null" class="text-xs text-gray-500 dark:text-gray-400">
           Edad actual: <span class="font-medium text-gray-700 dark:text-gray-200">{{ edadCalculada }} años</span>
         </p>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <AppInput
+            v-model="correo"
+            type="email"
+            label="Correo electrónico"
+            placeholder="nombre@empresa.com"
+            v-bind="correoAttrs"
+            :disabled="isSubmitting"
+            :error="errors.correo"
+          />
+        </div>
       </section>
 
       <!-- Dirección -->
@@ -148,24 +162,36 @@
       <section class="space-y-3">
         <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Datos laborales</h4>
         <div class="grid gap-3 sm:grid-cols-2">
-          <AppSelect
-            v-model="idArea"
-            label="Área"
-            :placeholder="areaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            v-bind="idAreaAttrs"
-            :disabled="isSubmitting || areaQuery.isLoading.value"
-            :error="errors.idArea"
-            :options="areaOptions"
-          />
-          <AppSelect
-            v-model="idCargo"
-            label="Cargo"
-            :placeholder="cargoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            v-bind="idCargoAttrs"
-            :disabled="isSubmitting || cargoQuery.isLoading.value"
-            :error="errors.idCargo"
-            :options="cargoOptions"
-          />
+          <AppSelectWithCreate
+            :can-create="true"
+            create-title="Agregar área"
+            @create="areaModalOpen = true"
+          >
+            <AppSelect
+              v-model="idArea"
+              label="Área"
+              :placeholder="areaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              v-bind="idAreaAttrs"
+              :disabled="isSubmitting || areaQuery.isLoading.value"
+              :error="errors.idArea"
+              :options="areaOptions"
+            />
+          </AppSelectWithCreate>
+          <AppSelectWithCreate
+            :can-create="true"
+            create-title="Agregar cargo"
+            @create="cargoModalOpen = true"
+          >
+            <AppSelect
+              v-model="idCargo"
+              label="Cargo"
+              :placeholder="cargoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              v-bind="idCargoAttrs"
+              :disabled="isSubmitting || cargoQuery.isLoading.value"
+              :error="errors.idCargo"
+              :options="cargoOptions"
+            />
+          </AppSelectWithCreate>
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <AppDatePicker
@@ -183,29 +209,27 @@
         </div>
       </section>
 
-      <!-- Vínculos opcionales -->
+      <!-- Acceso al sistema -->
       <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Vínculos (opcional)</h4>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <SearchableSelect
-            v-model="idUsuarioVinculo"
-            label="Usuario de acceso"
-            placeholder="Buscar usuario..."
-            empty-option-label="Sin usuario asignado"
-            :model-label="usuarioLabelActual"
-            :search-fn="searchUsuarios"
-            :disabled="isSubmitting"
-          />
-          <SearchableSelect
-            v-model="idChofer"
-            label="Chofer"
-            placeholder="Buscar chofer..."
-            empty-option-label="Sin chofer asignado"
-            :model-label="choferLabelActual"
-            :search-fn="searchChoferes"
-            :disabled="isSubmitting"
-          />
-        </div>
+        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Acceso al sistema</h4>
+        <AppCheckbox
+          v-model="crearUsuario"
+          label="Crear usuario para este trabajador"
+          :disabled="isSubmitting"
+        />
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Se generará un usuario con el correo y el número de documento como contraseña inicial.
+        </p>
+        <!-- La asignación de chofer se mantiene opcional en el backend, pero se comenta en el formulario:
+        <SearchableSelect
+          v-model="idChofer"
+          label="Chofer"
+          placeholder="Buscar chofer..."
+          empty-option-label="Sin chofer asignado"
+          :model-label="choferLabelActual"
+          :search-fn="searchChoferes"
+          :disabled="isSubmitting"
+        /> -->
       </section>
     </form>
 
@@ -227,11 +251,62 @@
         {{ isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear trabajador' : 'Guardar cambios' }}
       </button>
     </template>
+
+    <ListaOpcionFormModal
+      :id-lista="ListaIds.AREAS_TRABAJADOR"
+      v-model="areaModalOpen"
+      title="Nueva área"
+      nombre-placeholder="Ej. Operaciones, Administración"
+      @saved="onAreaCreada"
+    />
+
+    <ListaOpcionFormModal
+      :id-lista="ListaIds.CARGOS_TRABAJADOR"
+      v-model="cargoModalOpen"
+      title="Nuevo cargo"
+      nombre-placeholder="Ej. Supervisor, Técnico"
+      @saved="onCargoCreada"
+    />
+  </AppModal>
+
+  <AppModal
+    v-model="credencialesModalOpen"
+    title="Usuario de acceso creado"
+    subtitle="Comparta estas credenciales con el trabajador de forma segura."
+    size="md"
+    :dismissible="true"
+  >
+    <div class="space-y-4">
+      <dl class="space-y-2 text-sm">
+        <div class="flex gap-2">
+          <dt class="w-28 shrink-0 font-medium text-gray-600 dark:text-gray-300">Correo:</dt>
+          <dd class="font-mono text-gray-900 dark:text-gray-100">{{ credencialesInfo?.correo }}</dd>
+        </div>
+        <div class="flex gap-2">
+          <dt class="w-28 shrink-0 font-medium text-gray-600 dark:text-gray-300">Contraseña:</dt>
+          <dd class="font-mono text-gray-900 dark:text-gray-100">{{ credencialesInfo?.numeroDocumento }}</dd>
+        </div>
+      </dl>
+
+      <div class="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+        <span class="mt-0.5">⚠</span>
+        <p>No olvide asignar permisos a este usuario desde el módulo de <strong>Usuarios / Roles</strong>.</p>
+      </div>
+
+      <div class="flex justify-end">
+        <RouterLink
+          to="/admin/usuarios"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+        >
+          Ir a Usuarios
+        </RouterLink>
+      </div>
+    </div>
   </AppModal>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -250,16 +325,18 @@ import {
 import { useTrabajadorDetailQuery } from '@/modules/trabajadores/composables/useTrabajadoresQuery'
 import type { Trabajador, TrabajadorFormMode } from '@/modules/trabajadores/interfaces/trabajador.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppDatePicker, AppInput, AppModal, AppSelect } from '@/shared/components'
-import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
+import { AppDatePicker, AppInput, AppModal, AppSelect, AppSelectWithCreate } from '@/shared/components'
+import AppCheckbox from '@/shared/components/form/AppCheckbox.vue'
 import MapaLeaflet from '@/shared/components/map/MapaLeaflet.vue'
+import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
+import ConsultaDocumentoInput from '@/modules/consultas/components/ConsultaDocumentoInput.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { RouterLink } from 'vue-router'
+import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
+import type { ConsultaDniData, ConsultaRucData } from '@/modules/consultas/interfaces/consulta.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
-import { usuariosService } from '@/modules/usuarios/services/usuarios.service'
-import { choferesService } from '@/modules/choferes/services/choferes.service'
 import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
-import type { Chofer } from '@/modules/choferes/interfaces/chofer.interface'
 
 interface TrabajadorFormModalProps {
   mode: TrabajadorFormMode
@@ -307,6 +384,15 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       fechaCese: optionalString(),
       idUsuarioVinculo: yup.number().optional().nullable(),
       idChofer: yup.number().optional().nullable(),
+      correo: yup
+        .string()
+        .email('Ingresa un correo válido')
+        .nullable()
+        .when('crearUsuario', {
+          is: true,
+          then: (s) => s.required('El correo es obligatorio para crear el usuario'),
+        }),
+      crearUsuario: yup.boolean().optional(),
     }),
   ),
   initialValues: {
@@ -330,6 +416,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     fechaCese: '',
     idUsuarioVinculo: undefined as number | undefined,
     idChofer: undefined as number | undefined,
+    correo: '',
+    crearUsuario: false,
   },
 })
 
@@ -353,15 +441,44 @@ const [fechaInicio] = defineField('fechaInicio')
 const [fechaCese] = defineField('fechaCese')
 const [idUsuarioVinculo] = defineField('idUsuarioVinculo')
 const [idChofer] = defineField('idChofer')
+const [correo, correoAttrs] = defineField('correo')
+const [crearUsuario] = defineField('crearUsuario')
 
 const tipoDocumentoQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_DOCUMENTO))
 const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
+
+const tipoDocumentoSeleccionado = computed(() => {
+  const opciones = tipoDocumentoQuery.data.value ?? []
+  return opciones.find((opcion) => opcion.id === Number(idTipoDocumento.value))
+})
+
+const aplicarDatosDni = (data: ConsultaDniData) => {
+  if (data.dni) numeroDocumento.value = data.dni
+  if (data.nombres) nombres.value = data.nombres
+  if (data.apellidoPaterno) apellidoPaterno.value = data.apellidoPaterno
+  if (data.apellidoMaterno) apellidoMaterno.value = data.apellidoMaterno
+}
+
+const aplicarDatosRuc = (data: ConsultaRucData) => {
+  if (data.ruc) numeroDocumento.value = data.ruc
+  if (data.razonSocial) nombres.value = data.razonSocial
+}
 
 const areaQuery = useListaOpcionesQuery(computed(() => ListaIds.AREAS_TRABAJADOR))
 const areaOptions = computed(() => toSelectOptions(areaQuery.data.value))
 
 const cargoQuery = useListaOpcionesQuery(computed(() => ListaIds.CARGOS_TRABAJADOR))
 const cargoOptions = computed(() => toSelectOptions(cargoQuery.data.value))
+
+const areaModalOpen = ref(false)
+const onAreaCreada = (opcion: ListaOpcion) => {
+  idArea.value = opcion.id
+}
+
+const cargoModalOpen = ref(false)
+const onCargoCreada = (opcion: ListaOpcion) => {
+  idCargo.value = opcion.id
+}
 
 const paisesQuery = usePaisesQuery()
 const paisOptions = computed<SelectOption[]>(
@@ -389,22 +506,6 @@ const distritosQuery = useDistritosQuery(idProvinciaComputed)
 const distritoOptions = computed<SelectOption[]>(
   () => distritosQuery.data.value?.map((d) => ({ value: d.id, label: d.nombre })) ?? [],
 )
-
-const getChoferNombre = (chofer: Chofer) =>
-  [chofer.nombres, chofer.apellido_paterno, chofer.apellido_materno].filter(Boolean).join(' ').trim()
-
-const searchUsuarios = async (query: string): Promise<SelectOption[]> => {
-  const response = await usuariosService.listar({ buscar: query || undefined, pagina: 1, limite: 20 })
-  return response.data.map((u) => ({ value: u.id, label: u.nombre ?? u.correo ?? `Usuario ${u.id}` }))
-}
-
-const searchChoferes = async (query: string): Promise<SelectOption[]> => {
-  const response = await choferesService.listar({ buscar: query || undefined, pagina: 1, limite: 20, isActivos: 1 })
-  return response.data.map((c) => ({ value: c.id, label: getChoferNombre(c) || `Chofer ${c.id}` }))
-}
-
-const usuarioLabelActual = computed(() => trabajadorActual.value?.nombre_usuario_vinculo ?? null)
-const choferLabelActual = computed(() => trabajadorActual.value?.nombre_chofer ?? null)
 
 const edadCalculada = computed<number | null>(() => {
   const raw = fechaNacimiento.value
@@ -460,6 +561,8 @@ const currentValues = () => ({
   fechaCese: fechaCese.value,
   idUsuarioVinculo: idUsuarioVinculo.value,
   idChofer: idChofer.value,
+  correo: correo.value,
+  crearUsuario: crearUsuario.value,
 })
 
 const syncFormValues = () => {
@@ -486,6 +589,8 @@ const syncFormValues = () => {
       fechaCese: t?.fecha_cese ?? '',
       idUsuarioVinculo: t?.id_usuario ?? undefined,
       idChofer: t?.id_chofer ?? undefined,
+      correo: t?.correo ?? '',
+      crearUsuario: false,
     },
   })
 }
@@ -521,6 +626,8 @@ const onSubmit = handleSubmit(async (values) => {
       fechaCese: values.fechaCese || undefined,
       idUsuarioVinculo: toNum(values.idUsuarioVinculo),
       idChofer: toNum(values.idChofer),
+      correo: values.correo || undefined,
+      crearUsuario: values.crearUsuario || false,
     }
 
     let guardado: Trabajador | undefined
@@ -534,10 +641,18 @@ const onSubmit = handleSubmit(async (values) => {
 
     emit('saved', guardado)
     open.value = false
+
+    if (values.crearUsuario && values.correo) {
+      credencialesInfo.value = { correo: values.correo, numeroDocumento: values.numeroDocumento }
+      credencialesModalOpen.value = true
+    }
   } catch {
     // toast en mutation
   }
 })
+
+const credencialesModalOpen = ref(false)
+const credencialesInfo = ref<{ correo: string; numeroDocumento: string } | null>(null)
 
 watch(
   () => open.value,

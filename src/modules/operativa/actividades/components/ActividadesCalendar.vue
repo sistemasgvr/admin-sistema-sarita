@@ -87,6 +87,10 @@ import type {
 import type { Actividad } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import {
+  esEnCurso,
+  esSinAsignar,
+} from '@/modules/operativa/actividades/utils/actividadEstado'
 
 interface ActividadesCalendarProps {
   actividades: Actividad[]
@@ -200,6 +204,11 @@ const events = computed<EventInput[]>(() =>
     const fecha = actividad.fecha_programada.slice(0, 10)
     const todoElDia = esTodoElDia(actividad)
 
+    const classNames = [
+      esSinAsignar(actividad) ? 'actividad-sin-asignar' : '',
+      esEnCurso(actividad) ? 'actividad-en-curso' : '',
+    ].filter(Boolean)
+
     if (todoElDia) {
       return {
         id: String(actividad.id),
@@ -209,6 +218,7 @@ const events = computed<EventInput[]>(() =>
         backgroundColor: bg,
         borderColor: border,
         textColor: '#fff',
+        classNames,
         extendedProps: { actividad },
       }
     }
@@ -232,6 +242,7 @@ const events = computed<EventInput[]>(() =>
       backgroundColor: bg,
       borderColor: border,
       textColor: '#fff',
+      classNames,
       extendedProps: { actividad },
     }
   }),
@@ -254,7 +265,6 @@ const renderEventContent = (arg: EventContentArg) => {
     : ''
   const isTimeGrid = arg.view.type.startsWith('timeGrid')
 
-  // Semana: layout en columna (evita “dos cajas” ilegibles cuando hay solapes).
   if (isTimeGrid) {
     return {
       html: `
@@ -313,7 +323,6 @@ const calendarOptions = computed(() => ({
   plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
   initialView: isMobile.value ? 'listWeek' : 'dayGridMonth',
   locale: esLocale,
-  // height se ajusta por API al cambiar de vista (evita re-montar options y duplicar eventos)
   height: 'auto' as const,
   firstDay: 1,
   headerToolbar: false as const,
@@ -339,7 +348,6 @@ const calendarOptions = computed(() => ({
     minute: '2-digit' as const,
     hour12: false,
   },
-  /** Horario operativo: evita vacíos de madrugada/noche en vista semana. */
   slotMinTime: '06:00:00',
   slotMaxTime: '22:00:00',
   scrollTime: '07:00:00',
@@ -746,6 +754,25 @@ defineExpose({ calendarRef })
     display: none;
   }
 }
+
+/* Actividad sin asignar: disponible para tomar (borde punteado, fondo claro) */
+.actividades-calendar :deep(.fc-event.actividad-sin-asignar) {
+  background-color: #f1f5f9 !important;
+  border: 2px dashed #94a3b8 !important;
+  color: #334155 !important;
+}
+
+.actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-time),
+.actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-title) {
+  color: #334155 !important;
+}
+
+/* Actividad en curso: asignada y no cerrada (resalte verde) */
+.actividades-calendar :deep(.fc-event.actividad-en-curso) {
+  box-shadow:
+    0 0 0 2px rgba(34, 197, 94, 0.9),
+    0 1px 3px rgb(0 0 0 / 0.12) !important;
+}
 </style>
 
 <!--
@@ -782,5 +809,16 @@ html.dark .actividades-calendar .fc-theme-standard th {
 
 html.dark .actividades-calendar .fc-col-header-cell-cushion {
   color: #9ca3af !important;
+}
+
+html.dark .actividades-calendar :deep(.fc-event.actividad-sin-asignar) {
+  background-color: rgb(148 163 184 / 0.18) !important;
+  border: 2px dashed rgb(148 163 184 / 0.7) !important;
+  color: rgb(226 232 240 / 0.95) !important;
+}
+
+html.dark .actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-time),
+html.dark .actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-title) {
+  color: rgb(226 232 240 / 0.95) !important;
 }
 </style>

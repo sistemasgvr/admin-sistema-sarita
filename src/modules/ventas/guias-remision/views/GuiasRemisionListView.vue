@@ -80,7 +80,27 @@
       </template>
     </AppTable>
 
-    <GuiaRemisionDetailModal v-model="detailModalOpen" :guia-id="guiaToViewId" />
+    <GuiaRemisionDetailModal
+      v-model="detailModalOpen"
+      :guia-id="guiaToViewId"
+      @generar-reparto="openRepartoDesdeGuia"
+    />
+
+    <ActividadFormModal
+      v-model="repartoModalOpen"
+      mode="create"
+      lock-tipo-reparto
+      :default-fecha="repartoFechaHoy"
+      :default-titulo="repartoPrefill.titulo"
+      :default-cliente-id="repartoPrefill.clienteId"
+      :default-cliente-label="repartoPrefill.clienteLabel"
+      :default-chofer-id="repartoPrefill.choferId"
+      :default-chofer-label="repartoPrefill.choferLabel"
+      :default-id-guia-remision="repartoPrefill.idGuiaRemision"
+      :default-guia-remision-label="repartoPrefill.guiaLabel"
+      :default-descripcion="repartoPrefill.descripcion"
+      :default-items="repartoPrefill.items"
+    />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -137,9 +157,15 @@ import {
   useGuiasRemisionQuery,
 } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
 import type {
+  GuiaRemision,
   GuiaRemisionListFilters,
   GuiaRemisionListItem,
 } from '@/modules/ventas/guias-remision/interfaces/guia-remision.interface'
+import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
+import type {
+  ActividadItem,
+  ActividadRepartoPrefill,
+} from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { downloadBlob } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/guias-remision.service'
@@ -197,6 +223,19 @@ const guiaToViewId = ref<number | null>(null)
 const deleteModalOpen = ref(false)
 const guiaToDelete = ref<GuiaRemisionListItem | null>(null)
 const pdfBusyId = ref<number | null>(null)
+
+const repartoModalOpen = ref(false)
+const repartoPrefill = ref<ActividadRepartoPrefill>({})
+const repartoFechaHoy = computed(() => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+})
+const canGenerarReparto = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
+)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR))
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_VER))
@@ -368,6 +407,13 @@ function actionItemsForRow(row: GuiaRemisionListItem): ActionMenuItem[] {
       hidden: !canView.value,
     },
     {
+      key: 'reparto',
+      label: 'Generar reparto',
+      icon: ICONS.truck,
+      disabled: busy,
+      hidden: !canGenerarReparto.value,
+    },
+    {
       key: 'emit',
       label: 'Emitir SUNAT',
       icon: ICONS.plug,
@@ -400,6 +446,8 @@ function onActionSelect(key: string, row: GuiaRemisionListItem) {
       return
     case 'pdf':
       return descargarPdf(row)
+    case 'reparto':
+      return abrirReparto(row)
     case 'emit':
       return emitir(row)
     case 'status':
@@ -426,6 +474,91 @@ function openEdit(row: GuiaRemisionListItem) {
 function openDetail(row: GuiaRemisionListItem) {
   guiaToViewId.value = row.id
   detailModalOpen.value = true
+}
+
+function toRepartoItems(guia: GuiaRemision): ActividadItem[] {
+  return (guia.detalles ?? []).map((d) => ({
+    item: d.item,
+    id_producto: d.id_producto ?? undefined,
+    descripcion:
+      d.descripcion || d.glosa || d.nombre_producto || undefined,
+    cantidad: d.cantidad,
+    id_balon: d.id_balon ?? undefined,
+    codigo_balon: d.codigo_balon || undefined,
+  }))
+}
+
+function buildRepartoDescripcion(guia: GuiaRemision): string {
+  const lines: string[] = []
+  lines.push(`Reparto generado desde Guía de Remisión ${guia.serie}-${guia.numero}.`)
+  lines.push('')
+
+  if (guia.nombre_destinatario) {
+    lines.push(
+      `Destinatario: ${guia.nombre_destinatario}${guia.documento_destinatario ? ` (${guia.documento_destinatario})` : ''}`,
+    )
+  }
+  if (guia.direccion_llegada) {
+    const mapsQuery = encodeURIComponent(
+      [guia.direccion_llegada, guia.ubigeo_llegada].filter(Boolean).join(', '),
+    )
+    lines.push(`Dirección de entrega: ${guia.direccion_llegada} (${guia.ubigeo_llegada ?? '—'})`)
+    lines.push(`Ver en mapa: https://www.google.com/maps/search/?api=1&query=${mapsQuery}`)
+  }
+  if (guia.nombre_chofer) {
+    lines.push(
+      `Chofer: ${guia.nombre_chofer}${guia.documento_chofer ? ` (doc. ${guia.documento_chofer})` : ''}`,
+    )
+  }
+  lines.push(
+    `Bultos: ${guia.numero_bultos ?? '—'} · Peso: ${guia.peso_bruto ?? '—'} kg`,
+  )
+
+  const ventas = (guia.referencias ?? [])
+    .filter((r) => r.serie && r.numero)
+    .map((r) => `${r.serie}-${r.numero}`)
+  if (ventas.length) {
+    lines.push(`Venta(s) relacionada(s): ${ventas.join(', ')}`)
+  }
+  lines.push('')
+
+  const detalles = (guia.detalles ?? [])
+    .map((d) => {
+      const desc =
+        d.descripcion || d.glosa || d.nombre_producto || d.codigo_balon || 'Ítem'
+      return `- ${d.cantidad} x ${desc}`
+    })
+  if (detalles.length) {
+    lines.push('Detalles del reparto:')
+    lines.push(...detalles)
+  }
+
+  return lines.join('\n')
+}
+
+function openRepartoDesdeGuia(guia: GuiaRemision) {
+  detailModalOpen.value = false
+  repartoPrefill.value = {
+    titulo: `Reparto GRE ${guia.serie}-${guia.numero}`,
+    clienteId: guia.id_destinatario ?? guia.id_cliente ?? null,
+    clienteLabel: guia.nombre_destinatario ?? guia.nombre_cliente ?? null,
+    choferId: guia.id_chofer ?? null,
+    choferLabel: guia.nombre_chofer ?? null,
+    idGuiaRemision: guia.id,
+    guiaLabel: `${guia.serie}-${guia.numero}`,
+    descripcion: buildRepartoDescripcion(guia),
+    items: toRepartoItems(guia),
+  }
+  repartoModalOpen.value = true
+}
+
+async function abrirReparto(row: GuiaRemisionListItem) {
+  try {
+    const guia = await guiasRemisionService.obtenerPorId(row.id)
+    openRepartoDesdeGuia(guia)
+  } catch (error) {
+    toastApiError(error, 'No se pudo cargar la guía para generar el reparto')
+  }
 }
 
 useOpenIdFromRouteQuery({

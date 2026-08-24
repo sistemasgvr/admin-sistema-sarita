@@ -6,6 +6,7 @@ export interface Trabajador {
   id_tipo_documento?: number | null
   nombre_tipo_documento?: string | null
   numero_documento?: string | null
+  correo?: string | null
   direccion?: string | null
   referencia?: string | null
   latitud?: number | null
@@ -72,6 +73,8 @@ export interface TrabajadorPayload {
   idCargo?: number
   idUsuarioVinculo?: number
   idChofer?: number
+  correo?: string
+  crearUsuario?: boolean
 }
 
 export type CreateTrabajadorPayload = TrabajadorPayload

@@ -46,6 +46,10 @@
         <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.nombre_cargo || '—' }}</p>
       </template>
 
+      <template #cell-correo="{ row }">
+        <span class="text-sm text-gray-700 dark:text-gray-300">{{ row.correo || '—' }}</span>
+      </template>
+
       <template #cell-edad="{ row }">
         <p class="text-sm text-gray-700 dark:text-gray-300">
           {{ row.edad != null ? `${row.edad} años` : '—' }}
@@ -55,6 +59,12 @@
       <template #cell-estado="{ row }">
         <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
           {{ row.estado === 1 ? 'Activo' : 'Cesado' }}
+        </AppBadge>
+      </template>
+
+      <template #cell-dias_cese="{ row }">
+        <AppBadge :color="ceseInfo(row.fecha_cese).color" size="sm">
+          {{ ceseInfo(row.fecha_cese).text }}
         </AppBadge>
       </template>
 
@@ -74,6 +84,16 @@
           @click="openEditModal(row)"
         >
           <AppIcon :name="ICONS.pencil" :size="16" />
+        </button>
+
+        <button
+          v-if="canEdit && !row.id_usuario"
+          type="button"
+          class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
+          title="Asignar usuario de acceso"
+          @click="openAsignarUsuarioModal(row)"
+        >
+          <AppIcon :name="ICONS.userCheck" :size="16" />
         </button>
 
         <button
@@ -138,6 +158,12 @@
         </button>
       </template>
     </AppModal>
+
+    <AsignarUsuarioModal
+      v-model="asignarUsuarioModalOpen"
+      :trabajador="trabajadorToAssign"
+      @assigned="onUsuarioAsignado"
+    />
   </div>
 </template>
 
@@ -146,6 +172,7 @@ import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import TrabajadorDetailModal from '@/modules/trabajadores/components/TrabajadorDetailModal.vue'
 import TrabajadorFormModal from '@/modules/trabajadores/components/TrabajadorFormModal.vue'
+import AsignarUsuarioModal from '@/modules/trabajadores/components/AsignarUsuarioModal.vue'
 import {
   useDeleteTrabajadorMutation,
 } from '@/modules/trabajadores/composables/useTrabajadorMutations'
@@ -254,6 +281,9 @@ const trabajadorToView = ref<Trabajador | null>(null)
 const deleteModalOpen = ref(false)
 const trabajadorToDelete = ref<Trabajador | null>(null)
 
+const asignarUsuarioModalOpen = ref(false)
+const trabajadorToAssign = ref<Trabajador | null>(null)
+
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.TRABAJADOR_CREAR))
@@ -272,10 +302,25 @@ const getTrabajadorNombre = (trabajador: Trabajador) =>
 const columns = computed<TableColumn<Trabajador>[]>(() => [
   { key: 'trabajador', label: 'Trabajador' },
   { key: 'area_cargo', label: 'Área / Cargo' },
+  { key: 'correo', label: 'Correo' },
   { key: 'edad', label: 'Edad' },
   { key: 'fecha_inicio', label: 'Inicio' },
   { key: 'estado', label: 'Estado' },
+  { key: 'dias_cese', label: 'Cese (días)' },
 ])
+
+const ceseInfo = (fecha?: string | null): { text: string; color: 'neutral' | 'success' | 'warning' | 'error' } => {
+  if (!fecha) return { text: '—', color: 'neutral' }
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const f = new Date(`${fecha}T00:00:00`)
+  if (Number.isNaN(f.getTime())) return { text: '—', color: 'neutral' }
+  const dias = Math.round((f.getTime() - hoy.getTime()) / 86_400_000)
+  if (dias < 0) return { text: 'Vencido', color: 'error' }
+  if (dias === 0) return { text: 'Hoy', color: 'warning' }
+  if (dias <= 30) return { text: `${dias} días`, color: 'warning' }
+  return { text: `${dias} días`, color: 'success' }
+}
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
@@ -327,6 +372,16 @@ useOpenIdFromRouteQuery({
 const openDeleteModal = (trabajador: Trabajador) => {
   trabajadorToDelete.value = trabajador
   deleteModalOpen.value = true
+}
+
+const openAsignarUsuarioModal = (trabajador: Trabajador) => {
+  trabajadorToAssign.value = trabajador
+  asignarUsuarioModalOpen.value = true
+}
+
+const onUsuarioAsignado = () => {
+  trabajadorToAssign.value = null
+  trabajadoresQuery.refetch()
 }
 
 const confirmDelete = async () => {

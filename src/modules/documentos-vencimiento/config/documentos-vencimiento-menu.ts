@@ -17,4 +17,9 @@ export const gestionEmpresaMenuSubItems: AdminMenuSubItem[] = [
     path: '/admin/trabajadores',
     permission: PermisoBanderas.TRABAJADOR_LISTAR,
   },
+  {
+    name: 'Activos',
+    path: '/admin/activos',
+    permission: PermisoBanderas.ACTIVO_LISTAR,
+  },
 ]

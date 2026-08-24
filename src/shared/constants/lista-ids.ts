@@ -86,6 +86,8 @@ export const ListaIds = {
   AREAS_TRABAJADOR: 67,
   /** gen_lista.nombre = CARGOS_TRABAJADOR (Padrón de Personal) */
   CARGOS_TRABAJADOR: 68,
+  /** gen_lista.nombre = ACTIVOS_TIPO (PCs/Laptops, Escritorios, etc.) */
+  ACTIVOS_TIPO: 69,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds
