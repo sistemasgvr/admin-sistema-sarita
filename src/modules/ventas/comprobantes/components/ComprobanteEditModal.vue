@@ -77,19 +77,26 @@
           </span>
         </template>
 
-        <div class="mb-3">
-          <AppSelectSearch
-            v-model="idProductoAgregar"
-            v-model:search="productoBuscar"
-            remote
-            label="Agregar producto"
-            placeholder="Buscar y agregar al detalle"
-            search-placeholder="Código o nombre..."
-            :options="productoOptions"
-            :loading="isFetchingProductos"
+        <div class="mb-3 flex items-end gap-2">
+          <div class="min-w-0 flex-1">
+            <AppSelectSearch
+              v-model="idProductoAgregar"
+              v-model:search="productoBuscar"
+              remote
+              label="Agregar producto"
+              placeholder="Buscar y agregar al detalle"
+              search-placeholder="Código o nombre..."
+              :options="productoOptions"
+              :loading="isFetchingProductos"
+              :disabled="saving || !idAlmacen"
+              :hint="productoSelectHint"
+              :empty-text="productoSelectEmptyText"
+            />
+          </div>
+          <ProductoBarcodeScanButton
+            :filters="scanFiltersProducto"
             :disabled="saving || !idAlmacen"
-            :hint="productoSelectHint"
-            :empty-text="productoSelectEmptyText"
+            @scanned="onProductoScanned"
           />
         </div>
 
@@ -149,20 +156,26 @@
                     />
                   </td>
                   <td class="px-3 py-2.5">
-                    <input
-                      v-model.number="linea.precioUnitario"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="w-full rounded-lg border border-gray-300 bg-transparent px-2 py-1.5 text-right tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
+                    <MoneyInput
+                      v-model="linea.precioUnitario"
+                      placeholder="0.00"
                       :disabled="saving"
-                      aria-label="Precio unitario"
+                      :state="
+                        mensajeErrorMontoMoneda(linea.precioUnitario, { min: 0, allowZero: true })
+                          ? 'error'
+                          : 'default'
+                      "
+                      @blur="blurPrecioLinea(linea)"
                     />
                   </td>
                   <td
                     class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
                   >
-                    {{ formatMoney(linea.cantidad * linea.precioUnitario) }}
+                    {{
+                      formatMoney(
+                        Number(linea.cantidad) * (parseMoneyInput(linea.precioUnitario) ?? 0),
+                      )
+                    }}
                   </td>
                   <td class="px-2 py-2.5 text-center">
                     <button
@@ -256,6 +269,8 @@ import type {
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
+import type { BuscarProductoPorCodigoFilters } from '@/modules/productos/articulos/utils/buscarProductoPorCodigo'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
@@ -269,6 +284,7 @@ import {
   AppSelectSearch,
   AppTextarea,
   ListaOpcionBadge,
+  MoneyInput,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
@@ -284,6 +300,12 @@ import {
 } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import {
+  esMontoMonedaValido,
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 
 interface LineaEdit {
   key: string
@@ -291,7 +313,7 @@ interface LineaEdit {
   descripcion: string
   nombreUnidadMedida?: string | null
   cantidad: number
-  precioUnitario: number
+  precioUnitario: string
   descuento: number
   porcentajeIgv: number
   idAfectacionIgv?: number
@@ -367,6 +389,12 @@ function syncProductosFilters(buscar?: string) {
   }
 }
 
+const scanFiltersProducto = computed<BuscarProductoPorCodigoFilters>(() => ({
+  soloActivos: 1,
+  idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
+  ...filtrosPorCatalogoPos(catalogoPos.value),
+}))
+
 watch(productoBuscar, (value) => {
   if (productoBuscarTimeout) clearTimeout(productoBuscarTimeout)
   productoBuscarTimeout = setTimeout(() => {
@@ -419,7 +447,11 @@ const tieneNotas = computed(
 )
 
 const totalEstimado = computed(() =>
-  lineas.value.reduce((acc, linea) => acc + Number(linea.cantidad) * Number(linea.precioUnitario), 0),
+  lineas.value.reduce(
+    (acc, linea) =>
+      acc + Number(linea.cantidad) * (parseMoneyInput(linea.precioUnitario) ?? 0),
+    0,
+  ),
 )
 
 const canSave = computed(
@@ -428,7 +460,11 @@ const canSave = computed(
     Boolean(idCliente.value) &&
     Boolean(idAlmacen.value) &&
     lineas.value.length > 0 &&
-    lineas.value.every((l) => l.cantidad > 0 && l.precioUnitario >= 0),
+    lineas.value.every(
+      (l) =>
+        l.cantidad > 0 &&
+        esMontoMonedaValido(l.precioUnitario, { min: 0, allowZero: true }),
+    ),
 )
 
 watch(
@@ -447,7 +483,7 @@ watch(
         detalle.descripcion || detalle.nombre_producto || `Producto ${detalle.id_producto}`,
       nombreUnidadMedida: detalle.nombre_unidad_medida ?? null,
       cantidad: Number(detalle.cantidad),
-      precioUnitario: Number(detalle.precio_unitario),
+      precioUnitario: roundMoney(Number(detalle.precio_unitario)).toFixed(2),
       descuento: Number(detalle.descuento ?? 0),
       porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
       idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
@@ -482,8 +518,21 @@ watch(idProductoAgregar, (id) => {
   agregarProducto(producto)
 })
 
+function onProductoScanned(producto: Producto) {
+  if (!idAlmacen.value) {
+    toastWarning('Selecciona el almacén antes de agregar productos')
+    return
+  }
+  agregarProducto(producto)
+}
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
+}
+
+function blurPrecioLinea(linea: LineaEdit) {
+  const n = parseMoneyInput(linea.precioUnitario)
+  if (n != null) linea.precioUnitario = roundMoney(n).toFixed(2)
 }
 
 function removeLinea(index: number) {
@@ -524,7 +573,7 @@ function agregarProducto(producto: Producto) {
     descripcion: producto.nombre,
     nombreUnidadMedida: unidad,
     cantidad: 1,
-    precioUnitario: Number(producto.precio ?? 0),
+    precioUnitario: roundMoney(Number(producto.precio ?? 0)).toFixed(2),
     descuento: 0,
     porcentajeIgv: 18,
     idAfectacionIgv: afectacionDefault,
@@ -552,6 +601,11 @@ async function confirm() {
       toastWarning(errorCantidad)
       return
     }
+    const errorPrecio = mensajeErrorMontoMoneda(linea.precioUnitario, { min: 0, allowZero: true })
+    if (errorPrecio) {
+      toastWarning(`El precio de "${linea.descripcion}": ${errorPrecio}`)
+      return
+    }
   }
 
   if (!idAlmacen.value) {
@@ -572,7 +626,7 @@ async function confirm() {
         detalles: lineas.value.map((linea) => ({
           idProducto: linea.idProducto,
           cantidad: Number(linea.cantidad),
-          precioUnitario: Number(linea.precioUnitario),
+          precioUnitario: roundMoney(parseMoneyInput(linea.precioUnitario) ?? 0),
           descuento: linea.descuento || undefined,
           porcentajeIgv: linea.porcentajeIgv,
           idAfectacionIgv: linea.idAfectacionIgv,

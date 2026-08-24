@@ -97,20 +97,29 @@
                   {{ formatPosMoney(importeLineaKit(linea)) }}
                 </span>
               </div>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_88px_110px]">
-                <AppSelectSearch
-                  v-model="linea.idProducto"
-                  v-model:search="linea.buscar"
-                  :label="labelProductoParaRol(linea.rol)"
-                  placeholder="Selecciona..."
-                  search-placeholder="Código o nombre..."
-                  remote
-                  :options="optionsParaRol(linea.rol)"
-                  :loading="loadingProductosParaRol(linea.rol)"
-                  :required="linea.rol === 'regulador'"
-                  @update:model-value="(id) => onProductoLinea(linea, id)"
-                  @update:search="(term) => onBuscarProductoRol(linea.rol, term)"
-                />
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_88px_110px] sm:items-end">
+                <div class="flex items-end gap-2">
+                  <div class="min-w-0 flex-1">
+                    <AppSelectSearch
+                      v-model="linea.idProducto"
+                      v-model:search="linea.buscar"
+                      :label="labelProductoParaRol(linea.rol)"
+                      placeholder="Selecciona..."
+                      search-placeholder="Código o nombre..."
+                      remote
+                      :options="optionsParaRol(linea.rol)"
+                      :loading="loadingProductosParaRol(linea.rol)"
+                      :required="linea.rol === 'regulador'"
+                      @update:model-value="(id) => onProductoLinea(linea, id)"
+                      @update:search="(term) => onBuscarProductoRol(linea.rol, term)"
+                    />
+                  </div>
+                  <ProductoBarcodeScanButton
+                    :filters="filtersScanParaRol(linea.rol)"
+                    :disabled="loadingProductosParaRol(linea.rol)"
+                    @scanned="(producto) => onProductoLineaScanned(linea, producto)"
+                  />
+                </div>
                 <AppInput
                   v-model="linea.cantidad"
                   label="Cant."
@@ -118,13 +127,13 @@
                   :min="NUMBER_MIN.unit"
                   :step="NUMBER_STEP.unit"
                 />
-                <AppInput
-                  v-model="linea.precioUnitario"
-                  label="P. unit."
-                  type="number"
-                  :min="NUMBER_MIN.money"
-                  :step="NUMBER_STEP.money"
-                />
+                <AppFormField label="P. unit.">
+                  <MoneyInput
+                    v-model="linea.precioUnitario"
+                    placeholder="0.00"
+                    @blur="blurPrecioLineaKit(linea)"
+                  />
+                </AppFormField>
               </div>
             </div>
 
@@ -146,19 +155,28 @@
                   <AppIcon :name="ICONS.trash" :size="16" />
                 </button>
               </div>
-              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_88px_110px]">
-                <AppSelectSearch
-                  v-model="linea.idProducto"
-                  v-model:search="linea.buscar"
-                  label="Producto (venta)"
-                  placeholder="Selecciona..."
-                  search-placeholder="Código o nombre..."
-                  remote
-                  :options="productoVentaOptions"
-                  :loading="productosVentaQuery.isLoading.value"
-                  @update:search="(term) => onBuscarProductoRol('descartable', term)"
-                  @update:model-value="(id) => onProductoLinea(linea, id)"
-                />
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_88px_110px] sm:items-end">
+                <div class="flex items-end gap-2">
+                  <div class="min-w-0 flex-1">
+                    <AppSelectSearch
+                      v-model="linea.idProducto"
+                      v-model:search="linea.buscar"
+                      label="Producto (venta)"
+                      placeholder="Selecciona..."
+                      search-placeholder="Código o nombre..."
+                      remote
+                      :options="productoVentaOptions"
+                      :loading="productosVentaQuery.isLoading.value"
+                      @update:search="(term) => onBuscarProductoRol('descartable', term)"
+                      @update:model-value="(id) => onProductoLinea(linea, id)"
+                    />
+                  </div>
+                  <ProductoBarcodeScanButton
+                    :filters="filtersScanParaRol('descartable')"
+                    :disabled="productosVentaQuery.isLoading.value"
+                    @scanned="(producto) => onProductoLineaScanned(linea, producto)"
+                  />
+                </div>
                 <AppInput
                   v-model="linea.cantidad"
                   label="Cant."
@@ -166,13 +184,13 @@
                   :min="NUMBER_MIN.unit"
                   :step="NUMBER_STEP.unit"
                 />
-                <AppInput
-                  v-model="linea.precioUnitario"
-                  label="P. unit."
-                  type="number"
-                  :min="NUMBER_MIN.money"
-                  :step="NUMBER_STEP.money"
-                />
+                <AppFormField label="P. unit.">
+                  <MoneyInput
+                    v-model="linea.precioUnitario"
+                    placeholder="0.00"
+                    @blur="blurPrecioLineaKit(linea)"
+                  />
+                </AppFormField>
               </div>
               <p class="mt-2 text-right text-sm font-medium tabular-nums text-gray-700 dark:text-gray-300">
                 {{ formatPosMoney(importeLineaKit(linea)) }}
@@ -198,21 +216,26 @@
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppInput v-model="fechaInicio" label="Inicio" type="date" />
             <AppInput v-model="fechaFinPactada" label="Fin pactado" type="date" required />
-            <AppInput
-              v-model="tarifaPeriodo"
-              label="Tarifa regulador (periodo)"
-              type="number"
-              min="0"
-              step="0.01"
-            />
-            <AppInput
-              v-model="montoGarantia"
+            <AppFormField label="Tarifa regulador (periodo)" :error="errorTarifaPeriodo">
+              <MoneyInput
+                v-model="tarifaPeriodo"
+                placeholder="0.00"
+                :state="errorTarifaPeriodo ? 'error' : 'default'"
+                @blur="onBlurTarifaPeriodo"
+              />
+            </AppFormField>
+            <AppFormField
               label="Garantía / depósito"
-              type="number"
-              :min="NUMBER_MIN.money"
-              :step="NUMBER_STEP.money"
+              :error="errorMontoGarantia"
               hint="Prefill del producto alquilable. 0 si no se cobra."
-            />
+            >
+              <MoneyInput
+                v-model="montoGarantia"
+                placeholder="0.00"
+                :state="errorMontoGarantia ? 'error' : 'default'"
+                @blur="onBlurMontoGarantia"
+              />
+            </AppFormField>
           </div>
           <p
             v-if="origenMontoGarantia"
@@ -220,7 +243,7 @@
           >
             {{ origenMontoGarantia }}
           </p>
-          <div v-if="Number(montoGarantia || 0) > 0" class="mt-4">
+          <div v-if="(parseMoneyInput(montoGarantia) ?? 0) > 0" class="mt-4">
             <GarantiaRecepcionFields
               v-model:id-medio-pago="idMedioPagoGarantia"
               v-model:observacion="observacionGarantia"
@@ -306,8 +329,10 @@ import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipo
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import type { BuscarProductoPorCodigoFilters } from '@/modules/productos/articulos/utils/buscarProductoPorCodigo'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
@@ -337,15 +362,22 @@ import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
-import { AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppInput, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { hoyIsoLima } from '@/shared/utils/date'
+import {
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
 
 const {
   authStore,
@@ -446,8 +478,18 @@ async function onAlmacenCreated() {
 const hoy = hoyIsoLima()
 const fechaInicio = ref(hoy)
 const fechaFinPactada = ref(addDaysIso(hoy, 14))
-const tarifaPeriodo = ref(0)
-const montoGarantia = ref<number | string>(0)
+const tarifaPeriodo = ref('')
+const {
+  error: errorTarifaPeriodo,
+  valido: tarifaPeriodoValida,
+  onBlur: onBlurTarifaPeriodo,
+} = useMoneyField(tarifaPeriodo, { min: 0, allowZero: true })
+const montoGarantia = ref('')
+const {
+  error: errorMontoGarantia,
+  valido: montoGarantiaValido,
+  onBlur: onBlurMontoGarantia,
+} = useMoneyField(montoGarantia, { min: 0, allowZero: true })
 const idMedioPagoGarantia = ref<string | number>('')
 const observacionGarantia = ref('')
 const origenMontoGarantia = ref('')
@@ -465,27 +507,32 @@ const comprobanteGuardadoNumero = ref<string | null>(null)
 const serviciosAlquiler = computed(() => serviciosQuery.data.value?.data ?? [])
 const productosVenta = computed(() => productosVentaQuery.data.value?.data ?? [])
 const serviciosFlete = computed(() => serviciosFleteQuery.data.value?.data ?? [])
+const productosEscaneadosExtra = ref<Producto[]>([])
 
-const servicioOptions = computed(() =>
-  serviciosAlquiler.value.map((producto) => ({
+function mergeProductoOptions(
+  productos: Producto[],
+  rol: KitMedicinalRol,
+): { value: number; label: string }[] {
+  const ids = new Set(productos.map((p) => p.id))
+  const extras = productosEscaneadosExtra.value.filter((p) => {
+    if (ids.has(p.id)) return false
+    if (rol === 'regulador') return Boolean(p.es_alquilable)
+    if (rol === 'flete') return Boolean(p.es_servicio) && !p.es_alquilable && !p.es_mantenimiento
+    return !p.es_servicio
+  })
+  return [...extras, ...productos].map((producto) => ({
     value: producto.id,
     label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-)
+  }))
+}
+
+const servicioOptions = computed(() => mergeProductoOptions(serviciosAlquiler.value, 'regulador'))
 
 const productoVentaOptions = computed(() =>
-  productosVenta.value.map((producto) => ({
-    value: producto.id,
-    label: `${producto.codigo} — ${producto.nombre}`,
-  })),
+  mergeProductoOptions(productosVenta.value, 'contenido'),
 )
 
-const servicioFleteOptions = computed(() =>
-  serviciosFlete.value.map((producto) => ({
-    value: producto.id,
-    label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-)
+const servicioFleteOptions = computed(() => mergeProductoOptions(serviciosFlete.value, 'flete'))
 
 const lineasFijas = computed(() =>
   kitLineas.filter((linea) => linea.rol !== 'descartable'),
@@ -498,7 +545,7 @@ const todasLasLineas = computed(() => [...kitLineas, ...descartables])
 const lineasActivas = computed(() => lineasKitConProducto(todasLasLineas.value))
 
 const totalKit = computed(
-  () => totalKitMedicinal(todasLasLineas.value) + Math.max(0, Number(montoGarantia.value || 0)),
+  () => totalKitMedicinal(todasLasLineas.value) + Math.max(0, parseMoneyInput(montoGarantia.value) ?? 0),
 )
 
 const totales = computed(() => calcularTotalesDesdeImporte(totalKit.value))
@@ -522,7 +569,7 @@ async function prefillMontoGarantia(producto: Producto) {
   } catch {
     // sin catálogo
   }
-  montoGarantia.value = sugerido
+  montoGarantia.value = sugerido > 0 ? roundMoney(sugerido).toFixed(2) : '0.00'
   origenMontoGarantia.value =
     sugerido > 0
       ? `Sugerido S/ ${sugerido.toFixed(2)} desde ${origen}`
@@ -541,6 +588,14 @@ const motivoNoGuardar = computed(() => {
   if (!fechaInicio.value) return 'Indica la fecha de inicio'
   if (!lineasActivas.value.length) return 'Completa al menos una línea del kit'
   if (totalKit.value < 0) return 'El total del kit no puede ser negativo'
+  if (!tarifaPeriodoValida.value) return errorTarifaPeriodo.value || 'Tarifa inválida'
+  if (!montoGarantiaValido.value) return errorMontoGarantia.value || 'Garantía inválida'
+  for (const linea of lineasActivas.value) {
+    const errorPrecio = mensajeErrorMontoMoneda(linea.precioUnitario, { min: 0, allowZero: true })
+    if (errorPrecio) {
+      return `${linea.nombre || KIT_MEDICINAL_ROL_LABEL[linea.rol]}: ${errorPrecio}`
+    }
+  }
   return null
 })
 
@@ -585,13 +640,24 @@ function onBuscarProductoRol(rol: KitMedicinalRol, term: string) {
 }
 
 function findProducto(rol: KitMedicinalRol, id: number): Producto | undefined {
+  const extra = productosEscaneadosExtra.value.find((item) => item.id === id)
   if (rol === 'regulador') {
-    return serviciosAlquiler.value.find((item) => item.id === id)
+    return serviciosAlquiler.value.find((item) => item.id === id) ?? extra
   }
   if (rol === 'flete') {
-    return serviciosFlete.value.find((item) => item.id === id)
+    return serviciosFlete.value.find((item) => item.id === id) ?? extra
   }
-  return productosVenta.value.find((item) => item.id === id)
+  return productosVenta.value.find((item) => item.id === id) ?? extra
+}
+
+function filtersScanParaRol(rol: KitMedicinalRol): BuscarProductoPorCodigoFilters {
+  if (rol === 'regulador') {
+    return { esAlquilable: true, soloActivos: 1 }
+  }
+  if (rol === 'flete') {
+    return { esServicio: true, esAlquilable: false, esMantenimiento: false, soloActivos: 1 }
+  }
+  return { esServicio: false, soloActivos: 1 }
 }
 
 function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
@@ -599,10 +665,10 @@ function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
   if (!productId) {
     linea.codigo = ''
     linea.nombre = ''
-    linea.precioUnitario = 0
+    linea.precioUnitario = '0.00'
     if (linea.rol === 'regulador') {
-      tarifaPeriodo.value = 0
-      montoGarantia.value = 0
+      tarifaPeriodo.value = '0.00'
+      montoGarantia.value = '0.00'
       idMedioPagoGarantia.value = ''
       observacionGarantia.value = ''
       origenMontoGarantia.value = ''
@@ -613,13 +679,32 @@ function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
   const producto = findProducto(linea.rol, productId)
   if (!producto) return
 
+  aplicarProductoEnLinea(linea, producto)
+}
+
+function onProductoLineaScanned(linea: KitMedicinalLinea, producto: Producto) {
+  if (!productosEscaneadosExtra.value.some((item) => item.id === producto.id)) {
+    productosEscaneadosExtra.value = [producto, ...productosEscaneadosExtra.value]
+  }
+  linea.idProducto = producto.id
+  linea.buscar = ''
+  aplicarProductoEnLinea(linea, producto)
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
+}
+
+function aplicarProductoEnLinea(linea: KitMedicinalLinea, producto: Producto) {
   linea.codigo = producto.codigo
   linea.nombre = producto.nombre
-  linea.precioUnitario = Number(producto.precio ?? 0)
+  linea.precioUnitario = roundMoney(Number(producto.precio ?? 0)).toFixed(2)
   if (linea.rol === 'regulador') {
-    tarifaPeriodo.value = Number(producto.precio ?? 0)
+    tarifaPeriodo.value = roundMoney(Number(producto.precio ?? 0)).toFixed(2)
     void prefillMontoGarantia(producto)
   }
+}
+
+function blurPrecioLineaKit(linea: KitMedicinalLinea) {
+  const n = parseMoneyInput(linea.precioUnitario)
+  if (n != null) linea.precioUnitario = roundMoney(n).toFixed(2)
 }
 
 function agregarDescartable() {
@@ -663,7 +748,11 @@ async function registrarKit() {
     return
   }
 
-  const garantia = Math.max(0, Number(montoGarantia.value || 0))
+  onBlurTarifaPeriodo()
+  onBlurMontoGarantia()
+  for (const linea of activas) blurPrecioLineaKit(linea)
+
+  const garantia = Math.max(0, roundMoney(parseMoneyInput(montoGarantia.value) ?? 0))
   if (garantia > 0 && !idMedioPagoGarantia.value) {
     toastWarning('Indica el medio con el que se recibe la garantía')
     return
@@ -680,7 +769,7 @@ async function registrarKit() {
     const detallesKit = activas.map((linea) => ({
       idProducto: Number(linea.idProducto),
       cantidad: Number(linea.cantidad),
-      precioUnitario: Number(linea.precioUnitario),
+      precioUnitario: roundMoney(parseMoneyInput(linea.precioUnitario) ?? 0),
       descuento: 0,
       porcentajeIgv: 18,
       idAfectacionIgv: idAfectacionGravado.value,
@@ -732,7 +821,7 @@ async function registrarKit() {
             idAlmacen: Number(idAlmacen.value),
             fechaInicio: fechaInicio.value,
             fechaFinPactada: fechaFinPactada.value,
-            tarifaDiaria: Number(tarifaPeriodo.value || 0),
+            tarifaDiaria: roundMoney(parseMoneyInput(tarifaPeriodo.value) ?? 0),
             totalCobrado: totalKitMedicinal(todasLasLineas.value),
             idProductoRegulador: idProductoReg,
             idProductoStock,
@@ -798,8 +887,8 @@ async function limpiarFormulario() {
   const inicio = hoyIsoLima()
   fechaInicio.value = inicio
   fechaFinPactada.value = addDaysIso(inicio, 14)
-  tarifaPeriodo.value = 0
-  montoGarantia.value = 0
+  tarifaPeriodo.value = ''
+  montoGarantia.value = ''
   origenMontoGarantia.value = ''
   idMedioPagoGarantia.value = ''
   observacionGarantia.value = ''
@@ -807,6 +896,7 @@ async function limpiarFormulario() {
   generarGre.value = false
   kitLineas.splice(0, kitLineas.length, ...crearKitMedicinalInicial())
   descartables.splice(0, descartables.length)
+  productosEscaneadosExtra.value = []
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null
   comprobanteGuardadoNumero.value = null

@@ -85,6 +85,13 @@ export interface Balon {
   nombre_referencia?: string | null
   id_marca_cilindro?: number | null
   nombre_marca_cilindro?: string | null
+  tipo_valvula?: string | null
+  /** Peso guía del cilindro (kg); si vacío se usa peso del tipo. */
+  peso_aproximado_kg?: number | null
+  /** COALESCE(peso_aproximado_kg, peso_tipo) desde API. */
+  peso_guia_kg?: number | null
+  /** Marca o símbolo del sello de inspección. */
+  sello_inspeccion?: string | null
   id_organo_inspector?: number | null
   nombre_organo_inspector?: string | null
   organo_inspector_no_aplica?: boolean
@@ -151,6 +158,10 @@ export interface BalonListFilters {
   idProductoGas?: number
   /** Solo cilindros LLENO fuera de almacén */
   soloLlenosFuera?: boolean
+  /** Proveedor (planta) dueño del envase */
+  idPlanta?: number
+  /** Tipo de válvula (texto libre, p. ej. Americana / China) */
+  tipoValvula?: string
 }
 
 export interface BalonPayload {
@@ -176,6 +187,9 @@ export interface BalonPayload {
   presionActual?: number
   observacion?: string
   numeroSerie?: string
+  tipoValvula?: string
+  pesoAproximadoKg?: number
+  selloInspeccion?: string
   idMarcaCilindro?: number
   idOrganoInspector?: number
   organoInspectorNoAplica?: boolean

@@ -11,6 +11,11 @@ import { gestionEmpresaMenuSubItems } from '@/modules/documentos-vencimiento/con
 export interface AdminMenuSubItem {
   name: string
   path: string
+  /**
+   * Rutas adicionales que deben resaltar este subítem
+   * (ej. Stock activo también en /admin/productos/movimientos/*).
+   */
+  activeMatchPaths?: string[]
   permission?: PermissionBandera
   anyPermission?: PermissionBandera[]
   icon?: string
@@ -87,7 +92,7 @@ export const adminMenuGroups: AdminMenuGroup[] = [
       },
       {
         icon: ICONS.package,
-        name: 'Productos',
+        name: 'Almacenes',
         path: '/admin/productos',
         permission: PermisoBanderas.PRODUCTOS_HUB_VER,
         subItems: productosMenuSubItems,

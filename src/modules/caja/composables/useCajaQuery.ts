@@ -28,7 +28,7 @@ export function useCajaDiaQuery(fecha: Ref<string>, idSucursal: Ref<number | nul
   return useQuery({
     queryKey: computed(() => cajaQueryKeys.dia(fecha.value, idSucursal.value)),
     queryFn: () => cajaService.obtenerDia(fecha.value, idSucursal.value),
-    enabled: computed(() => Boolean(fecha.value)),
+    enabled: computed(() => Boolean(fecha.value) && idSucursal.value != null),
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
@@ -53,7 +53,9 @@ export function useAbrirCajaMutation() {
     mutationFn: (payload: AbrirCajaPayload) =>
       cajaService.abrir({ ...payload, idUsuarioAuditoria: auth.user?.id }),
     onSuccess: () => invalidateCajaQueries(queryClient),
-    onError: (error) => toastApiError(error, 'No se pudo abrir la caja'),
+    onError: () => {
+      /* El modal muestra el toast con contexto abrir/reabrir */
+    },
   })
 }
 

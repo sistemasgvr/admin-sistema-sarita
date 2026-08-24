@@ -7,6 +7,7 @@ import {
 } from '@/shared/api/apiClient'
 import type {
   CreateMovimientoInventarioPayload,
+  CreateTrasladoLotePayload,
   DeleteMovimientoInventarioResponse,
   MovimientoInventario,
   MovimientoInventarioListFilters,
@@ -24,6 +25,10 @@ export const movimientosInventarioService = {
 
   crear(payload: CreateMovimientoInventarioPayload) {
     return apiPost<MovimientoInventario>('/productos/movimientos', payload)
+  },
+
+  crearTrasladoLote(payload: CreateTrasladoLotePayload) {
+    return apiPost<MovimientoInventario[]>('/productos/movimientos/traslado-lote', payload)
   },
 
   actualizar(id: number, payload: UpdateMovimientoInventarioPayload) {

@@ -15,10 +15,11 @@
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-ventas-pos' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
+              title="Nueva venta"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nueva venta
+              <span class="hidden sm:inline">Nueva venta</span>
             </RouterLink>
           </template>
         </AppListToolbar>

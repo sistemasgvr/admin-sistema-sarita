@@ -14,11 +14,6 @@ export const configuracionAccessPermissions: PermissionBandera[] = [
 ]
 
 export const configuracionMenuSubItems: AdminMenuSubItem[] = [
-  {
-    name: 'General',
-    path: '/admin/configuracion',
-    permission: PermisoBanderas.CONFIGURACION_VER,
-  },
   ...visibleHubItems().map((item) => ({
     name: item.title,
     path: item.path,

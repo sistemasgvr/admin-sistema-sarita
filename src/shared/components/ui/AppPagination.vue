@@ -29,23 +29,30 @@
         >
           Por página
         </label>
-        <select
-          :id="pageSizeId"
-          v-model.number="limiteModel"
-          class="form-control h-8 w-[4.25rem] appearance-none bg-none px-2 py-1 text-xs sm:h-9 sm:w-[88px] sm:px-3 sm:py-1.5 sm:text-sm"
-          :disabled="disabled"
-          :title="`Por página: ${limiteModel}`"
-          :aria-label="`Por página: ${limiteModel}`"
-        >
-          <option
-            v-for="option in pageSizeOptions"
-            :key="option"
-            :value="option"
-            class="text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+        <div class="relative">
+          <select
+            :id="pageSizeId"
+            v-model.number="limiteModel"
+            class="form-control h-8 w-[4.75rem] appearance-none bg-none py-1 pl-2 pr-6 text-xs sm:h-9 sm:w-[5.75rem] sm:py-1.5 sm:pl-3 sm:pr-7 sm:text-sm"
+            :disabled="disabled"
+            :title="`Por página: ${limiteModel}`"
+            :aria-label="`Por página: ${limiteModel}`"
           >
-            {{ option }}
-          </option>
-        </select>
+            <option
+              v-for="option in pageSizeOptions"
+              :key="option"
+              :value="option"
+              class="text-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            >
+              {{ option }}
+            </option>
+          </select>
+          <AppIcon
+            :name="ICONS.chevronDown"
+            :size="14"
+            class="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 sm:right-2"
+          />
+        </div>
       </div>
     </div>
 

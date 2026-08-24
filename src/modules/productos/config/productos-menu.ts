@@ -9,14 +9,10 @@ export const productosAccessPermissions: PermissionBandera[] = [
 ]
 
 export const productosMenuSubItems: AdminMenuSubItem[] = [
-  {
-    name: 'General',
-    path: '/admin/productos',
-    permission: PermisoBanderas.PRODUCTOS_HUB_VER,
-  },
   ...productosMenuItems.map((item) => ({
     name: item.title,
     path: item.path,
+    activeMatchPaths: item.activeMatchPaths,
     permission: item.permission,
   })),
 ]

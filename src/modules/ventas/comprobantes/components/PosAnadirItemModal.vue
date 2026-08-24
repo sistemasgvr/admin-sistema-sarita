@@ -44,6 +44,7 @@
         :stock-gas-listo="tipo !== 'gas' || !idAlmacen || stockGasQuery.isFetched.value"
         @filter-change="onFiltersChange"
         @add="elegirProducto"
+        @scanned="elegirProducto"
       />
     </div>
 
@@ -68,15 +69,20 @@
           :es-gas="false"
           label="Cantidad"
         />
-        <AppInput
-          v-model="precioUnitario"
-          :label="esTallerProducto ? 'Costo / importe' : 'Precio unitario'"
-          type="number"
-          :min="NUMBER_MIN.money"
-          :step="NUMBER_STEP.money"
-          required
-          :class="esTallerProducto ? 'sm:col-span-2' : ''"
-        />
+        <div :class="esTallerProducto ? 'sm:col-span-2' : ''">
+          <AppFormField
+            :label="esTallerProducto ? 'Costo / importe' : 'Precio unitario'"
+            required
+            :error="errorPrecioUnitario"
+          >
+            <MoneyInput
+              v-model="precioUnitario"
+              placeholder="0.00"
+              :state="errorPrecioUnitario ? 'error' : 'default'"
+              @blur="onBlurPrecioUnitario"
+            />
+          </AppFormField>
+        </div>
       </div>
 
       <template v-if="tipo === 'gas'">
@@ -229,14 +235,19 @@
             <AppInput v-model="fechaInicio" label="Fecha de entrega" type="date" required />
             <AppInput v-model="fechaFin" label="Fecha de devolución" type="date" />
           </div>
-          <AppInput
-            v-model="montoGarantia"
+          <AppFormField
             label="Garantía (dinero que deja)"
-            type="number"
-            :min="NUMBER_MIN.money"
-            :step="NUMBER_STEP.money"
+            optional
             hint="0 si no se cobra. Se puede devolver cuando traiga el cilindro."
-          />
+            :error="errorMontoGarantia"
+          >
+            <MoneyInput
+              v-model="montoGarantia"
+              placeholder="0.00"
+              :state="errorMontoGarantia ? 'error' : 'default'"
+              @blur="onBlurMontoGarantia"
+            />
+          </AppFormField>
           <p
             v-if="origenMontoGarantia"
             class="text-xs text-gray-500 dark:text-gray-400"
@@ -244,7 +255,7 @@
             {{ origenMontoGarantia }}
           </p>
           <GarantiaRecepcionFields
-            v-if="Number(montoGarantia || 0) > 0"
+            v-if="montoNumerico(montoGarantia) > 0"
             v-model:id-medio-pago="idMedioPagoGarantia"
             v-model:observacion="observacionGarantia"
           />
@@ -277,14 +288,14 @@
             <span class="font-semibold">{{ capacidadBalonSeleccionado }} m³</span>
             (esa cantidad se cobrará de gas).
           </p>
-          <AppInput
-            v-model="precioBalon"
-            label="Precio del envase (cilindro vacío)"
-            type="number"
-            :min="NUMBER_MIN.money"
-            :step="NUMBER_STEP.money"
-            required
-          />
+          <AppFormField label="Precio del envase (cilindro vacío)" required :error="errorPrecioBalon">
+            <MoneyInput
+              v-model="precioBalon"
+              placeholder="0.00"
+              :state="errorPrecioBalon ? 'error' : 'default'"
+              @blur="onBlurPrecioBalon"
+            />
+          </AppFormField>
           <div
             class="grid grid-cols-3 gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-700 dark:bg-white/[0.03]"
           >
@@ -297,7 +308,7 @@
             <div>
               <p class="text-gray-500 dark:text-gray-400">Envase</p>
               <p class="font-medium tabular-nums text-gray-800 dark:text-white/90">
-                {{ formatMoney(Number(precioBalon || 0)) }}
+                {{ formatMoney(montoNumerico(precioBalon)) }}
               </p>
             </div>
             <div class="text-right">
@@ -320,15 +331,16 @@
             :error="errorCantidadVsBalon || undefined"
             :hint="hintCantidadBalon"
           />
-          <AppInput
-            v-model="precioUnitario"
-            label="Precio por m³"
-            type="number"
-            :min="NUMBER_MIN.money"
-            :step="NUMBER_STEP.money"
-            required
-            :class="cantidadBloqueadaPorBalon ? 'sm:col-span-2' : ''"
-          />
+          <div :class="cantidadBloqueadaPorBalon ? 'sm:col-span-2' : ''">
+            <AppFormField label="Precio por m³" required :error="errorPrecioUnitario">
+              <MoneyInput
+                v-model="precioUnitario"
+                placeholder="0.00"
+                :state="errorPrecioUnitario ? 'error' : 'default'"
+                @blur="onBlurPrecioUnitario"
+              />
+            </AppFormField>
+          </div>
         </div>
       </template>
 
@@ -343,25 +355,30 @@
             :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
             label="Cantidad"
           />
-          <AppInput
-            v-model="precioUnitario"
-            label="Precio del alquiler"
-            type="number"
-            :min="NUMBER_MIN.money"
-            :step="NUMBER_STEP.money"
-            required
-          />
+          <AppFormField label="Precio del alquiler" required :error="errorPrecioUnitario">
+            <MoneyInput
+              v-model="precioUnitario"
+              placeholder="0.00"
+              :state="errorPrecioUnitario ? 'error' : 'default'"
+              @blur="onBlurPrecioUnitario"
+            />
+          </AppFormField>
           <AppInput v-model="fechaInicio" label="Desde" type="date" required />
           <AppInput v-model="fechaFin" label="Hasta (lo devuelve)" type="date" required />
         </div>
-        <AppInput
-          v-model="montoGarantia"
+        <AppFormField
           label="Garantía (dinero que deja)"
-          type="number"
-          :min="NUMBER_MIN.money"
-          :step="NUMBER_STEP.money"
+          optional
           hint="0 si no se cobra."
-        />
+          :error="errorMontoGarantia"
+        >
+          <MoneyInput
+            v-model="montoGarantia"
+            placeholder="0.00"
+            :state="errorMontoGarantia ? 'error' : 'default'"
+            @blur="onBlurMontoGarantia"
+          />
+        </AppFormField>
         <p
           v-if="origenMontoGarantia"
           class="text-xs text-gray-500 dark:text-gray-400"
@@ -369,7 +386,7 @@
           {{ origenMontoGarantia }}
         </p>
         <GarantiaRecepcionFields
-          v-if="Number(montoGarantia || 0) > 0"
+          v-if="montoNumerico(montoGarantia) > 0"
           v-model:id-medio-pago="idMedioPagoGarantia"
           v-model:observacion="observacionGarantia"
         />
@@ -550,14 +567,16 @@ import {
 } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppInput, AppModal, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { getApiErrorMessage, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { hoyIsoLima } from '@/shared/utils/date'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 
 export type PosAnadirTipo = 'accesorio' | 'gas' | 'alquiler' | 'servicio'
@@ -646,7 +665,12 @@ const subCategoriaIdsEnTipo = ref<Set<number>>(new Set())
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const cantidad = ref(1)
-const precioUnitario = ref<number | string>(0)
+const precioUnitario = ref('')
+const {
+  error: errorPrecioUnitario,
+  valido: precioUnitarioValido,
+  onBlur: onBlurPrecioUnitario,
+} = useMoneyField(precioUnitario, { min: 0, allowZero: true })
 const idBalon = ref<number | ''>('')
 const etiquetaBalon = ref('')
 const idBalonOrigen = ref<number | ''>('')
@@ -666,11 +690,21 @@ const descripcionMantenimiento = ref('')
 const escenarioGas = ref<EscenarioGas | null>(null)
 const entregarCilindroAlquiler = ref(false)
 const continuarConPrestamoGas = ref(false)
-const montoGarantia = ref<number | string>(0)
+const montoGarantia = ref('')
+const {
+  error: errorMontoGarantia,
+  valido: montoGarantiaValido,
+  onBlur: onBlurMontoGarantia,
+} = useMoneyField(montoGarantia, { min: 0, allowZero: true })
 const origenMontoGarantia = ref('')
 const idMedioPagoGarantia = ref<string | number>('')
 const observacionGarantia = ref('')
-const precioBalon = ref<number | string>(0)
+const precioBalon = ref('')
+const {
+  error: errorPrecioBalon,
+  valido: precioBalonValido,
+  onBlur: onBlurPrecioBalon,
+} = useMoneyField(precioBalon, { min: 0, allowZero: true })
 const idProductoEnvase = ref<number | ''>('')
 const nombreProductoEnvase = ref(NOMBRE_PRODUCTO_VENTA_ENVASE)
 const resolviendoProductoEnvase = ref(false)
@@ -826,16 +860,24 @@ async function refrescarOrigenesRecarga() {
 }
 
 const importeGas = computed(() => {
-  if (esTallerProducto.value) return Number(precioUnitario.value || 0)
-  return Number(cantidad.value || 0) * Number(precioUnitario.value || 0)
+  if (esTallerProducto.value) return montoNumerico(precioUnitario.value)
+  return Number(cantidad.value || 0) * montoNumerico(precioUnitario.value)
 })
 
 const importe = computed(() => {
   if (tipo.value === 'gas' && escenarioGas.value === 'comprar_balon') {
-    return importeGas.value + Number(precioBalon.value || 0)
+    return importeGas.value + montoNumerico(precioBalon.value)
   }
   return importeGas.value
 })
+
+function montoNumerico(raw: string): number {
+  return parseMoneyInput(raw) ?? 0
+}
+
+function montoAString(value: number | string | null | undefined): string {
+  return roundMoney(Number(value ?? 0)).toFixed(2)
+}
 
 /** Resuelve en silencio el producto contable VTA-ENVASE (no se elige en el POS). */
 async function resolverProductoVentaEnvase(): Promise<boolean> {
@@ -975,7 +1017,7 @@ function setEscenarioGas(key: EscenarioGas) {
   errorOrigenes.value = ''
   sugerenciaOrigenLabel.value = ''
   capacidad.value = ''
-  precioBalon.value = 0
+  precioBalon.value = '0.00'
   idProductoEnvase.value = ''
   nombreProductoEnvase.value = NOMBRE_PRODUCTO_VENTA_ENVASE
   precioAlquiler.value = 0
@@ -986,7 +1028,7 @@ function setEscenarioGas(key: EscenarioGas) {
     fechaFin.value = ''
     void prefillMontoGarantia(producto.value)
   } else {
-    montoGarantia.value = 0
+    montoGarantia.value = '0.00'
     origenMontoGarantia.value = ''
     idMedioPagoGarantia.value = ''
     observacionGarantia.value = ''
@@ -1021,7 +1063,7 @@ function setEntregarCilindroAlquiler(value: boolean) {
 
 async function prefillMontoGarantia(prod?: Producto | null) {
   if (!prod) {
-    montoGarantia.value = 0
+    montoGarantia.value = '0.00'
     origenMontoGarantia.value = ''
     return
   }
@@ -1046,7 +1088,7 @@ async function prefillMontoGarantia(prod?: Producto | null) {
     // sin catálogo: se usa precio del producto
   }
 
-  montoGarantia.value = sugerido
+  montoGarantia.value = montoAString(sugerido)
   origenMontoGarantia.value =
     sugerido > 0
       ? `Sugerido S/ ${sugerido.toFixed(2)} (${origen})`
@@ -1316,7 +1358,7 @@ const ayudaConfig = computed(() => {
 
 const puedeConfirmar = computed(() => {
   if (!producto.value || !tipo.value) return false
-  if (Number(precioUnitario.value) < 0) return false
+  if (!precioUnitarioValido.value) return false
   if (tipo.value === 'servicio' && esTallerProducto.value) {
     return (
       Boolean(props.idCliente) &&
@@ -1327,6 +1369,7 @@ const puedeConfirmar = computed(() => {
   if (Number(cantidad.value) <= 0) return false
   if (errorCantidadVsBalon.value) return false
   if (tipo.value === 'alquiler') {
+    if (!montoGarantiaValido.value) return false
     return (
       Boolean(props.idCliente) &&
       !props.esClientesVarios &&
@@ -1347,6 +1390,7 @@ const puedeConfirmar = computed(() => {
       )
     }
     if (escenarioGas.value === 'entregar_prestamo') {
+      if (!montoGarantiaValido.value) return false
       return (
         Boolean(props.idCliente) &&
         !props.esClientesVarios &&
@@ -1358,7 +1402,7 @@ const puedeConfirmar = computed(() => {
     if (escenarioGas.value === 'comprar_balon') {
       return (
         Boolean(idBalon.value) &&
-        Number(precioBalon.value) >= 0 &&
+        precioBalonValido.value &&
         Boolean(idProductoEnvase.value) &&
         !resolviendoProductoEnvase.value
       )
@@ -1429,7 +1473,7 @@ function onFiltersChange() {
 function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | null) {
   if (fromLinea) {
     cantidad.value = Math.max(1, Number(fromLinea.cantidad || 1))
-    precioUnitario.value = Number(fromLinea.precioUnitario || 0)
+    precioUnitario.value = montoAString(fromLinea.precioUnitario)
     idBalon.value = fromLinea.idBalon ?? ''
     etiquetaBalon.value = fromLinea.etiquetaBalon ?? ''
     idBalonOrigen.value = fromLinea.idBalonOrigen ?? ''
@@ -1460,7 +1504,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     if (escenarioGas.value === 'entregar_prestamo' && !fromLinea.fechaFinAlquiler) {
       fechaFin.value = ''
     }
-    precioBalon.value = fromLinea.precioBalon ?? 0
+    precioBalon.value = montoAString(fromLinea.precioBalon)
     idProductoEnvase.value = fromLinea.idProductoEnvase ?? ''
     nombreProductoEnvase.value =
       fromLinea.nombreProductoEnvase || NOMBRE_PRODUCTO_VENTA_ENVASE
@@ -1472,7 +1516,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
     entregarCilindroAlquiler.value = esAlquilerLinea && Boolean(fromLinea.idBalon)
     if (escenarioGas.value === 'entregar_prestamo' || esAlquilerLinea) {
       if (fromLinea.montoGarantia != null) {
-        montoGarantia.value = Number(fromLinea.montoGarantia)
+        montoGarantia.value = montoAString(fromLinea.montoGarantia)
         origenMontoGarantia.value = ''
       } else {
         void prefillMontoGarantia(fromProducto)
@@ -1480,7 +1524,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
       idMedioPagoGarantia.value = fromLinea.idMedioPagoGarantia ?? ''
       observacionGarantia.value = fromLinea.observacionGarantia ?? ''
     } else {
-      montoGarantia.value = 0
+      montoGarantia.value = '0.00'
       origenMontoGarantia.value = ''
       idMedioPagoGarantia.value = ''
       observacionGarantia.value = ''
@@ -1492,7 +1536,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   }
 
   cantidad.value = 1
-  precioUnitario.value = Number(fromProducto?.precio ?? 0)
+  precioUnitario.value = montoAString(fromProducto?.precio)
   idBalon.value = ''
   etiquetaBalon.value = ''
   capacidadBalonSeleccionado.value = null
@@ -1510,11 +1554,11 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   descripcionMantenimiento.value = fromProducto?.nombre || ''
   escenarioGas.value = null
   entregarCilindroAlquiler.value = false
-  montoGarantia.value = 0
+  montoGarantia.value = '0.00'
   origenMontoGarantia.value = ''
   idMedioPagoGarantia.value = ''
   observacionGarantia.value = ''
-  precioBalon.value = 0
+  precioBalon.value = '0.00'
   idProductoEnvase.value = ''
   nombreProductoEnvase.value = NOMBRE_PRODUCTO_VENTA_ENVASE
   precioAlquiler.value = 0
@@ -1618,6 +1662,15 @@ async function confirmar() {
     return
   }
 
+  onBlurPrecioUnitario()
+  onBlurMontoGarantia()
+  onBlurPrecioBalon()
+  const precio = roundMoney(parseMoneyInput(precioUnitario.value) ?? 0)
+  if (!precioUnitarioValido.value) {
+    toastWarning('El precio solo admite hasta 2 decimales')
+    return
+  }
+
   const errorStock = validarStockParaAgregar(producto.value, cant, {
     requiereAlmacenSeleccionado: true,
     stockGas:
@@ -1690,9 +1743,13 @@ async function confirmar() {
   }
 
   const cobraGarantia =
-    Number(montoGarantia.value || 0) > 0 &&
+    montoNumerico(montoGarantia.value) > 0 &&
     (tipo.value === 'alquiler' ||
       (tipo.value === 'gas' && escenarioGas.value === 'entregar_prestamo'))
+  if (cobraGarantia && !montoGarantiaValido.value) {
+    toastWarning('La garantía solo admite hasta 2 decimales')
+    return
+  }
   if (cobraGarantia && !idMedioPagoGarantia.value) {
     toastWarning('Indica el medio con el que se recibe la garantía')
     return
@@ -1702,7 +1759,7 @@ async function confirmar() {
     tipo: esTallerProducto.value ? 'mantenimiento' : tipo.value,
     producto: producto.value,
     cantidad: cant,
-    precioUnitario: Number(precioUnitario.value || 0),
+    precioUnitario: precio,
     observacionLinea: observacion.value.trim() || undefined,
   }
 
@@ -1730,14 +1787,14 @@ async function confirmar() {
     if (escenarioGas.value === 'entregar_prestamo') {
       payload.fechaInicioAlquiler = fechaInicio.value
       payload.fechaFinAlquiler = fechaFin.value || undefined
-      payload.montoGarantia = Math.max(0, Number(montoGarantia.value || 0))
+      payload.montoGarantia = Math.max(0, roundMoney(parseMoneyInput(montoGarantia.value) ?? 0))
       if (payload.montoGarantia > 0) {
         payload.idMedioPagoGarantia = Number(idMedioPagoGarantia.value)
         payload.observacionGarantia = observacionGarantia.value.trim() || undefined
       }
     }
     if (escenarioGas.value === 'comprar_balon') {
-      payload.precioBalon = Number(precioBalon.value || 0)
+      payload.precioBalon = roundMoney(parseMoneyInput(precioBalon.value) ?? 0)
       payload.idProductoEnvase = Number(idProductoEnvase.value)
       payload.nombreProductoEnvase = nombreProductoEnvase.value
     }
@@ -1746,7 +1803,7 @@ async function confirmar() {
   if (tipo.value === 'alquiler') {
     payload.fechaInicioAlquiler = fechaInicio.value
     payload.fechaFinAlquiler = fechaFin.value
-    payload.montoGarantia = Math.max(0, Number(montoGarantia.value || 0))
+    payload.montoGarantia = Math.max(0, roundMoney(parseMoneyInput(montoGarantia.value) ?? 0))
     if (payload.montoGarantia > 0) {
       payload.idMedioPagoGarantia = Number(idMedioPagoGarantia.value)
       payload.observacionGarantia = observacionGarantia.value.trim() || undefined

@@ -1,8 +1,8 @@
 <template>
   <div>
     <PageBreadcrumb
-      page-title="Productos"
-      help="Catálogo: precios. Stock accesorios: saldo actual (inicia en 0). Movimientos: subir o bajar cantidades. Gas: Balones / Stock de gas."
+      page-title="Almacenes"
+      help="Catálogo: precios. Stock: saldo actual; ajustes y traslados desde Stock. Ingresos por Compras y salidas por Ventas. Gas: Balones / Stock de gas."
     />
 
     <div class="grid gap-4 sm:grid-cols-1 xl:grid-cols-2">

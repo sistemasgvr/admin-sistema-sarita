@@ -712,17 +712,25 @@
               :search-fn="searchBalonesForLine(index)"
               @update:model-value="(v) => onBalonSelected(index, v)"
             />
-            <SearchableSelect
-              v-else-if="linea.tipo === 'producto'"
-              v-model="linea.idProducto"
-              label="Producto"
-              placeholder="Accesorio o mercadería (sin gases)..."
-              required
-              :model-label="linea.productoLabel"
-              :disabled="saving"
-              :search-fn="searchProductosCatalogo"
-              @update:model-value="(v) => onProductoSelected(index, v)"
-            />
+            <div v-else-if="linea.tipo === 'producto'" class="flex items-end gap-2">
+              <div class="min-w-0 flex-1">
+                <SearchableSelect
+                  v-model="linea.idProducto"
+                  label="Producto"
+                  placeholder="Accesorio o mercadería (sin gases)..."
+                  required
+                  :model-label="linea.productoLabel"
+                  :disabled="saving"
+                  :search-fn="searchProductosCatalogo"
+                  @update:model-value="(v) => onProductoSelected(index, v)"
+                />
+              </div>
+              <ProductoBarcodeScanButton
+                :filters="scanFiltersProductoCatalogo"
+                :disabled="saving"
+                @scanned="(producto) => onProductoLineaScanned(index, producto)"
+              />
+            </div>
             <AppInput
               v-else
               v-model="linea.glosa"
@@ -752,17 +760,28 @@
               @update:model-value="onPesoLineaEdit()"
             />
           </div>
-          <SearchableSelect
+          <div
             v-if="linea.tipo === 'cilindro' && linea.idBalon && !linea.idProducto"
-            v-model="linea.idProducto"
-            label="Producto / gas"
-            placeholder="Este cilindro no tiene gas asociado..."
-            required
-            :model-label="linea.productoLabel"
-            :disabled="saving"
-            :search-fn="searchProductosGas"
-            @update:model-value="(v) => onProductoSelected(index, v)"
-          />
+            class="mt-2 flex items-end gap-2"
+          >
+            <div class="min-w-0 flex-1">
+              <SearchableSelect
+                v-model="linea.idProducto"
+                label="Producto / gas"
+                placeholder="Este cilindro no tiene gas asociado..."
+                required
+                :model-label="linea.productoLabel"
+                :disabled="saving"
+                :search-fn="searchProductosGas"
+                @update:model-value="(v) => onProductoSelected(index, v)"
+              />
+            </div>
+            <ProductoBarcodeScanButton
+              :filters="scanFiltersProductoGas"
+              :disabled="saving"
+              @scanned="(producto) => onProductoLineaScanned(index, producto)"
+            />
+          </div>
           <AppInput
             v-if="linea.tipo !== 'libre'"
             v-model="linea.glosa"
@@ -837,6 +856,7 @@ import { direccionesService } from '@/modules/direcciones/services/direcciones.s
 import type { Direccion } from '@/modules/direcciones/interfaces/direccion.interface'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
 import {
   balonToSelectOption,
@@ -2442,6 +2462,47 @@ async function searchProductosGas(query: string): Promise<SelectOption[]> {
     soloActivos: 1,
   })
   return mapProductosToOptions(response.data)
+}
+
+const scanFiltersProductoCatalogo = {
+  esGas: false as const,
+  esServicio: false as const,
+  soloActivos: 1 as const,
+}
+const scanFiltersProductoGas = { esGas: true as const, soloActivos: 1 as const }
+
+function onProductoLineaScanned(index: number, producto: Producto) {
+  const linea = lineas[index]
+  if (!linea) return
+
+  if (linea.tipo === 'producto' && (producto.es_gas || producto.es_servicio)) {
+    toastWarning('En líneas de producto solo se permiten accesorios o mercadería (sin gases ni servicios)')
+    return
+  }
+  if (linea.tipo === 'cilindro' && !producto.es_gas) {
+    toastWarning('Selecciona un producto de gas para este cilindro')
+    return
+  }
+
+  productosCache.set(producto.id, {
+    idUnidadMedida: producto.id_unidad_medida,
+    nombre: producto.nombre,
+    codigo: producto.codigo,
+  })
+  linea.idProducto = producto.id
+  linea.productoLabel = `${producto.codigo} — ${producto.nombre}`
+  if (!linea.idBalon) {
+    linea.idUnidadMedida = producto.id_unidad_medida
+    linea.descripcion = producto.nombre
+    linea.glosa = producto.nombre
+    if (!linea.pesoKg) {
+      toastWarning('Ingresa el peso en kg de este producto para acumularlo en la guía.')
+    }
+  } else if (!linea.glosa) {
+    linea.descripcion = producto.nombre
+  }
+  if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
 }
 
 function onBalonSelected(index: number, value: number | string | null | undefined) {

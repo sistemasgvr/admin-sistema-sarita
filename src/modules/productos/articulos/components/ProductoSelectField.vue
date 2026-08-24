@@ -3,8 +3,12 @@
     <AppSelectWithCreate
       :can-create="canCreate"
       :create-title="createTitle"
+      :can-scan="canScan"
+      scan-title="Escanear con pistola"
       :disabled="disabled"
+      :has-label="Boolean(label?.trim())"
       @create="modalOpen = true"
+      @scan="scanOpen = true"
     >
       <AppSelectSearch
         v-if="searchable"
@@ -38,21 +42,29 @@
     </AppSelectWithCreate>
 
     <ProductoFormModal v-model="modalOpen" mode="create" @saved="onCreated" />
+    <ProductoBarcodeScanModal
+      v-model="scanOpen"
+      :filters="scanFilters"
+      @scanned="onScanned"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import ProductoBarcodeScanModal from '@/modules/productos/articulos/components/ProductoBarcodeScanModal.vue'
 import ProductoFormModal from '@/modules/productos/articulos/components/ProductoFormModal.vue'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type {
   Producto,
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
+import type { BuscarProductoPorCodigoFilters } from '@/modules/productos/articulos/utils/buscarProductoPorCodigo'
 import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppSelect, AppSelectSearch, AppSelectWithCreate } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const props = withDefaults(
@@ -92,6 +104,8 @@ const props = withDefaults(
      * Aparecen deshabilitados en el listado.
      */
     bloquearSinStock?: boolean
+    /** Botón de pistola / código de barras (default true). */
+    canScan?: boolean
   }>(),
   {
     options: undefined,
@@ -111,6 +125,7 @@ const props = withDefaults(
     soloActivos: 1,
     idAlmacen: undefined,
     bloquearSinStock: false,
+    canScan: true,
   },
 )
 
@@ -123,6 +138,7 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 const modalOpen = ref(false)
+const scanOpen = ref(false)
 const createdOption = ref<SelectOption | null>(null)
 let searchTimeout: ReturnType<typeof setTimeout> | undefined
 
@@ -130,6 +146,22 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCT
 const createTitle = computed(() =>
   props.esServicio ? 'Nuevo servicio' : 'Nuevo producto',
 )
+
+const scanFilters = computed<BuscarProductoPorCodigoFilters>(() => {
+  const filters: BuscarProductoPorCodigoFilters = {
+    soloActivos: props.soloActivos,
+  }
+  if (props.esGas !== undefined) filters.esGas = props.esGas
+  if (props.esServicio !== undefined) filters.esServicio = props.esServicio
+  if (props.esAlquilable !== undefined) filters.esAlquilable = props.esAlquilable
+  if (props.esMantenimiento !== undefined) filters.esMantenimiento = props.esMantenimiento
+  if (props.afectaStock !== undefined) filters.afectaStock = props.afectaStock
+  const idAlmacen = Number(props.idAlmacen)
+  if (Number.isFinite(idAlmacen) && idAlmacen > 0) {
+    filters.idAlmacen = idAlmacen
+  }
+  return filters
+})
 
 /** Catálogos acotados: carga una vez + filtro local (mismo patrón que POS Recarga). */
 const useRemote = computed(() => {
@@ -332,5 +364,16 @@ function onCreated(producto?: Producto) {
   model.value = producto.id
   void productosQuery.refetch()
   emit('created', producto)
+}
+
+function onScanned(producto: Producto) {
+  if (productoBloqueadoPorStock(producto)) {
+    toastWarning(`${producto.nombre} no tiene stock disponible en el almacén`)
+    return
+  }
+  createdOption.value = productoToSelectOption(producto)
+  model.value = producto.id
+  search.value = ''
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
 }
 </script>

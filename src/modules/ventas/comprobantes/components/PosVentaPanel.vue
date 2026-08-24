@@ -384,7 +384,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
@@ -394,6 +394,7 @@ import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables
 import PosCajaEstadoBanner from '@/modules/caja/components/PosCajaEstadoBanner.vue'
 import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
 import { hoyIsoLima } from '@/shared/utils/date'
+import { roundMoney } from '@/shared/utils/currency'
 import PosAnadirItemModal, {
   type PosLineaConfirmada,
 } from '@/modules/ventas/comprobantes/components/PosAnadirItemModal.vue'
@@ -466,21 +467,6 @@ const {
   clienteDescripcion,
 } = usePosComprobanteForm()
 
-const {
-  cajaCerrada,
-  puedeOperar,
-  hayPendienteCierre,
-  sesionEsPendiente,
-  pendienteCierre,
-  mensajeBloqueo: mensajeBloqueoCaja,
-  assertCajaAbierta,
-} = useCajaAbiertaRequerida(fecha)
-
-const fechaCajaPendiente = computed(() => {
-  if (sesionEsPendiente.value) return String(fecha.value).slice(0, 10)
-  return pendienteCierre.value?.fecha ? String(pendienteCierre.value.fecha).slice(0, 10) : null
-})
-
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
 const imprimiendoTicket = ref(false)
@@ -526,6 +512,30 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
 const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+
+/** Caja es por fecha + sucursal; se toma del almacén seleccionado en el POS. */
+const idSucursalCaja = computed(() => {
+  const id = idAlmacen.value
+  if (id === '' || id == null) return null
+  const alm = almacenesData.value?.find((a) => a.id === Number(id))
+  const suc = alm?.id_sucursal
+  return suc == null ? null : Number(suc)
+})
+
+const {
+  cajaCerrada,
+  puedeOperar,
+  hayPendienteCierre,
+  sesionEsPendiente,
+  pendienteCierre,
+  mensajeBloqueo: mensajeBloqueoCaja,
+  assertCajaAbierta,
+} = useCajaAbiertaRequerida(fecha, idSucursalCaja)
+
+const fechaCajaPendiente = computed(() => {
+  if (sesionEsPendiente.value) return String(fecha.value).slice(0, 10)
+  return pendienteCierre.value?.fecha ? String(pendienteCierre.value.fecha).slice(0, 10) : null
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -785,12 +795,14 @@ function abrirEditarLinea(linea: PosLineItem) {
 }
 
 function onConfirmLinea(payload: PosLineaConfirmada) {
-  const { producto, tipo } = payload
+  const precioNormalizado = roundMoney(payload.precioUnitario)
+  const payloadNormalizado = { ...payload, precioUnitario: precioNormalizado }
+  const { producto, tipo } = payloadNormalizado
   productosPorId.value.set(producto.id, producto)
 
   if (lineaEditando.value) {
     const linea = lineaEditando.value
-    aplicarPayloadALinea(linea, payload)
+    aplicarPayloadALinea(linea, payloadNormalizado)
     toastSuccess(`${linea.nombre} actualizado`)
     lineaEditando.value = null
     productoEdicion.value = null
@@ -802,8 +814,8 @@ function onConfirmLinea(payload: PosLineaConfirmada) {
     idProducto: producto.id,
     codigo: producto.codigo,
     nombre: producto.nombre,
-    cantidad: payload.cantidad,
-    precioUnitario: payload.precioUnitario,
+    cantidad: payloadNormalizado.cantidad,
+    precioUnitario: precioNormalizado,
     idAfectacionIgv: idAfectacionGravado.value,
     afectaStock: productoAfectaStock(producto),
     stockDisponible: payload.stockDisponible ?? producto.stock_actual ?? null,
@@ -814,14 +826,14 @@ function onConfirmLinea(payload: PosLineaConfirmada) {
     tipoPos: tipo,
     esMantenimiento: tipo === 'mantenimiento',
   }
-  aplicarPayloadALinea(linea, payload)
+  aplicarPayloadALinea(linea, payloadNormalizado)
   lineas.value.push(linea)
   toastSuccess(`${producto.nombre} agregado`)
 }
 
 function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.cantidad = payload.cantidad
-  linea.precioUnitario = payload.precioUnitario
+  linea.precioUnitario = roundMoney(payload.precioUnitario)
   linea.idBalon = payload.idBalon
   linea.etiquetaBalon = payload.etiquetaBalon
   linea.idBalonOrigen = payload.idBalonOrigen
@@ -1107,7 +1119,7 @@ try {
       const base = {
         idProducto: Number(linea.idProducto),
         cantidad: Number(linea.cantidad),
-        precioUnitario: Number(linea.precioUnitario),
+        precioUnitario: roundMoney(Number(linea.precioUnitario)),
         descuento: 0,
         porcentajeIgv: 18,
         idAfectacionIgv: linea.idAfectacionIgv ?? idAfectacionGravado.value,
@@ -1311,6 +1323,7 @@ try {
       numero: numero.value || undefined,
       fecha: fecha.value,
       idCliente: Number(idCliente.value),
+      idSucursal: idSucursalCaja.value ?? undefined,
       idAlmacen: idAlmacenNum,
       detalles,
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
@@ -1347,13 +1360,34 @@ async function limpiarFormulario() {
   lineas.value = []
   glosa.value = ''
   generarGre.value = false
-  idAlmacen.value = ''
+
+  // Reset UI del POS (no dejar un modal de edición/añadido abierto).
+  anadirOpen.value = false
   lineaEditando.value = null
   productoEdicion.value = null
+  inicioPreferidoAnadir.value = null
+
+  // Reset de campos operativos.
+  idAlmacen.value = ''
   productosPorId.value = new Map()
   comprobanteGuardadoId.value = null
   comprobanteGuardadoSerie.value = null
   comprobanteGuardadoNumero.value = null
+
+  // Reset Tipo de comprobante a boleta (03) para la siguiente venta.
+  // Nota: dejamos que el watch existente sincronice `serie` y el correlativo.
+  const boleta = tipoComprobanteOptions.value.find((opt) => opt.codigo === '03')
+  if (boleta) {
+    // Forzar que el watch dispare aunque ya estemos en boleta.
+    idTipoComprobante.value = ''
+    await nextTick()
+    idTipoComprobante.value = boleta.value
+    await nextTick()
+  } else {
+    // Fallback: limpiar para que el composable aplique su default si existe.
+    idTipoComprobante.value = ''
+  }
+
   await reiniciarTrasOperacion()
   await almacenesQuery.refetch()
   aplicarAlmacenPorDefecto()

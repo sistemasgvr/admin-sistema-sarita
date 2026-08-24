@@ -11,7 +11,7 @@
         Volver al stock
       </RouterLink>
       <AppHelpTip
-        text="Aquí ves el saldo actual y el historial. Para cambiar la cantidad usa un movimiento (ingreso, salida o ajuste)."
+        text="Aquí ves el saldo actual y el historial. Ajusta o traslada desde aquí. Los ingresos entran por Compras y las salidas por Ventas."
       />
     </div>
 
@@ -53,10 +53,18 @@
             <RouterLink
               v-if="canCreateMovimiento && stock"
               class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600"
-              :to="nuevoMovimientoTo"
+              :to="ajusteTo"
             >
-              <AppIcon :name="ICONS.plus" :size="16" />
-              Registrar movimiento
+              <AppIcon :name="ICONS.pencil" :size="16" />
+              Ajuste
+            </RouterLink>
+            <RouterLink
+              v-if="canCreateMovimiento && stock"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600"
+              :to="trasladoTo"
+            >
+              <AppIcon :name="ICONS.arrowLeftRight" :size="16" />
+              Traslado
             </RouterLink>
             <RouterLink
               v-if="canListMovimientos && stock"
@@ -72,7 +80,7 @@
               class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
               @click="minimoModalOpen = true"
             >
-              <AppIcon :name="ICONS.pencil" :size="16" />
+              <AppIcon :name="ICONS.gauge" :size="16" />
               Stock mínimo
             </button>
           </div>
@@ -198,9 +206,19 @@ const historialTo = computed(() => ({
   },
 }))
 
-const nuevoMovimientoTo = computed(() => ({
+const ajusteTo = computed(() => ({
   name: 'admin-productos-movimientos-nuevo',
   query: {
+    tipo: 'AJUSTE',
+    idProducto: stock.value ? String(stock.value.id_producto) : undefined,
+    idAlmacen: stock.value ? String(stock.value.id_almacen) : undefined,
+  },
+}))
+
+const trasladoTo = computed(() => ({
+  name: 'admin-productos-movimientos-nuevo',
+  query: {
+    tipo: 'TRASLADO',
     idProducto: stock.value ? String(stock.value.id_producto) : undefined,
     idAlmacen: stock.value ? String(stock.value.id_almacen) : undefined,
   },

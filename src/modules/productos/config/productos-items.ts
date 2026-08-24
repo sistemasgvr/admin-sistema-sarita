@@ -4,6 +4,8 @@ export interface ProductosMenuItem {
   key: string
   title: string
   path: string
+  /** Prefijos de ruta que también resaltan este ítem en el sidebar. */
+  activeMatchPaths?: string[]
   permission: PermissionBandera
   phase: number
   implemented: boolean
@@ -21,17 +23,11 @@ export const productosMenuItems: ProductosMenuItem[] = [
   },
   {
     key: 'stock',
-    title: 'Stock accesorios',
+    title: 'Stock',
     path: '/admin/productos/stock',
+    // Ajuste / traslado viven bajo movimientos pero se operan desde Stock.
+    activeMatchPaths: ['/admin/productos/movimientos'],
     permission: PermisoBanderas.STOCK_LISTAR,
-    phase: 4,
-    implemented: true,
-  },
-  {
-    key: 'movimientos',
-    title: 'Movimientos',
-    path: '/admin/productos/movimientos',
-    permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
     phase: 4,
     implemented: true,
   },

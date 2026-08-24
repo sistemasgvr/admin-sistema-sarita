@@ -585,6 +585,7 @@ const sections = computed<DetailSection[]>(() => {
           ? [{ label: 'N° serie', value: data.numero_serie }]
           : []),
         { label: 'Marca', value: data.nombre_marca_cilindro },
+        { label: 'Tipo de válvula', value: data.tipo_valvula },
         { label: 'Tipo de balón', value: data.nombre_tipo_balon },
         { label: 'Gas', value: data.nombre_producto_gas },
         {
@@ -597,6 +598,18 @@ const sections = computed<DetailSection[]>(() => {
             data.capacidad != null
               ? `${data.capacidad}${data.nombre_unidad_medida ? ` ${data.nombre_unidad_medida}` : ''}`
               : undefined,
+        },
+        {
+          label: 'Peso aproximado',
+          value:
+            data.peso_aproximado_kg != null
+              ? `${Number(data.peso_aproximado_kg)} kg`
+              : undefined,
+        },
+        {
+          label: 'Peso del tipo',
+          value:
+            data.peso_tipo_balon != null ? `${Number(data.peso_tipo_balon)} kg` : undefined,
         },
         { label: 'Libro', value: data.libro_cilindro },
         { label: 'Página', value: data.pagina_libro?.toString() },
@@ -644,6 +657,7 @@ const sections = computed<DetailSection[]>(() => {
             ? 'No aplica'
             : data.nombre_organo_inspector,
         },
+        { label: 'Sello de inspección', value: data.sello_inspeccion },
         {
           label: 'Residual gas (m³)',
           value:

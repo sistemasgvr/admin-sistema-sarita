@@ -6,6 +6,7 @@ export { default as AppDropzone } from '@/shared/components/form/AppDropzone.vue
 export { default as AppFileInput } from '@/shared/components/form/AppFileInput.vue'
 export { default as AppFormField } from '@/shared/components/form/AppFormField.vue'
 export { default as AppInput } from '@/shared/components/form/AppInput.vue'
+export { default as MoneyInput } from '@/shared/components/form/MoneyInput.vue'
 export { default as AppSelect } from '@/shared/components/form/AppSelect.vue'
 export { default as AppSelectSearch } from '@/shared/components/form/AppSelectSearch.vue'
 export { default as AppSelectWithCreate } from '@/shared/components/form/AppSelectWithCreate.vue'

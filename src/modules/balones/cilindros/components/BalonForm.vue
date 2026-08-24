@@ -14,15 +14,32 @@
           help="Código interno del cilindro. Si no hay serie distinta, se copia el código. El tipo sugiere el gas y define la vigencia de P.H."
         >
           <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <AppInput
-              v-model="codigoBalon"
-              label="Código de balón"
-              placeholder="20K650076"
-              required
-              v-bind="codigoBalonAttrs"
-              :disabled="isSubmitting || isLoadingBalon"
-              :error="errors.codigoBalon"
-            />
+            <div class="flex min-w-0 items-start gap-2">
+              <div class="min-w-0 flex-1">
+                <AppInput
+                  v-model="codigoBalon"
+                  label="Código de balón"
+                  placeholder="20K650076"
+                  required
+                  :help="
+                    mode === 'create'
+                      ? 'Puedes escanearlo con la pistola usando el botón de al lado.'
+                      : undefined
+                  "
+                  v-bind="codigoBalonAttrs"
+                  :disabled="isSubmitting || isLoadingBalon"
+                  :error="errors.codigoBalon"
+                />
+              </div>
+              <div class="mt-[1.625rem] shrink-0">
+                <BalonBarcodeScanButton
+                  v-if="mode === 'create'"
+                  title="Escanear código"
+                  :disabled="isSubmitting || isLoadingBalon"
+                  @captured="onCodigoBalonScanned"
+                />
+              </div>
+            </div>
             <AppInput
               v-model="numeroSerie"
               label="Número de serie"
@@ -32,15 +49,32 @@
               :disabled="isSubmitting || isLoadingBalon"
               :error="errors.numeroSerie"
             />
-            <AppSelect
-              v-model="idMarcaCilindro"
-              label="Marca"
-              optional
-              :placeholder="marcaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-              :options="marcaOptions"
+            <AppSelectWithCreate
+              :can-create="canCreateListaOpcion"
+              create-title="Nueva marca"
               :disabled="isSubmitting || marcaQuery.isLoading.value"
-              v-bind="idMarcaCilindroAttrs"
-              :error="errors.idMarcaCilindro"
+              @create="marcaModalOpen = true"
+            >
+              <AppSelect
+                v-model="idMarcaCilindro"
+                label="Marca"
+                optional
+                :placeholder="marcaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                :options="marcaOptions"
+                :disabled="isSubmitting || marcaQuery.isLoading.value"
+                v-bind="idMarcaCilindroAttrs"
+                :error="errors.idMarcaCilindro"
+              />
+            </AppSelectWithCreate>
+            <AppInput
+              v-model="tipoValvula"
+              label="Tipo de válvula"
+              optional
+              placeholder="Ej. Americana, China"
+              help="Origen o estilo de la válvula (p. ej. Americana, China)."
+              v-bind="tipoValvulaAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.tipoValvula"
             />
             <AppInput
               v-model="numeroRecepcion"
@@ -98,37 +132,58 @@
               v-bind="idProductoGasAttrs"
               :error="errors.idProductoGas"
             />
-            <AppSelect
-              v-model="idEstadoBalon"
-              label="Estado del balón"
-              :placeholder="estadoBalonQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-              :options="estadoBalonOptions"
+            <AppSelectWithCreate
+              :can-create="canCreateListaOpcion"
+              create-title="Nuevo estado de cilindro"
               :disabled="isSubmitting || estadoBalonQuery.isLoading.value"
-              v-bind="idEstadoBalonAttrs"
-              :error="errors.idEstadoBalon"
-            />
-            <AppSelect
-              v-model="idEstadoContenido"
-              label="Contenido"
-              optional
-              :placeholder="
-                estadoContenidoQuery.isLoading.value ? 'Cargando...' : 'Lleno / vacío...'
-              "
-              :options="estadoContenidoOptions"
+              @create="estadoBalonModalOpen = true"
+            >
+              <AppSelect
+                v-model="idEstadoBalon"
+                label="Estado del balón"
+                :placeholder="estadoBalonQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                :options="estadoBalonOptions"
+                :disabled="isSubmitting || estadoBalonQuery.isLoading.value"
+                v-bind="idEstadoBalonAttrs"
+                :error="errors.idEstadoBalon"
+              />
+            </AppSelectWithCreate>
+            <AppSelectWithCreate
+              :can-create="canCreateListaOpcion"
+              create-title="Nuevo contenido"
               :disabled="isSubmitting || estadoContenidoQuery.isLoading.value"
-              v-bind="idEstadoContenidoAttrs"
-              :error="errors.idEstadoContenido"
-            />
-            <AppSelect
-              v-model="idReferencia"
-              label="Referencia"
-              optional
-              :placeholder="referenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-              :options="referenciaOptions"
+              @create="contenidoModalOpen = true"
+            >
+              <AppSelect
+                v-model="idEstadoContenido"
+                label="Contenido"
+                optional
+                :placeholder="
+                  estadoContenidoQuery.isLoading.value ? 'Cargando...' : 'Lleno / vacío...'
+                "
+                :options="estadoContenidoOptions"
+                :disabled="isSubmitting || estadoContenidoQuery.isLoading.value"
+                v-bind="idEstadoContenidoAttrs"
+                :error="errors.idEstadoContenido"
+              />
+            </AppSelectWithCreate>
+            <AppSelectWithCreate
+              :can-create="canCreateListaOpcion"
+              create-title="Nueva referencia"
               :disabled="isSubmitting || referenciaQuery.isLoading.value"
-              v-bind="idReferenciaAttrs"
-              :error="errors.idReferencia"
-            />
+              @create="referenciaModalOpen = true"
+            >
+              <AppSelect
+                v-model="idReferencia"
+                label="Referencia"
+                optional
+                :placeholder="referenciaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                :options="referenciaOptions"
+                :disabled="isSubmitting || referenciaQuery.isLoading.value"
+                v-bind="idReferenciaAttrs"
+                :error="errors.idReferencia"
+              />
+            </AppSelectWithCreate>
           </div>
         </DetailSectionCard>
 
@@ -233,23 +288,57 @@
               :disabled="isSubmitting || isLoadingBalon"
               :error="errors.presionActual"
             />
-            <AppSelect
-              v-model="idOrganoInspector"
-              label="Órgano inspector"
+            <AppInput
+              v-model="pesoAproximadoKg"
+              label="Peso aproximado (kg)"
               optional
-              :placeholder="organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-              :options="organoInspectorOptions"
-              :disabled="isSubmitting || organoInspectorNoAplica || organoInspectorQuery.isLoading.value"
-              v-bind="idOrganoInspectorAttrs"
-              :error="errors.idOrganoInspector"
+              type="number"
+              min="0"
+              step="0.01"
+              help="Peso para guías; si vacío se usa el peso del tipo"
+              v-bind="pesoAproximadoKgAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.pesoAproximadoKg"
             />
-            <div class="flex items-end pb-2">
+            <div class="flex items-end pb-2 sm:col-span-2 lg:col-span-3">
               <AppCheckbox
-                v-model="organoInspectorNoAplica"
-                label="Sin órgano inspector"
+                v-model="tieneOrganoInspector"
+                label="Tiene órgano inspector"
                 :disabled="isSubmitting"
               />
             </div>
+            <template v-if="tieneOrganoInspector">
+              <AppSelectWithCreate
+                :can-create="canCreateListaOpcion"
+                create-title="Nuevo órgano inspector"
+                :disabled="isSubmitting || organoInspectorQuery.isLoading.value"
+                @create="organoModalOpen = true"
+              >
+                <AppSelect
+                  v-model="idOrganoInspector"
+                  label="Órgano inspector"
+                  optional
+                  :placeholder="
+                    organoInspectorQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'
+                  "
+                  :options="organoInspectorOptions"
+                  :disabled="isSubmitting || organoInspectorQuery.isLoading.value"
+                  v-bind="idOrganoInspectorAttrs"
+                  :error="errors.idOrganoInspector"
+                />
+              </AppSelectWithCreate>
+              <AppInput
+                v-model="selloInspeccion"
+                label="Sello de inspección"
+                optional
+                placeholder="Marca o símbolo"
+                help="Marca o símbolo del sello de inspección"
+                maxlength="100"
+                v-bind="selloInspeccionAttrs"
+                :disabled="isSubmitting || isLoadingBalon"
+                :error="errors.selloInspeccion"
+              />
+            </template>
             <div class="sm:col-span-2 lg:col-span-3">
               <AppTextarea
                 v-model="observacion"
@@ -287,6 +376,47 @@
     <div v-else class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
       Cargando datos del cilindro...
     </div>
+
+    <ListaOpcionFormModal
+      v-model="marcaModalOpen"
+      :id-lista="ListaIds.MARCA_CILINDRO"
+      title="Nueva marca de cilindro"
+      subtitle="Quedará disponible al registrar cilindros."
+      nombre-placeholder="Ej. BTIC-JP"
+      @saved="onMarcaCreated"
+    />
+    <ListaOpcionFormModal
+      v-model="estadoBalonModalOpen"
+      :id-lista="ListaIds.ESTADO_BALON"
+      title="Nuevo estado del balón"
+      subtitle="Úsalo solo si el flujo operativo lo requiere."
+      nombre-placeholder="Ej. EN_ALMACEN"
+      @saved="onEstadoBalonCreated"
+    />
+    <ListaOpcionFormModal
+      v-model="contenidoModalOpen"
+      :id-lista="ListaIds.ESTADO_CONTENIDO_BALON"
+      title="Nuevo contenido"
+      subtitle="Ej. Lleno, vacío u otro estado de contenido."
+      nombre-placeholder="Ej. VACIO"
+      @saved="onContenidoCreated"
+    />
+    <ListaOpcionFormModal
+      v-model="referenciaModalOpen"
+      :id-lista="ListaIds.REFERENCIA_CILINDRO"
+      title="Nueva referencia"
+      subtitle="Quedará disponible en la ficha del cilindro."
+      nombre-placeholder="Ej. ALMACEN"
+      @saved="onReferenciaCreated"
+    />
+    <ListaOpcionFormModal
+      v-model="organoModalOpen"
+      :id-lista="ListaIds.ORGANO_INSPECTOR_CILINDRO"
+      title="Nuevo órgano inspector"
+      subtitle="Entidad que certifica la inspección del cilindro."
+      nombre-placeholder="Ej. Bureau Veritas"
+      @saved="onOrganoCreated"
+    />
   </div>
 </template>
 
@@ -296,6 +426,8 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
+import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
@@ -308,6 +440,7 @@ import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalone
 import { useTiposBalonQuery } from '@/modules/balones/tipos-balon/composables/useTiposBalonQuery'
 import TipoBalonSelectField from '@/modules/balones/tipos-balon/components/TipoBalonSelectField.vue'
 import type { TipoBalon } from '@/modules/balones/tipos-balon/interfaces/tipo-balon.interface'
+import BalonBarcodeScanButton from '@/modules/balones/cilindros/components/BalonBarcodeScanButton.vue'
 import type {
   Balon,
   BalonFormMode,
@@ -321,11 +454,12 @@ import {
   MES_FABRICACION_OPTIONS,
   toFirstOfMonthIso,
 } from '@/modules/balones/utils/formatMonthYear'
-import { AppCheckbox, AppInput, AppSelect, AppTextarea } from '@/shared/components'
+import { AppCheckbox, AppInput, AppSelect, AppSelectWithCreate, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import {
   optionalNumber,
   optionalString,
@@ -355,6 +489,16 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 const createMutation = useCreateBalonMutation()
 const updateMutation = useUpdateBalonMutation()
+
+const canCreateListaOpcion = computed(() =>
+  authStore.hasPermission(PermisoBanderas.BALONES_CREAR),
+)
+
+const marcaModalOpen = ref(false)
+const estadoBalonModalOpen = ref(false)
+const contenidoModalOpen = ref(false)
+const referenciaModalOpen = ref(false)
+const organoModalOpen = ref(false)
 
 const balonIdRef = computed(() => (props.mode === 'edit' ? props.balonId : null))
 const balonQuery = useBalonQuery(balonIdRef)
@@ -428,6 +572,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     yup.object({
       codigoBalon: requiredString('El código de balón').max(50, 'Máximo 50 caracteres'),
       numeroSerie: optionalString().max(50, 'Máximo 50 caracteres'),
+      tipoValvula: optionalString().max(100, 'Máximo 100 caracteres'),
+      pesoAproximadoKg: optionalNumber(),
+      selloInspeccion: optionalString().max(100, 'Máximo 100 caracteres'),
       libroCilindro: optionalString().max(30, 'Máximo 30 caracteres'),
       paginaLibro: optionalNumber(),
       fechaRegistro: optionalString(),
@@ -482,6 +629,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   initialValues: {
     codigoBalon: '',
     numeroSerie: '',
+    tipoValvula: '',
+    pesoAproximadoKg: undefined as number | undefined,
+    selloInspeccion: '',
     libroCilindro: '',
     paginaLibro: undefined as number | undefined,
     fechaRegistro: '',
@@ -498,7 +648,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idEstadoBalon: undefined as number | undefined,
     idEstadoContenido: undefined as number | undefined,
     idOrganoInspector: undefined as number | undefined,
-    organoInspectorNoAplica: false,
+    organoInspectorNoAplica: true,
     mesFabricacion: undefined as number | undefined,
     anioFabricacion: undefined as number | undefined,
     presionActual: undefined as number | undefined,
@@ -508,6 +658,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 
 const [codigoBalon, codigoBalonAttrs] = defineField('codigoBalon')
 const [numeroSerie, numeroSerieAttrs] = defineField('numeroSerie')
+const [tipoValvula, tipoValvulaAttrs] = defineField('tipoValvula')
+const [pesoAproximadoKg, pesoAproximadoKgAttrs] = defineField('pesoAproximadoKg')
+const [selloInspeccion, selloInspeccionAttrs] = defineField('selloInspeccion')
 const [libroCilindro, libroCilindroAttrs] = defineField('libroCilindro')
 const [paginaLibro, paginaLibroAttrs] = defineField('paginaLibro')
 const [fechaRegistro, fechaRegistroAttrs] = defineField('fechaRegistro')
@@ -529,6 +682,50 @@ const [mesFabricacion, mesFabricacionAttrs] = defineField('mesFabricacion')
 const [anioFabricacion, anioFabricacionAttrs] = defineField('anioFabricacion')
 const [presionActual, presionActualAttrs] = defineField('presionActual')
 const [observacion, observacionAttrs] = defineField('observacion')
+
+/** UI: primero decidir si tiene órgano; solo entonces mostrar select + sello. */
+const tieneOrganoInspector = computed({
+  get: () => !Boolean(organoInspectorNoAplica.value),
+  set: (tiene: boolean) => {
+    organoInspectorNoAplica.value = !tiene
+    if (!tiene) {
+      idOrganoInspector.value = undefined
+      selloInspeccion.value = ''
+    }
+  },
+})
+
+watch(organoInspectorNoAplica, (noAplica) => {
+  if (noAplica) {
+    idOrganoInspector.value = undefined
+    selloInspeccion.value = ''
+  }
+})
+
+function onMarcaCreated(opcion: ListaOpcion) {
+  idMarcaCilindro.value = opcion.id
+}
+
+function onEstadoBalonCreated(opcion: ListaOpcion) {
+  idEstadoBalon.value = opcion.id
+}
+
+function onContenidoCreated(opcion: ListaOpcion) {
+  idEstadoContenido.value = opcion.id
+}
+
+function onReferenciaCreated(opcion: ListaOpcion) {
+  idReferencia.value = opcion.id
+}
+
+function onOrganoCreated(opcion: ListaOpcion) {
+  organoInspectorNoAplica.value = false
+  idOrganoInspector.value = opcion.id
+}
+
+function onCodigoBalonScanned(codigo: string) {
+  codigoBalon.value = codigo
+}
 
 const propietarioSeleccionadoNombre = computed(() => nombrePropietario(idPropietario.value))
 
@@ -619,10 +816,6 @@ watch(idClientePropietario, (id) => {
   }
 })
 
-watch(organoInspectorNoAplica, (noAplica) => {
-  if (noAplica) idOrganoInspector.value = undefined
-})
-
 watch(codigoBalon, (codigo) => {
   if (props.mode === 'create' && codigo && !numeroSerie.value) {
     numeroSerie.value = codigo
@@ -633,6 +826,9 @@ const buildPayload = (
   values: {
     codigoBalon: string
     numeroSerie: string
+    tipoValvula: string
+    pesoAproximadoKg?: number
+    selloInspeccion: string
     libroCilindro: string
     paginaLibro?: number
     fechaRegistro: string
@@ -664,6 +860,12 @@ const buildPayload = (
     idUsuarioAuditoria: userId,
     codigoBalon: values.codigoBalon,
     numeroSerie: values.numeroSerie || values.codigoBalon || undefined,
+    tipoValvula: values.tipoValvula || undefined,
+    pesoAproximadoKg:
+      values.pesoAproximadoKg != null ? Number(values.pesoAproximadoKg) : undefined,
+    selloInspeccion: values.organoInspectorNoAplica
+      ? undefined
+      : values.selloInspeccion || undefined,
     libroCilindro: values.libroCilindro || undefined,
     paginaLibro: values.paginaLibro,
     fechaRegistro: values.fechaRegistro || undefined,
@@ -704,6 +906,9 @@ const syncFormValues = () => {
     values: {
       codigoBalon: data?.codigo_balon ?? '',
       numeroSerie: data?.numero_serie ?? '',
+      tipoValvula: data?.tipo_valvula ?? '',
+      pesoAproximadoKg: data?.peso_aproximado_kg ?? undefined,
+      selloInspeccion: data?.sello_inspeccion ?? '',
       libroCilindro: data?.libro_cilindro ?? '',
       paginaLibro: data?.pagina_libro ?? undefined,
       fechaRegistro: toDateInput(data?.fecha_registro),
@@ -720,7 +925,8 @@ const syncFormValues = () => {
       idEstadoBalon: data?.id_estado_balon ?? undefined,
       idEstadoContenido: data?.id_estado_contenido ?? undefined,
       idOrganoInspector: data?.id_organo_inspector ?? undefined,
-      organoInspectorNoAplica: data?.organo_inspector_no_aplica ?? false,
+      organoInspectorNoAplica:
+        data?.organo_inspector_no_aplica ?? !data?.id_organo_inspector,
       mesFabricacion: mesFromDate,
       anioFabricacion: data?.anio_fabricacion ?? undefined,
       presionActual: data?.presion_actual ?? undefined,
@@ -783,6 +989,9 @@ const applyCreateForm = () => {
     values: {
       codigoBalon: props.preset?.codigoBalon ?? '',
       numeroSerie: props.preset?.codigoBalon ?? '',
+      tipoValvula: '',
+      pesoAproximadoKg: undefined,
+      selloInspeccion: '',
       libroCilindro: '',
       paginaLibro: undefined,
       fechaRegistro: new Date().toISOString().slice(0, 10),
@@ -799,7 +1008,7 @@ const applyCreateForm = () => {
       idEstadoBalon: props.preset?.idEstadoBalon,
       idEstadoContenido: undefined,
       idOrganoInspector: undefined,
-      organoInspectorNoAplica: false,
+      organoInspectorNoAplica: true,
       mesFabricacion: undefined,
       anioFabricacion: undefined,
       presionActual: undefined,
@@ -824,6 +1033,8 @@ const onSubmit = handleSubmit(async (values) => {
       idProductoGas: values.idProductoGas,
       idPropietario: Number(values.idPropietario),
       numeroSerie: values.numeroSerie ?? '',
+      tipoValvula: values.tipoValvula ?? '',
+      selloInspeccion: values.selloInspeccion ?? '',
       libroCilindro: values.libroCilindro ?? '',
       fechaRegistro: values.fechaRegistro ?? '',
       numeroRecepcion: values.numeroRecepcion ?? '',

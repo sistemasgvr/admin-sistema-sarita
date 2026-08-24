@@ -15,16 +15,13 @@
           />
         </AppFormField>
 
-        <AppFormField label="Importe" required :error="errores.importe">
-          <div @keydown="bloquearTeclasInvalidas" @paste="bloquearPegadoInvalido" @focusout="normalizarImporte">
-            <AppInput
-              v-model="form.importe"
-              type="text"
-              inputmode="decimal"
-              placeholder="0.00"
-              :state="errores.importe ? 'error' : 'default'"
-            />
-          </div>
+        <AppFormField label="Importe" required :error="errorImporteDisplay">
+          <MoneyInput
+            v-model="form.importe"
+            placeholder="0.00"
+            :state="errorImporteDisplay ? 'error' : 'default'"
+            @blur="onBlurImporte"
+          />
         </AppFormField>
       </div>
 
@@ -70,7 +67,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="guardando"
+        :disabled="guardando || !formularioValido"
         @click="submit"
       >
         {{ guardando ? 'Guardando...' : cta }}
@@ -80,10 +77,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { computed, reactive, ref, toRef, watch } from 'vue'
+import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
@@ -94,7 +92,7 @@ import {
 import type { Garantia } from '@/modules/finanzas/interfaces/garantia.interface'
 import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
-import { normalizeMoneyInput, parseMoneyInput } from '@/shared/utils/currency'
+import { mensajeErrorMontoMoneda, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 
 const props = defineProps<{ garantia?: Garantia | null }>()
 const emit = defineEmits<{ saved: [] }>()
@@ -152,11 +150,21 @@ const form = reactive({
   fecha: hoy(),
   idCliente: null as number | null,
   idMedioPago: '' as string | number,
-  importe: '' as string | number,
+  importe: '',
   observacion: '',
 })
 
 const errores = reactive<Record<string, string | undefined>>({})
+
+const moneyOpts = { min: 0.01 } as const
+const { error: errorImporte, valido: importeValido, onBlur: onBlurImporte } = useMoneyField(
+  toRef(form, 'importe'),
+  moneyOpts,
+)
+const errorImporteDisplay = computed(() => errores.importe || errorImporte.value)
+const formularioValido = computed(
+  () => importeValido.value && Boolean(form.fecha) && Boolean(form.idCliente),
+)
 
 const cargarDesdeProps = () => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
@@ -182,45 +190,26 @@ watch(open, (isOpen) => {
 
 watch(() => form.idCliente, (v) => { if (v) errores.idCliente = undefined })
 watch(() => form.fecha, (v) => { if (v) errores.fecha = undefined })
-watch(() => form.importe, (v) => {
-  const n = parseMoneyInput(v)
-  if (n != null && n > 0) errores.importe = undefined
-})
 watch(() => form.observacion, (v) => {
   if (v.length <= 500) errores.observacion = undefined
 })
-
-const bloquearTeclasInvalidas = (e: KeyboardEvent) => {
-  if (e.key.length > 1) return
-  if (e.ctrlKey || e.metaKey) return
-  if (['-', '+', 'e', 'E'].includes(e.key)) { e.preventDefault(); return }
-  if (!/[\d.,]/.test(e.key)) e.preventDefault()
-}
-const bloquearPegadoInvalido = (e: ClipboardEvent) => {
-  const texto = e.clipboardData?.getData('text') ?? ''
-  if (/[-+eE]/.test(texto)) e.preventDefault()
-}
-const normalizarImporte = () => {
-  const norm = normalizeMoneyInput(form.importe)
-  if (norm) form.importe = norm
-}
 
 const validar = (): boolean => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
   let ok = true
   if (!form.fecha) { errores.fecha = 'La fecha es obligatoria'; ok = false }
   if (!form.idCliente) { errores.idCliente = 'Selecciona un cliente'; ok = false }
-  const imp = parseMoneyInput(form.importe)
-  if (imp == null || imp <= 0) { errores.importe = 'Ingresa un importe válido mayor a cero'; ok = false }
+  const msgImporte = mensajeErrorMontoMoneda(form.importe, moneyOpts)
+  if (msgImporte) { errores.importe = msgImporte; ok = false }
   if (form.observacion.length > 500) { errores.observacion = 'Máximo 500 caracteres'; ok = false }
   return ok
 }
 
 const submit = async () => {
-  normalizarImporte()
+  if (mensajeErrorMontoMoneda(form.importe, moneyOpts)) return
   if (!validar()) return
 
-  const importe = Math.round((parseMoneyInput(form.importe) ?? 0) * 100) / 100
+  const importe = roundMoney(parseMoneyInput(form.importe))
   const payload = {
     fecha: form.fecha,
     idCliente: form.idCliente as number,

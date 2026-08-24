@@ -26,35 +26,44 @@
           :options="prestamoOptions"
           :disabled="!clienteId || prestamosQuery.isFetching.value"
         />
-        <AppSelectSearch
-          v-model="productoId"
-          v-model:search="productoBuscar"
-          label="Producto / tipo envase"
-          placeholder="Selecciona producto (no servicios)"
-          search-placeholder="Código o nombre..."
-          class="sm:col-span-2"
-          required
-          remote
-          :options="productoOptions"
-          :loading="productosQuery.isFetching.value"
-          hint="Solo productos. Los servicios no aplican a garantía industrial."
-        />
-        <AppSelect
+        <div class="flex items-end gap-2 sm:col-span-2">
+          <div class="min-w-0 flex-1">
+            <AppSelectSearch
+              v-model="productoId"
+              v-model:search="productoBuscar"
+              label="Producto / tipo envase"
+              placeholder="Selecciona producto (no servicios)"
+              search-placeholder="Código o nombre..."
+              required
+              remote
+              :options="productoOptions"
+              :loading="productosQuery.isFetching.value"
+              hint="Solo productos. Los servicios no aplican a garantía industrial."
+            />
+          </div>
+          <ProductoBarcodeScanButton
+            :filters="scanFiltersProducto"
+            :disabled="productosQuery.isFetching.value"
+            @scanned="onProductoScanned"
+          />
+        </div>        <AppSelect
           v-model="idTipoComprobante"
           label="Comprobante"
           placeholder="Selecciona"
           required
           :options="tipoComprobanteOptions"
         />
-        <AppInput
-          v-model="monto"
-          label="Monto garantía"
-          type="number"
-          min="0"
-          step="0.01"
-          required
-          hint="Prefill desde precio_garantia del producto/catálogo; puedes sobrescribir."
-        />
+        <AppFormField label="Monto garantía" required :error="errorMonto">
+          <MoneyInput
+            v-model="monto"
+            placeholder="0.00"
+            :state="errorMonto ? 'error' : 'default'"
+            @blur="onBlurMonto"
+          />
+        </AppFormField>
+        <p class="text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
+          Prefill desde precio_garantia del producto/catálogo; puedes sobrescribir.
+        </p>
       </div>
 
       <p
@@ -100,14 +109,21 @@ import type { PrestamoListFilters } from '@/modules/balones/prestamos/interfaces
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
-import type { ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
+import type {
+  Producto,
+  ProductoListFilters,
+} from '@/modules/productos/articulos/interfaces/producto.interface'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
 import { OrigenPos } from '@/modules/ventas/comprobantes/constants/origenPos'
 import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import { usePosComprobanteForm } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
-import { toastWarning } from '@/shared/composables/useToast'
+import { AppModal, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 
 const props = defineProps<{
   idCliente?: number | null
@@ -134,13 +150,17 @@ const {
 const clienteId = ref<number | ''>('')
 const prestamoId = ref<number | ''>('')
 const productoId = ref<number | ''>('')
-const monto = ref(0)
+const monto = ref('')
 const origenMonto = ref('')
 const idMedioPago = ref<string | number>('')
 const observacionRecepcion = ref('')
 const guardando = ref(false)
 const clienteBuscar = ref('')
 const productoBuscar = ref('')
+
+const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(monto, {
+  min: 0.01,
+})
 
 const clientesFilters = ref({
   pagina: 1,
@@ -165,6 +185,8 @@ const productosFilters = ref<ProductoListFilters>({
   buscar: undefined,
 })
 const productosQuery = useProductosQuery(productosFilters)
+const scanFiltersProducto = { esServicio: false as const, soloActivos: 1 as const }
+const productoEscaneado = ref<Producto | null>(null)
 
 const clienteOptions = computed(() =>
   (clientesQuery.data.value?.data ?? []).map((c) => ({
@@ -181,23 +203,50 @@ const prestamoOptions = computed(() => [
   })),
 ])
 
-const productoOptions = computed(() =>
-  (productosQuery.data.value?.data ?? []).map((p) => ({
-    value: p.id,
-    label: `${p.codigo ? `${p.codigo} — ` : ''}${p.nombre}${
-      p.precio_garantia != null && Number(p.precio_garantia) > 0
-        ? ` (garantía S/ ${Number(p.precio_garantia).toFixed(2)})`
-        : ''
-    }`,
-  })),
-)
+function labelProductoGarantia(p: Producto) {
+  return `${p.codigo ? `${p.codigo} — ` : ''}${p.nombre}${
+    p.precio_garantia != null && Number(p.precio_garantia) > 0
+      ? ` (garantía S/ ${Number(p.precio_garantia).toFixed(2)})`
+      : ''
+  }`
+}
 
+const productoOptions = computed(() => {
+  const base = (productosQuery.data.value?.data ?? []).map((p) => ({
+    value: p.id,
+    label: labelProductoGarantia(p),
+  }))
+  const extra = productoEscaneado.value
+  if (extra && !base.some((item) => item.value === extra.id)) {
+    return [{ value: extra.id, label: labelProductoGarantia(extra) }, ...base]
+  }
+  return base
+})
+
+function resolverProducto(id: number | ''): Producto | undefined {
+  if (!id) return undefined
+  return (
+    (productosQuery.data.value?.data ?? []).find((p) => p.id === id) ??
+    (productoEscaneado.value?.id === id ? productoEscaneado.value : undefined)
+  )
+}
+
+function onProductoScanned(producto: Producto) {
+  if (producto.es_servicio) {
+    toastWarning('Los servicios no aplican a garantía industrial')
+    return
+  }
+  productoEscaneado.value = producto
+  productoId.value = producto.id
+  productoBuscar.value = ''
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
+}
 const puedeCobrar = computed(
   () =>
     Boolean(clienteId.value) &&
     Boolean(productoId.value) &&
     Boolean(idTipoComprobante.value) &&
-    Number(monto.value) > 0 &&
+    montoValido.value &&
     Boolean(idMedioPago.value),
 )
 
@@ -230,7 +279,7 @@ watch(productoId, async (value) => {
     origenMonto.value = ''
     return
   }
-  const producto = (productosQuery.data.value?.data ?? []).find((p) => p.id === value)
+  const producto = resolverProducto(value)
   let sugerido = Number(producto?.precio_garantia ?? 0)
   let origen = sugerido > 0 ? `producto (${producto?.nombre})` : ''
 
@@ -252,7 +301,7 @@ watch(productoId, async (value) => {
   }
 
   if (sugerido > 0) {
-    monto.value = sugerido
+    monto.value = sugerido.toFixed(2)
     origenMonto.value = `S/ ${sugerido.toFixed(2)} desde ${origen}`
   } else {
     origenMonto.value = 'Sin precio_garantia en producto/catálogo — ingresa el monto manualmente'
@@ -266,7 +315,8 @@ watch(
     clienteId.value = props.idCliente ?? ''
     prestamoId.value = props.idPrestamo ?? ''
     productoId.value = props.idProducto ?? ''
-    monto.value = 0
+    productoEscaneado.value = null
+    monto.value = ''
     origenMonto.value = ''
     idMedioPago.value = ''
     observacionRecepcion.value = ''
@@ -286,13 +336,13 @@ async function confirmar() {
     return
   }
 
-  const producto = (productosQuery.data.value?.data ?? []).find(
-    (p) => p.id === productoId.value,
-  )
+  const producto = resolverProducto(productoId.value)
   if (!producto) {
     toastWarning('Selecciona un producto válido')
     return
   }
+
+  const montoNum = roundMoney(parseMoneyInput(monto.value))
 
   guardando.value = true
   try {
@@ -306,7 +356,7 @@ async function confirmar() {
         {
           idProducto: producto.id,
           cantidad: 1,
-          precioUnitario: Number(monto.value),
+          precioUnitario: montoNum,
           descuento: 0,
           porcentajeIgv: 18,
           idAfectacionIgv: idAfectacionGravado.value,
@@ -322,7 +372,7 @@ async function confirmar() {
     await createGarantiaMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idCliente: Number(clienteId.value),
-      monto: Number(monto.value),
+      monto: montoNum,
       idComprobante: comprobante.id,
       idPrestamo: prestamoId.value ? Number(prestamoId.value) : undefined,
       idProducto: producto.id,

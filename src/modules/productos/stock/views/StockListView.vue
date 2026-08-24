@@ -1,9 +1,9 @@
 <template>
   <div>
     <PageBreadcrumb
-      page-title="Stock accesorios"
+      page-title="Stock"
       :items="breadcrumbItems"
-      help="Saldo actual por almacén. Al crear un accesorio el stock inicia en 0. Para subir o bajar cantidad usa Movimientos (ingreso, salida o ajuste)."
+      help="Saldo actual por almacén. Ajusta o traslada desde aquí. Los ingresos entran por Compras y las salidas por Ventas."
     />
 
     <AppSummaryCards :cards="resumenCards" />
@@ -22,26 +22,50 @@
           search-placeholder="Almacén, código o producto..."
           @filter-change="onFiltersChange"
         >
+          <template #search-extra>
+            <ProductoBarcodeScanButton
+              title="Escanear producto"
+              :filters="{
+                soloActivos: 1,
+                afectaStock: true,
+                esGas: false,
+                esServicio: false,
+              }"
+              @scanned="onProductoScanned"
+            />
+          </template>
+
           <template #actions>
             <AppExportExcelButton :on-export="exportarExcel" />
-            <div class="w-full sm:w-40">
+            <div class="min-w-[9.5rem] flex-1 sm:w-40 sm:flex-none">
               <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
             </div>
             <RouterLink
               v-if="canCreateMovimiento"
-              :to="{ name: 'admin-productos-movimientos-nuevo' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'AJUSTE' } }"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
+              title="Ajuste"
             >
-              <AppIcon :name="ICONS.plus" :size="18" />
-              Movimiento
+              <AppIcon :name="ICONS.pencil" :size="18" />
+              <span class="hidden sm:inline">Ajuste</span>
+            </RouterLink>
+            <RouterLink
+              v-if="canCreateMovimiento"
+              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'TRASLADO' } }"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
+              title="Traslado"
+            >
+              <AppIcon :name="ICONS.arrowLeftRight" :size="18" />
+              <span class="hidden sm:inline">Traslado</span>
             </RouterLink>
             <RouterLink
               v-if="canListMovimientos"
               :to="{ name: 'admin-productos-movimientos' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+              title="Historial"
             >
               <AppIcon :name="ICONS.history" :size="18" />
-              Historial
+              <span class="hidden sm:inline">Historial</span>
             </RouterLink>
           </template>
         </AppListToolbar>
@@ -175,7 +199,7 @@
         <span class="font-medium">{{ stockToDelete?.nombre_producto }}</span>
         en
         <span class="font-medium">{{ stockToDelete?.nombre_almacen }}</span>
-        porque la cantidad debe ser cero. Registra un movimiento hasta dejarlo en cero e
+        porque la cantidad debe ser cero. Registra un ajuste hasta dejarlo en cero e
         inténtalo de nuevo.
       </div>
 
@@ -221,6 +245,8 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
 import type { Almacen } from '@/modules/configuracion/almacenes/interfaces/almacen.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import {
   useDeleteStockMutation,
   useRestaurarStockMutation,
@@ -247,6 +273,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
+import { toastSuccess } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCantidadPorUnidad } from '@/shared/utils/unidadMedidaCantidad'
@@ -398,6 +425,12 @@ const formatCantidad = (value: unknown, nombreUnidad?: string | null) =>
 
 const exportarExcel = () => exportarStockExcel(filters.value)
 
+function onProductoScanned(producto: Producto) {
+  // El listado filtra por código/nombre de producto (no por codigo_barra en SQL)
+  buscar.value = producto.codigo
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
+}
+
 const loadCatalogos = async () => {
   isLoadingAlmacenes.value = true
   try {
@@ -512,8 +545,15 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
       hidden: !(canListMovimientos.value && activo),
     },
     {
-      key: 'movimiento',
-      label: 'Registrar movimiento',
+      key: 'ajuste',
+      label: 'Ajuste',
+      icon: ICONS.pencil,
+      disabled: busy,
+      hidden: !(canCreateMovimiento.value && activo),
+    },
+    {
+      key: 'traslado',
+      label: 'Traslado',
       icon: ICONS.arrowLeftRight,
       disabled: busy,
       hidden: !(canCreateMovimiento.value && activo),
@@ -521,7 +561,7 @@ function actionItemsForRow(row: Stock): ActionMenuItem[] {
     {
       key: 'minimo',
       label: 'Stock mínimo',
-      icon: ICONS.pencil,
+      icon: ICONS.gauge,
       disabled: busy,
       hidden: !(canEdit.value && activo),
     },
@@ -558,10 +598,21 @@ function onActionSelect(key: string, row: Stock) {
         },
       })
       return
-    case 'movimiento':
+    case 'ajuste':
       void router.push({
         name: 'admin-productos-movimientos-nuevo',
         query: {
+          tipo: 'AJUSTE',
+          idProducto: String(row.id_producto),
+          idAlmacen: String(row.id_almacen),
+        },
+      })
+      return
+    case 'traslado':
+      void router.push({
+        name: 'admin-productos-movimientos-nuevo',
+        query: {
+          tipo: 'TRASLADO',
           idProducto: String(row.id_producto),
           idAlmacen: String(row.id_almacen),
         },

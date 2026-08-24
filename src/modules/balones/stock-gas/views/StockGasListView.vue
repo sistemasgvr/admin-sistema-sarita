@@ -21,18 +21,20 @@
             <RouterLink
               v-if="canListCilindros"
               :to="{ name: 'admin-balones-cilindros' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+              title="Libro"
             >
               <AppIcon :name="ICONS.cylinder" :size="18" />
-              Libro
+              <span class="hidden sm:inline">Libro</span>
             </RouterLink>
             <RouterLink
               v-if="canListMovimientos"
               :to="{ name: 'admin-balones-movimientos' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+              title="Movimientos"
             >
               <AppIcon :name="ICONS.history" :size="18" />
-              Movimientos
+              <span class="hidden sm:inline">Movimientos</span>
             </RouterLink>
           </template>
         </AppListToolbar>

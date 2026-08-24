@@ -17,14 +17,14 @@
           :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
           :label="esGas ? 'Cantidad / m³' : 'Cantidad'"
         />
-        <AppInput
-          v-model="precioUnitario"
-          label="Precio unitario"
-          type="number"
-          :min="NUMBER_MIN.money"
-          :step="NUMBER_STEP.money"
-          required
-        />
+        <AppFormField label="Precio unitario" required :error="errorPrecioUnitario">
+          <MoneyInput
+            v-model="precioUnitario"
+            placeholder="0.00"
+            :state="errorPrecioUnitario ? 'error' : 'default'"
+            @blur="onBlurPrecioUnitario"
+          />
+        </AppFormField>
       </div>
 
       <template v-if="esGas">
@@ -111,12 +111,15 @@ import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitM
 import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { productoAfectaStock, validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
-import { AppInput, AppModal } from '@/shared/components'
+import { AppInput, AppModal, MoneyInput } from '@/shared/components'
+import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { NUMBER_STEP } from '@/shared/constants/number-input'
 import { hoyIsoLima } from '@/shared/utils/date'
-import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
+import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 
 export interface PosLineaConfirmada {
   cantidad: number
@@ -150,7 +153,12 @@ const emit = defineEmits<{
 const open = defineModel<boolean>({ default: false })
 
 const cantidad = ref(1)
-const precioUnitario = ref<number | string>(0)
+const precioUnitario = ref('')
+const {
+  error: errorPrecioUnitario,
+  valido: precioUnitarioValido,
+  onBlur: onBlurPrecioUnitario,
+} = useMoneyField(precioUnitario, { min: 0, allowZero: true })
 const idBalon = ref<number | ''>('')
 const capacidad = ref<number | string>('')
 const fechaInicio = ref('')
@@ -184,13 +192,13 @@ const ayuda = computed(() => {
 })
 
 const importe = computed(
-  () => Number(cantidad.value || 0) * Number(precioUnitario.value || 0),
+  () => Number(cantidad.value || 0) * (parseMoneyInput(precioUnitario.value) ?? 0),
 )
 
 const puedeConfirmar = computed(() => {
   if (!props.producto) return false
   if (Number(cantidad.value) <= 0) return false
-  if (Number(precioUnitario.value) < 0) return false
+  if (!precioUnitarioValido.value) return false
   if (esAlquilable.value && (!fechaInicio.value || !fechaFin.value)) return false
   return true
 })
@@ -202,7 +210,7 @@ watch(
 
     if (linea) {
       cantidad.value = Math.max(0, Number(linea.cantidad || 1))
-      precioUnitario.value = Number(linea.precioUnitario || 0)
+      precioUnitario.value = roundMoney(linea.precioUnitario || 0).toFixed(2)
       idBalon.value = linea.idBalon ?? ''
       capacidad.value = linea.capacidad ?? ''
       fechaInicio.value = linea.fechaInicioAlquiler || hoyIsoLima()
@@ -213,7 +221,7 @@ watch(
     }
 
     cantidad.value = 1
-    precioUnitario.value = Number(producto.precio ?? 0)
+    precioUnitario.value = roundMoney(producto.precio ?? 0).toFixed(2)
     idBalon.value = ''
     capacidad.value = ''
     fechaInicio.value = hoyIsoLima()
@@ -259,9 +267,12 @@ function confirmar() {
     }
   }
 
+  onBlurPrecioUnitario()
+  const precio = roundMoney(parseMoneyInput(precioUnitario.value) ?? 0)
+
   const payload: PosLineaConfirmada = {
     cantidad: cant,
-    precioUnitario: Number(precioUnitario.value || 0),
+    precioUnitario: precio,
     observacionLinea: observacion.value.trim() || undefined,
   }
 

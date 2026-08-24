@@ -13,6 +13,12 @@
       />
     </div>
 
+    <ProductoBarcodeScanButton
+      :disabled="disabled"
+      :filters="{ soloActivos: 1 }"
+      @scanned="onProductoScanned"
+    />
+
     <button
       v-if="canCreate"
       type="button"
@@ -35,6 +41,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import ProductoFormModal from '@/modules/productos/articulos/components/ProductoFormModal.vue'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -67,6 +74,7 @@ const search = defineModel<string>('search', { default: '' })
 
 const emit = defineEmits<{
   created: [producto: Producto]
+  scanned: [producto: Producto]
 }>()
 
 const authStore = useAuthStore()
@@ -77,5 +85,10 @@ const formModalOpen = ref(false)
 function onProductoSaved(producto?: Producto) {
   if (!producto) return
   emit('created', producto)
+}
+
+function onProductoScanned(producto: Producto) {
+  search.value = producto.codigo
+  emit('scanned', producto)
 }
 </script>

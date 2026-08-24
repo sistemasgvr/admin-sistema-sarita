@@ -53,6 +53,14 @@ export const productosService = {
     return apiPost<{ codigo_ubicacion: string }>('/productos/codigo-ubicacion/generar', payload)
   },
 
+  generarCodigoProducto(payload: {
+    prefijo?: string
+    esServicio?: boolean
+    esGas?: boolean
+  } = {}) {
+    return apiPost<{ codigo: string }>('/productos/codigo/generar', payload)
+  },
+
   imprimirUbicacionesPdf(ids: number[]) {
     return apiPostBlob('/productos/ubicaciones/pdf', { ids })
   },

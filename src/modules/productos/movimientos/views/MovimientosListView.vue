@@ -1,9 +1,9 @@
 <template>
   <div>
     <PageBreadcrumb
-      page-title="Movimientos (accesorios)"
+      page-title="Historial de movimientos"
       :items="breadcrumbItems"
-      help="Aquí cambias la cantidad de stock: ingresos, salidas o ajustes. El gas se controla en Balones / Stock de gas."
+      help="Consulta ajustes y traslados. Los ingresos entran por Compras y las salidas por Ventas. Para registrar un ajuste o traslado usa Stock."
     />
 
     <AppSummaryCards :cards="resumenCards" />
@@ -54,11 +54,27 @@
             <AppExportExcelButton :on-export="exportarExcel" />
             <RouterLink
               v-if="canCreate"
-              :to="{ name: 'admin-productos-movimientos-nuevo' }"
-              class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'AJUSTE' } }"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
+              title="Ajuste"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo
+              <span class="hidden sm:inline">Ajuste</span>
+            </RouterLink>
+            <RouterLink
+              v-if="canCreate"
+              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'TRASLADO' } }"
+              class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+              title="Traslado"
+            >
+              <AppIcon :name="ICONS.arrowLeftRight" :size="18" />
+              <span class="hidden sm:inline">Traslado</span>
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'admin-productos-stock' }"
+              class="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+            >
+              Ir a Stock
             </RouterLink>
           </template>
         </AppListToolbar>

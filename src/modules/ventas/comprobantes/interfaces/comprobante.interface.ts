@@ -126,6 +126,7 @@ export interface CreateComprobantePayload {
   idMedioPago?: number
   idCondicionPago?: number
   fechaVencimiento?: string
+  idSucursal?: number
   idAlmacen?: number
   glosa?: string
   observaciones?: string
@@ -284,6 +285,7 @@ export interface ResumenDiarioPreview {
   cantidad: number
   total: number
   items: ComprobanteResumenDiarioItem[]
+  yaInformados?: boolean
 }
 
 export interface ResumenDiarioListItem {

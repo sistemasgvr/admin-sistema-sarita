@@ -4,11 +4,11 @@
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
       <RouterLink
-        :to="{ name: 'admin-productos-movimientos' }"
+        :to="backTo"
         class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-800 dark:text-gray-400 dark:hover:text-white/90"
       >
         <AppIcon :name="ICONS.chevronLeft" :size="16" />
-        Volver al listado
+        {{ backLabel }}
       </RouterLink>
       <AppHelpTip :text="pageHelpText" />
     </div>
@@ -18,9 +18,10 @@
       :movimiento-id="movimientoId"
       :initial-id-producto="initialIdProducto"
       :initial-id-almacen="initialIdAlmacen"
+      :initial-tipo-nombre="initialTipoNombre"
       :active="true"
-      @saved="goToList"
-      @cancel="goToList"
+      @saved="goBack"
+      @cancel="goBack"
     />
   </div>
 </template>
@@ -37,6 +38,8 @@ import { AppHelpTip } from '@/shared/components'
 import { parsePositiveIntQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { ICONS } from '@/shared/constants/icons'
 
+type TipoMovimientoManual = 'AJUSTE' | 'TRASLADO'
+
 const route = useRoute()
 const router = useRouter()
 
@@ -52,19 +55,44 @@ const movimientoId = computed(() => {
 const initialIdProducto = computed(() => parsePositiveIntQuery(route.query.idProducto))
 const initialIdAlmacen = computed(() => parsePositiveIntQuery(route.query.idAlmacen))
 
-const pageTitle = computed(() =>
-  mode.value === 'edit' ? 'Editar movimiento' : 'Nuevo movimiento',
-)
+const initialTipoNombre = computed<TipoMovimientoManual | null>(() => {
+  const raw = String(route.query.tipo ?? '')
+    .trim()
+    .toUpperCase()
+  if (raw === 'AJUSTE' || raw === 'TRASLADO') return raw
+  return null
+})
+
+const pageTitle = computed(() => {
+  if (mode.value === 'edit') return 'Editar movimiento'
+  if (initialTipoNombre.value === 'AJUSTE') return 'Ajuste de stock'
+  if (initialTipoNombre.value === 'TRASLADO') return 'Traslado entre almacenes'
+  return 'Nuevo movimiento'
+})
 
 const pageHelpText = computed(() =>
   mode.value === 'edit'
     ? 'Solo puedes modificar fecha, documento de referencia y glosa.'
-    : 'Registra ingresos, salidas o ajustes. Así se actualiza la cantidad de stock del accesorio.',
+    : 'Ajuste o traslado de stock. Los ingresos se registran en Compras y las salidas en Ventas.',
 )
 
 const breadcrumbItems = computed(() => productosMovimientosBreadcrumbItems(pageTitle.value))
 
-const goToList = () => {
-  void router.push({ name: 'admin-productos-movimientos' })
+const fromStockWithTipo = computed(
+  () => mode.value === 'create' && initialTipoNombre.value != null,
+)
+
+const backTo = computed(() =>
+  fromStockWithTipo.value
+    ? { name: 'admin-productos-stock' as const }
+    : { name: 'admin-productos-movimientos' as const },
+)
+
+const backLabel = computed(() =>
+  fromStockWithTipo.value ? 'Volver a Stock' : 'Volver al listado',
+)
+
+const goBack = () => {
+  void router.push(backTo.value)
 }
 </script>

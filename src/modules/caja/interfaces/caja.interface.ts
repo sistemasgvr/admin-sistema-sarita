@@ -68,6 +68,8 @@ export interface AbrirCajaPayload {
   idSucursal?: number | null
   observacion?: string
   idUsuarioAuditoria?: number
+  /** Sesión CERRADA a reabrir (botón Reabrir caja). */
+  idSesion?: number | null
 }
 
 export interface CerrarCajaPayload {

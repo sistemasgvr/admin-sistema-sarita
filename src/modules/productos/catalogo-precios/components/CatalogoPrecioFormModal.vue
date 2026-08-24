@@ -53,15 +53,23 @@
 
         <DetailSectionCard title="Producto y presentación" :icon="ICONS.package">
           <div class="space-y-4">
-            <AppSelect
-              v-model="idProducto"
-              label="Producto asociado"
-              placeholder="Opcional"
-              v-bind="idProductoAttrs"
-              :disabled="isSubmitting"
-              :options="productoOptions"
-            />
-
+            <div class="flex items-end gap-2">
+              <div class="min-w-0 flex-1">
+                <AppSelect
+                  v-model="idProducto"
+                  label="Producto asociado"
+                  placeholder="Opcional"
+                  v-bind="idProductoAttrs"
+                  :disabled="isSubmitting"
+                  :options="productoOptions"
+                />
+              </div>
+              <ProductoBarcodeScanButton
+                :filters="scanFiltersProducto"
+                :disabled="isSubmitting"
+                @scanned="onProductoScanned"
+              />
+            </div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="clasificacion"
@@ -113,25 +121,27 @@
 
         <DetailSectionCard title="Precios" :icon="ICONS.creditCard" :full-width="true">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput
-              v-model="costoProducto"
-              label="Costo producto"
-              type="number"
-              :min="NUMBER_MIN.money"
-              :step="NUMBER_STEP.money"
-              v-bind="costoProductoAttrs"
-              :disabled="isSubmitting"
-            />
+            <AppFormField label="Costo producto" :error="errors.costoProducto">
+              <MoneyInput
+                v-model="costoProducto"
+                v-bind="costoProductoAttrs"
+                placeholder="0.00"
+                :disabled="isSubmitting"
+                :state="errors.costoProducto ? 'error' : 'default'"
+                @blur="onMoneyBlur('costoProducto', costoProductoAttrs.onBlur)"
+              />
+            </AppFormField>
 
-            <AppInput
-              v-model="costoFlete"
-              label="Costo flete"
-              type="number"
-              :min="NUMBER_MIN.money"
-              :step="NUMBER_STEP.money"
-              v-bind="costoFleteAttrs"
-              :disabled="isSubmitting"
-            />
+            <AppFormField label="Costo flete" :error="errors.costoFlete">
+              <MoneyInput
+                v-model="costoFlete"
+                v-bind="costoFleteAttrs"
+                placeholder="0.00"
+                :disabled="isSubmitting"
+                :state="errors.costoFlete ? 'error' : 'default'"
+                @blur="onMoneyBlur('costoFlete', costoFleteAttrs.onBlur)"
+              />
+            </AppFormField>
 
             <AppInput
               v-model="porcentajeMargen"
@@ -143,25 +153,27 @@
               :disabled="isSubmitting"
             />
 
-            <AppInput
-              v-model="precioFinal"
-              label="Precio final"
-              type="number"
-              :min="NUMBER_MIN.money"
-              :step="NUMBER_STEP.money"
-              v-bind="precioFinalAttrs"
-              :disabled="isSubmitting"
-            />
+            <AppFormField label="Precio final" :error="errors.precioFinal">
+              <MoneyInput
+                v-model="precioFinal"
+                v-bind="precioFinalAttrs"
+                placeholder="0.00"
+                :disabled="isSubmitting"
+                :state="errors.precioFinal ? 'error' : 'default'"
+                @blur="onMoneyBlur('precioFinal', precioFinalAttrs.onBlur)"
+              />
+            </AppFormField>
 
-            <AppInput
-              v-model="precioGarantia"
-              label="Precio garantía"
-              type="number"
-              :min="NUMBER_MIN.money"
-              :step="NUMBER_STEP.money"
-              v-bind="precioGarantiaAttrs"
-              :disabled="isSubmitting"
-            />
+            <AppFormField label="Precio garantía" :error="errors.precioGarantia">
+              <MoneyInput
+                v-model="precioGarantia"
+                v-bind="precioGarantiaAttrs"
+                placeholder="0.00"
+                :disabled="isSubmitting"
+                :state="errors.precioGarantia ? 'error' : 'default'"
+                @blur="onMoneyBlur('precioGarantia', precioGarantiaAttrs.onBlur)"
+              />
+            </AppFormField>
           </div>
         </DetailSectionCard>
       </FormCardsLayout>
@@ -203,13 +215,25 @@ import type {
   CatalogoPrecioFormMode,
 } from '@/modules/productos/catalogo-precios/interfaces/catalogo-precio.interface'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
+import { AppFormField, AppInput, AppModal, AppSelect, MoneyInput } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { NUMBER_MIN, NUMBER_STEP } from '@/shared/constants/number-input'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
+import {
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
+import { yupMontoMoneda } from '@/shared/utils/yupMoney'
+import { toastSuccess } from '@/shared/composables/useToast'
+
+type MoneyField = 'costoProducto' | 'costoFlete' | 'precioFinal' | 'precioGarantia'
+
+const moneyFieldOpts = { min: 0, allowZero: true } as const
 
 interface CatalogoPrecioFormModalProps {
   mode: CatalogoPrecioFormMode
@@ -240,13 +264,24 @@ const tipoCatalogoOptions = computed(() =>
   })),
 )
 
-const productoOptions = computed(() => [
-  { value: '', label: 'Sin producto' },
-  ...props.productos.map((producto) => ({
+const productoEscaneado = ref<Producto | null>(null)
+const scanFiltersProducto = { soloActivos: 1 as const }
+
+const productoOptions = computed(() => {
+  const base = props.productos.map((producto) => ({
     value: producto.id,
     label: `${producto.codigo} — ${producto.nombre}`,
-  })),
-])
+  }))
+  const extra = productoEscaneado.value
+  if (extra && !base.some((item) => item.value === extra.id)) {
+    return [
+      { value: '', label: 'Sin producto' },
+      { value: extra.id, label: `${extra.codigo} — ${extra.nombre}` },
+      ...base,
+    ]
+  }
+  return [{ value: '', label: 'Sin producto' }, ...base]
+})
 
 const unidadMedidaOptions = computed(() => [
   { value: '', label: 'Sin unidad' },
@@ -256,7 +291,7 @@ const unidadMedidaOptions = computed(() => [
   })),
 ])
 
-const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
+const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setFieldValue } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       idTipoCatalogo: yup.number().required('El tipo de catálogo es obligatorio'),
@@ -274,11 +309,11 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
         .transform((value) => (value === '' ? undefined : value))
         .optional(),
       descripcionPresentacion: optionalString(),
-      costoProducto: optionalNumber().min(0, 'No puede ser negativo'),
-      costoFlete: optionalNumber().min(0, 'No puede ser negativo'),
+      costoProducto: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
+      costoFlete: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
       porcentajeMargen: optionalNumber().min(0, 'No puede ser negativo'),
-      precioFinal: optionalNumber().min(0, 'No puede ser negativo'),
-      precioGarantia: optionalNumber().min(0, 'No puede ser negativo'),
+      precioFinal: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
+      precioGarantia: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
     }),
   ),
   initialValues: {
@@ -291,11 +326,11 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     capacidad: undefined as number | undefined,
     idUnidadMedida: '' as string | number,
     descripcionPresentacion: '',
-    costoProducto: 0,
-    costoFlete: 0,
+    costoProducto: '0.00',
+    costoFlete: '0.00',
     porcentajeMargen: undefined as number | undefined,
-    precioFinal: undefined as number | undefined,
-    precioGarantia: undefined as number | undefined,
+    precioFinal: '',
+    precioGarantia: '',
   },
 })
 
@@ -314,6 +349,29 @@ const [porcentajeMargen, porcentajeMargenAttrs] = defineField('porcentajeMargen'
 const [precioFinal, precioFinalAttrs] = defineField('precioFinal')
 const [precioGarantia, precioGarantiaAttrs] = defineField('precioGarantia')
 
+function formatMoneyField(value?: number | null): string {
+  if (value == null) return ''
+  return roundMoney(value).toFixed(2)
+}
+
+function onMoneyBlur(field: MoneyField, veeBlur?: (e: Event) => void) {
+  const raw = values[field] ?? ''
+  const texto = String(raw).trim()
+  if (!texto) {
+    setFieldValue(field, '')
+  } else if (!mensajeErrorMontoMoneda(texto, moneyFieldOpts)) {
+    const n = parseMoneyInput(texto)
+    if (n != null) setFieldValue(field, roundMoney(n).toFixed(2))
+  }
+  veeBlur?.(new Event('blur'))
+}
+
+function parseOptionalMoneyField(raw?: string): number | undefined {
+  const texto = String(raw ?? '').trim()
+  if (!texto) return undefined
+  return roundMoney(parseMoneyInput(texto) ?? 0)
+}
+
 const buildPayload = (values: {
   idTipoCatalogo?: number
   periodo?: string
@@ -324,11 +382,11 @@ const buildPayload = (values: {
   capacidad?: number
   idUnidadMedida?: string | number
   descripcionPresentacion?: string
-  costoProducto?: number
-  costoFlete?: number
+  costoProducto?: string
+  costoFlete?: string
   porcentajeMargen?: number
-  precioFinal?: number
-  precioGarantia?: number
+  precioFinal?: string
+  precioGarantia?: string
 }) => ({
   idTipoCatalogo: Number(values.idTipoCatalogo),
   nombreItem: values.nombreItem,
@@ -339,14 +397,15 @@ const buildPayload = (values: {
   capacidad: values.capacidad ?? undefined,
   idUnidadMedida: values.idUnidadMedida ? Number(values.idUnidadMedida) : undefined,
   descripcionPresentacion: values.descripcionPresentacion || undefined,
-  costoProducto: values.costoProducto ?? 0,
-  costoFlete: values.costoFlete ?? 0,
+  costoProducto: roundMoney(parseMoneyInput(values.costoProducto) ?? 0),
+  costoFlete: roundMoney(parseMoneyInput(values.costoFlete) ?? 0),
   porcentajeMargen: values.porcentajeMargen ?? undefined,
-  precioFinal: values.precioFinal ?? undefined,
-  precioGarantia: values.precioGarantia ?? undefined,
+  precioFinal: parseOptionalMoneyField(values.precioFinal),
+  precioGarantia: parseOptionalMoneyField(values.precioGarantia),
 })
 
 const syncFormValues = () => {
+  productoEscaneado.value = null
   resetForm({
     values: {
       idTipoCatalogo: props.catalogoPrecio?.id_tipo_catalogo ?? undefined,
@@ -358,13 +417,22 @@ const syncFormValues = () => {
       capacidad: props.catalogoPrecio?.capacidad ?? undefined,
       idUnidadMedida: props.catalogoPrecio?.id_unidad_medida ?? '',
       descripcionPresentacion: props.catalogoPrecio?.descripcion_presentacion ?? '',
-      costoProducto: props.catalogoPrecio?.costo_producto ?? 0,
-      costoFlete: props.catalogoPrecio?.costo_flete ?? 0,
+      costoProducto: formatMoneyField(props.catalogoPrecio?.costo_producto ?? 0),
+      costoFlete: formatMoneyField(props.catalogoPrecio?.costo_flete ?? 0),
       porcentajeMargen: props.catalogoPrecio?.porcentaje_margen ?? undefined,
-      precioFinal: props.catalogoPrecio?.precio_final ?? undefined,
-      precioGarantia: props.catalogoPrecio?.precio_garantia ?? undefined,
+      precioFinal: formatMoneyField(props.catalogoPrecio?.precio_final),
+      precioGarantia: formatMoneyField(props.catalogoPrecio?.precio_garantia),
     },
   })
+}
+
+function onProductoScanned(producto: Producto) {
+  productoEscaneado.value = producto
+  setFieldValue('idProducto', producto.id)
+  if (!values.nombreItem?.trim()) {
+    setFieldValue('nombreItem', producto.nombre)
+  }
+  toastSuccess(`${producto.codigo} — ${producto.nombre}`)
 }
 
 const handleClose = () => {

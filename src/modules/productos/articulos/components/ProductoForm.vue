@@ -61,15 +61,30 @@
             </div>
           </div>
 
-          <AppInput
-            v-model="codigo"
-            label="Código"
-            placeholder="GAS-OX-001"
-            required
-            v-bind="codigoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.codigo"
-          />
+          <div class="flex min-w-0 items-start gap-2">
+            <div class="min-w-0 flex-1">
+              <AppInput
+                v-model="codigo"
+                label="Código"
+                placeholder="PRO-001"
+                required
+                help="Se asigna automáticamente (PRO / SER / GAS). No se edita a mano; usa Generar para el siguiente correlativo."
+                v-bind="codigoAttrs"
+                :disabled="true"
+                :error="errors.codigo"
+              />
+            </div>
+            <button
+              v-if="!esProductoDeSistema && !isEdit"
+              type="button"
+              class="mt-[1.625rem] inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-brand-500 px-3.5 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="isSubmitting || isGeneratingCodigo"
+              title="Generar siguiente código"
+              @click="generarCodigoProducto(true)"
+            >
+              {{ isGeneratingCodigo ? '…' : 'Generar' }}
+            </button>
+          </div>
 
           <AppInput
             v-model="nombre"
@@ -81,13 +96,35 @@
             :error="errors.nombre"
           />
 
-          <AppInput
-            v-model="codigoBarra"
-            label="Código de barras"
-            optional
-            placeholder="Opcional"
-            v-bind="codigoBarraAttrs"
-            :disabled="isSubmitting"
+          <div class="flex min-w-0 items-start gap-2">
+            <div class="min-w-0 flex-1">
+              <AppInput
+                v-model="codigoBarra"
+                label="Código de barras"
+                optional
+                placeholder="Opcional"
+                help="Puedes escanearlo con la pistola usando el botón de al lado."
+                v-bind="codigoBarraAttrs"
+                :disabled="isSubmitting"
+              />
+            </div>
+            <button
+              type="button"
+              title="Escanear con pistola"
+              aria-label="Escanear código de barras"
+              class="mt-[1.625rem] inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-brand-500/40 dark:hover:bg-brand-500/10 dark:hover:text-brand-400"
+              :disabled="isSubmitting"
+              @click="barcodeScanOpen = true"
+            >
+              <AppIcon :name="ICONS.scanBarcode" :size="18" />
+            </button>
+          </div>
+
+          <BarcodeCaptureModal
+            v-model="barcodeScanOpen"
+            title="Escanear código de barras"
+            subtitle="Apunta la pistola al código del producto y pulsa Enter."
+            @captured="onCodigoBarraScanned"
           />
 
           <AppInput
@@ -246,43 +283,43 @@
             :error="errors.factorLbM3"
           />
 
-          <AppInput
-            v-model="precio"
-            label="Precio de venta"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            v-bind="precioAttrs"
-            :disabled="isSubmitting"
-            :error="errors.precio"
-          />
+          <AppFormField label="Precio de venta" :error="errors.precio">
+            <MoneyInput
+              v-model="precio"
+              v-bind="precioAttrs"
+              placeholder="0.00"
+              :disabled="isSubmitting"
+              :state="errors.precio ? 'error' : 'default'"
+              @blur="onMoneyBlur('precio', precioAttrs.onBlur)"
+            />
+          </AppFormField>
 
-          <AppInput
-            v-model="precioCompra"
-            label="Precio de compra"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            v-bind="precioCompraAttrs"
-            :disabled="isSubmitting || tipoItem === 'servicio'"
-            :error="errors.precioCompra"
-          />
+          <AppFormField label="Precio de compra" :error="errors.precioCompra">
+            <MoneyInput
+              v-model="precioCompra"
+              v-bind="precioCompraAttrs"
+              placeholder="0.00"
+              :disabled="isSubmitting || tipoItem === 'servicio'"
+              :state="errors.precioCompra ? 'error' : 'default'"
+              @blur="onMoneyBlur('precioCompra', precioCompraAttrs.onBlur)"
+            />
+          </AppFormField>
 
-          <AppInput
-            v-if="esAlquilable || tipoItem === 'producto'"
-            v-model="precioGarantia"
+          <AppFormField
+            v-if="muestraGarantiaDeposito"
             label="Garantía / depósito"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            v-bind="precioGarantiaAttrs"
-            :disabled="isSubmitting"
+            help="Depósito reembolsable al alquilar un accesorio o prestar un cilindro (gas). No aplica a productos de venta/stock normal."
             :error="errors.precioGarantia"
-            help="Depósito reembolsable al prestar o alquilar. Prefill en POS; se puede dejar en 0."
-          />
+          >
+            <MoneyInput
+              v-model="precioGarantia"
+              v-bind="precioGarantiaAttrs"
+              placeholder="0.00"
+              :disabled="isSubmitting"
+              :state="errors.precioGarantia ? 'error' : 'default'"
+              @blur="onMoneyBlur('precioGarantia', precioGarantiaAttrs.onBlur)"
+            />
+          </AppFormField>
         </div>
       </DetailSectionCard>
 
@@ -367,6 +404,7 @@ import {
   useUpdateProductoMutation,
 } from '@/modules/productos/articulos/composables/useProductoMutations'
 import ProductoImagenesManager from '@/modules/productos/articulos/components/ProductoImagenesManager.vue'
+import BarcodeCaptureModal from '@/modules/productos/articulos/components/BarcodeCaptureModal.vue'
 import { productoImagenesQueryKeys } from '@/modules/productos/articulos/constants/productoImagenesQueryKeys'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import type {
@@ -388,9 +426,11 @@ import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/in
 import {
   AppCheckbox,
   AppDropzone,
+  AppFormField,
   AppInput,
   AppSelect,
   AppSelectWithCreate,
+  MoneyInput,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -400,8 +440,17 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { optionalNumber, optionalString, requiredString } from '@/shared/validation'
+import {
+  mensajeErrorMontoMoneda,
+  parseMoneyInput,
+  roundMoney,
+} from '@/shared/utils/currency'
+import { yupMontoMoneda } from '@/shared/utils/yupMoney'
 
 type TipoItem = 'producto' | 'servicio'
+type MoneyField = 'precio' | 'precioCompra' | 'precioGarantia'
+
+const moneyFieldOpts = { min: 0, allowZero: true } as const
 
 const props = withDefaults(
   defineProps<{
@@ -434,6 +483,8 @@ const subCategorias = ref<SubCategoriaProducto[]>([])
 const tipoItem = ref<TipoItem>('producto')
 const pendingImages = ref<File[]>([])
 const isGeneratingUbicacion = ref(false)
+const isGeneratingCodigo = ref(false)
+const barcodeScanOpen = ref(false)
 const formHydrated = ref(false)
 const categoriaModalOpen = ref(false)
 const subCategoriaModalOpen = ref(false)
@@ -500,9 +551,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
         esAlquilable: yup.boolean().default(false),
         esMantenimiento: yup.boolean().default(false),
         afectaStock: yup.boolean().default(true),
-        precio: optionalNumber().min(0, 'El precio de venta no puede ser negativo'),
-        precioCompra: optionalNumber().min(0, 'El precio de compra no puede ser negativo'),
-        precioGarantia: optionalNumber().min(0, 'La garantía no puede ser negativa'),
+        precio: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
+        precioCompra: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
+        precioGarantia: yupMontoMoneda({ optional: true, ...moneyFieldOpts }),
         factorKgM3: optionalNumber().min(0, 'El factor kg / m³ no puede ser negativo'),
         factorLbM3: optionalNumber().min(0, 'El factor lb / m³ no puede ser negativo'),
       }),
@@ -522,9 +573,9 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, values, setF
       esAlquilable: false,
       esMantenimiento: false,
       afectaStock: true,
-      precio: undefined as number | undefined,
-      precioCompra: undefined as number | undefined,
-      precioGarantia: undefined as number | undefined,
+      precio: '',
+      precioCompra: '',
+      precioGarantia: '',
       factorKgM3: undefined as number | undefined,
       factorLbM3: undefined as number | undefined,
     },
@@ -547,8 +598,30 @@ const [afectaStock] = defineField('afectaStock')
 const [precio, precioAttrs] = defineField('precio')
 const [precioCompra, precioCompraAttrs] = defineField('precioCompra')
 const [precioGarantia, precioGarantiaAttrs] = defineField('precioGarantia')
+
+/** Garantía solo aplica a alquiler de accesorio o préstamo de cilindro (gas). */
+const muestraGarantiaDeposito = computed(
+  () => Boolean(esAlquilable.value) || Boolean(esGas.value),
+)
 const [factorKgM3] = defineField('factorKgM3')
 const [factorLbM3] = defineField('factorLbM3')
+
+function formatMoneyField(value?: number | null): string {
+  if (value == null) return ''
+  return roundMoney(value).toFixed(2)
+}
+
+function onMoneyBlur(field: MoneyField, veeBlur?: (e: Event) => void) {
+  const raw = values[field] ?? ''
+  const texto = String(raw).trim()
+  if (!texto) {
+    setFieldValue(field, '')
+  } else if (!mensajeErrorMontoMoneda(texto, moneyFieldOpts)) {
+    const n = parseMoneyInput(texto)
+    if (n != null) setFieldValue(field, roundMoney(n).toFixed(2))
+  }
+  veeBlur?.(new Event('blur'))
+}
 
 const subCategoriaOptions = computed(() =>
   subCategorias.value
@@ -568,17 +641,49 @@ function tipoItemCardClass(tipo: TipoItem) {
     : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-800 dark:bg-white/[0.03] dark:hover:border-gray-700'
 }
 
-function setTipoItem(tipo: TipoItem) {
+function setTipoItem(tipo: TipoItem, options?: { regenerarCodigo?: boolean }) {
   tipoItem.value = tipo
   if (tipo === 'servicio') {
     setFieldValue('esServicio', true)
     setFieldValue('esGas', false)
     setFieldValue('afectaStock', false)
-    setFieldValue('precioCompra', undefined)
+    setFieldValue('precioCompra', '')
   } else {
     setFieldValue('esServicio', false)
     setFieldValue('esMantenimiento', false)
     setFieldValue('afectaStock', true)
+  }
+  if (
+    options?.regenerarCodigo !== false &&
+    !isEdit.value &&
+    esCodigoAutoGenerado(codigo.value)
+  ) {
+    void generarCodigoProducto(false)
+  }
+}
+
+function esCodigoAutoGenerado(value: string | undefined | null): boolean {
+  const codigoActual = (value ?? '').trim().toUpperCase()
+  return codigoActual === '' || /^(PRO|SER|GAS)-\d+$/.test(codigoActual)
+}
+
+async function generarCodigoProducto(mostrarToast: boolean) {
+  if (esProductoDeSistema.value) return
+
+  isGeneratingCodigo.value = true
+  try {
+    const result = await productosService.generarCodigoProducto({
+      esServicio: tipoItem.value === 'servicio',
+      esGas: tipoItem.value === 'producto' && Boolean(esGas.value),
+    })
+    codigo.value = result.codigo
+    if (mostrarToast) {
+      toastSuccess(`Código asignado: ${result.codigo}`)
+    }
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el código del producto')
+  } finally {
+    isGeneratingCodigo.value = false
   }
 }
 
@@ -604,9 +709,9 @@ function syncFormFromProducto() {
       esMantenimiento: Boolean(data.es_mantenimiento),
       afectaStock:
         data.es_servicio || data.es_gas ? false : (data.afecta_stock ?? true),
-      precio: data.precio ?? undefined,
-      precioCompra: data.precio_compra ?? undefined,
-      precioGarantia: data.precio_garantia ?? undefined,
+      precio: formatMoneyField(data.precio),
+      precioCompra: formatMoneyField(data.precio_compra),
+      precioGarantia: formatMoneyField(data.precio_garantia),
       factorKgM3: data.factor_kg_m3 != null ? Number(data.factor_kg_m3) : undefined,
       factorLbM3: data.factor_lb_m3 != null ? Number(data.factor_lb_m3) : undefined,
     },
@@ -626,6 +731,11 @@ async function loadCatalogos() {
     categorias.value = []
     subCategorias.value = []
   }
+}
+
+function onCodigoBarraScanned(codigo: string) {
+  codigoBarra.value = codigo
+  toastSuccess(`Código de barras: ${codigo}`)
 }
 
 function onCategoriaCreated(categoria: CategoriaProducto) {
@@ -746,9 +856,14 @@ const onSubmit = handleSubmit(async (formValues) => {
         esServicioValue || Boolean(formValues.esGas)
           ? false
           : Boolean(formValues.afectaStock),
-      precio: formValues.precio ?? 0,
-      precioCompra: esServicioValue ? 0 : (formValues.precioCompra ?? 0),
-      precioGarantia: formValues.precioGarantia ?? 0,
+      precio: roundMoney(parseMoneyInput(formValues.precio) ?? 0),
+      precioCompra: esServicioValue
+        ? 0
+        : roundMoney(parseMoneyInput(formValues.precioCompra) ?? 0),
+      precioGarantia:
+        formValues.esAlquilable || (!esServicioValue && formValues.esGas)
+          ? roundMoney(parseMoneyInput(formValues.precioGarantia) ?? 0)
+          : 0,
       factorKgM3:
         !esServicioValue && formValues.esGas && formValues.factorKgM3 != null
           ? Number(formValues.factorKgM3)
@@ -788,12 +903,13 @@ onMounted(async () => {
 
 watch(
   () => props.active,
-  (isActive) => {
+  async (isActive) => {
     if (isActive && props.mode === 'create') {
-      setTipoItem('producto')
       resetForm()
       pendingImages.value = []
+      setTipoItem('producto', { regenerarCodigo: false })
       formHydrated.value = true
+      await generarCodigoProducto(false)
     }
   },
   { immediate: true },
@@ -811,10 +927,19 @@ watch(
 
 watch(esGas, (esGasValue) => {
   if (esGasValue) setFieldValue('afectaStock', false)
+  if (!isEdit.value && esCodigoAutoGenerado(codigo.value)) {
+    void generarCodigoProducto(false)
+  }
+  if (!esGasValue && !esAlquilable.value) {
+    setFieldValue('precioGarantia', '')
+  }
 })
 
 watch(esAlquilable, (alquilable) => {
   if (alquilable) setFieldValue('esMantenimiento', false)
+  if (!alquilable && !esGas.value) {
+    setFieldValue('precioGarantia', '')
+  }
 })
 
 watch(idCategoria, (categoriaId, previousCategoriaId) => {

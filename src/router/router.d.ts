@@ -11,6 +11,11 @@ declare module 'vue-router' {
     module?: string
     /** Listados de flota/cuentas propios (id_cliente IS NULL). */
     soloEmpresa?: boolean
+    /**
+     * Path del ítem de menú a resaltar (cuando la URL no coincide con el subítem).
+     * Ej. ajustes/traslados en /movimientos deben resaltar Stock.
+     */
+    sidebarActivePath?: string
   }
 }
 

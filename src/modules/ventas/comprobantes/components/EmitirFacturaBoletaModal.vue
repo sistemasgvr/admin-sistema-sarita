@@ -150,6 +150,7 @@ import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfac
 import { type CodigoTipoComprobanteSunat, seriePorDefectoDesdeCodigo, validarSerieParaTipo } from '@/modules/ventas/comprobantes/utils/serieComprobante'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
@@ -212,7 +213,15 @@ const origenQuery = useComprobanteQuery(origenId)
 
 const serie = ref('')
 const fecha = ref(hoyIsoLima())
-const { assertCajaAbierta } = useCajaAbiertaRequerida(fecha)
+const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+const idSucursalCaja = computed(() => {
+  const idAlm = origenQuery.data.value?.id_almacen ?? null
+  if (idAlm == null) return null
+  const alm = almacenesQuery.data.value?.data?.find((a) => a.id === Number(idAlm))
+  return alm?.id_sucursal != null ? Number(alm.id_sucursal) : null
+})
+const { assertCajaAbierta } = useCajaAbiertaRequerida(fecha, idSucursalCaja)
 const emitirTrasCrear = ref(false)
 const observaciones = ref('')
 const lineas = ref<LineaItem[]>([])
@@ -428,6 +437,7 @@ async function ejecutarCrear(row: ComprobanteListItem, origen: Comprobante, user
       idComprobanteOrigen: row.id,
       idMoneda: origen.id_moneda ?? undefined,
       idMedioPago: origen.id_medio_pago ?? undefined,
+      idSucursal: idSucursalCaja.value ?? undefined,
       idAlmacen: origen.id_almacen ?? undefined,
       idTipoOperacionSunat: origen.id_tipo_operacion_sunat ?? undefined,
       glosa: `${esFactura.value ? 'Factura' : 'Boleta'} de VSD ${row.serie}-${row.numero}`,

@@ -95,6 +95,8 @@ export const ICONS = {
   trendingUp: 'lucide:trending-up',
   shoppingCart: 'lucide:shopping-cart',
   handCoins: 'lucide:hand-coins',
+  /** Lectura con pistola / código de barras */
+  scanBarcode: 'lucide:scan-barcode',
 } as const
 
 export type IconName = (typeof ICONS)[keyof typeof ICONS]
