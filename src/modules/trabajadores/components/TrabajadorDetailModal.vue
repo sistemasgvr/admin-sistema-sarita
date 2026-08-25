@@ -5,7 +5,10 @@
     :subtitle="nombreCompleto || 'Sin nombre'"
     size="lg"
   >
-    <div v-if="trabajador" class="space-y-4 text-sm">
+    <div v-if="detailQuery.isFetching.value && !trabajador" class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+      Cargando...
+    </div>
+    <div v-else-if="trabajador" class="space-y-4 text-sm">
       <div class="grid gap-3 sm:grid-cols-2">
         <div>
           <p class="text-gray-500 dark:text-gray-400">Nombres</p>
@@ -82,20 +85,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { AppBadge, AppModal } from '@/shared/components'
+import { useTrabajadorDetailQuery } from '@/modules/trabajadores/composables/useTrabajadoresQuery'
 import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.interface'
 
 const open = defineModel<boolean>({ default: false })
 const props = defineProps<{ trabajador: Trabajador | null }>()
 
+const idTrabajador = computed(() => props.trabajador?.id)
+const detailQuery = useTrabajadorDetailQuery(idTrabajador, open)
+const trabajador = computed(() => detailQuery.data.value ?? props.trabajador)
+
 const nombreCompleto = computed(() =>
-  [props.trabajador?.nombres, props.trabajador?.apellido_paterno, props.trabajador?.apellido_materno]
+  [trabajador.value?.nombres, trabajador.value?.apellido_paterno, trabajador.value?.apellido_materno]
     .filter(Boolean)
     .join(' ')
     .trim(),
 )
 
 const ubicacion = computed(() => {
-  const t = props.trabajador
+  const t = trabajador.value
   if (!t) return ''
   return [t.nombre_departamento, t.nombre_provincia, t.nombre_distrito]
     .filter(Boolean)

@@ -10,6 +10,10 @@ export interface CompraListItem {
   proveedor?: string | null
   id_almacen: number | null
   almacen: string | null
+  id_tipo_registro?: number | null
+  tipo_registro?: string | null
+  id_categoria_gasto?: number | null
+  categoria_gasto?: string | null
   sub_total: number | null
   total_importe: number
   estado: number
@@ -114,6 +118,8 @@ export interface CompraListFilters {
   idProveedor?: number
   idAlmacen?: number
   estado?: number
+  idTipoRegistro?: number
+  idCategoriaGasto?: number
 }
 
 export interface CreateCompraDetallePayload {

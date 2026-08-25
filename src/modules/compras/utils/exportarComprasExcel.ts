@@ -3,6 +3,7 @@ import type { CompraListFilters } from '@/modules/compras/interfaces/compra.inte
 import { toastInfo } from '@/shared/composables/useToast'
 import { hoyIsoLima } from '@/shared/utils/date'
 import { downloadExcelWorkbook, fetchAllPages } from '@/shared/utils/exportExcel'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 export async function exportarComprasExcel(filters: CompraListFilters): Promise<void> {
   const rows = await fetchAllPages(comprasService.listar, filters)
@@ -34,6 +35,18 @@ export async function exportarComprasExcel(filters: CompraListFilters): Promise<
             value: (r) => r.nombre_proveedor || r.proveedor,
           },
           { key: 'almacen', header: 'Almacén', width: 28, value: (r) => r.almacen },
+          {
+            key: 'tipo_registro',
+            header: 'Tipo registro',
+            width: 20,
+            value: (r) => (r.tipo_registro ? formatListaOpcionLabel(r.tipo_registro) : ''),
+          },
+          {
+            key: 'categoria_gasto',
+            header: 'Categoría gasto',
+            width: 20,
+            value: (r) => (r.categoria_gasto ? formatListaOpcionLabel(r.categoria_gasto) : ''),
+          },
           {
             key: 'sub_total',
             header: 'Subtotal',

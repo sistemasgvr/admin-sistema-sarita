@@ -44,6 +44,13 @@
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
 
+      <template #cell-categoria_gasto="{ row }">
+        <AppBadge v-if="row.categoria_gasto" size="sm" variant="light" color="neutral">
+          {{ formatListaOpcionLabel(row.categoria_gasto) }}
+        </AppBadge>
+        <span v-else class="text-xs text-gray-400">—</span>
+      </template>
+
       <template #cell-estado="{ row }">
         <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
           {{ row.estado === 1 ? 'Activo' : 'Anulado' }}
@@ -146,6 +153,10 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { ListaIds } from '@/shared/constants/lista-ids'
 
 const breadcrumbItems = comprasBreadcrumbItems('Compras')
 
@@ -184,6 +195,8 @@ const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number }
 const clientesQuery = useClientesQuery(clientesFilters)
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+const tipoRegistroQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_REGISTRO))
+const categoriaGastoQuery = useListaOpcionesQuery(computed(() => ListaIds.CATEGORIA_GASTO))
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
@@ -228,11 +241,28 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
       { value: 0, label: 'Anulado' },
     ],
   },
+  {
+    key: 'idTipoRegistro',
+    label: 'Tipo registro',
+    type: 'select',
+    placeholder: 'Seleccionar',
+    disabled: tipoRegistroQuery.isLoading.value,
+    options: toSelectOptions(tipoRegistroQuery.data.value),
+  },
+  {
+    key: 'idCategoriaGasto',
+    label: 'Categoría gasto',
+    type: 'select',
+    placeholder: 'Seleccionar',
+    disabled: categoriaGastoQuery.isLoading.value,
+    options: toSelectOptions(categoriaGastoQuery.data.value),
+  },
 ])
 
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
   { key: 'proveedor', label: 'Proveedor' },
+  { key: 'categoria_gasto', label: 'Categoría' },
   { key: 'total_importe', label: 'Total', align: 'right' },
   { key: 'estado', label: 'Estado' },
   { key: 'tiene_movimientos_inventario', label: 'Inventario' },
@@ -250,6 +280,8 @@ function syncFilters() {
     idProveedor: active.idProveedor != null ? Number(active.idProveedor) : undefined,
     idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
     estado: active.estado != null ? Number(active.estado) : undefined,
+    idTipoRegistro: active.idTipoRegistro != null ? Number(active.idTipoRegistro) : undefined,
+    idCategoriaGasto: active.idCategoriaGasto != null ? Number(active.idCategoriaGasto) : undefined,
   }
 }
 

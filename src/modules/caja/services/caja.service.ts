@@ -1,6 +1,9 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type {
   AbrirCajaPayload,
+  ActualizarCajaGastoPayload,
+  CajaGastosListFilters,
+  CajaMovimientoGasto,
   CajaPendienteCierre,
   CajaSesion,
   CerrarCajaPayload,
@@ -45,6 +48,18 @@ export const cajaService = {
 
   crearGasto(payload: CrearCajaGastoPayload) {
     return apiPost<LibroDiarioGasto>('/caja/gastos', payload)
+  },
+
+  listarGastos(filters: CajaGastosListFilters) {
+    return apiGetPaginated<CajaMovimientoGasto>('/caja/gastos', { params: filters })
+  },
+
+  obtenerGasto(id: number) {
+    return apiGet<CajaMovimientoGasto>(`/caja/gastos/${id}`)
+  },
+
+  actualizarGasto(id: number, payload: ActualizarCajaGastoPayload) {
+    return apiPatch<CajaMovimientoGasto>(`/caja/gastos/${id}`, payload)
   },
 
   eliminarGasto(id: number, idUsuarioAuditoria?: number) {

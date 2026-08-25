@@ -7,6 +7,7 @@ import { clientesMenuSubItems } from '@/modules/clientes/config/clientes-menu'
 import { finanzasMenuSubItems } from '@/modules/finanzas/config/finanzas-menu'
 import { configuracionMenuSubItems } from '@/modules/configuracion/config/configuracion-menu'
 import { gestionEmpresaMenuSubItems } from '@/modules/documentos-vencimiento/config/documentos-vencimiento-menu'
+import { comprasMenuSubItems } from '@/modules/compras/config/compras-menu'
 
 export interface AdminMenuSubItem {
   name: string
@@ -86,9 +87,8 @@ export const adminMenuGroups: AdminMenuGroup[] = [
       },
       {
         icon: ICONS.shoppingcard,
-        name: 'Compras',
-        path: '/admin/compras',
-        permission: PermisoBanderas.COMPRAS_LISTAR,
+        name: 'Gastos y Compras',
+        subItems: comprasMenuSubItems,
       },
       {
         icon: ICONS.package,

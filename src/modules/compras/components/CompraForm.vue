@@ -116,16 +116,23 @@
                 :disabled="saving"
                 :error="errors.idTipoRegistro"
               />
-              <AppSelect
-                v-model="idCategoriaGasto"
-                label="Categoría gasto"
-                placeholder="Seleccionar"
-                required
-                v-bind="idCategoriaGastoAttrs"
-                :options="categoriaGastoOptions"
+              <AppSelectWithCreate
+                :can-create="canCrearCategoriaGasto"
+                create-title="Nueva categoría de gasto"
                 :disabled="saving"
-                :error="errors.idCategoriaGasto"
-              />
+                @create="categoriaGastoModalOpen = true"
+              >
+                <AppSelect
+                  v-model="idCategoriaGasto"
+                  label="Categoría gasto"
+                  placeholder="Seleccionar"
+                  required
+                  v-bind="idCategoriaGastoAttrs"
+                  :options="categoriaGastoOptions"
+                  :disabled="saving"
+                  :error="errors.idCategoriaGasto"
+                />
+              </AppSelectWithCreate>
               <AppSelectSearch
                 v-model="idAlmacen"
                 label="Almacén"
@@ -532,13 +539,20 @@
               </div>
             </div>
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <AppSelect
-                v-model="idCategoriaGasto"
-                label="Categoría gasto"
-                placeholder="Seleccionar"
-                :options="categoriaGastoOptions"
+              <AppSelectWithCreate
+                :can-create="canCrearCategoriaGasto"
+                create-title="Nueva categoría de gasto"
                 :disabled="saving"
-              />
+                @create="categoriaGastoModalOpen = true"
+              >
+                <AppSelect
+                  v-model="idCategoriaGasto"
+                  label="Categoría gasto"
+                  placeholder="Seleccionar"
+                  :options="categoriaGastoOptions"
+                  :disabled="saving"
+                />
+              </AppSelectWithCreate>
               <AppSelectSearch
                 v-model="idCondicionPago"
                 label="Condición pago"
@@ -748,6 +762,15 @@
       :default-id-tipo-cliente="TipoClienteIds.PROVEEDOR"
       @saved="onProveedorCreado"
     />
+
+    <ListaOpcionFormModal
+      v-model="categoriaGastoModalOpen"
+      :id-lista="ListaIds.CATEGORIA_GASTO"
+      title="Nueva categoría de gasto"
+      subtitle="Quedará disponible para clasificar compras y gastos operativos."
+      nombre-placeholder="Ej. ALQUILER_LOCAL"
+      @saved="onCategoriaGastoCreada"
+    />
   </div>
 </template>
 
@@ -777,6 +800,8 @@ import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarg
 import GuiaRemisionSelectField from '@/modules/ventas/guias-remision/components/GuiaRemisionSelectField.vue'
 import { useGuiaRemisionQuery } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
+import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
+import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import type { Cliente, ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
@@ -870,6 +895,12 @@ const eliminarDetalleMutation = useEliminarDetalleMutation()
 const isEdit = computed(() => props.mode === 'edit' && Boolean(props.compraId))
 const canCreateProveedor = computed(() => authStore.hasPermission(PermisoBanderas.CLIENTES_CREAR))
 const proveedorModalOpen = ref(false)
+const categoriaGastoModalOpen = ref(false)
+const canCrearCategoriaGasto = computed(() =>
+  authStore.hasPermission(
+    isEdit.value ? PermisoBanderas.COMPRAS_EDITAR : PermisoBanderas.COMPRAS_CREAR,
+  ),
+)
 const proveedorCreadoOption = ref<SelectOption | null>(null)
 
 const editId = computed(() =>
@@ -1192,8 +1223,6 @@ const recargaPlantaOptions = computed(() =>
   (recargaPlantaQuery.data.value?.data ?? []).map((rp) => {
     const numero = rp.numero || `RP-${rp.id}`
     const cilindros = rp.total_cilindros ?? 0
-    // Mismo criterio que valida com_crear_compra: ya vinculada a una
-    // compra, o su estado ya es CERRADO -> no se puede volver a elegir.
     const yaCerrada = Boolean(rp.id_comprobante_compra) || rp.nombre_estado === 'CERRADO'
     return {
       value: rp.id,
@@ -1312,7 +1341,6 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
       precioUnitario: 0,
       idUnidadMedida: balon.id_unidad_medida ?? null,
       nombreUnidadMedida: balon.nombre_unidad_medida ?? null,
-      // Gas de planta: costo documental. No ingresa pro_stock (afecta_stock=false).
       afectaStock: false,
       cilindrosRecarga: 1,
     })
@@ -1330,9 +1358,6 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
   }
 }
 
-// Se sincroniza una sola vez por orden seleccionada (no en cada refetch en
-// segundo plano de la query, para no pisar ediciones de cantidad/precio que
-// ya haya hecho el usuario sobre esas líneas).
 watch(
   () => [idRecargaPlantaNum.value, recargaPlantaDetalleQuery.data.value] as const,
   ([id, data]) => {
@@ -1610,6 +1635,10 @@ async function onProveedorCreado(cliente: Cliente) {
   idProveedor.value = cliente.id
   proveedorBuscar.value = getClienteOptionLabel(cliente)
   await Promise.all([proveedoresQuery.refetch(), clienteProveedoresQuery.refetch()])
+}
+
+function onCategoriaGastoCreada(opcion: ListaOpcion) {
+  idCategoriaGasto.value = opcion.id
 }
 
 watch(lineaIdProducto, (id) => {

@@ -21,8 +21,23 @@ export interface CajaMovimientoGasto {
   monto: number
   idMedioPago?: number | null
   medioPago?: string | null
+  idCategoriaGasto?: number | null
+  categoriaGasto?: string | null
   numeroOperacion?: string | null
   observacion?: string | null
+  idSesion?: number | null
+  estado?: number
+}
+
+export interface CajaGastosListFilters {
+  buscar?: string
+  pagina?: number
+  limite?: number
+  fechaDesde?: string
+  fechaHasta?: string
+  idCategoriaGasto?: number
+  idSesion?: number
+  estado?: number
 }
 
 export interface CajaMovimientoDeposito {
@@ -83,10 +98,21 @@ export interface CrearCajaGastoPayload {
   concepto: string
   monto: number
   idMedioPago?: number | null
+  idCategoriaGasto?: number | null
   numeroOperacion?: string
   observacion?: string
   idSesion?: number | null
   idSucursal?: number | null
+  idUsuarioAuditoria?: number
+}
+
+export interface ActualizarCajaGastoPayload {
+  concepto: string
+  monto: number
+  idMedioPago?: number | null
+  idCategoriaGasto?: number | null
+  numeroOperacion?: string
+  observacion?: string
   idUsuarioAuditoria?: number
 }
 

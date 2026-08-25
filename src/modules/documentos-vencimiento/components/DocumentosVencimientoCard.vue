@@ -131,53 +131,56 @@
     />
 
     <AppModal v-model="detailModalOpen" title="Detalle del documento" size="sm">
-      <dl v-if="documentoToView" class="space-y-3">
+      <div v-if="documentoDetailQuery.isFetching.value && !documentoDetalle" class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        Cargando...
+      </div>
+      <dl v-else-if="documentoDetalle" class="space-y-3">
         <div>
           <dt class="text-xs text-gray-500 dark:text-gray-400">Descripción</dt>
           <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-            {{ documentoToView.descripcion }}
+            {{ documentoDetalle.descripcion }}
           </dd>
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <dt class="text-xs text-gray-500 dark:text-gray-400">Categoría</dt>
             <dd class="text-sm text-gray-700 dark:text-gray-300">
-              {{ documentoToView.nombre_categoria ? formatListaOpcionLabel(documentoToView.nombre_categoria) : '—' }}
+              {{ documentoDetalle.nombre_categoria ? formatListaOpcionLabel(documentoDetalle.nombre_categoria) : '—' }}
             </dd>
           </div>
           <div>
             <dt class="text-xs text-gray-500 dark:text-gray-400">Alcance</dt>
-            <dd class="text-sm text-gray-700 dark:text-gray-300">{{ alcanceTexto(documentoToView) }}</dd>
+            <dd class="text-sm text-gray-700 dark:text-gray-300">{{ alcanceTexto(documentoDetalle) }}</dd>
           </div>
           <div>
             <dt class="text-xs text-gray-500 dark:text-gray-400">Vencimiento</dt>
             <dd class="text-sm text-gray-700 dark:text-gray-300">
-              {{ formatListDate(documentoToView.fecha_vencimiento) }}
+              {{ formatListDate(documentoDetalle.fecha_vencimiento) }}
             </dd>
           </div>
           <div>
             <dt class="text-xs text-gray-500 dark:text-gray-400">Última renovación</dt>
             <dd class="text-sm text-gray-700 dark:text-gray-300">
-              {{ documentoToView.fecha_renovacion ? formatListDate(documentoToView.fecha_renovacion) : '—' }}
+              {{ documentoDetalle.fecha_renovacion ? formatListDate(documentoDetalle.fecha_renovacion) : '—' }}
             </dd>
           </div>
           <div>
             <dt class="text-xs text-gray-500 dark:text-gray-400">N° de documento</dt>
-            <dd class="text-sm text-gray-700 dark:text-gray-300">{{ documentoToView.numero_documento || '—' }}</dd>
+            <dd class="text-sm text-gray-700 dark:text-gray-300">{{ documentoDetalle.numero_documento || '—' }}</dd>
           </div>
           <div>
             <dt class="text-xs text-gray-500 dark:text-gray-400">Estado</dt>
             <dd>
-              <AppBadge :color="estadoColor(documentoToView.estado_calculado)" size="sm">
-                {{ estadoLabel(documentoToView.estado_calculado) }}
+              <AppBadge :color="estadoColor(documentoDetalle.estado_calculado)" size="sm">
+                {{ estadoLabel(documentoDetalle.estado_calculado) }}
               </AppBadge>
             </dd>
           </div>
         </div>
-        <div v-if="documentoToView.observacion">
+        <div v-if="documentoDetalle.observacion">
           <dt class="text-xs text-gray-500 dark:text-gray-400">Observación</dt>
           <dd class="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">
-            {{ documentoToView.observacion }}
+            {{ documentoDetalle.observacion }}
           </dd>
         </div>
       </dl>
@@ -235,6 +238,7 @@ import DocumentoVencimientoFormModal from '@/modules/documentos-vencimiento/comp
 import RenovarDocumentoVencimientoModal from '@/modules/documentos-vencimiento/components/RenovarDocumentoVencimientoModal.vue'
 import { useDeleteDocumentoVencimientoMutation } from '@/modules/documentos-vencimiento/composables/useDocumentoVencimientoMutations'
 import { useDocumentosVencimientoQuery } from '@/modules/documentos-vencimiento/composables/useDocumentosVencimientoQuery'
+import { useDocumentoVencimientoDetailQuery } from '@/modules/documentos-vencimiento/composables/useDocumentoVencimientoDetailQuery'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import type {
@@ -441,6 +445,9 @@ const selectedDocumento = ref<DocumentoVencimiento | null>(null)
 
 const detailModalOpen = ref(false)
 const documentoToView = ref<DocumentoVencimiento | null>(null)
+const idDocumentoToView = computed(() => documentoToView.value?.id)
+const documentoDetailQuery = useDocumentoVencimientoDetailQuery(idDocumentoToView, detailModalOpen)
+const documentoDetalle = computed(() => documentoDetailQuery.data.value ?? documentoToView.value)
 
 const renovarModalOpen = ref(false)
 const documentoToRenovar = ref<DocumentoVencimiento | null>(null)

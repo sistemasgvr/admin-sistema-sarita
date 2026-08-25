@@ -1,5 +1,6 @@
 import { computed, ref, type Ref } from 'vue'
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -9,6 +10,8 @@ import { cajaQueryKeys } from '@/modules/caja/constants/cajaQueryKeys'
 import { cajaService } from '@/modules/caja/services/caja.service'
 import type {
   AbrirCajaPayload,
+  ActualizarCajaGastoPayload,
+  CajaGastosListFilters,
   CajaSesionesListFilters,
   CerrarCajaPayload,
   CrearCajaDepositoPayload,
@@ -76,6 +79,23 @@ export function useCajaSesionesQuery(filters: Ref<CajaSesionesListFilters>) {
   })
 }
 
+export function useCajaGastosQuery(filters: Ref<CajaGastosListFilters>) {
+  return useQuery({
+    queryKey: computed(() => cajaQueryKeys.gastos(filters.value)),
+    queryFn: () => cajaService.listarGastos(filters.value),
+    placeholderData: keepPreviousData,
+  })
+}
+
+export function useCajaGastoDetailQuery(id: Ref<number | undefined>, enabled: Ref<boolean>) {
+  return useQuery({
+    queryKey: computed(() => cajaQueryKeys.gasto(id.value ?? 0)),
+    queryFn: () => cajaService.obtenerGasto(id.value as number),
+    enabled: computed(() => enabled.value && !!id.value),
+    staleTime: 30 * 1000,
+  })
+}
+
 export function useCajaPendienteCierreQuery(
   idSucursal: Ref<number | null | undefined> = ref(null),
 ) {
@@ -105,6 +125,20 @@ export function useCrearCajaGastoMutation() {
     mutationFn: (payload: CrearCajaGastoPayload) =>
       cajaService.crearGasto({ ...payload, idUsuarioAuditoria: auth.user?.id }),
     onSuccess: () => invalidateCajaQueries(queryClient),
+  })
+}
+
+export function useActualizarCajaGastoMutation() {
+  const queryClient = useQueryClient()
+  const auth = useAuthStore()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ActualizarCajaGastoPayload }) =>
+      cajaService.actualizarGasto(id, { ...payload, idUsuarioAuditoria: auth.user?.id }),
+    onSuccess: () => {
+      void invalidateCajaQueries(queryClient)
+      toastSuccess('Gasto actualizado')
+    },
+    onError: (error) => toastApiError(error, 'No se pudo actualizar el gasto'),
   })
 }
 

@@ -13,6 +13,16 @@ export const comprasRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: 'compras/gastos-caja',
+    name: 'admin-compras-gastos-caja',
+    component: () => import('@/modules/compras/views/GastosCajaListView.vue'),
+    meta: {
+      title: 'Gastos de caja',
+      module: 'compras',
+      permission: PermisoBanderas.CAJA_VER,
+    },
+  },
+  {
     path: 'compras/nuevo',
     name: 'admin-compras-nuevo',
     component: () => import('@/modules/compras/views/CompraFormView.vue'),

@@ -6,7 +6,10 @@
     size="xl"
     @close="handleClose"
   >
-    <div v-if="activo" class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-0">
+    <div v-if="detailQuery.isFetching.value && !activo" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+      Cargando...
+    </div>
+    <div v-else-if="activo" class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-0">
       <div
         class="flex flex-col lg:col-span-2 lg:border-r lg:border-gray-200 lg:pr-6 dark:lg:border-gray-700"
       >
@@ -177,14 +180,20 @@ import { computed } from 'vue'
 import { AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { useActivoDetailQuery } from '@/modules/activos/composables/useActivosQuery'
 import type { Activo } from '@/modules/activos/interfaces/activo.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const props = defineProps<{ activo?: Activo | null }>()
 const open = defineModel<boolean>({ default: false })
 
+const idActivo = computed(() => props.activo?.id)
+const detailQuery = useActivoDetailQuery(idActivo, open)
+
+const activo = computed(() => detailQuery.data.value ?? props.activo)
+
 const inicialResponsable = computed(() =>
-  (props.activo?.nombre_trabajador_responsable || '').charAt(0).toUpperCase(),
+  (activo.value?.nombre_trabajador_responsable || '').charAt(0).toUpperCase(),
 )
 
 const handleClose = () => {
@@ -192,8 +201,8 @@ const handleClose = () => {
 }
 
 const abrirImagen = () => {
-  if (props.activo?.url_imagen_principal) {
-    window.open(props.activo.url_imagen_principal, '_blank')
+  if (activo.value?.url_imagen_principal) {
+    window.open(activo.value.url_imagen_principal, '_blank')
   }
 }
 
