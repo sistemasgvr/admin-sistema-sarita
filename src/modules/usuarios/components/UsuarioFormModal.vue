@@ -53,6 +53,17 @@
           :error="errors.contrasena"
           :hint="mode === 'edit' ? 'Solo completa si deseas cambiar la contraseña.' : undefined"
         />
+
+        <SearchableSelect
+          v-model="idTrabajador"
+          label="Trabajador vinculado"
+          placeholder="Buscar trabajador..."
+          empty-option-label="Sin trabajador asignado"
+          :model-label="trabajadorLabelActual"
+          :search-fn="searchTrabajadores"
+          :disabled="isSubmitting"
+          :error="errors.idTrabajador"
+        />
       </div>
 
       <div
@@ -141,6 +152,9 @@ import { rolesService } from '@/modules/roles/services/roles.service'
 import type { Rol } from '@/modules/roles/interfaces/rol.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal } from '@/shared/components'
+import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
+import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
+import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.interface'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import {
   optionalPasswordMin,
@@ -148,6 +162,7 @@ import {
   requiredPasswordMin,
   requiredString,
 } from '@/shared/validation'
+import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 interface UsuarioFormModalProps {
   mode: UsuarioFormMode
@@ -189,6 +204,7 @@ const validationSchema = computed(() =>
       correo: requiredEmail(),
       contrasena:
         props.mode === 'create' ? requiredPasswordMin(6) : optionalPasswordMin(6),
+      idTrabajador: yup.number().optional().nullable(),
     }),
   ),
 )
@@ -199,12 +215,29 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     nombre: '',
     correo: '',
     contrasena: '',
+    idTrabajador: undefined as number | undefined,
   },
 })
 
 const [nombre, nombreAttrs] = defineField('nombre')
 const [correo, correoAttrs] = defineField('correo')
 const [contrasena, contrasenaAttrs] = defineField('contrasena')
+const [idTrabajador] = defineField('idTrabajador')
+
+const getTrabajadorNombre = (t: Trabajador) =>
+  [t.nombres, t.apellido_paterno, t.apellido_materno].filter(Boolean).join(' ').trim() || t.nombres
+
+const searchTrabajadores = async (query: string): Promise<SelectOption[]> => {
+  const response = await trabajadoresService.listar({
+    buscar: query || undefined,
+    pagina: 1,
+    limite: 20,
+    soloSinUsuario: true,
+  })
+  return response.data.map((t) => ({ value: t.id, label: getTrabajadorNombre(t) }))
+}
+
+const trabajadorLabelActual = ref<string | null>(null)
 
 const showRolesSection = computed(() =>
   authStore.hasPermission(PermisoBanderas.USUARIOS_ROLES_LISTAR),
@@ -286,8 +319,22 @@ const syncFormValues = () => {
       nombre: props.usuario?.nombre ?? '',
       correo: props.usuario?.correo ?? '',
       contrasena: '',
+      idTrabajador: props.usuario?.id_trabajador ?? undefined,
     },
   })
+
+  if (props.usuario?.id_trabajador) {
+    trabajadoresService
+      .obtenerPorId(props.usuario.id_trabajador)
+      .then((t) => {
+        trabajadorLabelActual.value = getTrabajadorNombre(t)
+      })
+      .catch(() => {
+        trabajadorLabelActual.value = null
+      })
+  } else {
+    trabajadorLabelActual.value = null
+  }
 
   if (props.mode === 'edit') {
     initRolesFromUsuario()
@@ -330,6 +377,7 @@ const onSubmit = handleSubmit(async (values) => {
         nombre: values.nombre,
         correo: values.correo,
         contrasena: values.contrasena,
+        idTrabajador: values.idTrabajador ?? undefined,
       })
       usuarioId = usuario.id
     } else if (props.usuario) {
@@ -337,9 +385,11 @@ const onSubmit = handleSubmit(async (values) => {
         nombre: string
         correo: string
         contrasena?: string
+        idTrabajador?: number
       } = {
         nombre: values.nombre,
         correo: values.correo,
+        idTrabajador: values.idTrabajador ?? undefined,
       }
 
       if (values.contrasena) {

@@ -6,15 +6,16 @@
     size="xl"
     @close="handleClose"
   >
-    <div v-if="detailQuery.isFetching.value && !activo" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+    <div v-if="detailQuery.isFetching.value && !activo" class="flex items-center justify-center gap-2 py-10 text-sm text-gray-500 dark:text-gray-400">
+      <AppIcon :name="ICONS.loader" :size="16" class="animate-spin" />
       Cargando...
     </div>
+
     <div v-else-if="activo" class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-0">
-      <div
-        class="flex flex-col lg:col-span-2 lg:border-r lg:border-gray-200 lg:pr-6 dark:lg:border-gray-700"
-      >
+      
+      <div class="flex flex-col lg:col-span-2 lg:border-r lg:border-gray-200 lg:pr-6 dark:lg:border-gray-700">
         <div
-          class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40"
+          class="relative flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-xl border border-gray-200  dark:border-gray-700 dark:bg-gray-900/40"
         >
           <img
             v-if="activo.url_imagen_principal"
@@ -38,13 +39,14 @@
             aria-label="Abrir imagen"
             @click="abrirImagen"
           >
-            <AppIcon :name="ICONS.image" :size="18" />
+            <AppIcon :name="ICONS.expand" :size="16" />
           </button>
         </div>
 
         <div class="mt-4 space-y-3">
-          <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-            <p class="mb-1 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <div class="rounded-xl border border-gray-200  p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+            <p class="mb-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <AppIcon :name="ICONS.banknote" :size="13" class="shrink-0" />
               Valor actual (Importe)
             </p>
             <p class="text-xl font-bold text-gray-800 dark:text-white/90">
@@ -52,20 +54,27 @@
             </p>
           </div>
 
+          <!-- Responsable + Sucursal -->
           <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-              <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Responsable</p>
+            <div class="rounded-xl border border-gray-200  p-3 dark:border-gray-800 dark:bg-white/[0.02]">
+              <p class="mb-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <AppIcon :name="ICONS.userCheck" :size="12" class="shrink-0" />
+                Responsable
+              </p>
               <p class="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-white/90">
                 <span
-                  class="flex h-5 w-5 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300"
+                  class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-700 dark:bg-brand-500/20 dark:text-brand-300"
                 >
                   {{ inicialResponsable }}
                 </span>
                 <span class="truncate">{{ activo.nombre_trabajador_responsable || '—' }}</span>
               </p>
             </div>
-            <div class="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-              <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Sucursal</p>
+            <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-800 dark:bg-white/[0.02]">
+              <p class="mb-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                <AppIcon :name="ICONS.building2" :size="12" class="shrink-0" />
+                Sucursal
+              </p>
               <p
                 class="truncate text-sm font-semibold text-gray-800 dark:text-white/90"
                 :title="activo.nombre_sucursal || ''"
@@ -77,90 +86,92 @@
         </div>
       </div>
 
-      <!-- Lado de datos -->
       <div class="space-y-4 lg:col-span-3 lg:pl-6">
-        <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-white/[0.02]">
-          <h4 class="mb-2 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Descripción del activo
-          </h4>
-          <p class="text-base leading-relaxed text-gray-800 dark:text-white/90">
+        <!-- CARD: Descripción -->
+        <section class="rounded-xl border border-gray-200  p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+          <header class="mb-3 flex items-center gap-2.5">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+              <AppIcon :name="ICONS.fileText" :size="16" />
+            </span>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Descripción del activo</h4>
+          </header>
+          <p class="text-sm leading-relaxed text-gray-800 dark:text-white/90">
             {{ activo.descripcion || '—' }}
           </p>
-        </div>
+        </section>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-white/[0.02]">
-          <h4
-            class="mb-4 border-b border-gray-200 pb-2 text-xs uppercase tracking-wider text-gray-500 dark:border-gray-700 dark:text-gray-400"
-          >
-            Especificaciones técnicas
-          </h4>
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+          <header class="mb-3 flex items-center gap-2.5">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+              <AppIcon :name="ICONS.wrench" :size="16" />
+            </span>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Especificaciones técnicas</h4>
+          </header>
 
-          <div class="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+          <div class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
             <div>
-              <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">
-                Categoría de activo
-              </label>
-              <div class="py-1 text-sm font-medium text-gray-800 dark:text-white/90">
-                <span class="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
-                  {{ formatListaOpcionLabel(activo.nombre_tipo) || '—' }}
-                </span>
-              </div>
+              <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Categoría de activo</p>
+              <span
+                v-if="activo.nombre_tipo"
+                class="inline-block rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200"
+              >
+                {{ formatListaOpcionLabel(activo.nombre_tipo) }}
+              </span>
+              <span v-else class="text-sm font-medium text-gray-400 dark:text-gray-600">—</span>
             </div>
 
             <div>
-              <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">Marca</label>
-              <div class="py-1 text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ activo.marca || '—' }}
-              </div>
+              <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Marca</p>
+              <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ activo.marca || '—' }}</p>
             </div>
 
             <div class="sm:col-span-2">
-              <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">Modelo</label>
-              <div class="py-1 text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ activo.modelo || '—' }}
-              </div>
+              <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Modelo</p>
+              <p class="text-sm font-medium text-gray-800 dark:text-white/90">{{ activo.modelo || '—' }}</p>
             </div>
 
             <div>
-              <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">
-                N° de serie / Etiqueta
-              </label>
-              <div class="py-1 font-mono text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ activo.numero_serie || '—' }}
-              </div>
+              <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">N° de serie / Etiqueta</p>
+              <p class="font-mono text-sm font-medium text-gray-800 dark:text-white/90">{{ activo.numero_serie || '—' }}</p>
             </div>
 
-            <div> 
-              <label class="mb-1 block text-xs text-gray-500 dark:text-gray-400">
-                Fecha de compra
-              </label>
-              <div class="flex items-center gap-2 py-1 text-sm font-medium text-gray-800 dark:text-white/90">
-                <AppIcon :name="ICONS.calendar" :size="16" class="text-gray-400" />
+            <div>
+              <p class="mb-1 text-xs text-gray-500 dark:text-gray-400">Fecha de compra</p>
+              <p class="flex items-center gap-1.5 text-sm font-medium text-gray-800 dark:text-white/90">
+                <AppIcon :name="ICONS.calendar" :size="14" class="shrink-0 text-gray-400" />
                 {{ activo.fecha_compra || '—' }}
-              </div>
+              </p>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-white/[0.02]">
-          <h4 class="mb-3 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            Detalles de registro
-          </h4>
-          <div
-            class="flex items-start gap-3 rounded-lg bg-gray-50 p-3 dark:bg-white/5"
-          >
-            <AppIcon :name="ICONS.check" :size="20" class="mt-0.5 text-emerald-600 dark:text-emerald-400" />
+        <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+          <header class="mb-3 flex items-center gap-2.5">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+              <AppIcon :name="ICONS.history" :size="16" />
+            </span>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Detalles de registro</h4>
+          </header>
+
+          <div class="grid grid-cols-2 gap-x-3 text-xs">
             <div>
-              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
-                Creado el {{ formatearFecha(activo.fecha_creacion) }}
+              <p class="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                <AppIcon :name="ICONS.check" :size="12" class="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                Creado
               </p>
-              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                Última modificación: {{ formatearFecha(activo.fecha_modificacion) }}
-              </p>
+              <p class="mt-0.5 font-medium text-gray-800 dark:text-white/90">{{ formatearFecha(activo.fecha_creacion) }}</p>
+            </div>
+            <div>
+              <p class="text-gray-500 dark:text-gray-400">Última modificación</p>
+              <p class="mt-0.5 font-medium text-gray-800 dark:text-white/90">{{ formatearFecha(activo.fecha_modificacion) }}</p>
             </div>
           </div>
-        </div>
+        </section>
       </div>
+    </div>
+
+    <div v-else class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+      No se encontró información del activo.
     </div>
 
     <template #footer>

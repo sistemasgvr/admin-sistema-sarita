@@ -1,6 +1,6 @@
 import type { Actividad } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 
-export type TipoColaboradorActividad = 'Chofer' | 'Usuario'
+export type TipoColaboradorActividad = 'Chofer' | 'Usuario' | 'Trabajador'
 
 export interface ActividadColaboradorRanking {
   key: string
@@ -8,6 +8,7 @@ export interface ActividadColaboradorRanking {
   tipo: TipoColaboradorActividad
   idUsuario?: number
   idChofer?: number
+  idTrabajador?: number
   cantidad: number
   ultimaFecha: string | null
   actividades: Actividad[]
@@ -35,8 +36,19 @@ export function agruparActividadesPorColaborador(
 
     let idUsuario: number | undefined
     let idChofer: number | undefined
+    let idTrabajador: number | undefined
 
-    if (actividad.id_chofer_responsable) {
+    if (actividad.id_trabajador_responsable) {
+      key = `trabajador:${actividad.id_trabajador_responsable}`
+      tipo = 'Trabajador'
+      idTrabajador = actividad.id_trabajador_responsable
+      nombre = (
+        actividad.nombre_trabajador_responsable ??
+        actividad.nombre_chofer_responsable ??
+        actividad.nombre_usuario_responsable ??
+        ''
+      ).trim()
+    } else if (actividad.id_chofer_responsable) {
       key = `chofer:${actividad.id_chofer_responsable}`
       tipo = 'Chofer'
       idChofer = actividad.id_chofer_responsable
@@ -60,6 +72,7 @@ export function agruparActividadesPorColaborador(
         tipo,
         idUsuario,
         idChofer,
+        idTrabajador,
         cantidad: 1,
         ultimaFecha,
         actividades: [actividad],

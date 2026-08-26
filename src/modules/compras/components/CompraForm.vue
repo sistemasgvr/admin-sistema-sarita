@@ -301,7 +301,7 @@
               />
             </div>
             </template>
-          </DetailSectionCard>
+          </DetailSectionCard>  
 
           <DetailSectionCard
             title="Detalle de productos (opcional)"

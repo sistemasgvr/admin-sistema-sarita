@@ -1,7 +1,7 @@
 <template>
   <AppModal v-model="open" title="Renovar documento" size="sm" @close="handleClose">
     <div v-if="documento" class="space-y-4">
-      <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm dark:border-gray-800 dark:bg-white/[0.03]">
+      <div class="rounded-lg border border-gray-200 px-3 py-2.5 text-sm dark:border-gray-800 dark:bg-white/[0.03]">
         <p class="font-medium text-gray-800 dark:text-white/90">{{ documento.descripcion }}</p>
         <p class="text-theme-xs text-gray-500 dark:text-gray-400">
           Vencía el {{ formatListDate(documento.fecha_vencimiento) }}

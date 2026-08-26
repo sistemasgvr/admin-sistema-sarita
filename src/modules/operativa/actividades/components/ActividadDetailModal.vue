@@ -6,50 +6,45 @@
     size="lg"
     :z-index="100000"
   >
-    <p
-      v-if="isLoading"
-      class="py-8 text-center text-sm text-gray-500 dark:text-gray-400"
-    >
+    <div v-if="isLoading && !actividad" class="flex items-center justify-center gap-2 py-8 text-sm text-gray-500 dark:text-gray-400">
+      <AppIcon :name="ICONS.loader" :size="16" class="animate-spin" />
       Cargando detalle...
-    </p>
+    </div>
 
-    <div
-      v-if="actividad"
-      class="space-y-4"
-    >
-      <div class="flex flex-wrap items-center gap-2">
-        <ListaOpcionBadge
-          v-if="actividad.nombre_estado_actividad"
-          :value="actividad.nombre_estado_actividad"
-        />
-        <ListaOpcionBadge v-if="esSinAsignarAct" value="Sin asignar" />
-        <ListaOpcionBadge v-else-if="esEnCursoAct" value="En curso" />
-        <ListaOpcionBadge v-if="actividad.nombre_prioridad" :value="actividad.nombre_prioridad" />
-        <ListaOpcionBadge v-if="actividad.nombre_tipo_actividad" :value="actividad.nombre_tipo_actividad" />
+    <div v-if="actividad" class="space-y-4">
+      <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <div class="flex items-start gap-2.5">
+          <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.clipboardList" :size="16" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold text-gray-800 dark:text-white/90">{{ actividad.titulo }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ actividad.razon_social_cliente ?? 'Sin cliente asignado' }}
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <ListaOpcionBadge
+            v-if="actividad.nombre_estado_actividad"
+            :value="actividad.nombre_estado_actividad"
+          />
+          <ListaOpcionBadge v-if="esSinAsignarAct" value="Sin asignar" />
+          <ListaOpcionBadge v-else-if="esEnCursoAct" value="En curso" />
+          <ListaOpcionBadge v-if="actividad.nombre_prioridad" :value="actividad.nombre_prioridad" />
+          <ListaOpcionBadge v-if="actividad.nombre_tipo_actividad" :value="actividad.nombre_tipo_actividad" />
+        </div>
       </div>
 
-      <section
-        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-      >
+      <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
         <div class="mb-3 flex items-center gap-2.5">
-          <span
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
-          >
-            <AppIcon :name="ICONS.clipboardList" :size="16" />
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.userCheck" :size="16" />
           </span>
           <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos generales</h5>
         </div>
-        <dl class="grid gap-x-5 gap-y-4 sm:grid-cols-2">
-          <div class="sm:col-span-2">
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Título</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">{{ actividad.titulo }}</dd>
-          </div>
-          <div>
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Cliente</dt>
-            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ actividad.razon_social_cliente ?? 'Sin cliente asignado' }}
-            </dd>
-          </div>
+        <dl class="grid gap-x-5 gap-y-4 sm:grid-cols-3">
           <div>
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Usuario responsable</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
@@ -72,18 +67,17 @@
       </section>
 
       <section
-        v-if="descripcionTexto"
+        v-if="descripcionTexto || actividad.observaciones"
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
         <div class="mb-2 flex items-center gap-2.5">
-          <span
-            class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
-          >
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
             <AppIcon :name="ICONS.fileText" :size="16" />
           </span>
           <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Descripción</h5>
         </div>
-        <p class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+
+        <p v-if="descripcionTexto" class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
           {{ descripcionTexto }}
         </p>
         <a
@@ -96,16 +90,22 @@
           <AppIcon :name="ICONS.mapPin" :size="14" />
           Ver ubicación en el mapa
         </a>
+
+        <div v-if="actividad.observaciones" :class="descripcionTexto ? 'mt-4 border-t border-gray-100 pt-3 dark:border-gray-800' : ''">
+          <dt class="mb-1 flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+            <AppIcon :name="ICONS.messageSquare" :size="12" class="shrink-0" />
+            Observaciones
+          </dt>
+          <dd class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+            {{ actividad.observaciones }}
+          </dd>
+        </div>
       </section>
 
       <div class="grid gap-4 sm:grid-cols-2">
-        <section
-          class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-        >
+        <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
           <div class="mb-3 flex items-center gap-2.5">
-            <span
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
-            >
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
               <AppIcon :name="ICONS.calendar" :size="16" />
             </span>
             <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Programación</h5>
@@ -138,53 +138,10 @@
           </dl>
         </section>
 
-        <section
-          class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
-        >
+        <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
           <div class="mb-3 flex items-center gap-2.5">
-            <span
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
-            >
-              <AppIcon :name="ICONS.tags" :size="16" />
-            </span>
-            <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Clasificación</h5>
-          </div>
-          <dl class="grid gap-x-5 gap-y-4 sm:grid-cols-2">
-            <div>
-              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Tipo de actividad</dt>
-              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ formatDetailListaOpcion(actividad.nombre_tipo_actividad) }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Prioridad</dt>
-              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ formatDetailListaOpcion(actividad.nombre_prioridad) }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Estado</dt>
-              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ formatDetailListaOpcion(actividad.nombre_estado_actividad) }}
-              </dd>
-            </div>
-            <div class="sm:col-span-2">
-              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Observaciones</dt>
-              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ actividad.observaciones ?? '—' }}
-              </dd>
-            </div>
-          </dl>
-        </section>
-
-        <section
-          class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40 sm:col-span-2"
-        >
-          <div class="mb-3 flex items-center gap-2.5">
-            <span
-              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
-            >
-              <AppIcon :name="ICONS.userCircle" :size="16" />
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+              <AppIcon :name="ICONS.history" :size="16" />
             </span>
             <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Auditoría</h5>
           </div>
@@ -217,35 +174,44 @@
         </section>
       </div>
 
-      <div
+      <section
         v-if="items.length"
-        class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800"
+        class="rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
-        <table class="min-w-full text-sm">
-          <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-white/5">
-            <tr>
-              <th class="px-3 py-2">Ítem</th>
-              <th class="px-3 py-2">Producto</th>
-              <th class="px-3 py-2 text-right">Cant.</th>
-              <th class="px-3 py-2">Balón</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(item, idx) in items"
-              :key="item.id ?? `${item.id_producto}-${idx}`"
-              class="border-t border-gray-100 dark:border-gray-800"
-            >
-              <td class="px-3 py-2 text-gray-500">{{ item.item ?? idx + 1 }}</td>
-              <td class="px-3 py-2 text-gray-800 dark:text-white/90">
-                {{ item.descripcion || item.nombre_producto || '—' }}
-              </td>
-              <td class="px-3 py-2 text-right tabular-nums">{{ item.cantidad }}</td>
-              <td class="px-3 py-2 text-gray-500">{{ item.codigo_balon || '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <div class="flex items-center gap-2.5 border-b border-gray-100 p-4 pb-3 dark:border-gray-800">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.boxes" :size="16" />
+          </span>
+          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Ítems</h5>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-white/5">
+              <tr>
+                <th class="px-3 py-2">Ítem</th>
+                <th class="px-3 py-2">Producto</th>
+                <th class="px-3 py-2 text-right">Cant.</th>
+                <th class="px-3 py-2">Balón</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, idx) in items"
+                :key="item.id ?? `${item.id_producto}-${idx}`"
+                class="border-t border-gray-100 dark:border-gray-800"
+              >
+                <td class="px-3 py-2 text-gray-500">{{ item.item ?? idx + 1 }}</td>
+                <td class="px-3 py-2 text-gray-800 dark:text-white/90">
+                  {{ item.descripcion || item.nombre_producto || '—' }}
+                </td>
+                <td class="px-3 py-2 text-right tabular-nums">{{ item.cantidad }}</td>
+                <td class="px-3 py-2 text-gray-500">{{ item.codigo_balon || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
     <template #footer>
@@ -321,7 +287,6 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppModal, ListaOpcionBadge } from '@/shared/components'
 import {
   formatDetailDateTime,
-  formatDetailListaOpcion,
 } from '@/shared/components/detail/detailFormatters'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -435,13 +400,13 @@ async function cancelarActividad() {
 async function tomarActividad() {
   const id = actividad.value?.id
   const userId = authStore.user?.id
+  const idTrabajador = authStore.userTrabajadorId
   if (!id || !userId) return
   try {
     await asignarMutation.mutateAsync({
       id,
       idUsuarioAuditoria: userId,
-      idUsuarioResponsable: userId,
-      idChoferResponsable: null,
+      idTrabajadorResponsable: idTrabajador,
     })
   } catch {
     // toast en mutation
@@ -456,8 +421,7 @@ async function liberarActividad() {
     await asignarMutation.mutateAsync({
       id,
       idUsuarioAuditoria: userId,
-      idUsuarioResponsable: null,
-      idChoferResponsable: null,
+      idTrabajadorResponsable: null,
     })
   } catch {
     // toast en mutation

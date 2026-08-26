@@ -6,67 +6,86 @@
     size="lg"
     @close="handleClose"
   >
-    <form id="activo-form" class="space-y-5" autocomplete="off" @submit="onSubmit">
-      <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Datos del activo</h4>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <AppSelectWithCreate
-            :can-create="true"
-            create-title="Agregar tipo de activo"
-            @create="tipoModalOpen = true"
-          >
-            <AppSelect
-              v-model="idTipo"
-              label="Tipo"
-              placeholder="Selecciona..."
+    <form id="activo-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.package" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Datos del activo</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Tipo, descripción e identificación</p>
+          </div>
+        </header>
+
+        <div class="space-y-3">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <AppSelectWithCreate
+              :can-create="true"
+              create-title="Agregar tipo de activo"
+              @create="tipoModalOpen = true"
+            >
+              <AppSelect
+                v-model="idTipo"
+                label="Tipo"
+                placeholder="Selecciona..."
+                required
+                v-bind="idTipoAttrs"
+                :disabled="isSubmitting || tipoQuery.isLoading.value"
+                :error="errors.idTipo"
+                :options="tipoOptions"
+              />
+            </AppSelectWithCreate>
+            <AppInput
+              v-model="descripcion"
+              label="Descripción"
+              placeholder="Laptop Dell Latitude 5420"
               required
-              v-bind="idTipoAttrs"
-              :disabled="isSubmitting || tipoQuery.isLoading.value"
-              :error="errors.idTipo"
-              :options="tipoOptions"
+              v-bind="descripcionAttrs"
+              :disabled="isSubmitting"
+              :error="errors.descripcion"
             />
-          </AppSelectWithCreate>
-          <AppInput
-            v-model="descripcion"
-            label="Descripción"
-            placeholder="Laptop Dell Latitude 5420"
-            required
-            v-bind="descripcionAttrs"
-            :disabled="isSubmitting"
-            :error="errors.descripcion"
-          />
-        </div>
-        <div class="grid gap-3 sm:grid-cols-3">
-          <AppInput
-            v-model="marca"
-            label="Marca"
-            placeholder="Dell"
-            v-bind="marcaAttrs"
-            :disabled="isSubmitting"
-            :error="errors.marca"
-          />
-          <AppInput
-            v-model="modelo"
-            label="Modelo"
-            placeholder="Latitude 5420"
-            v-bind="modeloAttrs"
-            :disabled="isSubmitting"
-            :error="errors.modelo"
-          />
-          <AppInput
-            v-model="numeroSerie"
-            label="N° de serie"
-            placeholder="SN-ABC123"
-            v-bind="numeroSerieAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroSerie"
-          />
+          </div>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <AppInput
+              v-model="marca"
+              label="Marca"
+              placeholder="Dell"
+              v-bind="marcaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.marca"
+            />
+            <AppInput
+              v-model="modelo"
+              label="Modelo"
+              placeholder="Latitude 5420"
+              v-bind="modeloAttrs"
+              :disabled="isSubmitting"
+              :error="errors.modelo"
+            />
+            <AppInput
+              v-model="numeroSerie"
+              label="N° de serie"
+              placeholder="SN-ABC123"
+              v-bind="numeroSerieAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroSerie"
+            />
+          </div>
         </div>
       </section>
 
-      <!-- Compra -->
-      <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Adquisición</h4>
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.creditCard" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Adquisición</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Compra, costo y sucursal asignada</p>
+          </div>
+        </header>
+
         <div class="grid gap-3 sm:grid-cols-3">
           <AppDatePicker
             v-model="fechaCompra"
@@ -95,18 +114,30 @@
           />
         </div>
       </section>
-      <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Responsable e imagen</h4>
-        <SearchableSelect
-          v-model="idTrabajadorResponsable"
-          label="Trabajador responsable"
-          placeholder="Buscar trabajador..."
-          empty-option-label="Sin responsable asignado"
-          :model-label="responsableLabelActual"
-          :search-fn="searchResponsables"
-          :disabled="isSubmitting"
-        />
-        <ActivoImagenField v-model="imagenPrincipalRuta" :disabled="isSubmitting" />
+
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.contact" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Responsable e imagen</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Quién lo tiene a cargo y una foto de referencia</p>
+          </div>
+        </header>
+
+        <div class="space-y-3">
+          <SearchableSelect
+            v-model="idTrabajadorResponsable"
+            label="Trabajador responsable"
+            placeholder="Buscar trabajador..."
+            empty-option-label="Sin responsable asignado"
+            :model-label="responsableLabelActual"
+            :search-fn="searchResponsables"
+            :disabled="isSubmitting"
+          />
+          <ActivoImagenField v-model="imagenPrincipalRuta" :disabled="isSubmitting" />
+        </div>
       </section>
     </form>
 
@@ -153,6 +184,8 @@ import {
   AppSelect,
   AppSelectWithCreate,
 } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import ActivoImagenField from '@/modules/activos/components/ActivoImagenField.vue'

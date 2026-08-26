@@ -29,8 +29,10 @@ export interface Trabajador {
   nombre_cargo?: string | null
   id_usuario?: number | null
   nombre_usuario_vinculo?: string | null
+  es_usuario?: boolean | null
   id_chofer?: number | null
   nombre_chofer?: string | null
+  es_chofer?: boolean | null
   estado: number
   id_usuario_creacion?: number | null
   nombre_usuario_creacion?: string | null
@@ -46,9 +48,19 @@ export interface TrabajadorListFilters {
   buscar?: string
   pagina?: number
   limite?: number
-  estado?: number | null
-  idArea?: number
-  idCargo?: number
+  isActivos?: number | null
+  idCliente?: number
+  estado?: number
+  soloSinUsuario?: boolean
+}
+
+export interface TrabajadorChoferEmpresaPayload {
+  telefono?: string
+  codigoLicencia?: string
+  fechaEmision?: string
+  fechaVencimiento?: string
+  idTipoLicencia?: number
+  idCategoriaLicencia?: number
 }
 
 export interface TrabajadorPayload {
@@ -71,10 +83,11 @@ export interface TrabajadorPayload {
   fechaCese?: string
   idArea?: number
   idCargo?: number
-  idUsuarioVinculo?: number
-  idChofer?: number
   correo?: string
   crearUsuario?: boolean
+  idRol?: number
+  esChofer?: boolean
+  datosChofer?: TrabajadorChoferEmpresaPayload
 }
 
 export type CreateTrabajadorPayload = TrabajadorPayload

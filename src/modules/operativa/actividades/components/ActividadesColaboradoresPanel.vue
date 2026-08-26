@@ -81,7 +81,7 @@
                 >
                   Tú
                 </AppBadge>
-                <AppBadge :color="item.tipo === 'Chofer' ? 'warning' : 'primary'" size="sm">
+                <AppBadge :color="item.tipo === 'Chofer' ? 'warning' : item.tipo === 'Trabajador' ? 'neutral' : 'primary'" size="sm">
                   {{ item.tipo }}
                 </AppBadge>
               </div>

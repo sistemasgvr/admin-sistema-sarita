@@ -3,233 +3,373 @@
     v-model="open"
     :title="mode === 'create' ? 'Nuevo trabajador' : 'Editar trabajador'"
     subtitle="Registra los datos del trabajador en el padrón de personal (RR.HH.)."
-    size="lg"
+    size="xl"
     @close="handleClose"
   >
-    <form id="trabajador-form" class="space-y-5" autocomplete="off" @submit="onSubmit">
-      <!-- Datos personales -->
-      <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Datos personales</h4>
-        <div class="grid gap-3 sm:grid-cols-3">
+   
+    <form id="trabajador-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
+      <section id="seccion-personal" class="scroll-mt-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.userCircle" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Datos personales</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Identificación y datos de contacto</p>
+          </div>
+        </header>
+
+        <div class="space-y-3">
+          <div class="grid gap-3 sm:grid-cols-3">
             <AppSelect
-            v-model="idTipoDocumento"
-            label="Tipo de documento"
-            :placeholder="tipoDocumentoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-            required
-            v-bind="idTipoDocumentoAttrs"
-            :disabled="isSubmitting || tipoDocumentoQuery.isLoading.value"
-            :error="errors.idTipoDocumento"
-            :options="tipoDocumentoOptions"
-          />
-          <ConsultaDocumentoInput
-            v-model="numeroDocumento"
-            :tipo-documento="tipoDocumentoSeleccionado?.nombre"
-            label="Número de documento"
-            required
-            :input-attrs="numeroDocumentoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.numeroDocumento"
-            @dni-encontrado="aplicarDatosDni"
-            @ruc-encontrado="aplicarDatosRuc"
-          />
-          <AppInput
-            v-model="nombres"
-            label="Nombres"
-            placeholder="Juan"
-            required
-            v-bind="nombresAttrs"
-            :disabled="isSubmitting"
-            :error="errors.nombres"
-          />
-        </div>
+              v-model="idTipoDocumento"
+              label="Tipo de documento"
+              :placeholder="tipoDocumentoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+              required
+              v-bind="idTipoDocumentoAttrs"
+              :disabled="isSubmitting || tipoDocumentoQuery.isLoading.value"
+              :error="errors.idTipoDocumento"
+              :options="tipoDocumentoOptions"
+            />
+            <ConsultaDocumentoInput
+              v-model="numeroDocumento"
+              :tipo-documento="tipoDocumentoSeleccionado?.nombre"
+              label="Número de documento"
+              required
+              :input-attrs="numeroDocumentoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.numeroDocumento"
+              @dni-encontrado="aplicarDatosDni"
+              @ruc-encontrado="aplicarDatosRuc"
+            />
+            <AppInput
+              v-model="nombres"
+              label="Nombres"
+              placeholder="Juan"
+              required
+              v-bind="nombresAttrs"
+              :disabled="isSubmitting"
+              :error="errors.nombres"
+            />
+          </div>
 
-        <div class="grid gap-3 sm:grid-cols-3">
-          <AppInput
-            v-model="apellidoPaterno"
-            label="Apellido paterno"
-            placeholder="Pérez"
-            v-bind="apellidoPaternoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.apellidoPaterno"
-          />
-          <AppInput
-            v-model="apellidoMaterno"
-            label="Apellido materno"
-            placeholder="Lopez"
-            v-bind="apellidoMaternoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.apellidoMaterno"
-          />
-          <AppDatePicker
-            v-model="fechaNacimiento"
-            label="Fecha de nacimiento"
-            :disabled="isSubmitting"
-            :error="errors.fechaNacimiento"
-          />
-        </div>
+          <div class="grid gap-3 sm:grid-cols-3">
+            <AppInput
+              v-model="apellidoPaterno"
+              label="Apellido paterno"
+              placeholder="Pérez"
+              v-bind="apellidoPaternoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.apellidoPaterno"
+            />
+            <AppInput
+              v-model="apellidoMaterno"
+              label="Apellido materno"
+              placeholder="Lopez"
+              v-bind="apellidoMaternoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.apellidoMaterno"
+            />
+            <AppDatePicker
+              v-model="fechaNacimiento"
+              label="Fecha de nacimiento"
+              :disabled="isSubmitting"
+              :error="errors.fechaNacimiento"
+            />
+          </div>
 
-        <p v-if="edadCalculada !== null" class="text-xs text-gray-500 dark:text-gray-400">
-          Edad actual: <span class="font-medium text-gray-700 dark:text-gray-200">{{ edadCalculada }} años</span>
-        </p>
+          <p v-if="edadCalculada !== null" class="text-xs text-gray-500 dark:text-gray-400">
+            Edad actual: <span class="font-medium text-gray-700 dark:text-gray-200">{{ edadCalculada }} años</span>
+          </p>
 
-        <div class="grid gap-3 sm:grid-cols-2">
-          <AppInput
-            v-model="correo"
-            type="email"
-            label="Correo electrónico"
-            placeholder="nombre@empresa.com"
-            v-bind="correoAttrs"
-            :disabled="isSubmitting"
-            :error="errors.correo"
-          />
+          <div class="grid gap-3 sm:grid-cols-2">
+            <AppInput
+              v-model="correo"
+              type="email"
+              label="Correo electrónico"
+              placeholder="nombre@empresa.com"
+              v-bind="correoAttrs"
+              :disabled="isSubmitting"
+              :error="errors.correo"
+            />
+          </div>
         </div>
       </section>
 
-      <!-- Dirección -->
-      <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Dirección</h4>
-        <AppInput
-          v-model="direccion"
-          label="Dirección"
-          placeholder="Av. Principal 123"
-          v-bind="direccionAttrs"
-          :disabled="isSubmitting"
-          :error="errors.direccion"
-        />
-        <AppInput
-          v-model="referencia"
-          label="Referencia"
-          placeholder="Frente al parque"
-          v-bind="referenciaAttrs"
-          :disabled="isSubmitting"
-          :error="errors.referencia"
-        />
-        <div class="grid gap-3 sm:grid-cols-4">
-          <AppSelect
-            v-model="idPais"
-            label="País"
-            placeholder="País"
-            v-bind="idPaisAttrs"
-            :disabled="isSubmitting || paisesQuery.isLoading.value"
-            :error="errors.idPais"
-            :options="paisOptions"
-          />
-          <AppSelect
-            v-model="idDepartamento"
-            label="Departamento"
-            placeholder="Departamento"
-            v-bind="idDepartamentoAttrs"
-            :disabled="isSubmitting || !idPais || departamentosQuery.isLoading.value"
-            :error="errors.idDepartamento"
-            :options="departamentoOptions"
-          />
-          <AppSelect
-            v-model="idProvincia"
-            label="Provincia"
-            placeholder="Provincia"
-            v-bind="idProvinciaAttrs"
-            :disabled="isSubmitting || !idDepartamento || provinciasQuery.isLoading.value"
-            :error="errors.idProvincia"
-            :options="provinciaOptions"
-          />
-          <AppSelect
-            v-model="idDistrito"
-            label="Distrito"
-            placeholder="Distrito"
-            v-bind="idDistritoAttrs"
-            :disabled="isSubmitting || !idProvincia || distritosQuery.isLoading.value"
-            :error="errors.idDistrito"
-            :options="distritoOptions"
-          />
+      <section id="seccion-direccion" class="scroll-mt-4 rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.mapPin" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Dirección</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Domicilio y ubicación geográfica</p>
+          </div>
+        </header>
+
+        <div class="space-y-3">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <AppInput
+              v-model="direccion"
+              label="Dirección"
+              placeholder="Av. Principal 123"
+              v-bind="direccionAttrs"
+              :disabled="isSubmitting"
+              :error="errors.direccion"
+            />
+            <AppInput
+              v-model="referencia"
+              label="Referencia"
+              placeholder="Frente al parque"
+              v-bind="referenciaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.referencia"
+            />
+          </div>
+
+          <div class="grid gap-3 sm:grid-cols-4">
+            <AppSelect
+              v-model="idPais"
+              label="País"
+              placeholder="País"
+              v-bind="idPaisAttrs"
+              :disabled="isSubmitting || paisesQuery.isLoading.value"
+              :error="errors.idPais"
+              :options="paisOptions"
+            />
+            <AppSelect
+              v-model="idDepartamento"
+              label="Departamento"
+              placeholder="Departamento"
+              v-bind="idDepartamentoAttrs"
+              :disabled="isSubmitting || !idPais || departamentosQuery.isLoading.value"
+              :error="errors.idDepartamento"
+              :options="departamentoOptions"
+            />
+            <AppSelect
+              v-model="idProvincia"
+              label="Provincia"
+              placeholder="Provincia"
+              v-bind="idProvinciaAttrs"
+              :disabled="isSubmitting || !idDepartamento || provinciasQuery.isLoading.value"
+              :error="errors.idProvincia"
+              :options="provinciaOptions"
+            />
+            <AppSelect
+              v-model="idDistrito"
+              label="Distrito"
+              placeholder="Distrito"
+              v-bind="idDistritoAttrs"
+              :disabled="isSubmitting || !idProvincia || distritosQuery.isLoading.value"
+              :error="errors.idDistrito"
+              :options="distritoOptions"
+            />
+          </div>
+
+          <AppCollapsibleSection title="Ubicar en el mapa" :icon="ICONS.locateFixed" :default-open="mapaAbiertoPorDefecto">
+            <MapaLeaflet
+              v-model:latitud="latitud"
+              v-model:longitud="longitud"
+              height="280px"
+              :searchable="true"
+              :draggable-marker="true"
+              :readonly="false"
+              :resolve-google-maps-link="resolverCoordenadasDesdeLink"
+            />
+          </AppCollapsibleSection>
         </div>
-        <div class="sm:col-span-2">
-          <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Ubicación en el mapa
+      </section>
+
+      <section id="seccion-laboral" class="scroll-mt-4 rounded-xl border border-gray-200  p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.clipboardList" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Datos laborales</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Puesto, área y periodo de trabajo</p>
+          </div>
+        </header>
+
+        <div class="space-y-3">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <AppSelectWithCreate
+              :can-create="true"
+              create-title="Agregar área"
+              @create="areaModalOpen = true"
+            >
+              <AppSelect
+                v-model="idArea"
+                label="Área"
+                :placeholder="areaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                v-bind="idAreaAttrs"
+                :disabled="isSubmitting || areaQuery.isLoading.value"
+                :error="errors.idArea"
+                :options="areaOptions"
+              />
+            </AppSelectWithCreate>
+            <AppSelectWithCreate
+              :can-create="true"
+              create-title="Agregar cargo"
+              @create="cargoModalOpen = true"
+            >
+              <AppSelect
+                v-model="idCargo"
+                label="Cargo"
+                :placeholder="cargoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+                v-bind="idCargoAttrs"
+                :disabled="isSubmitting || cargoQuery.isLoading.value"
+                :error="errors.idCargo"
+                :options="cargoOptions"
+              />
+            </AppSelectWithCreate>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <AppDatePicker
+              v-model="fechaInicio"
+              label="Fecha de inicio"
+              :disabled="isSubmitting"
+              :error="errors.fechaInicio"
+            />
+            <AppDatePicker
+              v-model="fechaCese"
+              label="Fecha de cese"
+              :disabled="isSubmitting"
+              :error="errors.fechaCese"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="seccion-acceso" class="scroll-mt-4 rounded-xl border border-gray-200  p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.keyRound" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Acceso al sistema</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Usuario, rol y datos de chofer (opcional)</p>
+          </div>
+        </header>
+
+        <div class="space-y-3">
+          <!-- Toggle: crear usuario -->
+          <label
+            class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+            :class="crearUsuario
+              ? 'border-brand-300 bg-brand-50/60 dark:border-brand-500/40 dark:bg-brand-500/10'
+              : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/40'"
+          >
+            <AppCheckbox
+              v-model="crearUsuario"
+              :disabled="isSubmitting || Boolean(trabajadorActual?.es_usuario)"
+              class="mt-0.5"
+            />
+            <AppIcon :name="ICONS.userCheck" :size="18" class="mt-0.5 shrink-0 text-gray-400" />
+            <span>
+              <span class="block text-sm font-medium text-gray-800 dark:text-gray-100">Crear usuario para este trabajador</span>
+              <span class="block text-xs text-gray-500 dark:text-gray-400">
+                Se generará un usuario con el correo y el número de documento como contraseña inicial.
+              </span>
+            </span>
           </label>
-          <MapaLeaflet
-            v-model:latitud="latitud"
-            v-model:longitud="longitud"
-            height="300px"
-            :searchable="true"
-            :draggable-marker="true"
-            :readonly="false"
-            :resolve-google-maps-link="resolverCoordenadasDesdeLink"
-          />
-        </div>
-      </section>
 
-      <!-- Datos laborales -->
-      <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Datos laborales</h4>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <AppSelectWithCreate
-            :can-create="true"
-            create-title="Agregar área"
-            @create="areaModalOpen = true"
-          >
-            <AppSelect
-              v-model="idArea"
-              label="Área"
-              :placeholder="areaQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-              v-bind="idAreaAttrs"
-              :disabled="isSubmitting || areaQuery.isLoading.value"
-              :error="errors.idArea"
-              :options="areaOptions"
-            />
-          </AppSelectWithCreate>
-          <AppSelectWithCreate
-            :can-create="true"
-            create-title="Agregar cargo"
-            @create="cargoModalOpen = true"
-          >
-            <AppSelect
-              v-model="idCargo"
-              label="Cargo"
-              :placeholder="cargoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-              v-bind="idCargoAttrs"
-              :disabled="isSubmitting || cargoQuery.isLoading.value"
-              :error="errors.idCargo"
-              :options="cargoOptions"
-            />
-          </AppSelectWithCreate>
-        </div>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <AppDatePicker
-            v-model="fechaInicio"
-            label="Fecha de inicio"
-            :disabled="isSubmitting"
-            :error="errors.fechaInicio"
+          <AppSelect
+            v-if="crearUsuario"
+            v-model="idRol"
+            label="Rol de acceso"
+            placeholder="Selecciona un rol..."
+            :options="rolOptions"
+            :disabled="isSubmitting || rolQuery.isLoading.value"
+            :error="errors.idRol"
           />
-          <AppDatePicker
-            v-model="fechaCese"
-            label="Fecha de cese"
-            :disabled="isSubmitting"
-            :error="errors.fechaCese"
-          />
-        </div>
-      </section>
 
-      <!-- Acceso al sistema -->
-      <section class="space-y-3">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Acceso al sistema</h4>
-        <AppCheckbox
-          v-model="crearUsuario"
-          label="Crear usuario para este trabajador"
-          :disabled="isSubmitting"
-        />
-        <p class="text-xs text-gray-500 dark:text-gray-400">
-          Se generará un usuario con el correo y el número de documento como contraseña inicial.
-        </p>
-        <!-- La asignación de chofer se mantiene opcional en el backend, pero se comenta en el formulario:
-        <SearchableSelect
-          v-model="idChofer"
-          label="Chofer"
-          placeholder="Buscar chofer..."
-          empty-option-label="Sin chofer asignado"
-          :model-label="choferLabelActual"
-          :search-fn="searchChoferes"
-          :disabled="isSubmitting"
-        /> -->
+          <label
+            class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+            :class="esChofer
+              ? 'border-brand-300 bg-brand-50/60 dark:border-brand-500/40 dark:bg-brand-500/10'
+              : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900/40'"
+          >
+            <AppCheckbox
+              v-model="esChofer"
+              :disabled="isSubmitting || Boolean(trabajadorActual?.es_chofer)"
+              class="mt-0.5"
+            />
+            <AppIcon :name="ICONS.car" :size="18" class="mt-0.5 shrink-0 text-gray-400" />
+            <span>
+              <span class="block text-sm font-medium text-gray-800 dark:text-gray-100">Es chofer de la flota propia de la empresa</span>
+              <span class="block text-xs text-gray-500 dark:text-gray-400">
+                Habilita los campos de licencia de conducir (brevete).
+              </span>
+            </span>
+          </label>
+
+          <AppCollapsibleSection
+            v-if="esChofer"
+            title="Datos de licencia (brevete)"
+            :icon="ICONS.idCard"
+            :default-open="true"
+          >
+            <div class="grid gap-3 sm:grid-cols-2">
+              <AppInput
+                v-model="codigoLicencia"
+                label="N° de licencia (brevete)"
+                placeholder="Q12345678"
+                v-bind="codigoLicenciaAttrs"
+                :disabled="isSubmitting"
+                :error="errors.codigoLicencia"
+              />
+              <AppInput
+                v-model="telefonoChofer"
+                label="Teléfono"
+                placeholder="987654321"
+                maxlength="9"
+                :sanitize="sanitizeSoloNumeros"
+                v-bind="telefonoChoferAttrs"
+                :disabled="isSubmitting"
+                :error="errors.telefonoChofer"
+              />
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <AppSelect
+                v-model="idTipoLicencia"
+                label="Tipo de licencia"
+                placeholder="Selecciona..."
+                v-bind="idTipoLicenciaAttrs"
+                :disabled="isSubmitting || tipoLicenciaQuery.isLoading.value"
+                :error="errors.idTipoLicencia"
+                :options="tipoLicenciaOptions"
+              />
+              <AppSelect
+                v-model="idCategoriaLicencia"
+                label="Categoría de licencia"
+                placeholder="Selecciona..."
+                v-bind="idCategoriaLicenciaAttrs"
+                :disabled="isSubmitting || categoriaLicenciaQuery.isLoading.value"
+                :error="errors.idCategoriaLicencia"
+                :options="categoriaLicenciaOptions"
+              />
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <AppInput
+                v-model="fechaEmisionLicencia"
+                type="date"
+                label="Fecha de emisión"
+                v-bind="fechaEmisionLicenciaAttrs"
+                :disabled="isSubmitting"
+                :error="errors.fechaEmisionLicencia"
+              />
+              <AppInput
+                v-model="fechaVencimientoLicencia"
+                type="date"
+                label="Fecha de vencimiento"
+                v-bind="fechaVencimientoLicenciaAttrs"
+                :disabled="isSubmitting"
+                :error="errors.fechaVencimientoLicencia"
+              />
+            </div>
+          </AppCollapsibleSection>
+        </div>
       </section>
     </form>
 
@@ -289,7 +429,7 @@
       </dl>
 
       <div class="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-        <span class="mt-0.5">⚠</span>
+        <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
         <p>No olvide asignar permisos a este usuario desde el módulo de <strong>Usuarios / Roles</strong>.</p>
       </div>
 
@@ -325,8 +465,10 @@ import {
 import { useTrabajadorDetailQuery } from '@/modules/trabajadores/composables/useTrabajadoresQuery'
 import type { Trabajador, TrabajadorFormMode } from '@/modules/trabajadores/interfaces/trabajador.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppDatePicker, AppInput, AppModal, AppSelect, AppSelectWithCreate } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect, AppSelectWithCreate, AppCollapsibleSection } from '@/shared/components'
 import AppCheckbox from '@/shared/components/form/AppCheckbox.vue'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
 import MapaLeaflet from '@/shared/components/map/MapaLeaflet.vue'
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import ConsultaDocumentoInput from '@/modules/consultas/components/ConsultaDocumentoInput.vue'
@@ -337,6 +479,7 @@ import type { ConsultaDniData, ConsultaRucData } from '@/modules/consultas/inter
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
 import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
+import { rolesService } from '@/modules/roles/services/roles.service'
 
 interface TrabajadorFormModalProps {
   mode: TrabajadorFormMode
@@ -382,8 +525,6 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idCargo: yup.number().optional().nullable(),
       fechaInicio: optionalString(),
       fechaCese: optionalString(),
-      idUsuarioVinculo: yup.number().optional().nullable(),
-      idChofer: yup.number().optional().nullable(),
       correo: yup
         .string()
         .email('Ingresa un correo válido')
@@ -393,6 +534,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
           then: (s) => s.required('El correo es obligatorio para crear el usuario'),
         }),
       crearUsuario: yup.boolean().optional(),
+      idRol: yup.number().optional().nullable(),
+      esChofer: yup.boolean().optional(),
+      codigoLicencia: optionalString(),
+      telefonoChofer: optionalString(),
+      idTipoLicencia: yup.number().optional().nullable(),
+      idCategoriaLicencia: yup.number().optional().nullable(),
+      fechaEmisionLicencia: optionalString(),
+      fechaVencimientoLicencia: optionalString(),
     }),
   ),
   initialValues: {
@@ -414,10 +563,16 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idCargo: undefined as number | undefined,
     fechaInicio: '',
     fechaCese: '',
-    idUsuarioVinculo: undefined as number | undefined,
-    idChofer: undefined as number | undefined,
     correo: '',
     crearUsuario: false,
+    idRol: undefined as number | undefined,
+    esChofer: false,
+    codigoLicencia: '',
+    telefonoChofer: '',
+    idTipoLicencia: undefined as number | undefined,
+    idCategoriaLicencia: undefined as number | undefined,
+    fechaEmisionLicencia: '',
+    fechaVencimientoLicencia: '',
   },
 })
 
@@ -439,10 +594,16 @@ const [idArea, idAreaAttrs] = defineField('idArea')
 const [idCargo, idCargoAttrs] = defineField('idCargo')
 const [fechaInicio] = defineField('fechaInicio')
 const [fechaCese] = defineField('fechaCese')
-const [idUsuarioVinculo] = defineField('idUsuarioVinculo')
-const [idChofer] = defineField('idChofer')
 const [correo, correoAttrs] = defineField('correo')
 const [crearUsuario] = defineField('crearUsuario')
+const [idRol] = defineField('idRol')
+const [esChofer] = defineField('esChofer')
+const [codigoLicencia, codigoLicenciaAttrs] = defineField('codigoLicencia')
+const [telefonoChofer, telefonoChoferAttrs] = defineField('telefonoChofer')
+const [idTipoLicencia, idTipoLicenciaAttrs] = defineField('idTipoLicencia')
+const [idCategoriaLicencia, idCategoriaLicenciaAttrs] = defineField('idCategoriaLicencia')
+const [fechaEmisionLicencia, fechaEmisionLicenciaAttrs] = defineField('fechaEmisionLicencia')
+const [fechaVencimientoLicencia, fechaVencimientoLicenciaAttrs] = defineField('fechaVencimientoLicencia')
 
 const tipoDocumentoQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_DOCUMENTO))
 const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
@@ -470,9 +631,35 @@ const areaOptions = computed(() => toSelectOptions(areaQuery.data.value))
 const cargoQuery = useListaOpcionesQuery(computed(() => ListaIds.CARGOS_TRABAJADOR))
 const cargoOptions = computed(() => toSelectOptions(cargoQuery.data.value))
 
+const tipoLicenciaQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_LICENCIA))
+const tipoLicenciaOptions = computed(() => toSelectOptions(tipoLicenciaQuery.data.value))
+
+const categoriaLicenciaQuery = useListaOpcionesQuery(computed(() => ListaIds.CATEGORIA_LICENCIA))
+const categoriaLicenciaOptions = computed(() => toSelectOptions(categoriaLicenciaQuery.data.value))
+
+const sanitizeSoloNumeros = (raw: string) => raw.replace(/\D/g, '').slice(0, 9)
+
+const rolesLoading = ref(false)
+const rolQuery = { isLoading: rolesLoading }
+const rolesList = ref<{ id: number; nombre: string }[]>([])
+const rolOptions = computed<SelectOption[]>(
+  () => rolesList.value.map((r) => ({ value: r.id, label: r.nombre })),
+)
+
 const areaModalOpen = ref(false)
 const onAreaCreada = (opcion: ListaOpcion) => {
   idArea.value = opcion.id
+}
+
+const cargarRoles = async () => {
+  if (rolesList.value.length) return
+  rolesLoading.value = true
+  try {
+    const result = await rolesService.listar({ pagina: 1, limite: 100 })
+    rolesList.value = result.data
+  } finally {
+    rolesLoading.value = false
+  }
 }
 
 const cargoModalOpen = ref(false)
@@ -519,6 +706,9 @@ const edadCalculada = computed<number | null>(() => {
   return edad
 })
 
+// El mapa se abre solo si ya hay coordenadas guardadas (edición); en creación queda colapsado.
+const mapaAbiertoPorDefecto = computed(() => Boolean(latitud.value && longitud.value))
+
 const toNum = (v: unknown): number | undefined => {
   if (v === null || v === undefined || v === '') return undefined
   const n = Number(v)
@@ -559,10 +749,16 @@ const currentValues = () => ({
   idCargo: idCargo.value,
   fechaInicio: fechaInicio.value,
   fechaCese: fechaCese.value,
-  idUsuarioVinculo: idUsuarioVinculo.value,
-  idChofer: idChofer.value,
   correo: correo.value,
   crearUsuario: crearUsuario.value,
+  idRol: idRol.value,
+  esChofer: esChofer.value,
+  codigoLicencia: codigoLicencia.value,
+  telefonoChofer: telefonoChofer.value,
+  idTipoLicencia: idTipoLicencia.value,
+  idCategoriaLicencia: idCategoriaLicencia.value,
+  fechaEmisionLicencia: fechaEmisionLicencia.value,
+  fechaVencimientoLicencia: fechaVencimientoLicencia.value,
 })
 
 const syncFormValues = () => {
@@ -587,10 +783,16 @@ const syncFormValues = () => {
       idCargo: t?.id_cargo ?? undefined,
       fechaInicio: t?.fecha_inicio ?? '',
       fechaCese: t?.fecha_cese ?? '',
-      idUsuarioVinculo: t?.id_usuario ?? undefined,
-      idChofer: t?.id_chofer ?? undefined,
       correo: t?.correo ?? '',
       crearUsuario: false,
+      idRol: undefined,
+      esChofer: Boolean(t?.es_chofer),
+      codigoLicencia: '',
+      telefonoChofer: '',
+      idTipoLicencia: undefined,
+      idCategoriaLicencia: undefined,
+      fechaEmisionLicencia: '',
+      fechaVencimientoLicencia: '',
     },
   })
 }
@@ -624,10 +826,20 @@ const onSubmit = handleSubmit(async (values) => {
       idCargo: toNum(values.idCargo),
       fechaInicio: values.fechaInicio || undefined,
       fechaCese: values.fechaCese || undefined,
-      idUsuarioVinculo: toNum(values.idUsuarioVinculo),
-      idChofer: toNum(values.idChofer),
       correo: values.correo || undefined,
       crearUsuario: values.crearUsuario || false,
+      idRol: values.crearUsuario ? toNum(values.idRol) : undefined,
+      esChofer: values.esChofer || false,
+      datosChofer: values.esChofer
+        ? {
+            telefono: values.telefonoChofer || undefined,
+            codigoLicencia: values.codigoLicencia || undefined,
+            fechaEmision: values.fechaEmisionLicencia || undefined,
+            fechaVencimiento: values.fechaVencimientoLicencia || undefined,
+            idTipoLicencia: toNum(values.idTipoLicencia),
+            idCategoriaLicencia: toNum(values.idCategoriaLicencia),
+          }
+        : undefined,
     }
 
     let guardado: Trabajador | undefined
@@ -657,7 +869,10 @@ const credencialesInfo = ref<{ correo: string; numeroDocumento: string } | null>
 watch(
   () => open.value,
   (isOpen) => {
-    if (isOpen) syncFormValues()
+    if (isOpen) {
+      syncFormValues()
+      cargarRoles()
+    }
   },
 )
 watch(

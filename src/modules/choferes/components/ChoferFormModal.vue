@@ -33,12 +33,25 @@
         :search-fn="searchClientes"
       />
 
+      <SearchableSelect
+        v-if="soloEmpresa"
+        v-model="idTrabajador"
+        label="Trabajador de la empresa"
+        placeholder="Buscar trabajador..."
+        empty-option-label="Sin trabajador asignado"
+        :model-label="trabajadorLabelActual"
+        v-bind="idTrabajadorAttrs"
+        :disabled="isSubmitting"
+        :error="errors.idTrabajador"
+        :search-fn="searchTrabajadores"
+      />
+
       <div class="grid gap-3 sm:grid-cols-2">
         <AppSelect
           v-model="idTipoDocumento"
           label="Tipo de documento"
           :placeholder="tipoDocumentoQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-          required
+          :required="!soloEmpresa"
           v-bind="idTipoDocumentoAttrs"
           :disabled="isSubmitting || tipoDocumentoQuery.isLoading.value"
           :error="errors.idTipoDocumento"
@@ -49,7 +62,7 @@
           v-model="numeroDocumento"
           :tipo-documento="tipoDocumentoSeleccionado?.nombre"
           label="Número de documento"
-          required
+          :required="!soloEmpresa"
           :input-attrs="numeroDocumentoAttrs"
           :disabled="isSubmitting"
           :error="errors.numeroDocumento"
@@ -63,7 +76,7 @@
           v-model="nombres"
           label="Nombres"
           placeholder="Carlos"
-          required
+          :required="!soloEmpresa"
           v-bind="nombresAttrs"
           :disabled="isSubmitting"
           :error="errors.nombres"
@@ -197,6 +210,8 @@ import type {
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { getClienteNombrePrincipal } from '@/modules/clientes/utils/clienteNombre'
+import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
+import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.interface'
 import ConsultaDocumentoInput from '@/modules/consultas/components/ConsultaDocumentoInput.vue'
 import type {
   ConsultaDniData,
@@ -254,6 +269,20 @@ const searchClientes = async (query: string): Promise<SelectOption[]> => {
   }))
 }
 
+const getTrabajadorNombre = (t: Trabajador) =>
+  [t.nombres, t.apellido_paterno, t.apellido_materno].filter(Boolean).join(' ').trim() || t.nombres
+
+const searchTrabajadores = async (query: string): Promise<SelectOption[]> => {
+  const response = await trabajadoresService.buscar(query || '', 20)
+  return response.data.map((t) => ({ value: t.id, label: getTrabajadorNombre(t) }))
+}
+
+const trabajadorLabelActual = computed(() => {
+  const c = choferActual.value
+  if (c?.nombre_trabajador) return c.nombre_trabajador
+  return null
+})
+
 const listaTipoDocumentoId = computed(() => ListaIds.TIPO_DOCUMENTO)
 const tipoDocumentoQuery = useListaOpcionesQuery(listaTipoDocumentoId)
 const tipoDocumentoOptions = computed(() => toSelectOptions(tipoDocumentoQuery.data.value))
@@ -307,11 +336,30 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       idCliente: yup.number().optional().nullable(),
-      nombres: requiredString('Los nombres'),
+      idTrabajador: yup.number().optional().nullable(),
+      nombres: yup
+        .string()
+        .when('idTrabajador', {
+          is: (v: unknown) => !v,
+          then: (s) => s.required('Los nombres son obligatorios'),
+          otherwise: (s) => s.optional(),
+        }),
       apellidoPaterno: optionalString(),
       apellidoMaterno: optionalString(),
-      idTipoDocumento: yup.number().required('El tipo de documento es obligatorio'),
-      numeroDocumento: requiredString('El número de documento'),
+      idTipoDocumento: yup
+        .number()
+        .when('idTrabajador', {
+          is: (v: unknown) => !v,
+          then: (s) => s.required('El tipo de documento es obligatorio'),
+          otherwise: (s) => s.optional().nullable(),
+        }),
+      numeroDocumento: yup
+        .string()
+        .when('idTrabajador', {
+          is: (v: unknown) => !v,
+          then: (s) => s.required('El número de documento es obligatorio'),
+          otherwise: (s) => s.optional(),
+        }),
       telefono: requiredPhone('El teléfono'),
       codigoLicencia: requiredString('El número de licencia'),
       idTipoLicencia: yup.number().required('El tipo de licencia es obligatorio'),
@@ -322,6 +370,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   ),
   initialValues: {
     idCliente: undefined as number | undefined,
+    idTrabajador: undefined as number | undefined,
     nombres: '',
     apellidoPaterno: '',
     apellidoMaterno: '',
@@ -337,6 +386,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
 })
 
 const [idCliente, idClienteAttrs] = defineField('idCliente')
+const [idTrabajador, idTrabajadorAttrs] = defineField('idTrabajador')
 const [nombres, nombresAttrs] = defineField('nombres')
 const [apellidoPaterno, apellidoPaternoAttrs] = defineField('apellidoPaterno')
 const [apellidoMaterno, apellidoMaternoAttrs] = defineField('apellidoMaterno')
@@ -355,6 +405,7 @@ const syncFormValues = () => {
   resetForm({
     values: {
       idCliente: c?.id_cliente ?? props.defaultClienteId ?? undefined,
+      idTrabajador: c?.id_trabajador ?? undefined,
       nombres: c?.nombres ?? '',
       apellidoPaterno: c?.apellido_paterno ?? '',
       apellidoMaterno: c?.apellido_materno ?? '',
@@ -386,10 +437,15 @@ const onSubmit = handleSubmit(async (values) => {
         : values.idCliente
           ? Number(values.idCliente)
           : undefined,
+      idTrabajador: props.soloEmpresa
+        ? values.idTrabajador
+          ? Number(values.idTrabajador)
+          : undefined
+        : undefined,
       nombres: values.nombres,
       apellidoPaterno: values.apellidoPaterno || undefined,
       apellidoMaterno: values.apellidoMaterno || undefined,
-      idTipoDocumento: Number(values.idTipoDocumento),
+      idTipoDocumento: values.idTrabajador ? Number(values.idTipoDocumento) : Number(values.idTipoDocumento),
       numeroDocumento: values.numeroDocumento,
       telefono: values.telefono || undefined,
       codigoLicencia: values.codigoLicencia || undefined,

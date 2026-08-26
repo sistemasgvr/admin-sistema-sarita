@@ -12,10 +12,17 @@ import type {
   TrabajadorListFilters,
   UpdateTrabajadorPayload,
 } from '@/modules/trabajadores/interfaces/trabajador.interface'
+import { usuariosService } from '@/modules/usuarios/services/usuarios.service'
 
 export const trabajadoresService = {
   listar(filters: TrabajadorListFilters = {}) {
     return apiGetPaginated<Trabajador>('/trabajadores', { params: filters })
+  },
+
+  buscar(query: string, limite = 20) {
+    return apiGetPaginated<Trabajador>('/trabajadores', {
+      params: { buscar: query || undefined, pagina: 1, limite },
+    })
   },
 
   obtenerPorId(id: number) {
@@ -36,10 +43,10 @@ export const trabajadoresService = {
     })
   },
 
-  asignarUsuario(id: number, idUsuario: number, idUsuarioAuditoria: number) {
-    return apiPatch<Trabajador>(`/trabajadores/${id}`, {
+  asignarUsuario(idTrabajador: number, idUsuario: number, idUsuarioAuditoria: number) {
+    return usuariosService.actualizar(idUsuario, {
+      idTrabajador: idTrabajador,
       idUsuarioAuditoria,
-      idUsuarioVinculo: idUsuario,
     })
   },
 }

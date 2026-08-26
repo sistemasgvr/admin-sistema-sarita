@@ -1,6 +1,8 @@
 export interface Chofer {
   id: number
   id_cliente?: number | null
+  id_trabajador?: number | null
+  nombre_trabajador?: string | null
   cliente_razon_social?: string | null
   cliente_nombres?: string | null
   cliente_apellido_paterno?: string | null
@@ -43,11 +45,12 @@ export interface ChoferListFilters {
 export interface ChoferPayload {
   idUsuarioAuditoria: number
   idCliente?: number
-  nombres: string
+  idTrabajador?: number
+  nombres?: string
   apellidoPaterno?: string
   apellidoMaterno?: string
-  idTipoDocumento: number
-  numeroDocumento: string
+  idTipoDocumento?: number
+  numeroDocumento?: string
   telefono?: string
   codigoLicencia?: string
   fechaEmision?: string

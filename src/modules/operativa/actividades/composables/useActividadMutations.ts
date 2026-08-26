@@ -104,18 +104,15 @@ export function useAsignarResponsableActividadMutation() {
     mutationFn: ({
       id,
       idUsuarioAuditoria,
-      idUsuarioResponsable,
-      idChoferResponsable,
+      idTrabajadorResponsable,
     }: {
       id: number
       idUsuarioAuditoria: number
-      idUsuarioResponsable?: number | null
-      idChoferResponsable?: number | null
+      idTrabajadorResponsable?: number | null
     }) =>
       actividadesService.asignarResponsable(id, {
         idUsuarioAuditoria,
-        idUsuarioResponsable,
-        idChoferResponsable,
+        idTrabajadorResponsable,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })

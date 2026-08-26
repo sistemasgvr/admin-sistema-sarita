@@ -8,6 +8,7 @@ export interface AuthUser {
   nombre: string
   correo: string
   estado: boolean
+  id_trabajador?: number | null
   roles: AuthRole[]
   permisos: string[]
 }

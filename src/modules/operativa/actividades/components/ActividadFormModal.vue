@@ -7,212 +7,250 @@
     @close="handleClose"
   >
     <form id="actividad-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
-      <AppInput
-        v-model="titulo"
-        label="Título"
-        placeholder="Entrega de Oxígeno Medicinal"
-        required
-        v-bind="tituloAttrs"
-        :disabled="isSubmitting"
-        :error="errors.titulo"
-      />
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.clipboardList" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Datos generales</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Título y descripción de la actividad</p>
+          </div>
+        </header>
 
-      <AppTextarea
-        v-model="descripcion"
-        label="Descripción"
-        placeholder="Describe brevemente la actividad..."
-        :rows="3"
-        v-bind="descripcionAttrs"
-        :disabled="isSubmitting"
-        :error="errors.descripcion"
-      />
+        <div class="space-y-3">
+          <AppInput
+            v-model="titulo"
+            label="Título"
+            placeholder="Entrega de Oxígeno Medicinal"
+            required
+            v-bind="tituloAttrs"
+            :disabled="isSubmitting"
+            :error="errors.titulo"
+          />
+          <AppTextarea
+            v-model="descripcion"
+            label="Descripción"
+            placeholder="Describe brevemente la actividad..."
+            :rows="3"
+            v-bind="descripcionAttrs"
+            :disabled="isSubmitting"
+            :error="errors.descripcion"
+          />
+        </div>
+      </section>
 
-      <div class="grid gap-3 sm:grid-cols-2">
-        <SearchableSelect
-          v-model="idCliente"
-          label="Cliente"
-          placeholder="Busca por razón social, nombres o documento..."
-          empty-option-label="Sin cliente asignado"
-          :model-label="clienteLabelActual"
-          v-bind="idClienteAttrs"
-          :disabled="isSubmitting || lockCliente"
-          :error="errors.idCliente"
-          :search-fn="searchClientes"
-          :required="esTipoReparto"
-        />
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.userCheck" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Asignación</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Cliente y responsable de la actividad</p>
+          </div>
+        </header>
 
-        <SearchableSelect
-          v-if="!esTipoReparto"
-          v-model="idUsuarioResponsable"
-          label="Usuario responsable"
-          placeholder="Busca por nombre..."
-          required
-          :clearable="false"
-          :model-label="usuarioLabelActual"
-          v-bind="idUsuarioResponsableAttrs"
-          :disabled="isSubmitting"
-          :error="errors.idUsuarioResponsable"
-          :search-fn="searchUsuarios"
-        />
+        <div class="grid gap-3 sm:grid-cols-2">
+          <SearchableSelect
+            v-model="idCliente"
+            label="Cliente"
+            placeholder="Busca por razón social, nombres o documento..."
+            empty-option-label="Sin cliente asignado"
+            :model-label="clienteLabelActual"
+            v-bind="idClienteAttrs"
+            :disabled="isSubmitting || lockCliente"
+            :error="errors.idCliente"
+            :search-fn="searchClientes"
+            :required="esTipoReparto"
+          />
 
-        <SearchableSelect
-          v-else
-          v-model="idChoferResponsable"
-          label="Chofer / repartidor"
-          placeholder="Busca chofer de flota propia..."
-          :clearable="true"
-          empty-option-label="Sin asignar / Sin repartidor"
-          :model-label="choferLabelActual"
-          v-bind="idChoferResponsableAttrs"
-          :disabled="isSubmitting"
-          :error="errors.idChoferResponsable"
-          :search-fn="searchChoferesFlota"
-        />
-      </div>
+          <SearchableSelect
+            v-model="idTrabajadorResponsable"
+            label="Responsable"
+            :placeholder="'Busca trabajador...'"
+            :clearable="esTipoReparto"
+            empty-option-label="Sin responsable asignado"
+            :model-label="responsableLabelActual"
+            v-bind="idTrabajadorResponsableAttrs"
+            :disabled="isSubmitting"
+            :error="errors.idTrabajadorResponsable"
+            :search-fn="searchResponsable"
+          />
+        </div>
+      </section>
 
-      <div v-if="esTipoReparto && !lockTipoReparto" class="grid gap-3 sm:grid-cols-1">
-        <SearchableSelect
-          v-model="idUsuarioResponsable"
-          label="Usuario responsable (opcional)"
-          placeholder="Acompañante interno, si aplica..."
-          empty-option-label="Sin usuario interno"
-          :model-label="usuarioLabelActual"
-          v-bind="idUsuarioResponsableAttrs"
-          :disabled="isSubmitting"
-          :error="errors.idUsuarioResponsable"
-          :search-fn="searchUsuarios"
-        />
-      </div>
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.tags" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Clasificación</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Tipo, prioridad y estado</p>
+          </div>
+        </header>
 
-      <div class="grid gap-3 sm:grid-cols-3">
-        <AppSelect
-          v-model="idTipoActividad"
-          label="Tipo de actividad"
-          :placeholder="tipoActividadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-          required
-          v-bind="idTipoActividadAttrs"
-          :disabled="isSubmitting || tipoActividadQuery.isLoading.value || lockTipoReparto"
-          :error="errors.idTipoActividad"
-          :options="tipoActividadOptions"
-        />
+        <div class="grid gap-3 sm:grid-cols-3">
+          <AppSelect
+            v-model="idTipoActividad"
+            label="Tipo de actividad"
+            :placeholder="tipoActividadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            required
+            v-bind="idTipoActividadAttrs"
+            :disabled="isSubmitting || tipoActividadQuery.isLoading.value || lockTipoReparto"
+            :error="errors.idTipoActividad"
+            :options="tipoActividadOptions"
+          />
 
-        <AppSelect
-          v-model="idPrioridad"
-          label="Prioridad"
-          :placeholder="prioridadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-          required
-          v-bind="idPrioridadAttrs"
-          :disabled="isSubmitting || prioridadQuery.isLoading.value"
-          :error="errors.idPrioridad"
-          :options="prioridadOptions"
-        />
+          <AppSelect
+            v-model="idPrioridad"
+            label="Prioridad"
+            :placeholder="prioridadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            required
+            v-bind="idPrioridadAttrs"
+            :disabled="isSubmitting || prioridadQuery.isLoading.value"
+            :error="errors.idPrioridad"
+            :options="prioridadOptions"
+          />
 
-        <AppSelect
-          v-model="idEstadoActividad"
-          label="Estado"
-          :placeholder="estadoActividadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
-          required
-          v-bind="idEstadoActividadAttrs"
-          :disabled="isSubmitting || estadoActividadQuery.isLoading.value"
-          :error="errors.idEstadoActividad"
-          :options="estadoActividadOptions"
-        />
-      </div>
+          <AppSelect
+            v-model="idEstadoActividad"
+            label="Estado"
+            :placeholder="estadoActividadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            required
+            v-bind="idEstadoActividadAttrs"
+            :disabled="isSubmitting || estadoActividadQuery.isLoading.value"
+            :error="errors.idEstadoActividad"
+            :options="estadoActividadOptions"
+          />
+        </div>
+      </section>
 
-      <div class="grid gap-3 sm:grid-cols-3">
-        <AppInput
-          v-model="fechaProgramada"
-          type="date"
-          label="Fecha programada"
-          required
-          v-bind="fechaProgramadaAttrs"
-          :disabled="isSubmitting"
-          :error="errors.fechaProgramada"
-        />
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.calendarRange" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Programación</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Fecha, horario y cierre</p>
+          </div>
+        </header>
 
-        <AppTimePicker
-          v-model="horaInicioEstimada"
-          label="Hora de inicio"
-          required
-          v-bind="horaInicioEstimadaAttrs"
-          :disabled="isSubmitting"
-          :error="errors.horaInicioEstimada"
-        />
+        <div class="space-y-3">
+          <div class="grid gap-3 sm:grid-cols-3">
+            <AppInput
+              v-model="fechaProgramada"
+              type="date"
+              label="Fecha programada"
+              required
+              v-bind="fechaProgramadaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.fechaProgramada"
+            />
 
-        <AppTimePicker
-          v-model="horaFinEstimada"
-          label="Hora de fin"
-          required
-          v-bind="horaFinEstimadaAttrs"
-          :disabled="isSubmitting"
-          :error="errors.horaFinEstimada"
-        />
-      </div>
+            <AppTimePicker
+              v-model="horaInicioEstimada"
+              label="Hora de inicio"
+              required
+              v-bind="horaInicioEstimadaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.horaInicioEstimada"
+            />
 
-      <AppInput
-        v-if="mode === 'edit'"
-        v-model="fechaHoraCierre"
-        type="datetime-local"
-        label="Fecha y hora de cierre"
-        hint="Déjalo vacío si la actividad aún no se ha cerrado."
-        v-bind="fechaHoraCierreAttrs"
-        :disabled="isSubmitting"
-        :error="errors.fechaHoraCierre"
-      />
+            <AppTimePicker
+              v-model="horaFinEstimada"
+              label="Hora de fin"
+              required
+              v-bind="horaFinEstimadaAttrs"
+              :disabled="isSubmitting"
+              :error="errors.horaFinEstimada"
+            />
+          </div>
 
-      <div
+          <AppInput
+            v-if="mode === 'edit'"
+            v-model="fechaHoraCierre"
+            type="datetime-local"
+            label="Fecha y hora de cierre"
+            hint="Déjalo vacío si la actividad aún no se ha cerrado."
+            v-bind="fechaHoraCierreAttrs"
+            :disabled="isSubmitting"
+            :error="errors.fechaHoraCierre"
+          />
+        </div>
+      </section>
+
+      <section
         v-if="itemsPreview.length || defaultIdComprobante || defaultIdGuiaRemision"
-        class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
+        class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]"
       >
-        <p class="mb-2 text-sm font-medium text-gray-800 dark:text-white/90">
-          Ítems del reparto
-          <span v-if="comprobanteLabel" class="ml-1 text-xs font-normal text-gray-500">
-            ({{ comprobanteLabel }})
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.boxes" :size="16" />
           </span>
-          <span v-if="guiaRemisionLabel" class="ml-1 text-xs font-normal text-gray-500">
-            (GRE {{ guiaRemisionLabel }})
-          </span>
-        </p>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Ítems del reparto
+              <span v-if="comprobanteLabel" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                ({{ comprobanteLabel }})
+              </span>
+              <span v-if="guiaRemisionLabel" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                (GRE {{ guiaRemisionLabel }})
+              </span>
+            </h4>
+          </div>
+        </header>
+
         <p v-if="!itemsPreview.length" class="text-xs text-gray-500 dark:text-gray-400">
           Se copiarán los ítems del comprobante al guardar.
         </p>
-        <div v-else class="overflow-x-auto">
+        <div v-else class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
           <table class="min-w-full text-sm">
-            <thead class="text-left text-xs text-gray-500">
+            <thead class="bg-white text-left text-xs text-gray-500 dark:bg-gray-900/40">
               <tr>
-                <th class="py-1 pr-3">Producto</th>
-                <th class="py-1 text-right">Cant.</th>
-                <th class="py-1 pl-3">Balón</th>
+                <th class="px-3 py-2">Producto</th>
+                <th class="px-3 py-2 text-right">Cant.</th>
+                <th class="px-3 py-2">Balón</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody class="bg-white dark:bg-gray-900/20">
               <tr
                 v-for="(item, idx) in itemsPreview"
                 :key="item.id ?? `${item.id_producto}-${idx}`"
                 class="border-t border-gray-100 dark:border-gray-800"
               >
-                <td class="py-1.5 pr-3 text-gray-800 dark:text-white/90">
+                <td class="px-3 py-2 text-gray-800 dark:text-white/90">
                   {{ item.descripcion || item.nombre_producto || '—' }}
                 </td>
-                <td class="py-1.5 text-right tabular-nums text-gray-700 dark:text-gray-300">
+                <td class="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
                   {{ item.cantidad }}
                 </td>
-                <td class="py-1.5 pl-3 text-gray-500">{{ item.codigo_balon || '—' }}</td>
+                <td class="px-3 py-2 text-gray-500">{{ item.codigo_balon || '—' }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <AppTextarea
-        v-model="observaciones"
-        label="Observaciones"
-        placeholder="Observaciones adicionales..."
-        :rows="2"
-        v-bind="observacionesAttrs"
-        :disabled="isSubmitting"
-        :error="errors.observaciones"
-      />
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.messageSquare" :size="16" />
+          </span>
+          <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Observaciones</h4>
+        </header>
+
+        <AppTextarea
+          v-model="observaciones"
+          placeholder="Observaciones adicionales..."
+          :rows="2"
+          v-bind="observacionesAttrs"
+          :disabled="isSubmitting"
+          :error="errors.observaciones"
+        />
+      </section>
     </form>
 
     <template #footer>
@@ -259,14 +297,16 @@ import { horaFinEsPosterior } from '@/modules/operativa/actividades/utils/activi
 import {
   esTipoRepartoNombre,
   idOpcionPorNombre,
-  nombreChoferCompleto,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
-import { usuariosService } from '@/modules/usuarios/services/usuarios.service'
+import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
+import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea, AppTimePicker } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
@@ -274,7 +314,6 @@ import { optionalString, requiredString } from '@/shared/validation'
 interface ActividadFormModalProps {
   mode: ActividadFormMode
   actividad?: Actividad | null
-  /** Fecha (YYYY-MM-DD) sugerida al crear desde el calendario. */
   defaultFecha?: string | null
   lockTipoReparto?: boolean
   defaultTitulo?: string | null
@@ -282,6 +321,7 @@ interface ActividadFormModalProps {
   defaultClienteLabel?: string | null
   defaultChoferId?: number | null
   defaultChoferLabel?: string | null
+  defaultTrabajadorId?: number | null
   defaultIdComprobante?: number | null
   defaultIdGuiaRemision?: number | null
   defaultGuiaRemisionLabel?: string | null
@@ -352,32 +392,27 @@ const searchClientes = async (query: string): Promise<SelectOption[]> => {
   }))
 }
 
-const searchUsuarios = async (query: string): Promise<SelectOption[]> => {
-  const response = await usuariosService.listar({
+
+
+const getTrabajadorNombre = (t: Trabajador) =>
+  [t.nombres, t.apellido_paterno, t.apellido_materno].filter(Boolean).join(' ').trim() || t.nombres
+
+const searchResponsable = async (query: string): Promise<SelectOption[]> => {
+  const response = await trabajadoresService.listar({
     buscar: query || undefined,
     pagina: 1,
     limite: 20,
-    estado: 'activos',
+    estado: 1,
   })
-
-  return response.data.map((usuario) => ({
-    value: usuario.id,
-    label: usuario.nombre,
-  }))
-}
-
-const searchChoferesFlota = async (query: string): Promise<SelectOption[]> => {
-  const response = await choferesService.listar({
-    buscar: query || undefined,
-    pagina: 1,
-    limite: 20,
-    idCliente: -1,
-    isActivos: 1,
-  })
-
-  return response.data.map((chofer) => ({
-    value: chofer.id,
-    label: nombreChoferCompleto(chofer) || chofer.numero_documento,
+  return response.data.map((t) => ({
+    value: t.id,
+    label: getTrabajadorNombre(t),
+    badges: [
+      {
+        label: t.es_chofer ? 'Chofer' : (t.nombre_cargo || 'Trabajador'),
+        color: t.es_chofer ? 'warning' : 'neutral',
+      },
+    ],
   }))
 }
 
@@ -421,11 +456,14 @@ const clienteLabelActual = computed(
     props.defaultClienteLabel ??
     null,
 )
-const usuarioLabelActual = computed(
-  () => actividadActual.value?.nombre_usuario_responsable ?? null,
-)
-const choferLabelActual = computed(
-  () => actividadActual.value?.nombre_chofer_responsable ?? props.defaultChoferLabel ?? null,
+
+const responsableLabelActual = computed(
+  () =>
+    actividadActual.value?.nombre_trabajador_responsable ??
+    actividadActual.value?.nombre_chofer_responsable ??
+    actividadActual.value?.nombre_usuario_responsable ??
+    props.defaultChoferLabel ??
+    null,
 )
 
 const comprobanteLabel = computed(() => {
@@ -475,19 +513,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateFiel
             if (!esRepartoSeleccionado(idTipo)) return true
             return value != null && Number(value) > 0
           }),
-        idUsuarioResponsable: yup
-          .number()
-          .nullable()
-          .test(
-            'usuario-si-no-reparto',
-            'El usuario responsable es obligatorio',
-            function (value) {
-              const idTipo = (this.parent as { idTipoActividad?: number }).idTipoActividad
-              if (esRepartoSeleccionado(idTipo)) return true
-              return value != null && Number(value) > 0
-            },
-          ),
-        idChoferResponsable: yup.number().nullable(),
+        idTrabajadorResponsable: yup.number().nullable(),
         idTipoActividad: yup
           .number()
           .required('El tipo de actividad es obligatorio')
@@ -530,8 +556,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateFiel
       titulo: '',
       descripcion: '',
       idCliente: undefined as number | undefined,
-      idUsuarioResponsable: undefined as number | undefined,
-      idChoferResponsable: undefined as number | undefined,
+      idTrabajadorResponsable: undefined as number | undefined,
       idTipoActividad: undefined as number | undefined,
       idPrioridad: undefined as number | undefined,
       idEstadoActividad: undefined as number | undefined,
@@ -546,8 +571,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateFiel
 const [titulo, tituloAttrs] = defineField('titulo')
 const [descripcion, descripcionAttrs] = defineField('descripcion')
 const [idCliente, idClienteAttrs] = defineField('idCliente')
-const [idUsuarioResponsable, idUsuarioResponsableAttrs] = defineField('idUsuarioResponsable')
-const [idChoferResponsable, idChoferResponsableAttrs] = defineField('idChoferResponsable')
+const [idTrabajadorResponsable, idTrabajadorResponsableAttrs] = defineField('idTrabajadorResponsable')
 const [idTipoActividad, idTipoActividadAttrs] = defineField('idTipoActividad')
 const [idPrioridad, idPrioridadAttrs] = defineField('idPrioridad')
 const [idEstadoActividad, idEstadoActividadAttrs] = defineField('idEstadoActividad')
@@ -574,8 +598,7 @@ watch(horaInicioEstimada, () => {
 
 watch(idTipoActividad, () => {
   void validateField('idCliente')
-  void validateField('idUsuarioResponsable')
-  void validateField('idChoferResponsable')
+  void validateField('idTrabajadorResponsable')
 })
 
 const syncFormValues = () => {
@@ -586,8 +609,10 @@ const syncFormValues = () => {
       titulo: a?.titulo ?? props.defaultTitulo ?? '',
       descripcion: a?.descripcion ?? props.defaultDescripcion ?? '',
       idCliente: a?.id_cliente ?? props.defaultClienteId ?? undefined,
-      idUsuarioResponsable: a?.id_usuario_responsable ?? undefined,
-      idChoferResponsable: a?.id_chofer_responsable ?? props.defaultChoferId ?? undefined,
+      idTrabajadorResponsable:
+        a?.id_trabajador_responsable ??
+        props.defaultTrabajadorId ??
+        undefined,
       idTipoActividad:
         a?.id_tipo_actividad ??
         (props.lockTipoReparto ? tipoRepartoId.value : undefined),
@@ -601,6 +626,20 @@ const syncFormValues = () => {
       observaciones: a?.observaciones ?? '',
     },
   })
+
+  if (
+    !a &&
+    props.mode === 'create' &&
+    props.defaultChoferId &&
+    !props.defaultTrabajadorId
+  ) {
+    choferesService
+      .obtenerPorId(props.defaultChoferId)
+      .then((c) => {
+        if (c.id_trabajador) setFieldValue('idTrabajadorResponsable', c.id_trabajador)
+      })
+      .catch(() => {})
+  }
 }
 
 const handleClose = () => {
@@ -632,12 +671,9 @@ const onSubmit = handleSubmit(async (values) => {
       titulo: values.titulo,
       descripcion: values.descripcion || undefined,
       idCliente: values.idCliente ? Number(values.idCliente) : undefined,
-      idUsuarioResponsable: values.idUsuarioResponsable
-        ? Number(values.idUsuarioResponsable)
+      idTrabajadorResponsable: values.idTrabajadorResponsable
+        ? Number(values.idTrabajadorResponsable)
         : undefined,
-      idChoferResponsable: values.idChoferResponsable
-        ? Number(values.idChoferResponsable)
-        : null,
       idComprobante: defaultIdComprobante.value ?? undefined,
       idGuiaRemision: props.defaultIdGuiaRemision ?? undefined,
       items: itemsFromPreview,

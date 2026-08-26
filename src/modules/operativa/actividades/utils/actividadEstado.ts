@@ -1,4 +1,4 @@
-import type { Actividad } from './actividad.interface'
+import type { Actividad } from '../interfaces/actividad.interface'
 import { esActividadCancelada, esActividadRealizada } from './actividadTipo'
 
 /** ¿La actividad tiene al menos un responsable asignado? */

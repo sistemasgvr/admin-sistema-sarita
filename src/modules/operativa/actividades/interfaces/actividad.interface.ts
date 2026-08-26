@@ -29,6 +29,8 @@ export interface Actividad {
   nombre_usuario_responsable?: string | null
   id_chofer_responsable?: number | null
   nombre_chofer_responsable?: string | null
+  id_trabajador_responsable?: number | null
+  nombre_trabajador_responsable?: string | null
   id_comprobante?: number | null
   serie_comprobante?: string | null
   numero_comprobante?: string | null
@@ -82,8 +84,7 @@ export interface ActividadPayload {
   idTipoActividad: number
   idPrioridad: number
   idCliente?: number
-  idUsuarioResponsable?: number
-  idChoferResponsable?: number
+  idTrabajadorResponsable?: number
   idComprobante?: number
   idGuiaRemision?: number
   items?: ActividadItemPayload[]

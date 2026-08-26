@@ -11,40 +11,70 @@
     @close="handleClose"
   >
     <form id="documento-vencimiento-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
-      <AppSelectWithCreate
-        :can-create="canCrearCategoria"
-        create-title="Nueva categoría de documento"
-        :disabled="isSubmitting"
-        @create="categoriaModalOpen = true"
-      >
-        <AppSelect
-          v-model="idCategoria"
-          label="Categoría"
-          :placeholder="categoriaQuery.isLoading.value ? 'Cargando...' : 'Selecciona categoría'"
-          optional
-          v-bind="idCategoriaAttrs"
-          :disabled="isSubmitting || categoriaQuery.isLoading.value"
-          :options="categoriaOptions"
-          :error="errors.idCategoria"
-        />
-      </AppSelectWithCreate>
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.fileKey" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Datos del documento</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Categoría y descripción</p>
+          </div>
+        </header>
 
-      <AppInput
-        v-model="descripcion"
-        label="Descripción"
-        placeholder="Ej.: BPA - Planta principal, Extintor local Trujillo..."
-        required
-        v-bind="descripcionAttrs"
-        :disabled="isSubmitting"
-        :error="errors.descripcion"
-      />
+        <div class="space-y-3">
+          <AppSelectWithCreate
+            :can-create="canCrearCategoria"
+            create-title="Nueva categoría de documento"
+            :disabled="isSubmitting"
+            @create="categoriaModalOpen = true"
+          >
+            <AppSelect
+              v-model="idCategoria"
+              label="Categoría"
+              :placeholder="categoriaQuery.isLoading.value ? 'Cargando...' : 'Selecciona categoría'"
+              optional
+              v-bind="idCategoriaAttrs"
+              :disabled="isSubmitting || categoriaQuery.isLoading.value"
+              :options="categoriaOptions"
+              :error="errors.idCategoria"
+            />
+          </AppSelectWithCreate>
 
-      <div>
-        <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Alcance
-        </label>
+          <AppInput
+            v-model="descripcion"
+            label="Descripción"
+            placeholder="Ej.: BPA - Planta principal, Extintor local Trujillo..."
+            required
+            v-bind="descripcionAttrs"
+            :disabled="isSubmitting"
+            :error="errors.descripcion"
+          />
+
+          <AppInput
+            v-model="numeroDocumento"
+            label="N° de documento"
+            placeholder="Opcional"
+            v-bind="numeroDocumentoAttrs"
+            :disabled="isSubmitting"
+            :error="errors.numeroDocumento"
+          />
+        </div>
+      </section>
+
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.layers" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Alcance</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">A quién o qué aplica este documento</p>
+          </div>
+        </header>
+
         <div
-          class="mb-2 inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800"
+          class="mb-3 inline-flex rounded-lg border border-gray-200 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-900/40"
           role="tablist"
         >
           <button
@@ -57,7 +87,7 @@
             :class="[
               'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition',
               alcance === opt.value
-                ? 'bg-white text-brand-600 shadow-theme-xs dark:bg-gray-900 dark:text-brand-400'
+                ? 'bg-brand-50 text-brand-600 shadow-theme-xs dark:bg-brand-500/15 dark:text-brand-400'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
             ]"
             @click="cambiarAlcance(opt.value)"
@@ -85,47 +115,63 @@
           :options="sucursalOptions"
           :error="errors.idSucursal"
         />
-        <p v-else class="text-theme-xs text-gray-500 dark:text-gray-400">
+        <p v-else class="flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+          <AppIcon :name="ICONS.building2" :size="13" class="shrink-0" />
           Aplica a toda la empresa (no se asocia a un vehículo ni a un local puntual).
         </p>
-      </div>
+      </section>
 
-      <div class="grid gap-3 sm:grid-cols-2">
-        <AppDatePicker
-          v-model="fechaRenovacion"
-          label="Última renovación / emisión"
-          optional
-          v-bind="fechaRenovacionAttrs"
+      <!-- ============ CARD: Vigencia ============ -->
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.calendarRange" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Vigencia</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Fechas de emisión y vencimiento</p>
+          </div>
+        </header>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <AppDatePicker
+            v-model="fechaRenovacion"
+            label="Última renovación / emisión"
+            optional
+            v-bind="fechaRenovacionAttrs"
+            :disabled="isSubmitting"
+            :error="errors.fechaRenovacion"
+          />
+          <AppDatePicker
+            v-model="fechaVencimiento"
+            label="Fecha de vencimiento"
+            required
+            v-bind="fechaVencimientoAttrs"
+            :disabled="isSubmitting"
+            :error="errors.fechaVencimiento"
+          />
+        </div>
+      </section>
+
+      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.messageSquare" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Observaciones</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Notas, responsable del trámite, entidad emisora</p>
+          </div>
+        </header>
+
+        <AppTextarea
+          v-model="observacion"
+          placeholder="Notas, responsable del trámite, entidad emisora..."
+          v-bind="observacionAttrs"
           :disabled="isSubmitting"
-          :error="errors.fechaRenovacion"
+          :error="errors.observacion"
         />
-        <AppDatePicker
-          v-model="fechaVencimiento"
-          label="Fecha de vencimiento"
-          required
-          v-bind="fechaVencimientoAttrs"
-          :disabled="isSubmitting"
-          :error="errors.fechaVencimiento"
-        />
-      </div>
-
-      <AppInput
-        v-model="numeroDocumento"
-        label="N° de documento"
-        placeholder="Opcional"
-        v-bind="numeroDocumentoAttrs"
-        :disabled="isSubmitting"
-        :error="errors.numeroDocumento"
-      />
-
-      <AppTextarea
-        v-model="observacion"
-        label="Observación"
-        placeholder="Notas, responsable del trámite, entidad emisora..."
-        v-bind="observacionAttrs"
-        :disabled="isSubmitting"
-        :error="errors.observacion"
-      />
+      </section>
     </form>
 
     <template #footer>
@@ -388,8 +434,6 @@ watch(
       void syncFormValues()
     }
   },
-  // Igual que en ClienteForm: si el detalle ya está en caché (staleTime 30s) al abrir el
-  // modal, este watch no dispara sin `immediate`, y el formulario queda vacío.
   { immediate: true },
 )
 

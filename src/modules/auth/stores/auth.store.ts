@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: (state) => Boolean(state.token),
     userName: (state) => state.user?.nombre ?? '',
     userEmail: (state) => state.user?.correo ?? '',
+    userTrabajadorId: (state) => state.user?.id_trabajador ?? null,
     userInitials: (state) => {
       const name = state.user?.nombre?.trim()
       if (!name) return 'OS'

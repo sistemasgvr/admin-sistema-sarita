@@ -1,9 +1,17 @@
 <template>
   <div class="space-y-2">
-    <div class="flex items-center justify-between">
-      <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Imagen del activo</p>
-      <span class="text-xs text-gray-400 dark:text-gray-500">Opcional</span>
+    <div class="flex items-center gap-2.5">
+      <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+        <AppIcon :name="ICONS.image" :size="14" />
+      </span>
+      <div class="flex min-w-0 flex-1 items-center justify-between gap-2">
+        <p class="text-sm font-medium text-gray-700 dark:text-gray-200">Imagen del activo</p>
+        <span class="shrink-0 rounded-md bg-gray-100 px-2 py-0.5 text-theme-xs font-medium text-gray-500 dark:bg-white/10 dark:text-gray-400">
+          Opcional
+        </span>
+      </div>
     </div>
+
     <div
       v-if="previewUrl"
       class="group relative overflow-hidden rounded-xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-900/40"
@@ -65,7 +73,10 @@
       Subiendo imagen...
     </p>
 
-    <p v-if="error" class="text-xs text-error-500">{{ error }}</p>
+    <p v-if="error" class="flex items-center gap-1.5 text-xs text-error-500">
+      <AppIcon :name="ICONS.alertCircle" :size="12" class="shrink-0" />
+      {{ error }}
+    </p>
   </div>
 </template>
 

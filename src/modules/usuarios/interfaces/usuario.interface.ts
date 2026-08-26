@@ -9,6 +9,7 @@ export interface Usuario {
   nombre: string
   correo: string
   estado: boolean
+  id_trabajador?: number | null
   fecha_creacion: string
   fecha_modificacion: string
   roles: UsuarioRol[]
@@ -27,12 +28,17 @@ export interface CreateUsuarioPayload {
   nombre: string
   correo: string
   contrasena: string
+  idTrabajador?: number
+  idRol?: number
+  idUsuarioAuditoria?: number
 }
 
 export interface UpdateUsuarioPayload {
   nombre?: string
   correo?: string
   contrasena?: string
+  idTrabajador?: number
+  idUsuarioAuditoria?: number
 }
 
 export interface DeleteUsuarioResponse {

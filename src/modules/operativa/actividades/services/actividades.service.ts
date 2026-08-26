@@ -53,8 +53,7 @@ export const actividadesService = {
     id: number,
     payload: {
       idUsuarioAuditoria: number
-      idUsuarioResponsable?: number | null
-      idChoferResponsable?: number | null
+      idTrabajadorResponsable?: number | null
     },
   ): Promise<Actividad> {
     return apiPatch<Actividad>(`/operativa/actividades/${id}/responsable`, payload)

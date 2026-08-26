@@ -33,20 +33,16 @@
             :value="row.nombre_tipo_comprobante ?? row.codigo_tipo_comprobante"
           />
         </div>
-      </template>
-
-      <template #cell-destino="{ row }">
-        <template v-if="row.serie_comprobante_destino">
-          <p class="font-medium text-gray-800 dark:text-white/90">
-            {{ row.serie_comprobante_destino }}-{{ row.numero_comprobante_destino }}
+        <div
+          v-if="row.serie_comprobante_destino"
+          class="mt-1"
+        >
+          <p
+            class="text-[11px] leading-tight text-gray-500 dark:text-gray-400"
+          >
+            Destino: {{ row.serie_comprobante_destino }}-{{ row.numero_comprobante_destino }}
           </p>
-          <div class="mt-1">
-            <ListaOpcionBadge
-              :value="row.nombre_tipo_comprobante_destino ?? row.codigo_tipo_comprobante_destino"
-            />
-          </div>
-        </template>
-        <span v-else class="text-gray-400">—</span>
+        </div>
       </template>
 
       <template #cell-nombre_cliente="{ value }">
@@ -266,7 +262,6 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Venta sin Doc', mobile: 'primary' },
-  { key: 'destino', label: 'Destino' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'fecha', label: 'Fecha' },
   { key: 'total_importe', label: 'Total', align: 'right' },

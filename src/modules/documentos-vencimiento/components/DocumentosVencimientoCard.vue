@@ -1,13 +1,18 @@
 <template>
   <div class="w-full rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900">
-    <div class="border-b border-gray-200 px-6 py-5 dark:border-gray-800">
-      <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
-        Permisos y certificados
-      </h3>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Control de vencimientos y renovaciones de la empresa: BPA, salubridad, defensa civil,
-        saneamiento ambiental, extintores, SOAT y demás documentos con fecha de vencimiento.
-      </p>
+    <div class="flex items-center gap-3 border-b border-gray-200 px-6 py-5 dark:border-gray-800">
+      <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+        <AppIcon :name="ICONS.fileKey" :size="20" />
+      </span>
+      <div>
+        <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
+          Permisos y certificados
+        </h3>
+        <p class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+          Control de vencimientos y renovaciones de la empresa: BPA, salubridad, defensa civil,
+          saneamiento ambiental, extintores, SOAT y demás documentos con fecha de vencimiento.
+        </p>
+      </div>
     </div>
 
     <div class="px-6 py-5">
@@ -131,59 +136,74 @@
     />
 
     <AppModal v-model="detailModalOpen" title="Detalle del documento" size="sm">
-      <div v-if="documentoDetailQuery.isFetching.value && !documentoDetalle" class="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+      <div v-if="documentoDetailQuery.isFetching.value && !documentoDetalle" class="flex items-center justify-center gap-2 py-8 text-sm text-gray-500 dark:text-gray-400">
+        <AppIcon :name="ICONS.loader" :size="16" class="animate-spin" />
         Cargando...
       </div>
-      <dl v-else-if="documentoDetalle" class="space-y-3">
-        <div>
-          <dt class="text-xs text-gray-500 dark:text-gray-400">Descripción</dt>
-          <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-            {{ documentoDetalle.descripcion }}
-          </dd>
+
+      <div v-else-if="documentoDetalle" class="space-y-4 text-sm">
+        <!-- Cabecera: descripción + estado -->
+        <div class="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3.5 dark:border-gray-800 dark:bg-white/[0.02]">
+          <div class="min-w-0">
+            <p class="truncate font-semibold text-gray-800 dark:text-white/90">{{ documentoDetalle.descripcion }}</p>
+            <p v-if="documentoDetalle.numero_documento" class="text-xs text-gray-500 dark:text-gray-400">
+              N° {{ documentoDetalle.numero_documento }}
+            </p>
+          </div>
+          <AppBadge :color="estadoColor(documentoDetalle.estado_calculado)" size="sm">
+            {{ estadoLabel(documentoDetalle.estado_calculado) }}
+          </AppBadge>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+
+        <!-- Datos del documento -->
+        <dl class="grid grid-cols-2 gap-x-3 gap-y-3">
           <div>
-            <dt class="text-xs text-gray-500 dark:text-gray-400">Categoría</dt>
-            <dd class="text-sm text-gray-700 dark:text-gray-300">
+            <dt class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <AppIcon :name="ICONS.tags" :size="12" class="shrink-0" />
+              Categoría
+            </dt>
+            <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
               {{ documentoDetalle.nombre_categoria ? formatListaOpcionLabel(documentoDetalle.nombre_categoria) : '—' }}
             </dd>
           </div>
           <div>
-            <dt class="text-xs text-gray-500 dark:text-gray-400">Alcance</dt>
-            <dd class="text-sm text-gray-700 dark:text-gray-300">{{ alcanceTexto(documentoDetalle) }}</dd>
+            <dt class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <AppIcon :name="ICONS.layers" :size="12" class="shrink-0" />
+              Alcance
+            </dt>
+            <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">{{ alcanceTexto(documentoDetalle) }}</dd>
           </div>
           <div>
-            <dt class="text-xs text-gray-500 dark:text-gray-400">Vencimiento</dt>
-            <dd class="text-sm text-gray-700 dark:text-gray-300">
+            <dt class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <AppIcon :name="ICONS.calendarRange" :size="12" class="shrink-0" />
+              Vencimiento
+            </dt>
+            <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
               {{ formatListDate(documentoDetalle.fecha_vencimiento) }}
             </dd>
           </div>
           <div>
-            <dt class="text-xs text-gray-500 dark:text-gray-400">Última renovación</dt>
-            <dd class="text-sm text-gray-700 dark:text-gray-300">
+            <dt class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <AppIcon :name="ICONS.refreshCw" :size="12" class="shrink-0" />
+              Última renovación
+            </dt>
+            <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
               {{ documentoDetalle.fecha_renovacion ? formatListDate(documentoDetalle.fecha_renovacion) : '—' }}
             </dd>
           </div>
-          <div>
-            <dt class="text-xs text-gray-500 dark:text-gray-400">N° de documento</dt>
-            <dd class="text-sm text-gray-700 dark:text-gray-300">{{ documentoDetalle.numero_documento || '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-gray-500 dark:text-gray-400">Estado</dt>
-            <dd>
-              <AppBadge :color="estadoColor(documentoDetalle.estado_calculado)" size="sm">
-                {{ estadoLabel(documentoDetalle.estado_calculado) }}
-              </AppBadge>
-            </dd>
-          </div>
-        </div>
-        <div v-if="documentoDetalle.observacion">
-          <dt class="text-xs text-gray-500 dark:text-gray-400">Observación</dt>
-          <dd class="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300">
+        </dl>
+
+        <!-- Observación -->
+        <div v-if="documentoDetalle.observacion" class="rounded-xl border border-gray-200 bg-gray-50/60 p-3.5 dark:border-gray-800 dark:bg-white/[0.02]">
+          <dt class="mb-1 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <AppIcon :name="ICONS.messageSquare" :size="12" class="shrink-0" />
+            Observación
+          </dt>
+          <dd class="whitespace-pre-line text-gray-700 dark:text-gray-300">
             {{ documentoDetalle.observacion }}
           </dd>
         </div>
-      </dl>
+      </div>
 
       <template #footer>
         <button
@@ -196,19 +216,21 @@
       </template>
     </AppModal>
 
+    <!-- ============ Modal: Desactivar documento ============ -->
     <AppModal
       v-model="deleteModalOpen"
       title="Desactivar documento"
       subtitle="El registro no se elimina de forma permanente; queda inactivo y puede reactivarse desde soporte técnico."
       size="sm"
     >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        ¿Confirmas que deseas desactivar
-        <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ documentoToDelete?.descripcion }}
-        </span>
-        ?
-      </p>
+      <div class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <AppIcon :name="ICONS.alertTriangle" :size="18" class="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <p class="text-sm text-amber-800 dark:text-amber-300">
+          ¿Confirmas que deseas desactivar
+          <span class="font-semibold">{{ documentoToDelete?.descripcion }}</span>
+          ?
+        </p>
+      </div>
 
       <template #footer>
         <button
@@ -502,4 +524,4 @@ const confirmDelete = async () => {
 const onDocumentoSaved = () => {
   selectedDocumento.value = null
 }
-</script>
+</script> 
