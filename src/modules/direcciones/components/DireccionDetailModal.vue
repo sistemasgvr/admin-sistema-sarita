@@ -5,8 +5,12 @@
     :subtitle="direccion ? direccion.direccion : undefined"
     size="lg"
   >
-    <div v-if="direccion" class="space-y-4">
-      <div class="flex flex-wrap items-center gap-2">
+    <div v-if="!direccion" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+      No se encontró información de la dirección.
+    </div>
+
+    <div v-else class="space-y-4">
+      <div class="flex flex-wrap items-center gap-2 dark:border-gray-800">
         <AppBadge :color="direccion.estado === 1 ? 'success' : 'error'">
           {{ direccion.estado === 1 ? 'Activo' : 'Inactivo' }}
         </AppBadge>
@@ -15,14 +19,20 @@
         </AppBadge>
       </div>
 
+      <!-- ============ CARDS: secciones de datos ============ -->
       <section
         v-for="section in sections"
         :key="section.title"
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
-        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
-          {{ section.title }}
-        </h5>
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="section.icon" :size="16" />
+          </span>
+          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
+            {{ section.title }}
+          </h5>
+        </header>
 
         <dl class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
           <div
@@ -33,16 +43,21 @@
             <dt class="text-theme-xs text-gray-500 dark:text-gray-400">{{ item.label }}</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
               <template v-if="item.isLink && item.linkHref">
-                <AppIcon :name="ICONS.mapPin" :size="14" />
-                  {{ item.value }}
-                <a
-                  :href="item.linkHref"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="inline-flex items-center gap-1 text-brand-500 hover:text-brand-600"
-                >
-                Ver en Google Maps
-                </a>
+                <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span class="flex items-center gap-1.5">
+                    <AppIcon :name="ICONS.locateFixed" :size="13" class="shrink-0 text-gray-400" />
+                    {{ item.value }}
+                  </span>
+                  <a
+                    :href="item.linkHref"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                  >
+                    <AppIcon :name="ICONS.externalLink" :size="12" />
+                    Ver en Google Maps
+                  </a>
+                </span>
               </template>
               <template v-else>
                 {{ item.value ?? '—' }}
@@ -52,13 +67,19 @@
         </dl>
       </section>
 
+      <!-- ============ CARD: mapa ============ -->
       <section
         v-if="direccion.latitud && direccion.longitud"
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
-        <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
-          Ubicación en el mapa
-        </h5>
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.mapPin" :size="16" />
+          </span>
+          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
+            Ubicación en el mapa
+          </h5>
+        </header>
         <MapaLeaflet
           :latitud="direccion.latitud"
           :longitud="direccion.longitud"
@@ -69,8 +90,6 @@
           :zoom="30"
         />
       </section>
-
-
     </div>
 
     <template #footer>
@@ -136,6 +155,7 @@ interface DetailItem {
 
 interface DetailSection {
   title: string
+  icon: string
   items: DetailItem[]
 }
 
@@ -146,6 +166,7 @@ const sections = computed<DetailSection[]>(() => {
   return [
     {
       title: 'Datos generales',
+      icon: ICONS.clipboardList,
       items: [
         { label: 'Cliente / Proveedor', value: getClienteNombreEmbebido(d) ?? null },
         { label: 'Descripción', value: d.descripcion ?? null },
@@ -166,6 +187,7 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Ubicación',
+      icon: ICONS.mapPin,
       items: [
         { label: 'Ubigeo', value: getUbigeoTexto(d), fullWidth: true },
         { label: 'País', value: d.nombre_pais ?? null },
@@ -176,6 +198,7 @@ const sections = computed<DetailSection[]>(() => {
     },
     {
       title: 'Auditoría',
+      icon: ICONS.history,
       items: [
         { label: 'Creado por', value: d.nombre_usuario_creacion ?? null },
         { label: 'Fecha de creación', value: formatDateTime(d.fecha_creacion) },
