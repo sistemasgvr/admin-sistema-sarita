@@ -901,6 +901,7 @@ import {
 } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
 import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/guias-remision.service'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import type { Comprobante } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import type { GuiaRemisionReferenciaPayload } from '@/modules/ventas/guias-remision/interfaces/guia-remision.interface'
 import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -1431,6 +1432,69 @@ function inferTipoLinea(detalle: {
   if (detalle.id_balon) return 'cilindro'
   if (detalle.id_producto) return 'producto'
   return 'libre'
+}
+
+/** Detalle de guía o de comprobante: ambos alimentan las líneas del formulario. */
+type DetalleOrigenLinea = {
+  id_producto?: number | null
+  codigo_producto?: string | null
+  nombre_producto?: string | null
+  descripcion?: string | null
+  glosa?: string | null
+  id_unidad_medida?: number | null
+  cantidad: number
+  id_balon?: number | null
+  codigo_balon?: string | null
+}
+
+function detalleALinea(detalle: DetalleOrigenLinea): LineaForm {
+  const idBalon = (detalle.id_balon ?? '') as number | ''
+  const balon = idBalon ? balonesCache.get(Number(idBalon)) : undefined
+  const tara = pesoCatalogoBalonKg(balon)
+  const texto = detalle.glosa ?? detalle.descripcion ?? detalle.nombre_producto ?? undefined
+
+  return {
+    key: crypto.randomUUID(),
+    tipo: inferTipoLinea(detalle),
+    idBalon,
+    balonLabel: detalle.codigo_balon
+      ? `${detalle.codigo_balon}${detalle.nombre_producto ? ` · ${detalle.nombre_producto}` : ''}`
+      : null,
+    idProducto: (detalle.id_producto ?? '') as number | '',
+    productoLabel: detalle.codigo_producto
+      ? `${detalle.codigo_producto} — ${detalle.nombre_producto ?? detalle.descripcion ?? ''}`
+      : (detalle.nombre_producto ?? detalle.descripcion ?? null),
+    cantidad: Number(detalle.cantidad),
+    pesoKg: (tara ?? '') as number | '',
+    idUnidadMedida: detalle.id_unidad_medida ?? undefined,
+    descripcion: texto,
+    glosa: texto,
+  }
+}
+
+/** Trae los cilindros que aún no están en caché para poder resolver su tara. */
+async function precargarBalonesEnCache(ids: (number | null | undefined)[]) {
+  const faltantes = [
+    ...new Set(
+      ids
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0 && !balonesCache.has(id)),
+    ),
+  ]
+  if (!faltantes.length) return
+
+  const balones = await Promise.all(
+    faltantes.map((id) => balonesService.obtenerPorId(id).catch(() => null)),
+  )
+  for (const balon of balones) {
+    if (balon) balonesCache.set(balon.id, balon)
+  }
+}
+
+async function aplicarLineasDesdeDetalles(detalles: DetalleOrigenLinea[]) {
+  if (!detalles.length) return
+  await precargarBalonesEnCache(detalles.map((d) => d.id_balon))
+  lineas.splice(0, lineas.length, ...detalles.map((d) => detalleALinea(d)))
 }
 
 function onPesoLineaEdit() {
@@ -2700,11 +2764,23 @@ function resetLocal() {
 
 function goBack(createdId?: number) {
   if (returnTo.value) {
+    // returnTo puede traer query embebido (?referencia=, ?idRecargaPlanta=…);
+    // router.push({ path, query }) ignora el query del path, así que lo separamos.
+    let path = returnTo.value
     const query: Record<string, string> = {}
+    try {
+      const parsed = new URL(returnTo.value, 'http://local.invalid')
+      path = parsed.pathname
+      parsed.searchParams.forEach((value, key) => {
+        query[key] = value
+      })
+    } catch {
+      // path tal cual
+    }
     if (createdId) {
       query[returnIdParam.value] = String(createdId)
     }
-    void router.push({ path: returnTo.value, query })
+    void router.push({ path, query })
     return
   }
   void router.push({ name: 'admin-ventas-guias-remision' })
@@ -2737,16 +2813,6 @@ async function initCreateForm() {
     Array.isArray(q.refTipoNombre) ? q.refTipoNombre[0] : q.refTipoNombre ?? '',
   ).trim()
 
-  if (Number.isFinite(idSucursalQ) && idSucursalQ > 0) {
-    idSucursal.value = idSucursalQ
-  }
-  if (Number.isFinite(idAlmacenQ) && idAlmacenQ > 0) {
-    idAlmacen.value = idAlmacenQ
-  }
-  if (Number.isFinite(idClienteQ) && idClienteQ > 0) {
-    idDestinatario.value = idClienteQ
-  }
-
   const aplicarRefDesdeQuery = () => {
     if (!(refSerie && refNumero && Number.isFinite(refTipo) && refTipo > 0)) return false
     documentosReferencia.value = [
@@ -2761,21 +2827,21 @@ async function initCreateForm() {
     return true
   }
 
+  let comprobante: Comprobante | null = null
+
   if (Number.isFinite(idComprobanteQ) && idComprobanteQ > 0) {
     try {
-      const comp = await comprobantesService.obtenerPorId(idComprobanteQ)
+      comprobante = await comprobantesService.obtenerPorId(idComprobanteQ)
       documentosReferencia.value = [
         {
-          idTipoComprobante: Number(comp.id_tipo_comprobante),
-          serie: String(comp.serie ?? '').trim().toUpperCase() || undefined,
-          numero: String(comp.numero ?? '').trim() || undefined,
-          fecha: String(comp.fecha ?? '').slice(0, 10) || undefined,
-          nombreTipo: comp.nombre_tipo_comprobante ?? null,
+          idTipoComprobante: Number(comprobante.id_tipo_comprobante),
+          idComprobante: comprobante.id,
+          serie: String(comprobante.serie ?? '').trim().toUpperCase() || undefined,
+          numero: String(comprobante.numero ?? '').trim() || undefined,
+          fecha: String(comprobante.fecha ?? '').slice(0, 10) || undefined,
+          nombreTipo: comprobante.nombre_tipo_comprobante ?? null,
         },
       ]
-      if (!idDestinatario.value && comp.id_cliente) {
-        idDestinatario.value = Number(comp.id_cliente)
-      }
     } catch {
       if (!aplicarRefDesdeQuery()) {
         toastWarning(
@@ -2785,6 +2851,38 @@ async function initCreateForm() {
     }
   } else {
     aplicarRefDesdeQuery()
+  }
+
+  const sucursalPrefill =
+    Number.isFinite(idSucursalQ) && idSucursalQ > 0
+      ? idSucursalQ
+      : Number(comprobante?.id_sucursal) || null
+  const almacenPrefill =
+    Number.isFinite(idAlmacenQ) && idAlmacenQ > 0
+      ? idAlmacenQ
+      : Number(comprobante?.id_almacen) || null
+  const clientePrefill =
+    Number.isFinite(idClienteQ) && idClienteQ > 0
+      ? idClienteQ
+      : Number(comprobante?.id_cliente) || null
+
+  if (sucursalPrefill) {
+    idSucursal.value = sucursalPrefill
+    // El watcher de sucursal limpia el almacén: espera antes de fijarlo.
+    await nextTick()
+  }
+  if (almacenPrefill) {
+    idAlmacen.value = almacenPrefill
+  }
+  if (clientePrefill) {
+    idDestinatario.value = clientePrefill
+  }
+
+  if (comprobante) {
+    await aplicarLineasDesdeDetalles(
+      (comprobante.detalles ?? []).filter((d) => !d.es_servicio),
+    )
+    if (!pesoBultosManual.value) aplicarPesoBultosDesdeItems()
   }
 
   const sucursalId = values.idSucursal
@@ -2839,6 +2937,7 @@ watch(
         .filter((r) => Number(r.id_tipo_comprobante) > 0)
         .map((r) => ({
           idTipoComprobante: Number(r.id_tipo_comprobante),
+          idComprobante: r.id_comprobante ?? undefined,
           serie: r.serie ? String(r.serie).trim().toUpperCase() : undefined,
           numero: r.numero ? String(r.numero).trim() : undefined,
           fecha: r.fecha ? String(r.fecha).slice(0, 10) : undefined,
@@ -2930,35 +3029,11 @@ watch(
       )
       idDistritoLlegada.value = guia.id_distrito_llegada ?? ''
 
-      lineas.splice(
-        0,
-        lineas.length,
-        ...(guia.detalles?.length
-          ? guia.detalles.map((d) => {
-              const idBalon = (d.id_balon ?? '') as number | ''
-              const balon = idBalon ? balonesCache.get(Number(idBalon)) : undefined
-              const tara = pesoCatalogoBalonKg(balon)
-              const tipo = inferTipoLinea(d)
-              return {
-                key: crypto.randomUUID(),
-                tipo,
-                idBalon,
-                balonLabel: d.codigo_balon
-                  ? `${d.codigo_balon}${d.nombre_producto ? ` · ${d.nombre_producto}` : ''}`
-                  : null,
-                idProducto: (d.id_producto ?? '') as number | '',
-                productoLabel: d.codigo_producto
-                  ? `${d.codigo_producto} — ${d.nombre_producto ?? d.descripcion ?? ''}`
-                  : (d.nombre_producto ?? d.descripcion ?? null),
-                cantidad: Number(d.cantidad),
-                pesoKg: (tara ?? '') as number | '',
-                idUnidadMedida: d.id_unidad_medida ?? undefined,
-                descripcion: d.glosa ?? d.descripcion ?? d.nombre_producto ?? undefined,
-                glosa: d.glosa ?? d.descripcion ?? d.nombre_producto ?? undefined,
-              }
-            })
-          : [lineaVacia()]),
-      )
+      if (guia.detalles?.length) {
+        await aplicarLineasDesdeDetalles(guia.detalles)
+      } else {
+        lineas.splice(0, lineas.length, lineaVacia())
+      }
 
       if (guia.id_destinatario) {
         await loadDireccionesDestinatario(guia.id_destinatario)
@@ -3110,6 +3185,7 @@ const onSubmit = handleSubmit(async (formValues) => {
       .map(
         (r): GuiaRemisionReferenciaPayload => ({
           idTipoComprobante: Number(r.idTipoComprobante),
+          idComprobante: r.idComprobante ? Number(r.idComprobante) : undefined,
           serie: r.serie || undefined,
           numero: r.numero || undefined,
           fecha: r.fecha || undefined,

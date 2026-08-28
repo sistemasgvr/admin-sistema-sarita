@@ -55,6 +55,8 @@ const props = withDefaults(
     origen?: 'recarga-planta' | null
     /** Query param al volver (ej. idGuiaSalida). */
     returnIdParam?: string
+    /** Oculta el botón «+» (útil dentro de modales, donde navegar pierde el estado). */
+    allowCreate?: boolean
   }>(),
   {
     label: 'Guía de remisión',
@@ -69,6 +71,7 @@ const props = withDefaults(
     returnTo: undefined,
     origen: null,
     returnIdParam: 'idGuiaSalida',
+    allowCreate: true,
   },
 )
 
@@ -78,8 +81,8 @@ const search = defineModel<string>('search', { default: '' })
 const authStore = useAuthStore()
 const router = useRouter()
 
-const canCreate = computed(() =>
-  authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR),
+const canCreate = computed(
+  () => props.allowCreate && authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR),
 )
 
 const filters = ref({

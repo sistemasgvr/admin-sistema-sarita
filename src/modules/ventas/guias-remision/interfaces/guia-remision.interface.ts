@@ -49,6 +49,8 @@ export interface GuiaRemisionReferencia {
   id_tipo_comprobante: number
   nombre_tipo_comprobante?: string | null
   codigo_tipo_comprobante?: string | null
+  /** FK al comprobante referenciado cuando la GRE se generó desde una venta. */
+  id_comprobante?: number | null
   serie?: string | null
   numero?: string | null
   fecha?: string | null
@@ -165,6 +167,7 @@ export interface CreateGuiaRemisionPayload {
 
 export interface GuiaRemisionReferenciaPayload {
   idTipoComprobante: number
+  idComprobante?: number
   serie?: string
   numero?: string
   fecha?: string

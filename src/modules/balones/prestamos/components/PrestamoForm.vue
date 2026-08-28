@@ -143,6 +143,7 @@
             v-if="!isCreateMode"
             title="Comprobantes"
             :icon="ICONS.creditCard"
+            help="Vincula el préstamo a documentos ya emitidos usando su ID interno (no la serie-número). Lo encuentras en la URL del detalle del comprobante."
           >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <AppInput
@@ -151,7 +152,8 @@
                 type="number"
                 min="1"
                 step="1"
-                placeholder="Opcional"
+                placeholder="Ej. 1042 (opcional)"
+                help="ID interno del comprobante de venta en Ventas › Comprobantes."
                 v-bind="idComprobanteVentaAttrs"
                 :disabled="isSubmitting"
               />
@@ -162,7 +164,8 @@
                 type="number"
                 min="1"
                 step="1"
-                placeholder="Opcional"
+                placeholder="Ej. 318 (opcional)"
+                help="ID interno de la compra en el módulo Compras."
                 v-bind="idComprobanteCompraAttrs"
                 :disabled="isSubmitting"
               />

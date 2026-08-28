@@ -490,6 +490,10 @@ const defaultIdComprobante = computed(
   () => actividadActual.value?.id_comprobante ?? props.defaultIdComprobante ?? null,
 )
 
+const defaultIdGuiaRemision = computed(
+  () => actividadActual.value?.id_guia_remision ?? props.defaultIdGuiaRemision ?? null,
+)
+
 function esRepartoSeleccionado(idTipo?: number | null) {
   if (props.lockTipoReparto) return true
   if (!idTipo) return false
@@ -675,7 +679,7 @@ const onSubmit = handleSubmit(async (values) => {
         ? Number(values.idTrabajadorResponsable)
         : undefined,
       idComprobante: defaultIdComprobante.value ?? undefined,
-      idGuiaRemision: props.defaultIdGuiaRemision ?? undefined,
+      idGuiaRemision: defaultIdGuiaRemision.value ?? undefined,
       items: itemsFromPreview,
       idTipoActividad: Number(values.idTipoActividad),
       idPrioridad: Number(values.idPrioridad),

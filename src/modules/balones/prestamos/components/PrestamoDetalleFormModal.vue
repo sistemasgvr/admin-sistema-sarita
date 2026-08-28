@@ -99,14 +99,28 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Guías de remisión" :icon="ICONS.clipboardList">
+        <DetailSectionCard
+          title="Guías de remisión"
+          :icon="ICONS.clipboardList"
+          help="Elige la guía emitida para vincularla por ID. La serie y el número se rellenan solos; escríbelos a mano solo si la guía no está en el sistema."
+        >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <GuiaRemisionSelectField
+              v-model="idGuiaEntrega"
+              v-model:search="guiaEntregaBuscar"
+              label="GRE de entrega"
+              placeholder="Opcional"
+              class="sm:col-span-2"
+              :allow-create="false"
+              :disabled="isSubmitting || detalleYaDevuelto"
+            />
+
             <AppInput
               v-model="serieGuiaEntrega"
               label="Serie GRE entrega"
               placeholder="T001"
               v-bind="serieGuiaEntregaAttrs"
-              :disabled="isSubmitting"
+              :disabled="isSubmitting || Boolean(idGuiaEntrega)"
               :error="errors.serieGuiaEntrega"
             />
             <AppInput
@@ -114,15 +128,26 @@
               label="Número GRE entrega"
               placeholder="00000001"
               v-bind="numeroGuiaEntregaAttrs"
-              :disabled="isSubmitting"
+              :disabled="isSubmitting || Boolean(idGuiaEntrega)"
               :error="errors.numeroGuiaEntrega"
             />
+
+            <GuiaRemisionSelectField
+              v-model="idGuiaDevolucion"
+              v-model:search="guiaDevolucionBuscar"
+              label="GRE de devolución"
+              placeholder="Opcional"
+              class="sm:col-span-2"
+              :allow-create="false"
+              :disabled="isSubmitting"
+            />
+
             <AppInput
               v-model="serieGuiaDevolucion"
               label="Serie GRE devolución"
               placeholder="T001"
               v-bind="serieGuiaDevolucionAttrs"
-              :disabled="isSubmitting"
+              :disabled="isSubmitting || Boolean(idGuiaDevolucion)"
               :error="errors.serieGuiaDevolucion"
             />
             <AppInput
@@ -130,7 +155,7 @@
               label="Número GRE devolución"
               placeholder="00000002"
               v-bind="numeroGuiaDevolucionAttrs"
-              :disabled="isSubmitting"
+              :disabled="isSubmitting || Boolean(idGuiaDevolucion)"
               :error="errors.numeroGuiaDevolucion"
             />
           </div>
@@ -178,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -192,6 +217,8 @@ import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalone
 import type { PrestamoDetalleFormMode } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
+import GuiaRemisionSelectField from '@/modules/ventas/guias-remision/components/GuiaRemisionSelectField.vue'
+import { useGuiaRemisionQuery } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -303,6 +330,38 @@ watch(
   },
 )
 
+const idGuiaEntrega = ref<number | ''>('')
+const idGuiaDevolucion = ref<number | ''>('')
+const guiaEntregaBuscar = ref('')
+const guiaDevolucionBuscar = ref('')
+
+const guiaEntregaIdRef = computed(() =>
+  idGuiaEntrega.value !== '' ? Number(idGuiaEntrega.value) : null,
+)
+const guiaDevolucionIdRef = computed(() =>
+  idGuiaDevolucion.value !== '' ? Number(idGuiaDevolucion.value) : null,
+)
+const guiaEntregaQuery = useGuiaRemisionQuery(guiaEntregaIdRef)
+const guiaDevolucionQuery = useGuiaRemisionQuery(guiaDevolucionIdRef)
+
+watch(
+  () => guiaEntregaQuery.data.value,
+  (guia) => {
+    if (!guia || !idGuiaEntrega.value) return
+    serieGuiaEntrega.value = guia.serie ?? ''
+    numeroGuiaEntrega.value = guia.numero ?? ''
+  },
+)
+
+watch(
+  () => guiaDevolucionQuery.data.value,
+  (guia) => {
+    if (!guia || !idGuiaDevolucion.value) return
+    serieGuiaDevolucion.value = guia.serie ?? ''
+    numeroGuiaDevolucion.value = guia.numero ?? ''
+  },
+)
+
 const toOptionalNumber = (value: string | number | undefined) =>
   value !== '' && value != null ? Number(value) : undefined
 
@@ -327,8 +386,10 @@ const buildPayloadFields = (values: {
   fechaPrestamo: values.fechaPrestamo || undefined,
   diasPrestamo: values.diasPrestamo,
   fechaVencimiento: values.fechaVencimiento || undefined,
+  idGuiaEntrega: toOptionalNumber(idGuiaEntrega.value),
   serieGuiaEntrega: values.serieGuiaEntrega || undefined,
   numeroGuiaEntrega: values.numeroGuiaEntrega || undefined,
+  idGuiaDevolucion: toOptionalNumber(idGuiaDevolucion.value),
   serieGuiaDevolucion: values.serieGuiaDevolucion || undefined,
   numeroGuiaDevolucion: values.numeroGuiaDevolucion || undefined,
   observacion: values.observacion || undefined,
@@ -352,6 +413,9 @@ const syncFormValues = () => {
       observacion: data?.observacion ?? '',
     },
   })
+
+  idGuiaEntrega.value = data?.id_guia_entrega ?? ''
+  idGuiaDevolucion.value = data?.id_guia_devolucion ?? ''
 }
 
 const resetCreateForm = () => {
@@ -371,6 +435,11 @@ const resetCreateForm = () => {
       observacion: '',
     },
   })
+
+  idGuiaEntrega.value = ''
+  idGuiaDevolucion.value = ''
+  guiaEntregaBuscar.value = ''
+  guiaDevolucionBuscar.value = ''
 }
 
 const handleClose = () => {

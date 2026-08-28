@@ -22,8 +22,10 @@ export interface PrestamoDetalle {
   dias_prestamo?: number | null
   fecha_vencimiento?: string | null
   fecha_devolucion?: string | null
+  id_guia_entrega?: number | null
   serie_guia_entrega?: string | null
   numero_guia_entrega?: string | null
+  id_guia_devolucion?: number | null
   serie_guia_devolucion?: string | null
   numero_guia_devolucion?: string | null
   id_estado?: number | null
@@ -54,8 +56,10 @@ export interface CreatePrestamoDetallePayload {
   diasPrestamo?: number
   fechaVencimiento?: string
   fechaDevolucion?: string
+  idGuiaEntrega?: number
   serieGuiaEntrega?: string
   numeroGuiaEntrega?: string
+  idGuiaDevolucion?: number
   serieGuiaDevolucion?: string
   numeroGuiaDevolucion?: string
   idEstado?: number
@@ -72,8 +76,10 @@ export interface UpdatePrestamoDetallePayload {
   diasPrestamo?: number
   fechaVencimiento?: string
   fechaDevolucion?: string
+  idGuiaEntrega?: number
   serieGuiaEntrega?: string
   numeroGuiaEntrega?: string
+  idGuiaDevolucion?: number
   serieGuiaDevolucion?: string
   numeroGuiaDevolucion?: string
   idEstado?: number

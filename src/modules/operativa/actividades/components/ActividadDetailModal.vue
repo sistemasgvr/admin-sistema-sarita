@@ -63,6 +63,12 @@
               {{ comprobanteLabel(actividad) ?? '—' }}
             </dd>
           </div>
+          <div v-if="guiaRemisionLabel(actividad)">
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Guía de remisión</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ guiaRemisionLabel(actividad) }}
+            </dd>
+          </div>
         </dl>
       </section>
 
@@ -373,6 +379,13 @@ const comprobanteLabel = (a: Actividad) => {
     return `${a.serie_comprobante}-${a.numero_comprobante}`
   }
   return null
+}
+
+const guiaRemisionLabel = (a: Actividad) => {
+  if (a.serie_guia_remision && a.numero_guia_remision) {
+    return `${a.serie_guia_remision}-${a.numero_guia_remision}`
+  }
+  return a.id_guia_remision ? `GRE #${a.id_guia_remision}` : null
 }
 
 async function marcarRealizada() {

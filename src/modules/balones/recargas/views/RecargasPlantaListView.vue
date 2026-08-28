@@ -240,6 +240,7 @@ const canEdit = computed(() =>
 const canDelete = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_ELIMINAR),
 )
+const canCrearCompra = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS_CREAR))
 
 const isLoading = computed(
   () => ordenesQuery.isFetching.value || ordenesQuery.isLoading.value,
@@ -343,6 +344,14 @@ const openDeleteModal = (row: RecargaPlanta) => {
   deleteModalOpen.value = true
 }
 
+const goToRegistrarCompra = (row: RecargaPlanta) => {
+  const query: Record<string, string> = { idRecargaPlanta: String(row.id) }
+  if (row.serie_factura) query.serieFactura = row.serie_factura
+  if (row.numero_factura) query.numeroFactura = row.numero_factura
+
+  void router.push({ name: 'admin-compras-nuevo', query })
+}
+
 function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
   const blocked =
@@ -358,6 +367,8 @@ function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
         ? 'estado no permite'
         : null)
 
+  const yaFacturada = Boolean(row.id_comprobante_compra)
+
   return [
     {
       key: 'edit',
@@ -365,6 +376,13 @@ function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
       icon: ICONS.pencil,
       disabled: busy,
       hidden: !canEdit.value,
+    },
+    {
+      key: 'compra',
+      label: yaFacturada ? 'Registrar compra (ya facturada)' : 'Registrar compra',
+      icon: ICONS.shoppingCart,
+      disabled: busy || yaFacturada,
+      hidden: !canCrearCompra.value,
     },
     {
       key: 'delete',
@@ -379,6 +397,10 @@ function actionItemsForRow(row: RecargaPlanta): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: RecargaPlanta) {
   if (key === 'edit') goToEdit(row)
+  if (key === 'compra') {
+    if (row.id_comprobante_compra) return
+    goToRegistrarCompra(row)
+  }
   if (key === 'delete') {
     const blocked =
       row.puede_eliminar === false ||

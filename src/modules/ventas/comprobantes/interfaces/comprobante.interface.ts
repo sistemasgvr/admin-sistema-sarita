@@ -79,6 +79,7 @@ export interface Comprobante extends ComprobanteListItem {
   nombre_motivo_nota?: string | null
   id_moneda?: number | null
   id_medio_pago?: number | null
+  id_sucursal?: number | null
   id_almacen?: number | null
   id_tipo_operacion_sunat?: number | null
   /** Pestaña POS de emisión: accesorios|recarga|medicinal|industrial|mantenimiento */

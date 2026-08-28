@@ -280,7 +280,7 @@
               label="Serie factura"
               placeholder="F001"
               v-bind="serieFacturaAttrs"
-              :disabled="isSubmitting"
+              :disabled="isSubmitting || Boolean(idComprobanteCompra)"
             />
 
             <AppInput
@@ -288,7 +288,7 @@
               label="Número factura"
               placeholder="00000001"
               v-bind="numeroFacturaAttrs"
-              :disabled="isSubmitting"
+              :disabled="isSubmitting || Boolean(idComprobanteCompra)"
             />
 
             <AppInput
@@ -385,7 +385,7 @@ import type {
   RecargaPlantaDetalle,
   RecargaPlantaFormMode,
 } from '@/modules/balones/recargas/interfaces/recarga-planta.interface'
-import { useComprasQuery } from '@/modules/compras/composables/useComprasQuery'
+import { useCompraQuery, useComprasQuery } from '@/modules/compras/composables/useComprasQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import GuiaRemisionSelectField from '@/modules/ventas/guias-remision/components/GuiaRemisionSelectField.vue'
@@ -512,17 +512,38 @@ const returnToEditarOrden = computed(() =>
     : '/admin/balones/recargas/planta/nueva',
 )
 
-const compraOptions = computed<SelectOption[]>(() =>
-  (comprasQuery.data.value?.data ?? []).map((c) => {
-    const doc = [c.serie, c.numero].filter(Boolean).join('-') || `Compra #${c.id}`
-    const proveedor = c.nombre_proveedor ?? c.proveedor
-    return {
-      value: c.id,
-      label: doc,
-      title: proveedor ? `${doc} · ${proveedor}` : undefined,
-    }
-  }),
+const compraSeleccionadaIdRef = computed(() =>
+  idComprobanteCompra.value !== '' ? Number(idComprobanteCompra.value) : null,
 )
+const compraSeleccionadaQuery = useCompraQuery(compraSeleccionadaIdRef)
+
+const toCompraOption = (compra: {
+  id: number
+  serie?: string | null
+  numero?: string | null
+  nombre_proveedor?: string | null
+  proveedor?: string | null
+}): SelectOption => {
+  const doc = [compra.serie, compra.numero].filter(Boolean).join('-') || `Compra #${compra.id}`
+  const proveedor = compra.nombre_proveedor ?? compra.proveedor
+  return {
+    value: compra.id,
+    label: doc,
+    title: proveedor ? `${doc} · ${proveedor}` : undefined,
+  }
+}
+
+const compraOptions = computed<SelectOption[]>(() => {
+  const opciones = new Map<string | number, SelectOption>()
+  for (const compra of comprasQuery.data.value?.data ?? []) {
+    opciones.set(compra.id, toCompraOption(compra))
+  }
+  const seleccionada = compraSeleccionadaQuery.data.value?.cabecera
+  if (seleccionada) {
+    opciones.set(seleccionada.id, toCompraOption(seleccionada))
+  }
+  return [...opciones.values()]
+})
 
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
 const listaContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
@@ -741,14 +762,14 @@ watch(
   },
 )
 
-watch(idComprobanteCompra, (value) => {
-  if (props.mode !== 'edit' || value === '' || value == null) return
-  const compra = (comprasQuery.data.value?.data ?? []).find((c) => c.id === Number(value))
-  if (compra) {
-    if (compra.serie) setFieldValue('serieFactura', compra.serie)
-    if (compra.numero) setFieldValue('numeroFactura', compra.numero)
-  }
-})
+watch(
+  () => compraSeleccionadaQuery.data.value,
+  (compra) => {
+    if (props.mode !== 'edit' || !compra || !idComprobanteCompra.value) return
+    setFieldValue('serieFactura', compra.cabecera.serie ?? '')
+    setFieldValue('numeroFactura', compra.cabecera.numero ?? '')
+  },
+)
 
 async function agregarBalonSeleccionado() {
   const id = balonParaAgregar.value !== '' ? Number(balonParaAgregar.value) : null

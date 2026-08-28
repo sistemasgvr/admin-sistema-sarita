@@ -96,6 +96,7 @@
       :default-cliente-label="repartoPrefill.clienteLabel"
       :default-chofer-id="repartoPrefill.choferId"
       :default-chofer-label="repartoPrefill.choferLabel"
+      :default-id-comprobante="repartoPrefill.idComprobante"
       :default-id-guia-remision="repartoPrefill.idGuiaRemision"
       :default-guia-remision-label="repartoPrefill.guiaLabel"
       :default-descripcion="repartoPrefill.descripcion"
@@ -488,7 +489,13 @@ function toRepartoItems(guia: GuiaRemision): ActividadItem[] {
   }))
 }
 
-function buildRepartoDescripcion(guia: GuiaRemision): string {
+/** FK del comprobante referenciado por la guía, si el backend la expone. */
+function idComprobanteDesdeGuia(guia: GuiaRemision): number | null {
+  const referencia = (guia.referencias ?? []).find((r) => Number(r.id_comprobante) > 0)
+  return referencia ? Number(referencia.id_comprobante) : null
+}
+
+function buildRepartoDescripcion(guia: GuiaRemision, idComprobante: number | null): string {
   const lines: string[] = []
   lines.push(`Reparto generado desde Guía de Remisión ${guia.serie}-${guia.numero}.`)
   lines.push('')
@@ -514,11 +521,14 @@ function buildRepartoDescripcion(guia: GuiaRemision): string {
     `Bultos: ${guia.numero_bultos ?? '—'} · Peso: ${guia.peso_bruto ?? '—'} kg`,
   )
 
-  const ventas = (guia.referencias ?? [])
-    .filter((r) => r.serie && r.numero)
-    .map((r) => `${r.serie}-${r.numero}`)
-  if (ventas.length) {
-    lines.push(`Venta(s) relacionada(s): ${ventas.join(', ')}`)
+  // Con FK al comprobante la relación ya queda registrada; el texto solo es respaldo.
+  if (!idComprobante) {
+    const ventas = (guia.referencias ?? [])
+      .filter((r) => r.serie && r.numero)
+      .map((r) => `${r.serie}-${r.numero}`)
+    if (ventas.length) {
+      lines.push(`Venta(s) relacionada(s): ${ventas.join(', ')}`)
+    }
   }
   lines.push('')
 
@@ -538,15 +548,17 @@ function buildRepartoDescripcion(guia: GuiaRemision): string {
 
 function openRepartoDesdeGuia(guia: GuiaRemision) {
   detailModalOpen.value = false
+  const idComprobante = idComprobanteDesdeGuia(guia)
   repartoPrefill.value = {
     titulo: `Reparto GRE ${guia.serie}-${guia.numero}`,
     clienteId: guia.id_destinatario ?? guia.id_cliente ?? null,
     clienteLabel: guia.nombre_destinatario ?? guia.nombre_cliente ?? null,
     choferId: guia.id_chofer ?? null,
     choferLabel: guia.nombre_chofer ?? null,
+    idComprobante,
     idGuiaRemision: guia.id,
     guiaLabel: `${guia.serie}-${guia.numero}`,
-    descripcion: buildRepartoDescripcion(guia),
+    descripcion: buildRepartoDescripcion(guia, idComprobante),
     items: toRepartoItems(guia),
   }
   repartoModalOpen.value = true

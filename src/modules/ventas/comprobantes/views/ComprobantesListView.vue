@@ -237,6 +237,7 @@ import {
   evaluarPlazoEmision,
   mensajePlazoEmisionVencido,
 } from '@/modules/ventas/comprobantes/utils/plazoEmision'
+import { rutaNuevaGuiaDesdeComprobante } from '@/modules/ventas/guias-remision/utils/rutaGuiaDesdeComprobante'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -732,18 +733,7 @@ function openGuiaDesdeComprobante(row: ComprobanteListItem) {
     toastWarning('El comprobante no tiene cliente para generar la guía.')
     return
   }
-  void router.push({
-    name: 'admin-ventas-guias-remision-nueva',
-    query: {
-      idComprobante: String(row.id),
-      idCliente: String(row.id_cliente),
-      refSerie: row.serie,
-      refNumero: String(row.numero),
-      refTipo: String(row.id_tipo_comprobante),
-      refFecha: String(row.fecha).slice(0, 10),
-      refTipoNombre: row.nombre_tipo_comprobante ?? undefined,
-    },
-  })
+  void router.push(rutaNuevaGuiaDesdeComprobante(row))
 }
 
 function openRepartoDesdeVenta(row: Comprobante | ComprobanteListItem) {

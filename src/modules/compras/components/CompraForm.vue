@@ -233,7 +233,7 @@
                   placeholder="Opcional"
                   create-title="Nueva GRE de retorno"
                   origen="recarga-planta"
-                  return-to="/admin/compras/nuevo"
+                  :return-to="returnToFormularioCompra"
                   return-id-param="idGuiaRetorno"
                   :disabled="saving"
                 />
@@ -1247,6 +1247,28 @@ const guiaRetornoDetalleQuery = useGuiaRemisionQuery(guiaRetornoIdRef)
 
 const suppressRecargaPlantaReset = ref(false)
 
+function queryParam(key: string): string {
+  const raw = route.query[key]
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function queryId(key: string): number | null {
+  const id = Number(queryParam(key))
+  return Number.isFinite(id) && id > 0 ? id : null
+}
+
+/** Ruta a la que debe volver la GRE recién creada, conservando el contexto actual. */
+const returnToFormularioCompra = computed(() => {
+  const params = new URLSearchParams()
+  for (const key of ['referencia', 'idRecargaPlanta', 'serieFactura', 'numeroFactura']) {
+    const value = queryParam(key)
+    if (value) params.set(key, value)
+  }
+  const queryString = params.toString()
+  return queryString ? `${route.path}?${queryString}` : route.path
+})
+
 function resetRetornoFields() {
   guardarBalonesAlmacen.value = false
   fechaLlegadaAlmacen.value = ''
@@ -1266,17 +1288,39 @@ watch(idProveedor, (id) => {
   resetRetornoFields()
 })
 
-watch(
-  () => route.query.idGuiaRetorno,
-  (raw) => {
-    if (isEdit.value) return
-    const id = typeof raw === 'string' ? Number(raw) : Array.isArray(raw) ? Number(raw[0]) : NaN
-    if (!Number.isFinite(id) || id <= 0) return
-    desdeRecargaExterna.value = true
-    idGuiaRetorno.value = id
+/** Deep-link: /admin/compras/nuevo?idRecargaPlanta=..&serieFactura=..&idGuiaRetorno=.. */
+async function prefillDesdeQuery() {
+  if (isEdit.value) return
+
+  const idRecarga = queryId('idRecargaPlanta')
+  const idGuia = queryId('idGuiaRetorno')
+  if (!idRecarga && !idGuia) return
+
+  suppressRecargaPlantaReset.value = true
+  desdeRecargaExterna.value = true
+
+  if (idRecarga) {
+    idRecargaPlanta.value = idRecarga
+    const serieFactura = queryParam('serieFactura')
+    const numeroFactura = queryParam('numeroFactura')
+    if (serieFactura) serie.value = serieFactura
+    if (numeroFactura) numero.value = numeroFactura
+  }
+
+  if (idGuia) {
+    idGuiaRetorno.value = idGuia
     guardarBalonesAlmacen.value = true
+  }
+
+  await nextTick()
+  suppressRecargaPlantaReset.value = false
+}
+
+watch(
+  () => [route.query.idRecargaPlanta, route.query.idGuiaRetorno] as const,
+  () => {
+    void prefillDesdeQuery()
   },
-  { immediate: true },
 )
 
 watch(desdeRecargaExterna, (on) => {
@@ -1305,6 +1349,23 @@ watch(guardarBalonesAlmacen, (on) => {
 const RECARGA_LINEA_PREFIX = 'recarga-planta-'
 const recargaPlantaLineasSyncedFor = ref<number | null>(null)
 const recargaRetornoPrefillFor = ref<number | null>(null)
+
+/** Al llegar por deep-link no hay proveedor todavía: se toma el de la orden. */
+async function prefillProveedorAlmacenDesdeRecarga(recarga: {
+  id_proveedor?: number | null
+  id_almacen?: number | null
+}) {
+  if (isEdit.value) return
+  const faltaProveedor = !idProveedor.value && Boolean(recarga.id_proveedor)
+  const faltaAlmacen = !idAlmacen.value && Boolean(recarga.id_almacen)
+  if (!faltaProveedor && !faltaAlmacen) return
+
+  suppressRecargaPlantaReset.value = true
+  if (faltaProveedor) idProveedor.value = recarga.id_proveedor as number
+  if (faltaAlmacen) idAlmacen.value = recarga.id_almacen as number
+  await nextTick()
+  suppressRecargaPlantaReset.value = false
+}
 
 function quitarLineasDeRecargaPlanta() {
   for (let i = lineas.length - 1; i >= 0; i--) {
@@ -1375,6 +1436,7 @@ watch(
 
     if (recargaRetornoPrefillFor.value !== id) {
       recargaRetornoPrefillFor.value = id
+      void prefillProveedorAlmacenDesdeRecarga(data)
       lote.value = data.lote?.trim() || ''
       fechaVencimientoLote.value = toDateInput(data.fecha_vencimiento_lote)
       fechaPruebaHidrostatica.value = toDateInput(data.fecha_prueba_hidrostatica)
@@ -1841,6 +1903,7 @@ watch(
 
     if (!refId) {
       resetCreateForm()
+      void prefillDesdeQuery()
       return
     }
 

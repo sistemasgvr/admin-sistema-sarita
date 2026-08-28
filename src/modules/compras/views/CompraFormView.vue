@@ -51,17 +51,27 @@ const referenciaCompraId = computed(() => {
   return Number.isFinite(raw) && raw > 0 ? raw : null
 })
 
+const idRecargaPlanta = computed(() => {
+  const raw = Number(route.query.idRecargaPlanta)
+  return Number.isFinite(raw) && raw > 0 ? raw : null
+})
+
 const pageTitle = computed(() => {
   if (isEdit.value) return 'Editar compra'
   if (referenciaCompraId.value) return 'Corregir compra'
+  if (idRecargaPlanta.value) return 'Nueva compra de recarga'
   return 'Nueva compra'
 })
 
-const pageHelpText = computed(() =>
-  isEdit.value
-    ? 'Puedes ajustar categoría, condición de pago, glosa y las líneas. Si cambias cantidades de productos con stock, se genera el movimiento diferencial.'
-    : 'Registra el comprobante del proveedor (productos, accesorios, gas o gastos). Recarga externa solo si la factura es el costo de una orden en planta.',
-)
+const pageHelpText = computed(() => {
+  if (isEdit.value) {
+    return 'Puedes ajustar categoría, condición de pago, glosa y las líneas. Si cambias cantidades de productos con stock, se genera el movimiento diferencial.'
+  }
+  if (idRecargaPlanta.value) {
+    return 'La orden de recarga viene precargada desde el módulo de balones: revisa proveedor, almacén y precios antes de guardar.'
+  }
+  return 'Registra el comprobante del proveedor (productos, accesorios, gas o gastos). Recarga externa solo si la factura es el costo de una orden en planta.'
+})
 
 const breadcrumbItems = computed(() => comprasFormBreadcrumbItems(pageTitle.value))
 

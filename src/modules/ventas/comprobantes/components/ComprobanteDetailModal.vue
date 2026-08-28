@@ -184,6 +184,15 @@
         Cerrar
       </button>
       <button
+        v-if="puedeGenerarGuia"
+        type="button"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-500 bg-white px-4 py-2.5 text-sm font-medium text-brand-600 hover:bg-brand-500/10 dark:bg-gray-800 dark:text-brand-400"
+        @click="generarGuiaRemision"
+      >
+        <AppIcon :name="ICONS.fileText" :size="16" />
+        Generar guía de remisión
+      </button>
+      <button
         v-if="puedeAgregarReparto"
         type="button"
         class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
@@ -208,6 +217,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useCancelarActividadMutation } from '@/modules/operativa/actividades/composables/useActividadMutations'
 import {
@@ -224,6 +234,7 @@ import {
   printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
+import { rutaNuevaGuiaDesdeComprobante } from '@/modules/ventas/guias-remision/utils/rutaGuiaDesdeComprobante'
 import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -241,6 +252,7 @@ const emit = defineEmits<{
   'agregar-reparto': [comprobante: Comprobante]
 }>()
 
+const router = useRouter()
 const authStore = useAuthStore()
 const cancelarMutation = useCancelarActividadMutation()
 const canCrearActividad = computed(() =>
@@ -248,6 +260,9 @@ const canCrearActividad = computed(() =>
 )
 const canEditarActividad = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR),
+)
+const canCrearGre = computed(() =>
+  authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR),
 )
 
 const open = computed({
@@ -282,6 +297,10 @@ const puedeCancelarReparto = computed(
     tieneRepartoVigente.value &&
     !esActividadRealizada(comprobante.value?.nombre_estado_actividad) &&
     Boolean(comprobante.value?.id_actividad),
+)
+
+const puedeGenerarGuia = computed(
+  () => canCrearGre.value && Boolean(comprobante.value?.id_cliente),
 )
 
 const puedePdf = computed(() => {
@@ -348,6 +367,17 @@ async function cancelarReparto() {
   } catch {
     // toast en mutation
   }
+}
+
+function generarGuiaRemision() {
+  const c = comprobante.value
+  if (!c) return
+  if (!c.id_cliente) {
+    toastWarning('El comprobante no tiene cliente para generar la guía.')
+    return
+  }
+  open.value = false
+  void router.push(rutaNuevaGuiaDesdeComprobante(c))
 }
 
 function handleClose() {
