@@ -17,6 +17,28 @@ import {
 
 export type PosBalonSelectMode = 'cliente' | 'alquiler' | 'general'
 
+/** Propietario de stock propio (legado PROPIA = EMPRESA). */
+export function esPropietarioEmpresaStock(nombre?: string | null): boolean {
+  const n = (nombre ?? '').trim().toUpperCase()
+  return n === 'EMPRESA' || n === 'PROPIA'
+}
+
+/** Cilindro con gas útil para entregar / descontar (alineado a stock de gas). */
+export function balonTieneGasDisponible(balon: {
+  nombre_estado_contenido?: string | null
+  capacidad_restante?: number | null
+  capacidad?: number | null
+}): boolean {
+  const contenido = (balon.nombre_estado_contenido ?? '').trim().toUpperCase()
+  if (contenido === 'VACIO') return false
+  if (contenido === 'LLENO') {
+    const cap = Number(balon.capacidad_restante ?? balon.capacidad ?? 0)
+    return Number.isFinite(cap) ? cap > 0 || balon.capacidad_restante == null : true
+  }
+  // Parcial / desconocido: solo si hay residual medido
+  return Number(balon.capacidad_restante ?? 0) > 0
+}
+
 export function formatBalonLabel(balon: {
   codigo_balon: string
   nombre_tipo_balon?: string | null
@@ -159,6 +181,10 @@ export function usePosBalonSelect(options: {
     propietarioQuery.data.value?.find((item) => item.nombre?.toUpperCase() === 'EMPRESA')?.id,
   )
 
+  const propietarioPropiaId = computed(() =>
+    propietarioQuery.data.value?.find((item) => item.nombre?.toUpperCase() === 'PROPIA')?.id,
+  )
+
   const balonesQuery = useBalonesQuery(balonesFilters)
 
   let balonBuscarTimeout: ReturnType<typeof setTimeout> | undefined
@@ -189,9 +215,9 @@ export function usePosBalonSelect(options: {
         filters.idAlmacen = Number(options.idAlmacen.value)
       }
 
-      if (propietarioEmpresaId.value) {
-        filters.idPropietario = propietarioEmpresaId.value
-      }
+      // No filtrar por un solo idPropietario: hay EMPRESA y legado PROPIA.
+      // El filtro fino es client-side (esPropietarioEmpresaStock).
+      delete filters.idPropietario
     }
 
     const familia = options.familiaGas?.value?.trim()
@@ -218,6 +244,7 @@ export function usePosBalonSelect(options: {
       () => options.extraFilters?.value,
       estadoEnAlmacenId,
       propietarioEmpresaId,
+      propietarioPropiaId,
     ],
     () => {
       syncBalonFilters()
@@ -228,12 +255,9 @@ export function usePosBalonSelect(options: {
   const balonOptions = computed(() => {
     let rows = balonesQuery.data.value?.data ?? []
 
-    // Red de seguridad: en stock de empresa no listar envases del cliente
+    // Red de seguridad: stock empresa = EMPRESA | PROPIA (legado). Nunca CLIENTE.
     if (options.mode === 'alquiler') {
-      rows = rows.filter((balon) => {
-        const propietario = (balon.nombre_propietario ?? '').trim().toUpperCase()
-        return propietario !== 'CLIENTE' && balon.id_cliente_propietario == null
-      })
+      rows = rows.filter((balon) => esPropietarioEmpresaStock(balon.nombre_propietario))
     }
 
     const clientFilter = options.clientFilter?.value
@@ -272,6 +296,8 @@ export function usePosBalonSelect(options: {
 
       if (propietarioEmpresaId.value) {
         preset.idPropietario = propietarioEmpresaId.value
+      } else if (propietarioPropiaId.value) {
+        preset.idPropietario = propietarioPropiaId.value
       }
     }
 

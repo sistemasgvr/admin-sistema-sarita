@@ -582,12 +582,16 @@ const lineasActivas = computed(() =>
 
 const mostrarGenerarGre = computed(
   () =>
-    lineasActivas.value.some(
-      (linea) =>
-        Boolean(linea.idBalon) &&
-        (esEntregarPrestamo(linea) ||
-          ((linea.tipoPos === 'alquiler' || linea.esAlquilable) && linea.fechaInicioAlquiler)),
-    ),
+    lineasActivas.value.some((linea) => {
+      if (!linea.idBalon) return false
+      // Cilindro sale de almacén: préstamo, compra de envase o alquiler con entrega.
+      if (esEntregarPrestamo(linea)) return true
+      if (linea.escenarioGas === 'comprar_balon') return true
+      if ((linea.tipoPos === 'alquiler' || linea.esAlquilable) && linea.fechaInicioAlquiler) {
+        return true
+      }
+      return false
+    }),
 )
 
 function importeGasLinea(linea: PosLineItem) {
@@ -1347,7 +1351,13 @@ try {
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
-    toastSuccess('Venta registrada')
+    if (generarGre.value) {
+      toastSuccess(
+        'Venta registrada. Si la GRE no aparece en Guías de remisión, configura chofer, vehículo y ubigeo, o créala desde el listado de comprobantes.',
+      )
+    } else {
+      toastSuccess('Venta registrada')
+    }
 
   } catch (error) {
     toastApiError(error, 'No se pudo guardar la venta')

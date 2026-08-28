@@ -2684,6 +2684,34 @@ async function initCreateForm() {
   await nextTick()
   applyCatalogDefaults()
   applySucursalAlmacenDefaults()
+
+  const q = route.query
+  const idClienteQ = Number(Array.isArray(q.idCliente) ? q.idCliente[0] : q.idCliente)
+  const idAlmacenQ = Number(Array.isArray(q.idAlmacen) ? q.idAlmacen[0] : q.idAlmacen)
+  const idSucursalQ = Number(Array.isArray(q.idSucursal) ? q.idSucursal[0] : q.idSucursal)
+  const idComprobanteQ = Number(
+    Array.isArray(q.idComprobante) ? q.idComprobante[0] : q.idComprobante,
+  )
+  const refSerie = String(Array.isArray(q.refSerie) ? q.refSerie[0] : q.refSerie ?? '').trim()
+  const refNumero = String(Array.isArray(q.refNumero) ? q.refNumero[0] : q.refNumero ?? '').trim()
+
+  if (Number.isFinite(idSucursalQ) && idSucursalQ > 0) {
+    idSucursal.value = idSucursalQ
+  }
+  if (Number.isFinite(idAlmacenQ) && idAlmacenQ > 0) {
+    idAlmacen.value = idAlmacenQ
+  }
+  if (Number.isFinite(idClienteQ) && idClienteQ > 0) {
+    idDestinatario.value = idClienteQ
+  }
+  if (Number.isFinite(idComprobanteQ) && idComprobanteQ > 0) {
+    const ref =
+      refSerie && refNumero
+        ? `GRE desde venta ${refSerie}-${refNumero}`
+        : `GRE desde comprobante #${idComprobanteQ}`
+    observaciones.value = [observaciones.value?.trim(), ref].filter(Boolean).join(' — ')
+  }
+
   const sucursalId = values.idSucursal
   if (sucursalId) {
     const sucursal = (sucursalesQuery.data.value?.data ?? []).find(

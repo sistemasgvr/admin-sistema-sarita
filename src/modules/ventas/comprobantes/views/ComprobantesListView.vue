@@ -189,6 +189,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   useComprobanteCatalogosPosQuery,
   useComprobantesQuery,
@@ -261,6 +262,7 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const breadcrumbItems = ventasBreadcrumbItems('Comprobantes')
 
+const router = useRouter()
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -318,6 +320,9 @@ const clienteParaEditar = computed(() => clienteEditQuery.data.value ?? null)
 const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
+const canCrearGre = computed(() =>
+  authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR),
+)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
 const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
@@ -567,6 +572,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       ),
     },
     {
+      key: 'guia-remision',
+      label: 'Generar guía de remisión',
+      icon: ICONS.fileText,
+      disabled: busy,
+      hidden: !(canCrearGre.value && Boolean(row.id_cliente)),
+    },
+    {
       key: 'nota-credito',
       label: 'Nota de crédito',
       icon: ICONS.fileText,
@@ -635,6 +647,9 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
       return emitirComprobante(row)
     case 'reparto':
       openRepartoDesdeVenta(row)
+      return
+    case 'guia-remision':
+      openGuiaDesdeComprobante(row)
       return
     case 'nota-credito':
       openNotaCreditoModal(row)
@@ -710,6 +725,22 @@ function toRepartoItems(comprobante: Comprobante | ComprobanteListItem): Activid
     id_balon: d.id_balon,
     codigo_balon: d.codigo_balon,
   }))
+}
+
+function openGuiaDesdeComprobante(row: ComprobanteListItem) {
+  if (!row.id_cliente) {
+    toastWarning('El comprobante no tiene cliente para generar la guía.')
+    return
+  }
+  void router.push({
+    name: 'admin-ventas-guias-remision-nueva',
+    query: {
+      idComprobante: String(row.id),
+      idCliente: String(row.id_cliente),
+      refSerie: row.serie,
+      refNumero: String(row.numero),
+    },
+  })
 }
 
 function openRepartoDesdeVenta(row: Comprobante | ComprobanteListItem) {
