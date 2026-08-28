@@ -84,13 +84,6 @@
             <span>
               <span class="font-medium text-gray-800 dark:text-white/90">Cobrar garantía</span>
               — depósito que se devuelve cuando traiga el cilindro.
-              <span
-                v-if="lastPrestamoId"
-                class="mt-1 block text-xs text-brand-600 dark:text-brand-400"
-              >
-                Último préstamo #{{ lastPrestamoId }}
-                <template v-if="lastClienteId"> · cliente #{{ lastClienteId }}</template>
-              </span>
             </span>
           </li>
         </ol>
@@ -119,15 +112,6 @@
           garantía desde la misma venta).
         </p>
       </DetailSectionCard>
-    </div>
-      </DetailSectionCard>
-
-      <PrestamoFormModal v-model="prestamoModalOpen" mode="create" @saved="onPrestamoSaved" />
-      <GarantiaCobrarModal
-        v-model="garantiaModalOpen"
-        :id-cliente="lastClienteId"
-        :id-prestamo="lastPrestamoId"
-      />
     </div>
 
     <div
@@ -161,6 +145,11 @@ const authStore = useAuthStore()
 
 const canRecarga = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR),
+)
+const canPrestamo = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR) ||
+    authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_LISTAR),
 )
 const canKit = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR))
 const canListPrestamos = computed(() =>
