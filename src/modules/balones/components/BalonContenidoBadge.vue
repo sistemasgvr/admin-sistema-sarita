@@ -22,7 +22,7 @@ const props = withDefaults(
 const CONTENIDO_BADGE: Record<string, { label: string; color: BadgeColor }> = {
   LLENO: { label: 'Lleno', color: 'success' },
   VACIO: { label: 'Vacío', color: 'neutral' },
-  SEMILLLENO: { label: 'Semi-lleno', color: 'brand' },
+  SEMILLLENO: { label: 'Semi-lleno', color: 'primary' },
   DESCONOCIDO: { label: 'Desconocido', color: 'warning' },
 }
 
