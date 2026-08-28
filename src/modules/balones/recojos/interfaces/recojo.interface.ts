@@ -105,6 +105,7 @@ export interface RecojoListFilters {
 export interface CreateRecojoDetallePayload {
   idPrestamoDetalle?: number
   idAlquilerDetalle?: number
+  idBalon?: number
   observacion?: string
 }
 
@@ -113,6 +114,7 @@ export interface CreateRecojoPayload {
   idCliente: number
   idPrestamo?: number
   idAlquiler?: number
+  idRecargaPlanta?: number
   fechaProgramada: string
   horaEstimada?: string
   idUsuarioResponsable?: number
@@ -134,6 +136,7 @@ export interface UpdateRecojoPayload {
 export interface RegistrarResultadoDetallePayload {
   idPrestamoDetalle?: number
   idAlquilerDetalle?: number
+  idBalon?: number
   resultado: ResultadoRecojoNombre
   nombreEstadoContenido?: string
   cantidadRestante?: number

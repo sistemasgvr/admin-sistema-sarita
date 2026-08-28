@@ -341,6 +341,7 @@ interface LineaResultado {
   resuelto: boolean
   idPrestamoDetalle?: number
   idAlquilerDetalle?: number
+  idBalon?: number
   codigoBalon: string
   numeroPrestamo: string
   numeroAlquiler: string
@@ -398,6 +399,7 @@ const motivoOptions = [
 const contenidoOptions = [
   { value: 'VACIO', label: 'Vacío' },
   { value: 'LLENO', label: 'Lleno' },
+  { value: 'SEMILLLENO', label: 'Semi-lleno' },
   { value: 'DESCONOCIDO', label: 'Desconocido' },
 ]
 
@@ -588,6 +590,7 @@ watch(
         resuelto,
         idPrestamoDetalle: d.id_prestamo_detalle ?? undefined,
         idAlquilerDetalle: d.id_alquiler_detalle ?? undefined,
+        idBalon: d.id_balon ?? undefined,
         codigoBalon: d.codigo_balon || (d.id_balon ? `#${d.id_balon}` : `Detalle #${d.id}`),
         numeroPrestamo: d.numero_origen || d.numero_prestamo || '',
         numeroAlquiler: d.origen === 'ALQUILER' ? (d.numero_origen || d.numero_alquiler || '') : '',
@@ -670,6 +673,7 @@ async function confirmar() {
           return {
             idPrestamoDetalle: l.idPrestamoDetalle,
             idAlquilerDetalle: l.idAlquilerDetalle,
+            idBalon: l.idBalon,
             resultado: l.resultado,
             nombreEstadoContenido:
               l.resultado === 'RECOGIDO' ? l.nombreEstadoContenido || 'VACIO' : undefined,

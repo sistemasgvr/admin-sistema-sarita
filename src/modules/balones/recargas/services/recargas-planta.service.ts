@@ -42,4 +42,8 @@ export const recargasPlantaService = {
       data: { idUsuarioAuditoria },
     })
   },
+
+  generarRecojo(id: number, payload: { fechaProgramada?: string; idUsuarioResponsable?: number; observacion?: string; idUsuarioAuditoria: number }) {
+    return apiPost<RecargaPlanta>(`/balones/recargas-planta/${id}/recojo`, payload)
+  },
 }

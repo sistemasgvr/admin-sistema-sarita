@@ -223,6 +223,30 @@
             Esta orden tiene retorno registrado pero el protocolo está incompleto (lote, vencimiento
             y/o P.H.). Completa los campos abajo y guarda para regularizar el historial.
           </div>
+          <div
+            v-if="mostrarGenerarRecojo"
+            class="flex flex-wrap items-center gap-3 rounded-lg border border-brand-200 bg-brand-50/70 px-3 py-2.5 dark:border-brand-500/30 dark:bg-brand-500/10"
+          >
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                Recojo de balones en planta
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                Los cilindros siguen en la planta (EN_RECARGA_EXTERNA). Genera el recojo para
+                traerlos y repartir el gas manualmente al cerrarlo.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
+              :disabled="generandoRecojo"
+              @click="generarRecojoPlanta"
+            >
+              <AppIcon :name="ICONS.truck" :size="15" />
+              {{ generandoRecojo ? 'Generando...' : 'Generar recojo' }}
+            </button>
+          </div>
+
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <GuiaRemisionSelectField
               v-model="idGuiaRetorno"
@@ -381,6 +405,7 @@ import {
   useUpdateRecargaPlantaMutation,
 } from '@/modules/balones/recargas/composables/useRecargaPlantaMutations'
 import { useRecargaPlantaQuery } from '@/modules/balones/recargas/composables/useRecargasPlantaQuery'
+import { recargasPlantaService } from '@/modules/balones/recargas/services/recargas-planta.service'
 import type {
   RecargaPlantaDetalle,
   RecargaPlantaFormMode,
@@ -400,7 +425,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
-import { toastWarning } from '@/shared/composables/useToast'
+import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
@@ -449,6 +474,39 @@ const protocoloIncompleto = computed(() => {
   if (!data?.fecha_llegada_almacen) return false
   return !data.lote?.trim() || !data.fecha_vencimiento_lote || !data.fecha_prueba_hidrostatica
 })
+
+const mostrarGenerarRecojo = computed(() => {
+  if (props.mode !== 'edit') return false
+  const estado = recargaDetalle.value?.nombre_estado
+  return estado === 'ENVIADO' || estado === 'CERRADO'
+})
+
+const generandoRecojo = ref(false)
+
+async function generarRecojoPlanta() {
+  const userId = authStore.user?.id
+  if (!userId || !props.recargaId || !mostrarGenerarRecojo.value) return
+  generandoRecojo.value = true
+  try {
+    await recargasPlantaService.generarRecojo(props.recargaId, {
+      fechaProgramada: addDaysIsoLocal(today(), 5),
+      idUsuarioResponsable: userId,
+      observacion: 'Recojo automático de recarga en planta externa',
+      idUsuarioAuditoria: userId,
+    })
+    toastSuccess('Recojo generado. Ciérralo desde Recojos para ingresar los balones.')
+  } catch {
+    // toast en servicio
+  } finally {
+    generandoRecojo.value = false
+  }
+}
+
+function addDaysIsoLocal(iso: string, days: number) {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
 
 const detalles = ref<RecargaPlantaDetalle[]>([])
 const detalleError = ref('')
