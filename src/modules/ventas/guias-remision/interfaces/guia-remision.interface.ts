@@ -158,7 +158,16 @@ export interface CreateGuiaRemisionPayload {
   idResponsable?: number
   observaciones?: string
   detalles: GuiaRemisionDetallePayload[]
+  /** Comprobantes relacionados (venta / boleta / factura). */
+  referencias?: GuiaRemisionReferenciaPayload[]
   idUsuarioAuditoria: number
+}
+
+export interface GuiaRemisionReferenciaPayload {
+  idTipoComprobante: number
+  serie?: string
+  numero?: string
+  fecha?: string
 }
 
 export type UpdateGuiaRemisionPayload = Omit<

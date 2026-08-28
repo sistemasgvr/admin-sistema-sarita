@@ -739,6 +739,9 @@ function openGuiaDesdeComprobante(row: ComprobanteListItem) {
       idCliente: String(row.id_cliente),
       refSerie: row.serie,
       refNumero: String(row.numero),
+      refTipo: String(row.id_tipo_comprobante),
+      refFecha: String(row.fecha).slice(0, 10),
+      refTipoNombre: row.nombre_tipo_comprobante ?? undefined,
     },
   })
 }

@@ -84,6 +84,22 @@
             {{ guia.direccion_llegada ?? '—' }} ({{ guia.ubigeo_llegada ?? '—' }})
           </p>
         </div>
+        <div v-if="guia.referencias?.length" class="sm:col-span-2">
+          <p class="text-xs text-gray-500 dark:text-gray-400">Documento relacionado (venta)</p>
+          <ul class="mt-1 space-y-0.5 text-gray-700 dark:text-gray-300">
+            <li v-for="(ref, idx) in guia.referencias" :key="ref.id ?? idx">
+              <span class="font-medium tabular-nums">
+                {{ ref.serie }}-{{ ref.numero }}
+              </span>
+              <span v-if="ref.nombre_tipo_comprobante" class="text-gray-500 dark:text-gray-400">
+                · {{ ref.nombre_tipo_comprobante }}
+              </span>
+              <span v-if="ref.fecha" class="text-gray-500 dark:text-gray-400">
+                · {{ String(ref.fecha).slice(0, 10) }}
+              </span>
+            </li>
+          </ul>
+        </div>
         <div v-if="guia.observaciones" class="sm:col-span-2">
           <p class="text-xs text-gray-500 dark:text-gray-400">Observaciones</p>
           <p class="text-gray-700 dark:text-gray-300">{{ guia.observaciones }}</p>

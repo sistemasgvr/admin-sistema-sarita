@@ -633,6 +633,31 @@
         @saved="onTransportistaCreado"
       />
 
+      <div
+        v-if="documentosReferencia.length"
+        class="rounded-xl border border-brand-200 bg-brand-50/60 px-4 py-3 dark:border-brand-500/30 dark:bg-brand-500/10"
+      >
+        <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+          Documento relacionado (venta)
+        </p>
+        <ul class="mt-2 space-y-1 text-sm text-gray-700 dark:text-gray-300">
+          <li v-for="(ref, idx) in documentosReferencia" :key="`${ref.serie}-${ref.numero}-${idx}`">
+            <span class="font-medium tabular-nums">
+              {{ ref.serie }}-{{ ref.numero }}
+            </span>
+            <span v-if="ref.nombreTipo" class="text-gray-500 dark:text-gray-400">
+              · {{ ref.nombreTipo }}
+            </span>
+            <span v-if="ref.fecha" class="text-gray-500 dark:text-gray-400">
+              · {{ ref.fecha }}
+            </span>
+          </li>
+        </ul>
+        <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+          Quedará como referencia SUNAT (documento relacionado) al guardar la guía.
+        </p>
+      </div>
+
       <AppInput
         v-model="observaciones"
         label="Observaciones"
@@ -875,6 +900,8 @@ import {
   useGuiaRemisionQuery,
 } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
 import { guiasRemisionService } from '@/modules/ventas/guias-remision/services/guias-remision.service'
+import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import type { GuiaRemisionReferenciaPayload } from '@/modules/ventas/guias-remision/interfaces/guia-remision.interface'
 import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppHelpTip, AppInput, AppSelect } from '@/shared/components'
@@ -1589,6 +1616,13 @@ const sucursalSeleccionada = computed(() => {
 const sucursalSeleccionadaNombre = computed(() => sucursalSeleccionada.value?.nombre?.trim() || '')
 
 const numero = ref('')
+
+/** Referencias a comprobantes de venta (documento relacionado SUNAT). */
+type DocumentoReferenciaForm = GuiaRemisionReferenciaPayload & {
+  nombreTipo?: string | null
+}
+const documentosReferencia = ref<DocumentoReferenciaForm[]>([])
+
 const saving = computed(
   () => createMutation.isPending.value || updateMutation.isPending.value,
 )
@@ -2661,6 +2695,7 @@ function resetLocal() {
   llegadaHint.value = ''
   origenHint.value = ''
   clienteUbicacionCache.value = null
+  documentosReferencia.value = []
 }
 
 function goBack(createdId?: number) {
@@ -2694,6 +2729,13 @@ async function initCreateForm() {
   )
   const refSerie = String(Array.isArray(q.refSerie) ? q.refSerie[0] : q.refSerie ?? '').trim()
   const refNumero = String(Array.isArray(q.refNumero) ? q.refNumero[0] : q.refNumero ?? '').trim()
+  const refTipo = Number(Array.isArray(q.refTipo) ? q.refTipo[0] : q.refTipo)
+  const refFecha = String(Array.isArray(q.refFecha) ? q.refFecha[0] : q.refFecha ?? '')
+    .trim()
+    .slice(0, 10)
+  const refTipoNombre = String(
+    Array.isArray(q.refTipoNombre) ? q.refTipoNombre[0] : q.refTipoNombre ?? '',
+  ).trim()
 
   if (Number.isFinite(idSucursalQ) && idSucursalQ > 0) {
     idSucursal.value = idSucursalQ
@@ -2704,12 +2746,45 @@ async function initCreateForm() {
   if (Number.isFinite(idClienteQ) && idClienteQ > 0) {
     idDestinatario.value = idClienteQ
   }
+
+  const aplicarRefDesdeQuery = () => {
+    if (!(refSerie && refNumero && Number.isFinite(refTipo) && refTipo > 0)) return false
+    documentosReferencia.value = [
+      {
+        idTipoComprobante: refTipo,
+        serie: refSerie.toUpperCase(),
+        numero: refNumero,
+        fecha: refFecha || undefined,
+        nombreTipo: refTipoNombre || null,
+      },
+    ]
+    return true
+  }
+
   if (Number.isFinite(idComprobanteQ) && idComprobanteQ > 0) {
-    const ref =
-      refSerie && refNumero
-        ? `GRE desde venta ${refSerie}-${refNumero}`
-        : `GRE desde comprobante #${idComprobanteQ}`
-    observaciones.value = [observaciones.value?.trim(), ref].filter(Boolean).join(' — ')
+    try {
+      const comp = await comprobantesService.obtenerPorId(idComprobanteQ)
+      documentosReferencia.value = [
+        {
+          idTipoComprobante: Number(comp.id_tipo_comprobante),
+          serie: String(comp.serie ?? '').trim().toUpperCase() || undefined,
+          numero: String(comp.numero ?? '').trim() || undefined,
+          fecha: String(comp.fecha ?? '').slice(0, 10) || undefined,
+          nombreTipo: comp.nombre_tipo_comprobante ?? null,
+        },
+      ]
+      if (!idDestinatario.value && comp.id_cliente) {
+        idDestinatario.value = Number(comp.id_cliente)
+      }
+    } catch {
+      if (!aplicarRefDesdeQuery()) {
+        toastWarning(
+          'No se pudo cargar la referencia de la venta. Intente de nuevo desde el comprobante.',
+        )
+      }
+    }
+  } else {
+    aplicarRefDesdeQuery()
   }
 
   const sucursalId = values.idSucursal
@@ -2760,6 +2835,15 @@ watch(
       pesoBultosManual.value = true
 
       numero.value = guia.numero
+      documentosReferencia.value = (guia.referencias ?? [])
+        .filter((r) => Number(r.id_tipo_comprobante) > 0)
+        .map((r) => ({
+          idTipoComprobante: Number(r.id_tipo_comprobante),
+          serie: r.serie ? String(r.serie).trim().toUpperCase() : undefined,
+          numero: r.numero ? String(r.numero).trim() : undefined,
+          fecha: r.fecha ? String(r.fecha).slice(0, 10) : undefined,
+          nombreTipo: r.nombre_tipo_comprobante ?? null,
+        }))
       if (guia.id_destinatario) {
         modoDestinatario.value = 'cliente'
         destinatarioLabel.value = guia.nombre_destinatario ?? null
@@ -3021,6 +3105,16 @@ const onSubmit = handleSubmit(async (formValues) => {
     idVehiculo: formValues.idVehiculo ? Number(formValues.idVehiculo) : undefined,
     observaciones: formValues.observaciones || undefined,
     detalles,
+    referencias: documentosReferencia.value
+      .filter((r) => Number(r.idTipoComprobante) > 0)
+      .map(
+        (r): GuiaRemisionReferenciaPayload => ({
+          idTipoComprobante: Number(r.idTipoComprobante),
+          serie: r.serie || undefined,
+          numero: r.numero || undefined,
+          fecha: r.fecha || undefined,
+        }),
+      ),
     idUsuarioAuditoria: userId,
   }
 
