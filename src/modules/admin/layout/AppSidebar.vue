@@ -141,9 +141,15 @@
                               ),
                             },
                           ]"
-                        >
-                          {{ subItem.name }}
-                        </router-link>
+                         >
+                           <AppIcon
+                             v-if="subItem.icon"
+                             :name="subItem.icon"
+                             :size="18"
+                             class="shrink-0"
+                          />
+                           {{ subItem.name }}
+                         </router-link>
                       </li>
                     </ul>
                   </div>

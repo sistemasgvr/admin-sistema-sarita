@@ -14,6 +14,7 @@ export const balonesMenuSubItems: AdminMenuSubItem[] = [
     .map((item) => ({
       name: item.title,
       path: item.path,
+      icon: item.icon,
       permission: item.permission,
     })),
 ]

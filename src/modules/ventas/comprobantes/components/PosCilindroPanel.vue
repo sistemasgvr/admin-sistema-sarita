@@ -97,41 +97,29 @@
 
         <div class="mt-5 flex flex-wrap gap-2">
           <button
-            v-if="canPrestamo"
-            type="button"
-            class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-600"
-            @click="prestamoModalOpen = true"
-          >
-            <AppIcon :name="ICONS.plus" :size="16" />
-            Registrar préstamo
-          </button>
-          <button
             v-if="canRecarga"
             type="button"
-            class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-600 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400"
+            class="inline-flex items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-600 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400"
             @click="seleccionarEscenario('solo_gas')"
           >
             <AppIcon :name="ICONS.cylinder" :size="16" />
             Cobrar gas (recarga)
           </button>
-          <button
-            v-if="canGarantia"
-            type="button"
-            class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-600 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400"
-            @click="garantiaModalOpen = true"
-          >
-            <AppIcon :name="ICONS.shield" :size="16" />
-            Cobrar garantía
-          </button>
           <RouterLink
             v-if="canListPrestamos"
             to="/admin/balones/prestamos"
-            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
           >
             <AppIcon :name="ICONS.externalLink" :size="16" />
             Ver préstamos
           </RouterLink>
         </div>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          El préstamo de cilindro se registra al vender el balón en el pedido (cobras el gas y la
+          garantía desde la misma venta).
+        </p>
+      </DetailSectionCard>
+    </div>
       </DetailSectionCard>
 
       <PrestamoFormModal v-model="prestamoModalOpen" mode="create" @saved="onPrestamoSaved" />
@@ -154,14 +142,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import GarantiaCobrarModal from '@/modules/balones/garantias/components/GarantiaCobrarModal.vue'
-import PrestamoFormModal from '@/modules/balones/prestamos/components/PrestamoFormModal.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import PosAlquilerPanel from '@/modules/ventas/comprobantes/components/PosAlquilerPanel.vue'
 import PosRecargaPanel from '@/modules/ventas/comprobantes/components/PosRecargaPanel.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import { toastSuccess } from '@/shared/composables/useToast'
 import { ICONS, type IconName } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
@@ -178,21 +163,11 @@ const canRecarga = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR),
 )
 const canKit = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_CREAR))
-const canPrestamo = computed(() =>
-  authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR),
-)
-const canGarantia = computed(() =>
-  authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_CREAR),
-)
 const canListPrestamos = computed(() =>
   authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_LISTAR),
 )
 
 const escenarioActivo = ref<EscenarioCilindro | null>(null)
-const prestamoModalOpen = ref(false)
-const garantiaModalOpen = ref(false)
-const lastPrestamoId = ref<number | null>(null)
-const lastClienteId = ref<number | null>(null)
 
 const escenarios = computed(() => {
   const items: Array<{
@@ -239,14 +214,6 @@ function escenarioCardClass(key: EscenarioCilindro) {
 
 function seleccionarEscenario(key: EscenarioCilindro) {
   escenarioActivo.value = escenarioActivo.value === key ? null : key
-}
-
-function onPrestamoSaved(payload?: { id: number; idCliente?: number | null }) {
-  if (payload?.id) {
-    lastPrestamoId.value = payload.id
-    lastClienteId.value = payload.idCliente ?? null
-    toastSuccess('Préstamo registrado. Ya puedes cobrar el gas y la garantía.')
-  }
 }
 
 watch(

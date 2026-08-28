@@ -1,4 +1,4 @@
-<template>
+<template>  
   <div>
     <PageBreadcrumb
       v-if="!embedded"
@@ -176,6 +176,17 @@
         <div class="flex flex-col gap-1">
           <BalonEstadoBadge :balon="row" />
           <BalonContenidoBadge :balon="row" />
+          <span
+            v-if="esNoDisponible(row)"
+            class="inline-flex w-fit items-center gap-1 rounded-full bg-error-50 px-2 py-0.5 text-[11px] font-medium text-error-700 dark:bg-error-500/10 dark:text-error-400"
+            :title="referenciaNoDisponible(row)"
+          >
+            <AppIcon :name="ICONS.ban" :size="11" />
+            No disponible
+            <template v-if="row.nombre_cliente_ubicacion">
+              · {{ row.nombre_cliente_ubicacion }}
+            </template>
+          </span>
         </div>
       </template>
 
@@ -604,6 +615,18 @@ const inicialesAlmacen = (nombre: string) => {
 }
 
 const estadoBalonNombre = (balon: Balon) => balon.nombre_estado_balon?.toUpperCase() ?? ''
+
+const ESTADOS_DISPONIBLES = ['EN_ALMACEN', '']
+
+const esNoDisponible = (balon: Balon) => !ESTADOS_DISPONIBLES.includes(estadoBalonNombre(balon))
+
+const referenciaNoDisponible = (balon: Balon) => {
+  const estado = balon.nombre_estado_balon || 'Estado desconocido'
+  if (balon.nombre_cliente_ubicacion) {
+    return `Cilindro ${estado} y asignado a ${balon.nombre_cliente_ubicacion}; no está disponible para préstamo/alquiler`
+  }
+  return `Cilindro ${estado}; no está disponible para préstamo/alquiler`
+}
 
 const puedeDarDeBaja = (balon: Balon) =>
   balon.estado === 1 &&

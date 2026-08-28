@@ -1,4 +1,5 @@
 import type { AdminMenuSubItem } from '@/modules/admin/config/menu'
+import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
 /**
@@ -12,11 +13,13 @@ export const comprasMenuSubItems: AdminMenuSubItem[] = [
   {
     name: 'Compras',
     path: '/admin/compras',
+    icon: ICONS.shoppingcard,
     permission: PermisoBanderas.COMPRAS_LISTAR,
   },
   {
     name: 'Gastos de caja',
     path: '/admin/compras/gastos-caja',
+    icon: ICONS.wallet,
     permission: PermisoBanderas.CAJA_VER,
   },
 ]

@@ -117,6 +117,76 @@
       </div>
 
       <div v-if="lineas.length > 0" class="space-y-3">
+        <div
+          class="rounded-xl border border-brand-200 bg-brand-50/60 p-3 dark:border-brand-500/30 dark:bg-brand-500/10"
+        >
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+              Verificación con scanner
+            </p>
+            <span
+              v-if="escaneoCompleto"
+              class="inline-flex items-center gap-1 rounded bg-success-50 px-2 py-1 text-xs text-success-700 dark:bg-success-500/10 dark:text-success-400"
+            >
+              <AppIcon :name="ICONS.check" :size="12" /> Todos los cilindros escaneados
+            </span>
+            <span v-else class="text-xs text-gray-500 dark:text-gray-400">
+              Faltan
+              {{ lineas.filter((l) => l.codigoBalon && l.codigoBalon.trim() !== '').length - codigosEscaneados.length < 0 ? 0 : lineas.filter((l) => l.codigoBalon && l.codigoBalon.trim() !== '').length - codigosEscaneados.length }}
+              por escanear
+            </span>
+          </div>
+          <div class="flex flex-wrap items-end gap-2">
+            <AppInput
+              v-model="codigoInput"
+              label="Escanear código de cilindro"
+              placeholder="Escanea o escribe el código y pulsa Enter"
+              :disabled="validando"
+              class="min-w-[260px] flex-1"
+              @keyup.enter="escanear"
+            />
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
+              :disabled="validando || !codigoInput.trim()"
+              @click="escanear"
+            >
+              <AppIcon :name="ICONS.scanBarcode" :size="15" /> Agregar
+            </button>
+            <button
+              v-if="codigosEscaneados.length"
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
+              @click="reiniciarEscaneo"
+            >
+              Limpiar
+            </button>
+          </div>
+          <div v-if="codigosEscaneados.length" class="mt-2 flex flex-wrap gap-2">
+            <span
+              v-for="(c, i) in codigosEscaneados"
+              :key="i"
+              class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 dark:bg-white/10 dark:text-gray-300"
+            >
+              {{ c }}
+              <button
+                type="button"
+                class="text-gray-400 hover:text-gray-600"
+                @click="quitarCodigo(i)"
+              >
+                <AppIcon :name="ICONS.x" :size="11" />
+              </button>
+            </span>
+          </div>
+          <p
+            v-if="validacion?.no_pertenecen?.length"
+            class="mt-2 text-xs text-warning-700 dark:text-warning-400"
+          >
+            Códigos que no corresponden a este recojo:
+            {{ validacion.no_pertenecen.join(', ') }}
+          </p>
+        </div>
+
         <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros</p>
         <div
           v-for="linea in lineas"
@@ -243,6 +313,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import { recojosService } from '@/modules/balones/recojos/services/recojos.service'
 import { useRegistrarResultadoRecojoMutation, useUpdateRecojoMutation } from '@/modules/balones/recojos/composables/useRecojoMutations'
 import { useRecojoQuery } from '@/modules/balones/recojos/composables/useRecojosQuery'
 import {
@@ -309,6 +380,15 @@ const condicionRegulador = ref<CondicionReguladorNombre | ''>('BUENO')
 const nuevaFechaRegulador = ref('')
 const observacionRegulador = ref('')
 
+const codigoInput = ref('')
+const codigosEscaneados = ref<string[]>([])
+const validacion = ref<{
+  completo: boolean
+  faltantes: Array<{ idPrestamoDetalle?: number; idAlquilerDetalle?: number; codigo: string }>
+  no_pertenecen: string[]
+} | null>(null)
+const validando = ref(false)
+
 const resultadoOptions = RESULTADOS_RECOJO.map((r) => ({ value: r.value, label: r.label }))
 const condicionOptions = CONDICIONES_REGULADOR.map((c) => ({ value: c.value, label: c.label }))
 const motivoOptions = [
@@ -372,8 +452,18 @@ const reguladorValido = computed(() => {
 
 const puedeGuardar = computed(() => {
   if (!fechaVisita.value || !reguladorValido.value) return false
+  if (lineas.value.length > 0 && !escaneoCompleto.value) return false
   if (lineas.value.length > 0) return lineas.value.every(validarLinea)
   return mostrarAccesorio.value
+})
+
+const setEscaneados = computed(() =>
+  new Set(codigosEscaneados.value.map((c) => c.trim().toUpperCase())),
+)
+const escaneoCompleto = computed(() => {
+  const conCodigo = lineas.value.filter((l) => l.codigoBalon && l.codigoBalon.trim() !== '')
+  if (conCodigo.length === 0) return true
+  return conCodigo.every((l) => setEscaneados.value.has(l.codigoBalon.trim().toUpperCase()))
 })
 
 function addDaysIso(iso: string, days: number) {
@@ -420,6 +510,37 @@ function validarLinea(linea: LineaResultado) {
   return true
 }
 
+async function escanear() {
+  const codigo = codigoInput.value.trim()
+  if (!codigo) return
+  codigosEscaneados.value = [...codigosEscaneados.value, codigo]
+  codigoInput.value = ''
+  await validarServidor()
+}
+
+function quitarCodigo(index: number) {
+  codigosEscaneados.value = codigosEscaneados.value.filter((_, i) => i !== index)
+  void validarServidor()
+}
+
+function reiniciarEscaneo() {
+  codigosEscaneados.value = []
+  validacion.value = null
+}
+
+async function validarServidor() {
+  const id = props.recojoId
+  if (!id) return
+  validando.value = true
+  try {
+    validacion.value = await recojosService.validarCodigos(id, codigosEscaneados.value)
+  } catch {
+    validacion.value = null
+  } finally {
+    validando.value = false
+  }
+}
+
 async function iniciarRuta() {
   const lat = Number(recojo.value?.latitud)
   const lng = Number(recojo.value?.longitud)
@@ -443,6 +564,9 @@ watch(
   () => [open.value, recojo.value?.id] as const,
   ([isOpen]) => {
     if (!isOpen || !recojo.value) return
+    codigosEscaneados.value = []
+    codigoInput.value = ''
+    validacion.value = null
     fechaVisita.value = hoyIsoLima()
     motivoFalloNombre.value = recojo.value.nombre_motivo_fallo || ''
     observacion.value = recojo.value.observacion || ''

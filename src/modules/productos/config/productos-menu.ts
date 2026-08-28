@@ -13,6 +13,7 @@ export const productosMenuSubItems: AdminMenuSubItem[] = [
     name: item.title,
     path: item.path,
     activeMatchPaths: item.activeMatchPaths,
+    icon: item.icon,
     permission: item.permission,
   })),
 ]

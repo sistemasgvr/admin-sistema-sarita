@@ -17,6 +17,7 @@ export const configuracionMenuSubItems: AdminMenuSubItem[] = [
   ...visibleHubItems().map((item) => ({
     name: item.title,
     path: item.path,
+    icon: item.icon,
     permission: item.permission,
   })),
 ]

@@ -35,6 +35,17 @@ export const recojosService = {
     return apiPost<Recojo>(`/balones/recojos/${id}/registrar-resultado`, payload)
   },
 
+  validarCodigos(id: number, codigos: string[]) {
+    return apiPost<{
+      ok: boolean
+      total: number
+      coinciden: Array<{ idPrestamoDetalle?: number; idAlquilerDetalle?: number; codigo: string }>
+      faltantes: Array<{ idPrestamoDetalle?: number; idAlquilerDetalle?: number; codigo: string }>
+      no_pertenecen: string[]
+      completo: boolean
+    }>(`/balones/recojos/${id}/validar-codigos`, { codigos })
+  },
+
   eliminar(id: number, idUsuarioAuditoria: number) {
     return apiDelete<DeleteRecojoResponse>(`/balones/recojos/${id}`, {
       data: { idUsuarioAuditoria },

@@ -18,11 +18,12 @@
           <template #actions>
             <RouterLink
               v-if="canCreate"
-              :to="{ name: 'admin-balones-prestamos-nuevo' }"
+              :to="{ name: 'admin-ventas-pos', query: { escenario: 'prestamo' } }"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
+              title="Los préstamos se gestionan desde la venta en punto de venta"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
-              Nuevo
+              Nuevo (desde venta)
             </RouterLink>
           </template>
         </AppListToolbar>
