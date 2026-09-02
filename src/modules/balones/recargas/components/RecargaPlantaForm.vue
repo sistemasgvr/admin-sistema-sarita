@@ -153,7 +153,6 @@
                   <th class="px-3 py-2 font-medium">Gas / producto</th>
                   <th class="px-3 py-2 font-medium">Capacidad</th>
                   <th class="px-3 py-2 font-medium">Estado</th>
-                  <th class="px-3 py-2 font-medium">Contenido</th>
                   <th v-if="mode === 'create'" class="px-3 py-2 font-medium" />
                 </tr>
               </thead>
@@ -180,14 +179,6 @@
                     <BalonEstadoBadge
                       v-if="linea.nombre_estado_balon"
                       :balon="{ nombre_estado_balon: linea.nombre_estado_balon }"
-                      size="sm"
-                    />
-                    <span v-else class="text-gray-400">—</span>
-                  </td>
-                  <td class="px-3 py-2.5">
-                    <BalonContenidoBadge
-                      v-if="linea.nombre_estado_contenido"
-                      :balon="{ nombre_estado_contenido: linea.nombre_estado_contenido }"
                       size="sm"
                     />
                     <span v-else class="text-gray-400">—</span>
@@ -397,7 +388,6 @@ import * as yup from 'yup'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
-import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import { balonesService } from '@/modules/balones/cilindros/services/balones.service'
 import {
@@ -604,20 +594,14 @@ const compraOptions = computed<SelectOption[]>(() => {
 })
 
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
-const listaContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
-const contenidoQuery = useListaOpcionesQuery(listaContenidoId)
 
 const idPropietarioEmpresa = computed(
   () => propietarioQuery.data.value?.find((op) => op.nombre === 'EMPRESA')?.id,
 )
-const idContenidoVacio = computed(
-  () => contenidoQuery.data.value?.find((op) => op.nombre === 'VACIO')?.id,
-)
 
 const balonExtraFilters = computed(() => ({
   idPropietario: idPropietarioEmpresa.value,
-  idEstadoContenido: idContenidoVacio.value,
   soloBajas: false,
   idAlmacen: idAlmacen.value ? Number(idAlmacen.value) : undefined,
 }))
@@ -726,16 +710,12 @@ async function enriquecerLineasBalon(
     id_unidad_medida?: number | null
     nombre_unidad_medida?: string | null
     nombre_estado_balon?: string | null
-    nombre_estado_contenido?: string | null
     observacion?: string | null
   }>,
 ) {
   return Promise.all(
     lineas.map(async (linea) => {
-      const completo =
-        linea.capacidad != null &&
-        linea.nombre_estado_balon &&
-        linea.nombre_estado_contenido
+      const completo = linea.capacidad != null && linea.nombre_estado_balon
       if (completo) return linea
       try {
         const balon = await balonesService.obtenerPorId(linea.id_balon)
@@ -747,8 +727,6 @@ async function enriquecerLineasBalon(
           capacidad: linea.capacidad ?? balon.capacidad ?? null,
           nombre_unidad_medida: linea.nombre_unidad_medida ?? balon.nombre_unidad_medida ?? null,
           nombre_estado_balon: linea.nombre_estado_balon ?? balon.nombre_estado_balon ?? null,
-          nombre_estado_contenido:
-            linea.nombre_estado_contenido ?? balon.nombre_estado_contenido ?? null,
         }
       } catch {
         return linea
@@ -787,7 +765,6 @@ watch(
         id_unidad_medida: d.id_unidad_medida ?? null,
         nombre_unidad_medida: d.nombre_unidad_medida ?? null,
         nombre_estado_balon: d.nombre_estado_balon ?? null,
-        nombre_estado_contenido: d.nombre_estado_contenido ?? null,
         observacion: d.glosa ?? null,
       }))
 
@@ -850,7 +827,6 @@ async function agregarBalonSeleccionado() {
       id_unidad_medida: null,
       nombre_unidad_medida: balon.nombre_unidad_medida ?? null,
       nombre_estado_balon: balon.nombre_estado_balon ?? null,
-      nombre_estado_contenido: balon.nombre_estado_contenido ?? null,
     })
     detalleError.value = ''
     balonParaAgregar.value = ''

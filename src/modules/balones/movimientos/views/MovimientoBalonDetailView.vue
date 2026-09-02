@@ -103,7 +103,6 @@ const fichaSnapshot = computed(() => {
   if (!data) return null
   return {
     nombre_estado_balon: data.nombre_estado_balon,
-    nombre_estado_contenido: data.nombre_estado_contenido,
     nombre_almacen_ubicacion: data.nombre_almacen_ubicacion,
     nombre_cliente_ubicacion: data.nombre_cliente_ubicacion,
   }

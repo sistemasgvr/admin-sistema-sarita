@@ -123,7 +123,12 @@ export const PermisoBanderas = {
   MOVIMIENTOS_CREAR: 'movimientos.crear',
   MOVIMIENTOS_EDITAR: 'movimientos.editar',
   MOVIMIENTOS_ELIMINAR: 'movimientos.eliminar',
-  
+
+  INVENTARIO_MOVIMIENTOS_LISTAR: 'inventario_movimientos.listar',
+  INVENTARIO_MOVIMIENTOS_VER: 'inventario_movimientos.ver',
+  INVENTARIO_MOVIMIENTOS_CREAR: 'inventario_movimientos.crear',
+  INVENTARIO_MOVIMIENTOS_ELIMINAR: 'inventario_movimientos.eliminar',
+
   DIRECCIONES_LISTAR: 'direcciones.listar',
   DIRECCIONES_VER: 'direcciones.ver',
   DIRECCIONES_CREAR: 'direcciones.crear',

@@ -217,7 +217,6 @@
             mode="alquiler"
             :id-almacen="idAlmacen"
             :extra-filters="extraFiltersProductoGas"
-            :client-filter="filtroBalonConGas"
             label="Cilindro de la empresa"
             placeholder="Buscar en almacén"
             empty-text="No hay cilindros con gas de este producto en el almacén."
@@ -275,7 +274,6 @@
             mode="alquiler"
             :id-almacen="idAlmacen"
             :extra-filters="extraFiltersProductoGas"
-            :client-filter="filtroBalonConGas"
             label="Cilindro a vender"
             placeholder="Buscar en almacén"
             empty-text="No hay cilindros con gas de este producto en el almacén."
@@ -554,9 +552,6 @@ import { formatOrigenRecargaLabel } from '@/modules/balones/recargas/utils/forma
 import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
-import {
-  balonTieneGasDisponible,
-} from '@/modules/ventas/comprobantes/composables/usePosBalonSelect'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import {
@@ -662,12 +657,6 @@ const extraFiltersProductoGas = computed(() =>
   producto.value?.id ? { idProductoGas: producto.value.id } : undefined,
 )
 
-/** Solo cilindros con gas útil (misma regla que el badge de stock). */
-const filtroBalonConGas = (balon: {
-  nombre_estado_contenido?: string | null
-  capacidad_restante?: number | null
-  capacidad?: number | null
-}) => balonTieneGasDisponible(balon)
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
 const categorias = ref<CategoriaProducto[]>([])

@@ -1,0 +1,293 @@
+<template>
+  <AppModal v-model="isOpen" title="Registrar movimiento de inventario" size="md">
+    <form class="space-y-4" @submit.prevent="onSubmit">
+      <AppSelect
+        v-model="form.naturaleza"
+        label="Naturaleza"
+        :options="naturalezaOptions"
+        placeholder="Seleccionar"
+        required
+        :error="errors.naturaleza"
+      />
+
+      <AppSelect
+        v-model="form.codigoTipoMovimiento"
+        label="Tipo de movimiento"
+        :options="tipoMovimientoOptions"
+        placeholder="Seleccionar"
+        required
+        :disabled="!form.naturaleza"
+        :error="errors.codigoTipoMovimiento"
+      />
+
+      <AppDatePicker
+        v-model="form.fecha"
+        label="Fecha"
+        placeholder="dd/mm/aaaa"
+      />
+
+      <div v-if="form.naturaleza === 'PRODUCTO'" class="space-y-4">
+        <AppSelectSearch
+          v-model="form.idProducto"
+          label="Producto"
+          :options="productosOptions"
+          placeholder="Buscar producto..."
+          :disabled="productosQuery.isLoading.value"
+          :searchable="true"
+          :error="errors.idProducto"
+        />
+      </div>
+
+      <div v-if="form.naturaleza === 'BALON'" class="space-y-4">
+        <AppSelectSearch
+          v-model="form.idBalon"
+          label="Balón"
+          :options="balonesOptions"
+          placeholder="Buscar balón..."
+          :disabled="balonesQuery.isLoading.value"
+          :searchable="true"
+          :error="errors.idBalon"
+        />
+      </div>
+
+      <AppInput
+        v-model="form.cantidad"
+        label="Cantidad"
+        type="number"
+        :min="1"
+        required
+        :error="errors.cantidad"
+      />
+
+      <div v-if="isAjuste" class="space-y-4">
+        <AppSelect
+          v-model="form.sentidoAjuste"
+          label="Sentido del ajuste"
+          :options="sentidoAjusteOptions"
+          placeholder="Seleccionar"
+          required
+        />
+      </div>
+
+      <div v-if="form.naturaleza === 'PRODUCTO'" class="space-y-4">
+        <AppSelect
+          v-model="form.idAlmacenOrigen"
+          label="Almacén origen"
+          :options="almacenesOptions"
+          placeholder="Seleccionar"
+          :disabled="almacenesQuery.isLoading.value"
+        />
+      </div>
+
+      <div v-if="form.naturaleza === 'BALON'" class="space-y-4">
+        <AppSelect
+          v-model="form.idAlmacenDestino"
+          label="Almacén destino"
+          :options="almacenesOptions"
+          placeholder="Seleccionar"
+          :disabled="almacenesQuery.isLoading.value"
+        />
+      </div>
+
+      <AppTextarea
+        v-model="form.glosa"
+        label="Glosa"
+        placeholder="Descripción del movimiento..."
+        :rows="2"
+      />
+    </form>
+
+    <template #footer>
+      <button
+        type="button"
+        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
+        :disabled="mutation.isPending.value"
+        @click="isOpen = false"
+      >
+        Cancelar
+      </button>
+      <button
+        type="button"
+        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        :disabled="mutation.isPending.value || !isFormValid"
+        @click="onSubmit"
+      >
+        {{ mutation.isPending.value ? 'Registrando...' : 'Registrar movimiento' }}
+      </button>
+    </template>
+  </AppModal>
+</template>
+
+<script setup lang="ts">
+import { computed, reactive, ref, watch } from 'vue'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import {
+  AppDatePicker,
+  AppInput,
+  AppModal,
+  AppSelect,
+  AppTextarea,
+} from '@/shared/components'
+import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
+import { useCreateInventarioMovimientoMutation } from '../composables/useInventarioMovimientoMutations'
+import type { CreateInventarioMovimientoPayload } from '../interfaces/inventario-movimiento.interface'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+
+const isOpen = defineModel<boolean>({ default: false })
+
+const authStore = useAuthStore()
+const mutation = useCreateInventarioMovimientoMutation()
+
+const naturalezaOptions = [
+  { value: 'PRODUCTO', label: 'Producto' },
+  { value: 'BALON', label: 'Balón' },
+]
+
+const tipoMovimientoProductoOptions = [
+  { value: 'AJUSTE', label: 'Ajuste' },
+]
+
+const tipoMovimientoBalonOptions = [
+  { value: 'ENTRADA_DEVOLUCION', label: 'Entrada por devolución' },
+  { value: 'SALIDA_MANTENIMIENTO', label: 'Salida por mantenimiento' },
+]
+
+const sentidoAjusteOptions = [
+  { value: 'MAS', label: 'Sumar (+)' },
+  { value: 'MENOS', label: 'Restar (-)' },
+]
+
+const form = reactive<Omit<CreateInventarioMovimientoPayload, 'idUsuarioAuditoria'>>({
+  naturaleza: '' as CreateInventarioMovimientoPayload['naturaleza'],
+  codigoTipoMovimiento: '',
+  fecha: new Date().toISOString().split('T')[0],
+  idProducto: undefined,
+  idBalon: undefined,
+  cantidad: 1,
+  idAlmacenOrigen: undefined,
+  idAlmacenDestino: undefined,
+  glosa: '',
+  sentidoAjuste: undefined,
+})
+
+const errors = reactive<Record<string, string>>({})
+
+const productosFilters = ref({ pagina: 1, limite: 100 })
+const productosQuery = useProductosQuery(productosFilters)
+const productosOptions = computed(() =>
+  (productosQuery.data.value?.data ?? []).map((p) => ({
+    value: p.id,
+    label: p.nombre,
+  })),
+)
+
+const balonesFilters = ref({ pagina: 1, limite: 100 })
+const balonesQuery = useBalonesQuery(balonesFilters)
+const balonesOptions = computed(() =>
+  (balonesQuery.data.value?.data ?? []).map((b) => ({
+    value: b.id,
+    label: `${b.numero_serie} - ${b.nombre_tipo_balon ?? ''}`,
+  })),
+)
+
+const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+const almacenesOptions = computed(() =>
+  (almacenesQuery.data.value?.data ?? []).map((a) => ({
+    value: a.id,
+    label: a.nombre,
+  })),
+)
+
+const tipoMovimientoOptions = computed(() =>
+  form.naturaleza === 'BALON' ? tipoMovimientoBalonOptions : tipoMovimientoProductoOptions,
+)
+
+const isAjuste = computed(() => form.codigoTipoMovimiento === 'AJUSTE')
+
+const isFormValid = computed(() => {
+  if (!form.naturaleza || !form.codigoTipoMovimiento || form.cantidad <= 0) return false
+  if (form.naturaleza === 'PRODUCTO' && !form.idProducto) return false
+  if (form.naturaleza === 'BALON' && !form.idBalon) return false
+  return true
+})
+
+function validate(): boolean {
+  Object.keys(errors).forEach((k) => delete errors[k])
+  let valid = true
+
+  if (!form.naturaleza) {
+    errors.naturaleza = 'Requerido'
+    valid = false
+  }
+  if (!form.codigoTipoMovimiento) {
+    errors.codigoTipoMovimiento = 'Requerido'
+    valid = false
+  }
+  if (!form.cantidad || form.cantidad <= 0) {
+    errors.cantidad = 'Debe ser mayor a 0'
+    valid = false
+  }
+  if (form.naturaleza === 'PRODUCTO' && !form.idProducto) {
+    errors.idProducto = 'Seleccione un producto'
+    valid = false
+  }
+  if (form.naturaleza === 'BALON' && !form.idBalon) {
+    errors.idBalon = 'Seleccione un balón'
+    valid = false
+  }
+
+  return valid
+}
+
+function onSubmit() {
+  if (!validate()) return
+
+  const payload: CreateInventarioMovimientoPayload = {
+    naturaleza: form.naturaleza,
+    codigoTipoMovimiento: form.codigoTipoMovimiento,
+    fecha: form.fecha,
+    cantidad: form.cantidad,
+    idUsuarioAuditoria: authStore.user?.id ?? 0,
+    ...(form.naturaleza === 'PRODUCTO' ? { idProducto: form.idProducto } : {}),
+    ...(form.naturaleza === 'BALON' ? { idBalon: form.idBalon } : {}),
+    ...(form.idAlmacenOrigen ? { idAlmacenOrigen: form.idAlmacenOrigen } : {}),
+    ...(form.idAlmacenDestino ? { idAlmacenDestino: form.idAlmacenDestino } : {}),
+    ...(isAjuste.value && form.sentidoAjuste ? { sentidoAjuste: form.sentidoAjuste } : {}),
+    ...(form.glosa ? { glosa: form.glosa } : {}),
+  }
+
+  mutation.mutate(payload, {
+    onSuccess: () => {
+      isOpen.value = false
+      resetForm()
+    },
+  })
+}
+
+function resetForm() {
+  form.naturaleza = '' as CreateInventarioMovimientoPayload['naturaleza']
+  form.codigoTipoMovimiento = ''
+  form.fecha = new Date().toISOString().split('T')[0]
+  form.idProducto = undefined
+  form.idBalon = undefined
+  form.cantidad = 1
+  form.idAlmacenOrigen = undefined
+  form.idAlmacenDestino = undefined
+  form.glosa = ''
+  form.sentidoAjuste = undefined
+  Object.keys(errors).forEach((k) => delete errors[k])
+}
+
+watch(isOpen, (open) => {
+  if (!open) resetForm()
+})
+
+watch(() => form.naturaleza, () => {
+  form.codigoTipoMovimiento = ''
+  form.idProducto = undefined
+  form.idBalon = undefined
+})
+</script>

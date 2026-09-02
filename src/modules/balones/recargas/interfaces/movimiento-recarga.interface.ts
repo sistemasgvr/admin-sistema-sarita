@@ -51,7 +51,6 @@ export interface BalonOrigenRecarga {
   nombre_tipo_balon?: string | null
   capacidad_tipo?: number | null
   capacidad_disponible: number
-  capacidad_restante?: number | null
   fecha_creacion?: string | null
 }
 

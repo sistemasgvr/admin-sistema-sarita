@@ -43,7 +43,6 @@
       <div class="flex flex-wrap items-center gap-1.5">
         <ListaOpcionBadge v-if="tipoMovimiento" :value="tipoMovimiento" />
         <BalonEstadoBadge v-if="fichaParaBadges" :balon="fichaParaBadges" />
-        <BalonContenidoBadge v-if="fichaParaBadges" :balon="fichaParaBadges" />
       </div>
     </div>
   </div>
@@ -52,14 +51,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Balon } from '@/modules/balones/cilindros/interfaces/balon.interface'
-import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import { ListaOpcionBadge } from '@/shared/components'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 export interface BalonFichaSnapshot {
   nombre_estado_balon?: string | null
-  nombre_estado_contenido?: string | null
   nombre_almacen_ubicacion?: string | null
   nombre_cliente_ubicacion?: string | null
 }
@@ -83,7 +80,6 @@ const fichaParaBadges = computed(() => {
   if (snap) {
     return {
       nombre_estado_balon: snap.nombre_estado_balon,
-      nombre_estado_contenido: snap.nombre_estado_contenido,
       tiene_solicitud_baja_pendiente: false,
     }
   }

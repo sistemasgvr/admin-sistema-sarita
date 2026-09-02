@@ -199,15 +199,10 @@ function sugerirLbDesdeBalon(balon: Balon): {
 } {
   const tipoLb = Number(balon.capacidad_lb)
   const max = Number.isFinite(tipoLb) && tipoLb > 0 ? tipoLb : null
-  const residual = Number(balon.capacidad_restante_lb)
-
   let lb: number | null = null
   let origen: Linea['sugerenciaOrigen'] = null
 
-  if (Number.isFinite(residual) && residual > 0) {
-    lb = residual
-    origen = 'residual'
-  } else if (max != null) {
+  if (max != null) {
     lb = max
     origen = 'tipo'
   }

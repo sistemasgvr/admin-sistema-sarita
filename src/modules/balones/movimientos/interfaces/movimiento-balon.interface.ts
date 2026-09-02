@@ -23,8 +23,6 @@ export interface MovimientoBalon {
   observacion?: string | null
   id_estado_balon?: number | null
   nombre_estado_balon?: string | null
-  id_estado_contenido?: number | null
-  nombre_estado_contenido?: string | null
   id_almacen_ubicacion?: number | null
   nombre_almacen_ubicacion?: string | null
   id_cliente_ubicacion?: number | null

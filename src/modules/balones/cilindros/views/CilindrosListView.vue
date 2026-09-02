@@ -175,7 +175,6 @@
       <template #cell-estado_contenido="{ row }">
         <div class="flex flex-col gap-1">
           <BalonEstadoBadge :balon="row" />
-          <BalonContenidoBadge :balon="row" />
           <span
             v-if="esNoDisponible(row)"
             class="inline-flex w-fit items-center gap-1 rounded-full bg-error-50 px-2 py-0.5 text-[11px] font-medium text-error-700 dark:bg-error-500/10 dark:text-error-400"
@@ -385,7 +384,6 @@ import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
-import BalonContenidoBadge from '@/modules/balones/components/BalonContenidoBadge.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import { balonesPropietarioService } from '@/modules/balones/propietario/services/balones-propietario.service'
 import type {
@@ -520,11 +518,9 @@ const activeFilterChips = computed(() => {
 })
 
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
-const listaEstadoContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
-const estadoContenidoQuery = useListaOpcionesQuery(listaEstadoContenidoId)
 const marcaQuery = useListaOpcionesQuery(listaMarcaId)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
 
@@ -707,14 +703,6 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     options: toSelectOptions(estadoBalonQuery.data.value),
   },
   {
-    key: 'idEstadoContenido',
-    label: 'Contenido',
-    type: 'select',
-    placeholder: 'Lleno / vacío...',
-    disabled: estadoContenidoQuery.isLoading.value,
-    options: toSelectOptions(estadoContenidoQuery.data.value),
-  },
-  {
     key: 'idPropietario',
     label: 'Propietario',
     type: 'select',
@@ -748,7 +736,7 @@ const columns = computed<TableColumn<Balon>[]>(() => [
   { key: 'tipo_gas', label: 'Tipo / Gas' },
   { key: 'capacidad_marca', label: 'Capacidad / Marca', cellClass: 'whitespace-nowrap' },
   { key: 'propiedad', label: 'Propiedad' },
-  { key: 'estado_contenido', label: 'Estado / Contenido', cellClass: 'whitespace-nowrap' },
+  { key: 'estado_contenido', label: 'Estado', cellClass: 'whitespace-nowrap' },
   { key: 'nombre_almacen', label: 'Almacén', cellClass: 'w-16 text-center' },
   {
     key: 'fecha_proxima_prueba_hidrostatica',
@@ -778,8 +766,6 @@ const syncFilters = () => {
     idPlanta: active.idPlanta != null ? Number(active.idPlanta) : undefined,
     tipoValvula,
     idEstadoBalon: active.idEstadoBalon != null ? Number(active.idEstadoBalon) : undefined,
-    idEstadoContenido:
-      active.idEstadoContenido != null ? Number(active.idEstadoContenido) : undefined,
     idPropietario: active.idPropietario != null ? Number(active.idPropietario) : undefined,
     idProductoGas: idProductoGasFiltro.value ?? undefined,
     soloLlenosFuera: soloLlenosFueraFiltro.value ? true : undefined,

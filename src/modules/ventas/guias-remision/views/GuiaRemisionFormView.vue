@@ -979,14 +979,9 @@ const breadcrumbItems = computed(() => [
 ])
 
 const propietarioListaId = ref(ListaIds.PROPIETARIO_BALON)
-const contenidoListaId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const propietarioQuery = useListaOpcionesQuery(propietarioListaId)
-const contenidoQuery = useListaOpcionesQuery(contenidoListaId)
 const idPropietarioEmpresa = computed(
   () => propietarioQuery.data.value?.find((op) => op.nombre === 'EMPRESA')?.id,
-)
-const idContenidoVacio = computed(
-  () => contenidoQuery.data.value?.find((op) => op.nombre === 'VACIO')?.id,
 )
 
 const guiaQuery = useGuiaRemisionQuery(guiaId)
@@ -2491,7 +2486,6 @@ function searchBalonesForLine(index: number) {
       ...(origenRecargaPlanta.value
         ? {
             idPropietario: idPropietarioEmpresa.value,
-            idEstadoContenido: idContenidoVacio.value,
           }
         : {}),
     })

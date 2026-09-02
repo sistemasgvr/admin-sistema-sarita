@@ -67,12 +67,6 @@ const detalleColumns: ExcelColumn<BalonPropietarioItem>[] = [
     value: (row) => row.nombre_estado_balon,
   },
   {
-    key: 'contenido',
-    header: 'Contenido',
-    width: 12,
-    value: (row) => row.nombre_estado_contenido,
-  },
-  {
     key: 'almacen',
     header: 'Almacén',
     width: 24,

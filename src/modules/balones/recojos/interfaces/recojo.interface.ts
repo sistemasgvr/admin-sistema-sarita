@@ -38,7 +38,6 @@ export interface RecojoDetalle {
   fecha_devolucion?: string | null
   id_resultado?: number | null
   nombre_resultado?: string | null
-  id_estado_contenido?: number | null
   nombre_estado_contenido?: string | null
   cantidad_restante?: number | string | null
   nueva_fecha_retorno?: string | null

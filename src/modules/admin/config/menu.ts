@@ -8,6 +8,7 @@ import { finanzasMenuSubItems } from '@/modules/finanzas/config/finanzas-menu'
 import { configuracionMenuSubItems } from '@/modules/configuracion/config/configuracion-menu'
 import { gestionEmpresaMenuSubItems } from '@/modules/documentos-vencimiento/config/documentos-vencimiento-menu'
 import { comprasMenuSubItems } from '@/modules/compras/config/compras-menu'
+import { inventarioMenuSubItems } from '@/modules/inventario/config/inventario-menu'
 
 export interface AdminMenuSubItem {
   name: string
@@ -95,7 +96,7 @@ export const adminMenuGroups: AdminMenuGroup[] = [
         name: 'Almacenes',
         path: '/admin/productos',
         permission: PermisoBanderas.PRODUCTOS_HUB_VER,
-        subItems: productosMenuSubItems,
+        subItems: [...productosMenuSubItems, ...inventarioMenuSubItems],
       },
     ],
   },

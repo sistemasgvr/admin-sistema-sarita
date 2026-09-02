@@ -40,7 +40,6 @@ export interface GuiaRemisionDetalle {
   capacidad?: number | null
   capacidad_tipo_balon?: number | null
   nombre_estado_balon?: string | null
-  nombre_estado_contenido?: string | null
   glosa?: string | null
 }
 

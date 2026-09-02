@@ -10,10 +10,6 @@ import { getBalonEstadoBadge } from '@/modules/balones/utils/balonEstadoBadge'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption, SelectOptionBadge } from '@/shared/interfaces/form.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
-import {
-  listaOpcionBadgeColor,
-  normalizeListaOpcionCode,
-} from '@/shared/utils/listaOpcionBadge'
 
 export type PosBalonSelectMode = 'cliente' | 'alquiler' | 'general'
 
@@ -23,27 +19,12 @@ export function esPropietarioEmpresaStock(nombre?: string | null): boolean {
   return n === 'EMPRESA' || n === 'PROPIA'
 }
 
-/** Cilindro con gas útil para entregar / descontar (alineado a stock de gas). */
-export function balonTieneGasDisponible(balon: {
-  nombre_estado_contenido?: string | null
-  capacidad_restante?: number | null
-  capacidad?: number | null
-}): boolean {
-  const contenido = (balon.nombre_estado_contenido ?? '').trim().toUpperCase()
-  if (contenido === 'VACIO') return false
-  if (contenido === 'LLENO') {
-    const cap = Number(balon.capacidad_restante ?? balon.capacidad ?? 0)
-    return Number.isFinite(cap) ? cap > 0 || balon.capacidad_restante == null : true
-  }
-  // Parcial / desconocido: solo si hay residual medido
-  return Number(balon.capacidad_restante ?? 0) > 0
-}
-
+// El gas ya no se rastrea por balón (es stock de producto por almacén); la
+// disponibilidad real la valida el backend al confirmar la recarga, no el select.
 export function formatBalonLabel(balon: {
   codigo_balon: string
   nombre_tipo_balon?: string | null
   nombre_estado_balon?: string | null
-  nombre_estado_contenido?: string | null
   nombre_producto_gas?: string | null
   nombre_almacen?: string | null
   capacidad?: number | null
@@ -65,10 +46,6 @@ export function formatBalonLabel(balon: {
   if (balon.capacidad != null) {
     const um = balon.nombre_unidad_medida ? ` ${balon.nombre_unidad_medida}` : ''
     parts.push(`${balon.capacidad}${um}`)
-  }
-
-  if (balon.nombre_estado_contenido) {
-    parts.push(formatListaOpcionLabel(balon.nombre_estado_contenido))
   }
 
   if (balon.nombre_almacen) {
@@ -104,14 +81,6 @@ export function balonToSelectOption(balon: Balon): SelectOption {
   if (balon.capacidad != null) {
     const um = balon.nombre_unidad_medida ? ` ${balon.nombre_unidad_medida}` : ''
     badges.push({ label: `${balon.capacidad}${um}`, color: 'neutral' })
-  }
-
-  const contenidoCode = normalizeListaOpcionCode(balon.nombre_estado_contenido)
-  if (contenidoCode) {
-    badges.push({
-      label: formatListaOpcionLabel(balon.nombre_estado_contenido),
-      color: listaOpcionBadgeColor(contenidoCode),
-    })
   }
 
   const estadoBadge = getBalonEstadoBadge(balon)

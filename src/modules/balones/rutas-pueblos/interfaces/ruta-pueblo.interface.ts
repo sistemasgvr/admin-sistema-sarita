@@ -13,7 +13,6 @@ export interface RutaPuebloDetalle {
   lb_salida: number | string
   lb_retorno?: number | string | null
   m3_delta?: number | string | null
-  capacidad_restante_m3?: number | string | null
   observacion?: string | null
 }
 

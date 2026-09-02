@@ -150,25 +150,6 @@
             </AppSelectWithCreate>
             <AppSelectWithCreate
               :can-create="canCreateListaOpcion"
-              create-title="Nuevo contenido"
-              :disabled="isSubmitting || estadoContenidoQuery.isLoading.value"
-              @create="contenidoModalOpen = true"
-            >
-              <AppSelect
-                v-model="idEstadoContenido"
-                label="Contenido"
-                optional
-                :placeholder="
-                  estadoContenidoQuery.isLoading.value ? 'Cargando...' : 'Lleno / vacío...'
-                "
-                :options="estadoContenidoOptions"
-                :disabled="isSubmitting || estadoContenidoQuery.isLoading.value"
-                v-bind="idEstadoContenidoAttrs"
-                :error="errors.idEstadoContenido"
-              />
-            </AppSelectWithCreate>
-            <AppSelectWithCreate
-              :can-create="canCreateListaOpcion"
               create-title="Nueva referencia"
               :disabled="isSubmitting || referenciaQuery.isLoading.value"
               @create="referenciaModalOpen = true"
@@ -394,14 +375,6 @@
       @saved="onEstadoBalonCreated"
     />
     <ListaOpcionFormModal
-      v-model="contenidoModalOpen"
-      :id-lista="ListaIds.ESTADO_CONTENIDO_BALON"
-      title="Nuevo contenido"
-      subtitle="Ej. Lleno, vacío u otro estado de contenido."
-      nombre-placeholder="Ej. VACIO"
-      @saved="onContenidoCreated"
-    />
-    <ListaOpcionFormModal
       v-model="referenciaModalOpen"
       :id-lista="ListaIds.REFERENCIA_CILINDRO"
       title="Nueva referencia"
@@ -496,7 +469,6 @@ const canCreateListaOpcion = computed(() =>
 
 const marcaModalOpen = ref(false)
 const estadoBalonModalOpen = ref(false)
-const contenidoModalOpen = ref(false)
 const referenciaModalOpen = ref(false)
 const organoModalOpen = ref(false)
 
@@ -512,14 +484,12 @@ const tiposBalonQuery = useTiposBalonQuery(tiposBalonFilters)
 const createdTipoBalon = ref<TipoBalon | null>(null)
 
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
-const listaEstadoContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const listaReferenciaId = ref(ListaIds.REFERENCIA_CILINDRO)
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
 const listaMarcaId = ref(ListaIds.MARCA_CILINDRO)
 const listaOrganoInspectorId = ref(ListaIds.ORGANO_INSPECTOR_CILINDRO)
 
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
-const estadoContenidoQuery = useListaOpcionesQuery(listaEstadoContenidoId)
 const referenciaQuery = useListaOpcionesQuery(listaReferenciaId)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
 const marcaQuery = useListaOpcionesQuery(listaMarcaId)
@@ -530,7 +500,6 @@ const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
 const estadoBalonOptions = computed(() => toSelectOptions(estadoBalonQuery.data.value))
-const estadoContenidoOptions = computed(() => toSelectOptions(estadoContenidoQuery.data.value))
 const referenciaOptions = computed(() => toSelectOptions(referenciaQuery.data.value))
 const propietarioOptions = computed(() => {
   const visibles = (propietarioQuery.data.value ?? []).filter((opcion) => {
@@ -617,7 +586,6 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       idTipoBalon: requiredSelect('El tipo de balón'),
       idProductoGas: requiredSelect('El gas'),
       idEstadoBalon: optionalNumber(),
-      idEstadoContenido: optionalNumber(),
       idOrganoInspector: optionalNumber(),
       organoInspectorNoAplica: yup.boolean().optional(),
       mesFabricacion: optionalNumber(),
@@ -646,7 +614,6 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     idTipoBalon: undefined as number | undefined,
     idProductoGas: undefined as number | undefined,
     idEstadoBalon: undefined as number | undefined,
-    idEstadoContenido: undefined as number | undefined,
     idOrganoInspector: undefined as number | undefined,
     organoInspectorNoAplica: true,
     mesFabricacion: undefined as number | undefined,
@@ -675,7 +642,6 @@ const [idMarcaCilindro, idMarcaCilindroAttrs] = defineField('idMarcaCilindro')
 const [idTipoBalon, idTipoBalonAttrs] = defineField('idTipoBalon')
 const [idProductoGas, idProductoGasAttrs] = defineField('idProductoGas')
 const [idEstadoBalon, idEstadoBalonAttrs] = defineField('idEstadoBalon')
-const [idEstadoContenido, idEstadoContenidoAttrs] = defineField('idEstadoContenido')
 const [idOrganoInspector, idOrganoInspectorAttrs] = defineField('idOrganoInspector')
 const [organoInspectorNoAplica] = defineField('organoInspectorNoAplica')
 const [mesFabricacion, mesFabricacionAttrs] = defineField('mesFabricacion')
@@ -708,10 +674,6 @@ function onMarcaCreated(opcion: ListaOpcion) {
 
 function onEstadoBalonCreated(opcion: ListaOpcion) {
   idEstadoBalon.value = opcion.id
-}
-
-function onContenidoCreated(opcion: ListaOpcion) {
-  idEstadoContenido.value = opcion.id
 }
 
 function onReferenciaCreated(opcion: ListaOpcion) {
@@ -843,7 +805,6 @@ const buildPayload = (
     idTipoBalon: number | string
     idProductoGas: number | string
     idEstadoBalon?: number
-    idEstadoContenido?: number
     idOrganoInspector?: number
     organoInspectorNoAplica?: boolean
     mesFabricacion?: number
@@ -884,7 +845,6 @@ const buildPayload = (
     idTipoBalon: Number(values.idTipoBalon),
     idProductoGas: Number(values.idProductoGas),
     idEstadoBalon: values.idEstadoBalon,
-    idEstadoContenido: values.idEstadoContenido,
     idOrganoInspector: values.organoInspectorNoAplica ? undefined : values.idOrganoInspector,
     organoInspectorNoAplica: values.organoInspectorNoAplica ?? false,
     fechaFabricacion: toFirstOfMonthIso(mes, anio),
@@ -923,7 +883,6 @@ const syncFormValues = () => {
       idTipoBalon: data?.id_tipo_balon ?? undefined,
       idProductoGas: data?.id_producto_gas ?? undefined,
       idEstadoBalon: data?.id_estado_balon ?? undefined,
-      idEstadoContenido: data?.id_estado_contenido ?? undefined,
       idOrganoInspector: data?.id_organo_inspector ?? undefined,
       organoInspectorNoAplica:
         data?.organo_inspector_no_aplica ?? !data?.id_organo_inspector,
@@ -970,9 +929,6 @@ function aplicarDefaultsCreacion() {
     idEstadoBalon.value =
       props.preset?.idEstadoBalon ?? idOpcionLista(estadoBalonQuery.data.value, 'EN_ALMACEN')
   }
-  if (!idEstadoContenido.value) {
-    idEstadoContenido.value = idOpcionLista(estadoContenidoQuery.data.value, 'VACIO')
-  }
   if (!idMarcaCilindro.value) {
     idMarcaCilindro.value = idOpcionLista(marcaQuery.data.value, 'BTIC-JP')
   }
@@ -1006,7 +962,6 @@ const applyCreateForm = () => {
       idTipoBalon: undefined,
       idProductoGas: undefined,
       idEstadoBalon: props.preset?.idEstadoBalon,
-      idEstadoContenido: undefined,
       idOrganoInspector: undefined,
       organoInspectorNoAplica: true,
       mesFabricacion: undefined,
@@ -1086,7 +1041,6 @@ watch(
   [
     () => propietarioQuery.data.value,
     () => estadoBalonQuery.data.value,
-    () => estadoContenidoQuery.data.value,
     () => marcaQuery.data.value,
     () => referenciaQuery.data.value,
     () => almacenesQuery.data.value,

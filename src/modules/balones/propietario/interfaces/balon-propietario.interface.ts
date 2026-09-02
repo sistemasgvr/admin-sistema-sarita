@@ -19,8 +19,6 @@ export interface BalonPropietarioItem {
   nombre_producto_gas?: string | null
   id_estado_balon?: number | null
   nombre_estado_balon?: string | null
-  id_estado_contenido?: number | null
-  nombre_estado_contenido?: string | null
   id_almacen?: number | null
   nombre_almacen?: string | null
   fecha_proxima_prueba_hidrostatica?: string | null

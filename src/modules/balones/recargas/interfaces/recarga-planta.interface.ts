@@ -15,7 +15,6 @@ export interface RecargaPlantaDetalle {
   id_movimiento_recarga?: number | null
   observacion?: string | null
   nombre_estado_balon?: string | null
-  nombre_estado_contenido?: string | null
 }
 
 export interface RecargaPlanta {

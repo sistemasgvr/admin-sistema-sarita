@@ -317,28 +317,22 @@ const isLoadingRecarga = computed(
 const recargaDetalle = computed(() => recargaQuery.data.value ?? null)
 
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
-const listaContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
-const contenidoQuery = useListaOpcionesQuery(listaContenidoId)
 
 const idPropietarioEmpresa = computed(
   () => propietarioQuery.data.value?.find((op) => op.nombre === 'EMPRESA')?.id,
-)
-const idContenidoVacio = computed(
-  () => contenidoQuery.data.value?.find((op) => op.nombre === 'VACIO')?.id,
 )
 
 const balonesFilters = ref<BalonListFilters>({ pagina: 1, limite: 200 })
 
 watch(
-  [idPropietarioEmpresa, idContenidoVacio],
-  ([propietario, vacio]) => {
+  idPropietarioEmpresa,
+  (propietario) => {
     balonesFilters.value = {
       ...balonesFilters.value,
       pagina: 1,
       limite: 200,
       idPropietario: propietario,
-      idEstadoContenido: vacio,
       soloBajas: false,
     }
   },

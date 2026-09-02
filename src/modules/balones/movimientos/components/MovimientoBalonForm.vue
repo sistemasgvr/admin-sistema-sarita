@@ -277,7 +277,6 @@ const fichaSnapshot = computed(() => {
   if (!data) return null
   return {
     nombre_estado_balon: data.nombre_estado_balon,
-    nombre_estado_contenido: data.nombre_estado_contenido,
     nombre_almacen_ubicacion: data.nombre_almacen_ubicacion,
     nombre_cliente_ubicacion: data.nombre_cliente_ubicacion,
   }
@@ -286,13 +285,11 @@ const fichaSnapshot = computed(() => {
 const listaTipoMovId = ref(ListaIds.TIPO_MOV_BALON)
 const listaTipoDocId = ref(ListaIds.TIPO_DOCUMENTO_REF)
 const listaEstadoBalonId = ref(ListaIds.ESTADO_BALON)
-const listaContenidoId = ref(ListaIds.ESTADO_CONTENIDO_BALON)
 const listaPropietarioId = ref(ListaIds.PROPIETARIO_BALON)
 
 const tiposMovimientoQuery = useListaOpcionesQuery(listaTipoMovId)
 const tiposDocumentoQuery = useListaOpcionesQuery(listaTipoDocId)
 const estadoBalonQuery = useListaOpcionesQuery(listaEstadoBalonId)
-const contenidoQuery = useListaOpcionesQuery(listaContenidoId)
 const propietarioQuery = useListaOpcionesQuery(listaPropietarioId)
 
 const tipoMovimientoOptions = computed(() => toSelectOptions(tiposMovimientoQuery.data.value))
@@ -392,11 +389,6 @@ const balonExtraFilters = computed<Partial<BalonListFilters> | undefined>(() => 
     if (id) filters.idEstadoBalon = id
   }
 
-  if (rule.contenidos?.length === 1) {
-    const id = resolveListaId(contenidoQuery.data.value, rule.contenidos[0])
-    if (id) filters.idEstadoContenido = id
-  }
-
   if (rule.soloEmpresa) {
     const id = resolveListaId(propietarioQuery.data.value, 'EMPRESA')
     if (id) filters.idPropietario = id
@@ -419,21 +411,13 @@ const balonClientFilter = computed(() => {
     rule.estadosBalon.length > 1
       ? new Set(rule.estadosBalon.map((item) => item.toUpperCase()))
       : null
-  const contenidos =
-    rule.contenidos && rule.contenidos.length > 1
-      ? new Set(rule.contenidos.map((item) => item.toUpperCase()))
-      : null
 
-  if (!estados && !contenidos) return undefined
+  if (!estados) return undefined
 
   return (balon: Balon) => {
     if (estados) {
       const code = normalizeListaOpcionCode(balon.nombre_estado_balon)
       if (!code || !estados.has(code)) return false
-    }
-    if (contenidos) {
-      const code = normalizeListaOpcionCode(balon.nombre_estado_contenido)
-      if (!code || !contenidos.has(code)) return false
     }
     return true
   }

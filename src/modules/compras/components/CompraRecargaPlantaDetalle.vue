@@ -98,7 +98,6 @@
               <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Producto</th>
               <th class="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">Capacidad</th>
               <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Custodia</th>
-              <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Contenido</th>
               <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Lote / P.H.</th>
             </tr>
           </thead>
@@ -128,9 +127,6 @@
               </td>
               <td class="px-3 py-2">
                 <BalonEstadoBadge :balon="balon" />
-              </td>
-              <td class="px-3 py-2 text-gray-600 dark:text-gray-400">
-                {{ etiquetaContenido(balon.nombre_estado_contenido) }}
               </td>
               <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
                 <p>{{ loteDe(balon) || '—' }}</p>
@@ -213,11 +209,6 @@ function formatCapacidad(balon: RecargaPlantaDetalle) {
   if (balon.capacidad == null || !Number.isFinite(Number(balon.capacidad))) return '—'
   const um = balon.nombre_unidad_medida ? ` ${balon.nombre_unidad_medida}` : ''
   return `${balon.capacidad}${um}`
-}
-
-function etiquetaContenido(nombre?: string | null) {
-  if (!nombre) return '—'
-  return nombre.replace(/_/g, ' ')
 }
 
 function loteDe(balon: RecargaPlantaDetalle) {

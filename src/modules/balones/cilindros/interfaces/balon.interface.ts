@@ -109,8 +109,6 @@ export interface Balon {
   nombre_producto_gas?: string | null
   id_estado_balon?: number | null
   nombre_estado_balon?: string | null
-  id_estado_contenido?: number | null
-  nombre_estado_contenido?: string | null
   fecha_ultima_prueba_hidrostatica?: string | null
   vigencia_prueba_hidrostatica_anios?: number | null
   fecha_proxima_prueba_hidrostatica?: string | null
@@ -120,8 +118,6 @@ export interface Balon {
   mes_fabricacion?: number | null
   numero_recepcion?: string | null
   presion_actual?: number | null
-  capacidad_restante?: number | null
-  capacidad_restante_lb?: number | null
   observacion?: string | null
   tiene_solicitud_baja_pendiente?: boolean
   tiene_baja_aprobada?: boolean
@@ -142,7 +138,6 @@ export interface BalonListFilters {
   idTipoBalon?: number
   idAlmacen?: number
   idEstadoBalon?: number
-  idEstadoContenido?: number
   idClienteUbicacion?: number
   /** Prestado (ubicación) o propio del cliente (propietario). */
   idClienteRelacionado?: number
@@ -178,7 +173,6 @@ export interface BalonPayload {
   idClientePropietario?: number
   idReferencia?: number
   idEstadoBalon?: number
-  idEstadoContenido?: number
   fechaUltimaPruebaHidrostatica?: string
   vigenciaPruebaHidrostaticaAnios?: number
   fechaProximaPruebaHidrostatica?: string
