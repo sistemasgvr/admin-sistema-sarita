@@ -28,8 +28,7 @@ export const productosMenuItems: ProductosMenuItem[] = [
     key: 'stock',
     title: 'Stock',
     path: '/admin/productos/stock',
-    // Ajuste / traslado viven bajo movimientos pero se operan desde Stock.
-    activeMatchPaths: ['/admin/productos/movimientos'],
+    activeMatchPaths: ['/admin/inventario/movimientos'],
     icon: ICONS.boxes,
     permission: PermisoBanderas.STOCK_LISTAR,
     phase: 4,

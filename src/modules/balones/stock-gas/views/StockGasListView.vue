@@ -3,7 +3,7 @@
     <PageBreadcrumb
       page-title="Stock de gas"
       :items="breadcrumbItems"
-      help="Cantidad de gas disponible según cilindros de la empresa que estén llenos y en almacén. El precio del gas se edita en Productos / Catálogo."
+      help="Saldo global de productos gas por almacén (pro_stock). El libro de cilindros gestiona los envases."
     />
 
     <AppSummaryCards :cards="resumenCards" />
@@ -29,7 +29,7 @@
             </RouterLink>
             <RouterLink
               v-if="canListMovimientos"
-              :to="{ name: 'admin-balones-movimientos' }"
+              :to="{ name: 'admin-inventario-movimientos', query: { naturaleza: 'PRODUCTO' } }"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
               title="Movimientos"
             >
@@ -50,37 +50,24 @@
       </template>
 
       <template #cell-nombre_almacen="{ value }">
-        <span v-if="value">{{ value }}</span>
-        <span v-else class="text-theme-xs text-gray-400">Sin cilindros en almacén</span>
+        <span>{{ value || '—' }}</span>
       </template>
 
       <template #cell-capacidad_disponible="{ row }">
-        <div class="space-y-1">
-          <AppBadge
-            size="sm"
-            :color="row.tiene_stock_disponible ? 'success' : 'neutral'"
-          >
-            {{ formatCapacidad(row.capacidad_disponible, row.nombre_unidad_medida || 'm³') }}
-          </AppBadge>
-          <p class="text-theme-xs text-gray-500 dark:text-gray-400">
-            {{ formatCapacidad(row.capacidad_disponible_lb, 'lb') }}
-          </p>
-        </div>
-      </template>
-
-      <template #cell-balones_llenos="{ value }">
-        <AppBadge size="sm" color="success">{{ value ?? 0 }} llenos</AppBadge>
-      </template>
-
-      <template #cell-balones_vacios="{ value }">
-        <AppBadge size="sm" color="neutral">{{ value ?? 0 }} vacíos</AppBadge>
-      </template>
-
-      <template #cell-balones_llenos_fuera="{ value }">
-        <AppBadge v-if="Number(value) > 0" size="sm" color="warning">
-          {{ value }} fuera
+        <AppBadge size="sm" :color="row.bajo_minimo ? 'warning' : 'success'">
+          {{ formatCapacidad(row.capacidad_disponible, row.nombre_unidad_medida || 'm³') }}
         </AppBadge>
-        <span v-else class="text-gray-400">—</span>
+      </template>
+
+      <template #cell-stock_minimo="{ row }">
+        <span class="tabular-nums text-sm text-gray-600 dark:text-gray-400">
+          {{ formatCapacidad(row.stock_minimo, row.nombre_unidad_medida || 'm³') }}
+        </span>
+      </template>
+
+      <template #cell-bajo_minimo="{ row }">
+        <AppBadge v-if="row.bajo_minimo" size="sm" color="warning">Bajo mínimo</AppBadge>
+        <AppBadge v-else size="sm" color="success">OK</AppBadge>
       </template>
 
       <template #actions="{ row }">
@@ -96,7 +83,7 @@
           </button>
 
           <AppActionMenu
-            :items="actionItemsForRow(row)"
+            :items="actionItemsForRow()"
             :execute="(key) => onActionSelect(key, row)"
           />
         </div>
@@ -166,10 +153,10 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 
 const canListCilindros = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_LISTAR))
 const canListMovimientos = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_BALON_LISTAR),
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_LISTAR),
 )
 const canCreateMovimiento = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_BALON_CREAR),
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_CREAR),
 )
 const canCreateRecarga = computed(() =>
   authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR),
@@ -192,31 +179,24 @@ const resumen = computed(
 const resumenCards = computed<SummaryCardItem[]>(() => [
   {
     key: 'capacidad',
-    label: 'Stock disponible (m³)',
+    label: 'Stock total',
     value: formatCapacidad(resumen.value.capacidad_disponible, 'm³'),
     icon: ICONS.gauge,
     iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
   },
   {
-    key: 'capacidad_lb',
-    label: 'Stock disponible (lb)',
-    value: formatCapacidad(resumen.value.capacidad_disponible_lb, 'lb'),
-    icon: ICONS.gauge,
-    iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
-  },
-  {
-    key: 'llenos',
-    label: 'Cilindros llenos (almacén)',
-    value: String(resumen.value.balones_llenos ?? 0),
-    icon: ICONS.cylinder,
+    key: 'productos',
+    label: 'Productos gas',
+    value: String(resumen.value.total_productos ?? 0),
+    icon: ICONS.package,
     iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
   },
   {
-    key: 'vacios',
-    label: 'Cilindros vacíos (almacén)',
-    value: String(resumen.value.balones_vacios ?? 0),
-    icon: ICONS.archive,
-    iconClass: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
+    key: 'bajo',
+    label: 'Bajo mínimo',
+    value: String(resumen.value.bajo_minimo ?? 0),
+    icon: ICONS.alertTriangle,
+    iconClass: 'bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-300',
   },
 ])
 
@@ -237,10 +217,9 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 const columns = computed<TableColumn<StockGasRow>[]>(() => [
   { key: 'producto', label: 'Gas' },
   { key: 'nombre_almacen', label: 'Almacén' },
-  { key: 'capacidad_disponible', label: 'Stock m³ / lb', cellClass: 'whitespace-nowrap' },
-  { key: 'balones_llenos', label: 'Llenos', cellClass: 'whitespace-nowrap' },
-  { key: 'balones_vacios', label: 'Vacíos', cellClass: 'whitespace-nowrap' },
-  { key: 'balones_llenos_fuera', label: 'Llenos fuera', cellClass: 'whitespace-nowrap' },
+  { key: 'capacidad_disponible', label: 'Stock', cellClass: 'whitespace-nowrap' },
+  { key: 'stock_minimo', label: 'Mínimo', cellClass: 'whitespace-nowrap' },
+  { key: 'bajo_minimo', label: 'Estado', cellClass: 'whitespace-nowrap' },
 ])
 
 function formatCapacidad(value?: number | null, unidad?: string | null) {
@@ -251,31 +230,20 @@ function formatCapacidad(value?: number | null, unidad?: string | null) {
   return unidad ? `${formatted} ${unidad}` : formatted
 }
 
-function cilindrosQuery(row: StockGas, opts?: { soloLlenosFuera?: boolean }) {
+function goToCilindros(row: StockGas) {
   const query: Record<string, string> = {
     idProductoGas: String(row.id_producto_gas),
   }
   const gasLabel = row.nombre_producto || row.codigo_producto
   if (gasLabel) query.gas = gasLabel
-  if (!opts?.soloLlenosFuera && row.id_almacen != null) {
-    query.idAlmacen = String(row.id_almacen)
-  }
-  if (opts?.soloLlenosFuera) {
-    query.soloLlenosFuera = '1'
-  }
-  return query
-}
-
-function goToCilindros(row: StockGas, opts?: { soloLlenosFuera?: boolean }) {
+  if (row.id_almacen != null) query.idAlmacen = String(row.id_almacen)
   void router.push({
     name: 'admin-balones-cilindros',
-    query: cilindrosQuery(row, opts),
+    query,
   })
 }
 
-function actionItemsForRow(row: StockGasRow): ActionMenuItem[] {
-  const hasFuera = Number(row.balones_llenos_fuera) > 0
-
+function actionItemsForRow(): ActionMenuItem[] {
   return [
     {
       key: 'cilindros',
@@ -284,21 +252,15 @@ function actionItemsForRow(row: StockGasRow): ActionMenuItem[] {
       hidden: !canListCilindros.value,
     },
     {
-      key: 'llenosFuera',
-      label: 'Ver llenos fuera',
-      icon: ICONS.alertTriangle,
-      hidden: !(canListCilindros.value && hasFuera),
-    },
-    {
       key: 'movimientos',
       label: 'Ver movimientos',
       icon: ICONS.history,
       hidden: !canListMovimientos.value,
     },
     {
-      key: 'registrarMovimiento',
-      label: 'Registrar movimiento',
-      icon: ICONS.arrowLeftRight,
+      key: 'ajuste',
+      label: 'Ajuste de stock',
+      icon: ICONS.pencil,
       hidden: !canCreateMovimiento.value,
     },
     {
@@ -321,14 +283,25 @@ function onActionSelect(key: string, row: StockGasRow) {
     case 'cilindros':
       goToCilindros(row)
       return
-    case 'llenosFuera':
-      goToCilindros(row, { soloLlenosFuera: true })
-      return
     case 'movimientos':
-      void router.push({ name: 'admin-balones-movimientos' })
+      void router.push({
+        name: 'admin-inventario-movimientos',
+        query: {
+          naturaleza: 'PRODUCTO',
+          idProducto: String(row.id_producto_gas),
+          idAlmacen: row.id_almacen != null ? String(row.id_almacen) : undefined,
+        },
+      })
       return
-    case 'registrarMovimiento':
-      void router.push({ name: 'admin-balones-movimientos' })
+    case 'ajuste':
+      void router.push({
+        name: 'admin-inventario-movimientos',
+        query: {
+          tipo: 'AJUSTE',
+          idProducto: String(row.id_producto_gas),
+          idAlmacen: row.id_almacen != null ? String(row.id_almacen) : undefined,
+        },
+      })
       return
     case 'recarga':
       void router.push({ name: 'admin-ventas-pos', query: { tab: 'recarga' } })

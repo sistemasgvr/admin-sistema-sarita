@@ -443,14 +443,6 @@ function badgesStockProducto(producto: Producto): StockPosBadge[] {
         icon: ICONS.droplet,
       },
     ]
-    const llenos = Number(info.balones_llenos || 0)
-    if (llenos > 0) {
-      badges.push({
-        label: `${llenos} ${llenos === 1 ? 'lleno' : 'llenos'}`,
-        color: 'primary',
-        icon: ICONS.cylinder,
-      })
-    }
     return badges
   }
 

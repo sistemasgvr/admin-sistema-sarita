@@ -3,6 +3,7 @@ import type {
   InventarioMovimientoListItem,
   InventarioMovimientoFilters,
   CreateInventarioMovimientoPayload,
+  CreateTrasladoLoteInventarioPayload,
 } from '../interfaces/inventario-movimiento.interface'
 
 export const inventarioMovimientosService = {
@@ -14,6 +15,12 @@ export const inventarioMovimientosService = {
   },
   crear(payload: CreateInventarioMovimientoPayload) {
     return apiPost<{ id: number }>('/inventario/movimientos', payload)
+  },
+  crearTrasladoLote(payload: CreateTrasladoLoteInventarioPayload) {
+    return apiPost<{ registros: unknown[]; total: number }>(
+      '/inventario/movimientos/traslado-lote',
+      payload,
+    )
   },
   eliminar(id: number, idUsuarioAuditoria: number) {
     return apiDelete(`/inventario/movimientos/${id}`, { data: { idUsuarioAuditoria } })

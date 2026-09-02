@@ -3,7 +3,7 @@ import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 export const PRODUCTOS_HUB_PATH = '/admin/productos'
 export const PRODUCTOS_ARTICULOS_PATH = '/admin/productos/articulos'
 export const PRODUCTOS_STOCK_PATH = '/admin/productos/stock'
-export const PRODUCTOS_MOVIMIENTOS_PATH = '/admin/productos/movimientos'
+export const PRODUCTOS_MOVIMIENTOS_PATH = '/admin/inventario/movimientos'
 
 export function productosBreadcrumbItems(pageTitle: string): BreadcrumbItem[] {
   return [

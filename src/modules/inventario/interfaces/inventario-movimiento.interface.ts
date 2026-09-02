@@ -64,3 +64,14 @@ export interface CreateInventarioMovimientoPayload {
   idUsuarioAuditoria: number
   sentidoAjuste?: 'MAS' | 'MENOS'
 }
+
+export interface CreateTrasladoLoteInventarioPayload {
+  fecha: string
+  idAlmacen: number
+  idAlmacenDestino: number
+  detalles: Array<{ idProducto: number; cantidad: number }>
+  glosa?: string
+  idDocumentoRef?: number
+  codigoDocumentoRef?: string
+  idUsuarioAuditoria: number
+}

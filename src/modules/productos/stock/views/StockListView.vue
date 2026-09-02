@@ -42,7 +42,7 @@
             </div>
             <RouterLink
               v-if="canCreateMovimiento"
-              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'AJUSTE' } }"
+              :to="{ name: 'admin-inventario-movimientos', query: { tipo: 'AJUSTE' } }"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Ajuste"
             >
@@ -51,7 +51,7 @@
             </RouterLink>
             <RouterLink
               v-if="canCreateMovimiento"
-              :to="{ name: 'admin-productos-movimientos-nuevo', query: { tipo: 'TRASLADO' } }"
+              :to="{ name: 'admin-inventario-movimientos', query: { tipo: 'TRASLADO' } }"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Traslado"
             >
@@ -60,7 +60,7 @@
             </RouterLink>
             <RouterLink
               v-if="canListMovimientos"
-              :to="{ name: 'admin-productos-movimientos' }"
+              :to="{ name: 'admin-inventario-movimientos' }"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
               title="Historial"
             >
@@ -341,10 +341,10 @@ const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_EDI
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_ELIMINAR))
 const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_RESTAURAR))
 const canCreateMovimiento = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_CREAR),
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_CREAR),
 )
 const canListMovimientos = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_LISTAR),
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_LISTAR),
 )
 
 const isLoading = computed(() => stockQuery.isFetching.value)
@@ -591,16 +591,17 @@ function onActionSelect(key: string, row: Stock) {
       return
     case 'historial':
       void router.push({
-        name: 'admin-productos-movimientos',
+        name: 'admin-inventario-movimientos',
         query: {
           idProducto: String(row.id_producto),
           idAlmacen: String(row.id_almacen),
+          naturaleza: 'PRODUCTO',
         },
       })
       return
     case 'ajuste':
       void router.push({
-        name: 'admin-productos-movimientos-nuevo',
+        name: 'admin-inventario-movimientos',
         query: {
           tipo: 'AJUSTE',
           idProducto: String(row.id_producto),
@@ -610,7 +611,7 @@ function onActionSelect(key: string, row: Stock) {
       return
     case 'traslado':
       void router.push({
-        name: 'admin-productos-movimientos-nuevo',
+        name: 'admin-inventario-movimientos',
         query: {
           tipo: 'TRASLADO',
           idProducto: String(row.id_producto),

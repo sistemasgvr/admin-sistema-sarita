@@ -1186,9 +1186,7 @@ const stockGasPorProducto = computed(() => {
   for (const row of stockGasQuery.data.value?.data ?? []) {
     map[row.id_producto_gas] = {
       capacidad_disponible: Number(row.capacidad_disponible || 0),
-      balones_llenos: Number(row.balones_llenos || 0),
       nombre_unidad_medida: row.nombre_unidad_medida,
-      tiene_stock_disponible: row.tiene_stock_disponible,
     }
   }
   return map

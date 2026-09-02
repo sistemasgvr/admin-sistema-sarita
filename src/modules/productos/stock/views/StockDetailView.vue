@@ -153,8 +153,8 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { productosStockBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
-import { movimientosInventarioService } from '@/modules/productos/movimientos/services/movimientos-inventario.service'
-import type { MovimientoInventario } from '@/modules/productos/movimientos/interfaces/movimiento-inventario.interface'
+import { inventarioMovimientosService } from '@/modules/inventario/services/inventario-movimientos.service'
+import type { InventarioMovimientoListItem } from '@/modules/inventario/interfaces/inventario-movimiento.interface'
 import StockFormModal from '@/modules/productos/stock/components/StockFormModal.vue'
 import { useStockByIdQuery } from '@/modules/productos/stock/composables/useStockQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -186,28 +186,29 @@ const isLoading = computed(() => stockQuery.isLoading.value)
 const pageTitle = computed(() => stock.value?.nombre_producto || 'Detalle de stock')
 const breadcrumbItems = computed(() => productosStockBreadcrumbItems(pageTitle.value))
 
-const movimientos = ref<MovimientoInventario[]>([])
+const movimientos = ref<InventarioMovimientoListItem[]>([])
 const isLoadingMovimientos = ref(false)
 const minimoModalOpen = ref(false)
 
 const canCreateMovimiento = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_CREAR),
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_CREAR),
 )
 const canListMovimientos = computed(() =>
-  authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_LISTAR),
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_LISTAR),
 )
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_EDITAR))
 
 const historialTo = computed(() => ({
-  name: 'admin-productos-movimientos',
+  name: 'admin-inventario-movimientos',
   query: {
     idProducto: stock.value ? String(stock.value.id_producto) : undefined,
     idAlmacen: stock.value ? String(stock.value.id_almacen) : undefined,
+    naturaleza: 'PRODUCTO',
   },
 }))
 
 const ajusteTo = computed(() => ({
-  name: 'admin-productos-movimientos-nuevo',
+  name: 'admin-inventario-movimientos',
   query: {
     tipo: 'AJUSTE',
     idProducto: stock.value ? String(stock.value.id_producto) : undefined,
@@ -216,7 +217,7 @@ const ajusteTo = computed(() => ({
 }))
 
 const trasladoTo = computed(() => ({
-  name: 'admin-productos-movimientos-nuevo',
+  name: 'admin-inventario-movimientos',
   query: {
     tipo: 'TRASLADO',
     idProducto: stock.value ? String(stock.value.id_producto) : undefined,
@@ -295,7 +296,8 @@ const loadMovimientos = async () => {
 
   isLoadingMovimientos.value = true
   try {
-    const response = await movimientosInventarioService.listar({
+    const response = await inventarioMovimientosService.listar({
+      naturaleza: 'PRODUCTO',
       idProducto: data.id_producto,
       idAlmacen: data.id_almacen,
       pagina: 1,

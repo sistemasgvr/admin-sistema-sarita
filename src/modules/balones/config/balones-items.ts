@@ -70,9 +70,9 @@ export const balonesMenuItems: BalonesMenuItem[] = [
   {
     key: 'movimientos',
     title: 'Movimientos',
-    path: '/admin/balones/movimientos',
+    path: '/admin/inventario/movimientos',
     icon: ICONS.arrowLeftRight,
-    permission: PermisoBanderas.MOVIMIENTOS_BALON_LISTAR,
+    permission: PermisoBanderas.INVENTARIO_MOVIMIENTOS_LISTAR,
     phase: 3,
     implemented: true,
   },

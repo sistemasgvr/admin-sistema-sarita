@@ -69,17 +69,29 @@
         />
       </div>
 
-      <div v-if="form.naturaleza === 'PRODUCTO'" class="space-y-4">
+      <div v-if="form.naturaleza === 'PRODUCTO' || isTraslado" class="space-y-4">
         <AppSelect
           v-model="form.idAlmacenOrigen"
-          label="Almacén origen"
+          :label="isTraslado ? 'Almacén origen' : 'Almacén'"
           :options="almacenesOptions"
           placeholder="Seleccionar"
           :disabled="almacenesQuery.isLoading.value"
+          :error="errors.idAlmacenOrigen"
         />
       </div>
 
-      <div v-if="form.naturaleza === 'BALON'" class="space-y-4">
+      <div v-if="isTraslado" class="space-y-4">
+        <AppSelect
+          v-model="form.idAlmacenDestino"
+          label="Almacén destino"
+          :options="almacenesOptions"
+          placeholder="Seleccionar"
+          :disabled="almacenesQuery.isLoading.value"
+          :error="errors.idAlmacenDestino"
+        />
+      </div>
+
+      <div v-else-if="form.naturaleza === 'BALON'" class="space-y-4">
         <AppSelect
           v-model="form.idAlmacenDestino"
           label="Almacén destino"
@@ -135,7 +147,17 @@ import { useProductosQuery } from '@/modules/productos/articulos/composables/use
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 
+export type InventarioMovimientoPrefill = {
+  tipo?: 'AJUSTE' | 'TRASLADO'
+  idProducto?: number
+  idAlmacen?: number
+  naturaleza?: 'PRODUCTO' | 'BALON'
+}
+
 const isOpen = defineModel<boolean>({ default: false })
+const props = defineProps<{
+  prefill?: InventarioMovimientoPrefill | null
+}>()
 
 const authStore = useAuthStore()
 const mutation = useCreateInventarioMovimientoMutation()
@@ -147,6 +169,7 @@ const naturalezaOptions = [
 
 const tipoMovimientoProductoOptions = [
   { value: 'AJUSTE', label: 'Ajuste' },
+  { value: 'TRASLADO', label: 'Traslado' },
 ]
 
 const tipoMovimientoBalonOptions = [
@@ -206,13 +229,29 @@ const tipoMovimientoOptions = computed(() =>
 )
 
 const isAjuste = computed(() => form.codigoTipoMovimiento === 'AJUSTE')
+const isTraslado = computed(() => form.codigoTipoMovimiento === 'TRASLADO')
 
 const isFormValid = computed(() => {
   if (!form.naturaleza || !form.codigoTipoMovimiento || form.cantidad <= 0) return false
   if (form.naturaleza === 'PRODUCTO' && !form.idProducto) return false
   if (form.naturaleza === 'BALON' && !form.idBalon) return false
+  if (isTraslado.value) {
+    if (!form.idAlmacenOrigen || !form.idAlmacenDestino) return false
+    if (form.idAlmacenOrigen === form.idAlmacenDestino) return false
+  }
+  if (isAjuste.value && !form.sentidoAjuste) return false
   return true
 })
+
+function applyPrefill(prefill: InventarioMovimientoPrefill | null | undefined) {
+  if (!prefill) return
+  form.naturaleza = prefill.naturaleza ?? 'PRODUCTO'
+  if (prefill.tipo === 'AJUSTE' || prefill.tipo === 'TRASLADO') {
+    form.codigoTipoMovimiento = prefill.tipo
+  }
+  if (prefill.idProducto) form.idProducto = prefill.idProducto
+  if (prefill.idAlmacen) form.idAlmacenOrigen = prefill.idAlmacen
+}
 
 function validate(): boolean {
   Object.keys(errors).forEach((k) => delete errors[k])
@@ -237,6 +276,24 @@ function validate(): boolean {
   if (form.naturaleza === 'BALON' && !form.idBalon) {
     errors.idBalon = 'Seleccione un balón'
     valid = false
+  }
+  if (isTraslado.value) {
+    if (!form.idAlmacenOrigen) {
+      errors.idAlmacenOrigen = 'Seleccione almacén origen'
+      valid = false
+    }
+    if (!form.idAlmacenDestino) {
+      errors.idAlmacenDestino = 'Seleccione almacén destino'
+      valid = false
+    }
+    if (
+      form.idAlmacenOrigen &&
+      form.idAlmacenDestino &&
+      form.idAlmacenOrigen === form.idAlmacenDestino
+    ) {
+      errors.idAlmacenDestino = 'Debe ser distinto al origen'
+      valid = false
+    }
   }
 
   return valid
@@ -282,12 +339,24 @@ function resetForm() {
 }
 
 watch(isOpen, (open) => {
-  if (!open) resetForm()
+  if (open) {
+    resetForm()
+    applyPrefill(props.prefill)
+  } else {
+    resetForm()
+  }
 })
 
+watch(
+  () => props.prefill,
+  (prefill) => {
+    if (isOpen.value) applyPrefill(prefill)
+  },
+)
+
 watch(() => form.naturaleza, () => {
-  form.codigoTipoMovimiento = ''
-  form.idProducto = undefined
+  if (!props.prefill?.tipo) form.codigoTipoMovimiento = ''
+  if (!props.prefill?.idProducto) form.idProducto = undefined
   form.idBalon = undefined
 })
 </script>

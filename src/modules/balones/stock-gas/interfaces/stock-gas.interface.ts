@@ -5,12 +5,10 @@ export interface StockGas {
   nombre_unidad_medida?: string | null
   id_almacen?: number | null
   nombre_almacen?: string | null
-  balones_llenos: number
+  /** Stock actual en pro_stock (alias histórico: capacidad_disponible). */
   capacidad_disponible: number
-  capacidad_disponible_lb?: number
-  balones_vacios: number
-  balones_llenos_fuera: number
-  tiene_stock_disponible: boolean
+  stock_minimo?: number | null
+  bajo_minimo?: boolean
 }
 
 export interface StockGasListFilters {
@@ -22,9 +20,7 @@ export interface StockGasListFilters {
 }
 
 export interface StockGasResumen {
-  balones_llenos?: number
+  total_productos?: number
   capacidad_disponible?: number
-  capacidad_disponible_lb?: number
-  balones_vacios?: number
-  balones_llenos_fuera?: number
+  bajo_minimo?: number
 }

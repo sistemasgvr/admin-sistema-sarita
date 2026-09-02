@@ -70,6 +70,19 @@
         </div>
       </template>
 
+      <template #cell-documento_origen="{ row }">
+        <RouterLink
+          v-if="documentoOrigenTo(row)"
+          :to="documentoOrigenTo(row)!"
+          class="text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+        >
+          {{ formatDocumentoOrigenLabel(row.nombre_tipo_documento_origen, row.id_documento_origen) }}
+        </RouterLink>
+        <span v-else class="text-sm text-gray-500 dark:text-gray-400">
+          {{ formatDocumentoOrigenLabel(row.nombre_tipo_documento_origen, row.id_documento_origen) }}
+        </span>
+      </template>
+
       <template #cell-glosa="{ value }">
         <p class="max-w-[12rem] truncate text-sm text-gray-500 dark:text-gray-400" :title="String(value ?? '')">
           {{ value ?? '—' }}
@@ -106,7 +119,7 @@
       </template>
     </AppTable>
 
-    <InventarioMovimientoCrearModal v-model="crearModalOpen" />
+    <InventarioMovimientoCrearModal v-model="crearModalOpen" :prefill="crearPrefill" />
 
     <AppModal v-model="anularModalOpen" title="Anular movimiento" size="sm">
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -140,12 +153,19 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useInventarioMovimientosQuery } from '../composables/useInventarioMovimientosQuery'
 import { useEliminarInventarioMovimientoMutation } from '../composables/useInventarioMovimientoMutations'
 import type { InventarioMovimientoListItem, InventarioMovimientoFilters } from '../interfaces/inventario-movimiento.interface'
+import {
+  formatDocumentoOrigenLabel,
+  resolveDocumentoOrigenRoute,
+} from '../utils/documentoOrigenRoute'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
-import InventarioMovimientoCrearModal from '../components/InventarioMovimientoCrearModal.vue'
+import InventarioMovimientoCrearModal, {
+  type InventarioMovimientoPrefill,
+} from '../components/InventarioMovimientoCrearModal.vue'
 import {
   AppBadge,
   AppListToolbar,
@@ -165,6 +185,8 @@ const breadcrumbItems = [
 ]
 
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')
@@ -181,11 +203,61 @@ const inventarioQuery = useInventarioMovimientosQuery(filters)
 const anularMutation = useEliminarInventarioMovimientoMutation()
 
 const crearModalOpen = ref(false)
+const crearPrefill = ref<InventarioMovimientoPrefill | null>(null)
 const anularModalOpen = ref(false)
 const movimientoToAnular = ref<InventarioMovimientoListItem | null>(null)
 
-const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_CREAR))
-const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.MOVIMIENTOS_ELIMINAR))
+function parsePrefillFromQuery(): InventarioMovimientoPrefill | null {
+  const tipoRaw = String(route.query.tipo ?? '').toUpperCase()
+  const tipo =
+    tipoRaw === 'AJUSTE' || tipoRaw === 'TRASLADO' ? tipoRaw : undefined
+  const idProducto = Number(route.query.idProducto)
+  const idAlmacen = Number(route.query.idAlmacen)
+  const idBalon = Number(route.query.idBalon)
+  if (!tipo && !idProducto && !idAlmacen && !idBalon) return null
+  return {
+    tipo,
+    naturaleza: idBalon ? 'BALON' : 'PRODUCTO',
+    idProducto: Number.isFinite(idProducto) && idProducto > 0 ? idProducto : undefined,
+    idAlmacen: Number.isFinite(idAlmacen) && idAlmacen > 0 ? idAlmacen : undefined,
+  }
+}
+
+function consumeQueryPrefill() {
+  const prefill = parsePrefillFromQuery()
+  if (!prefill?.tipo) return
+  crearPrefill.value = prefill
+  crearModalOpen.value = true
+  const nextQuery = { ...route.query }
+  delete nextQuery.tipo
+  void router.replace({ query: nextQuery })
+}
+
+watch(
+  () => route.query,
+  () => {
+    consumeQueryPrefill()
+  },
+  { immediate: true },
+)
+
+watch(crearModalOpen, (open) => {
+  if (!open) crearPrefill.value = null
+})
+
+const canCreate = computed(() =>
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_CREAR),
+)
+const canDelete = computed(() =>
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_ELIMINAR),
+)
+
+function documentoOrigenTo(row: InventarioMovimientoListItem) {
+  return resolveDocumentoOrigenRoute(
+    row.nombre_tipo_documento_origen,
+    row.id_documento_origen,
+  )
+}
 
 const isLoading = computed(() => inventarioQuery.isFetching.value)
 const rows = computed(() => inventarioQuery.data.value?.data ?? [])
@@ -220,20 +292,35 @@ const columns: TableColumn[] = [
   { key: 'producto_balon', label: 'Producto / Balón' },
   { key: 'cantidad', label: 'Cantidad', align: 'right' },
   { key: 'almacenes', label: 'Almacén origen → destino' },
+  { key: 'documento_origen', label: 'Documento origen' },
   { key: 'glosa', label: 'Glosa' },
   { key: 'estado', label: 'Estado' },
 ]
 
 function syncFilters() {
   const active = dynamicFilters.value
+  const idProducto = Number(route.query.idProducto)
+  const idBalon = Number(route.query.idBalon)
+  const idAlmacen = Number(route.query.idAlmacen)
+  const naturalezaQuery = String(route.query.naturaleza ?? '').toUpperCase()
+  const naturalezaFromQuery =
+    naturalezaQuery === 'PRODUCTO' || naturalezaQuery === 'BALON'
+      ? naturalezaQuery
+      : undefined
 
   filters.value = {
     buscar: buscar.value.trim(),
     pagina: pagina.value,
     limite: limite.value,
-    naturaleza: (active.naturaleza as InventarioMovimientoFilters['naturaleza']) || undefined,
+    naturaleza:
+      (active.naturaleza as InventarioMovimientoFilters['naturaleza']) ||
+      naturalezaFromQuery ||
+      undefined,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
+    idProducto: Number.isFinite(idProducto) && idProducto > 0 ? idProducto : undefined,
+    idBalon: Number.isFinite(idBalon) && idBalon > 0 ? idBalon : undefined,
+    idAlmacen: Number.isFinite(idAlmacen) && idAlmacen > 0 ? idAlmacen : undefined,
   }
 }
 
@@ -254,6 +341,13 @@ watch(buscar, () => {
 watch([pagina, limite], () => {
   syncFilters()
 })
+
+watch(
+  () => [route.query.idProducto, route.query.idBalon, route.query.idAlmacen, route.query.naturaleza],
+  () => {
+    syncFilters()
+  },
+)
 
 function openAnular(row: InventarioMovimientoListItem) {
   movimientoToAnular.value = row

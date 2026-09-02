@@ -91,39 +91,26 @@ export const productosRoutes: RouteRecordRaw[] = [
       {
         path: 'movimientos',
         name: 'admin-productos-movimientos',
-        component: () =>
-          import('@/modules/productos/movimientos/views/MovimientosListView.vue'),
-        meta: {
-          title: 'Historial de movimientos',
-          module: 'productos',
-          permission: PermisoBanderas.MOVIMIENTOS_LISTAR,
-          // Operación de Stock (ajustes/traslados): resaltar Stock en el sidebar.
-          sidebarActivePath: '/admin/productos/stock',
-        },
+        redirect: (to) => ({
+          name: 'admin-inventario-movimientos',
+          query: {
+            ...to.query,
+            naturaleza: to.query.naturaleza ?? 'PRODUCTO',
+          },
+        }),
       },
       {
         path: 'movimientos/nuevo',
         name: 'admin-productos-movimientos-nuevo',
-        component: () =>
-          import('@/modules/productos/movimientos/views/MovimientoInventarioFormView.vue'),
-        meta: {
-          title: 'Nuevo movimiento',
-          module: 'productos',
-          permission: PermisoBanderas.MOVIMIENTOS_CREAR,
-          sidebarActivePath: '/admin/productos/stock',
-        },
+        redirect: (to) => ({
+          name: 'admin-inventario-movimientos',
+          query: to.query,
+        }),
       },
       {
         path: 'movimientos/:id/editar',
         name: 'admin-productos-movimientos-editar',
-        component: () =>
-          import('@/modules/productos/movimientos/views/MovimientoInventarioFormView.vue'),
-        meta: {
-          title: 'Editar movimiento',
-          module: 'productos',
-          permission: PermisoBanderas.MOVIMIENTOS_EDITAR,
-          sidebarActivePath: '/admin/productos/stock',
-        },
+        redirect: { name: 'admin-inventario-movimientos' },
       },
       {
         path: 'catalogo-precios',

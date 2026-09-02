@@ -69,46 +69,35 @@ export const balonesRoutes: RouteRecordRaw[] = [
       {
         path: 'movimientos/nuevo',
         name: 'admin-balones-movimientos-nuevo',
-        component: () =>
-          import('@/modules/balones/movimientos/views/MovimientoBalonFormView.vue'),
-        meta: {
-          title: 'Nuevo movimiento',
-          module: 'balones',
-          permission: PermisoBanderas.MOVIMIENTOS_BALON_CREAR,
-        },
+        redirect: (to) => ({
+          name: 'admin-inventario-movimientos',
+          query: {
+            ...to.query,
+            naturaleza: 'BALON',
+            tipo: to.query.tipo,
+          },
+        }),
       },
       {
         path: 'movimientos/:id(\\d+)/editar',
         name: 'admin-balones-movimientos-editar',
-        component: () =>
-          import('@/modules/balones/movimientos/views/MovimientoBalonFormView.vue'),
-        meta: {
-          title: 'Editar movimiento',
-          module: 'balones',
-          permission: PermisoBanderas.MOVIMIENTOS_BALON_EDITAR,
-        },
+        redirect: { name: 'admin-inventario-movimientos', query: { naturaleza: 'BALON' } },
       },
       {
         path: 'movimientos/:id(\\d+)',
         name: 'admin-balones-movimientos-detalle',
-        component: () =>
-          import('@/modules/balones/movimientos/views/MovimientoBalonDetailView.vue'),
-        meta: {
-          title: 'Detalle del movimiento',
-          module: 'balones',
-          permission: PermisoBanderas.MOVIMIENTOS_BALON_VER,
-        },
+        redirect: { name: 'admin-inventario-movimientos', query: { naturaleza: 'BALON' } },
       },
       {
         path: 'movimientos',
         name: 'admin-balones-movimientos',
-        component: () =>
-          import('@/modules/balones/movimientos/views/MovimientosBalonListView.vue'),
-        meta: {
-          title: 'Movimientos',
-          module: 'balones',
-          permission: PermisoBanderas.MOVIMIENTOS_BALON_LISTAR,
-        },
+        redirect: (to) => ({
+          name: 'admin-inventario-movimientos',
+          query: {
+            ...to.query,
+            naturaleza: to.query.naturaleza ?? 'BALON',
+          },
+        }),
       },
       {
         path: 'recargas/nueva',
