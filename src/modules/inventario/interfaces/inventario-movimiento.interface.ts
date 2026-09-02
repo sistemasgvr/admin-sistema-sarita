@@ -21,6 +21,7 @@ export interface InventarioMovimientoListItem {
   stock_anterior: number | null
   stock_nuevo: number | null
   id_documento_origen: number | null
+  id_documento_detalle: number | null
   id_tipo_documento_origen: number | null
   nombre_tipo_documento_origen: string | null
   id_movimiento_padre: number | null
@@ -60,6 +61,7 @@ export interface CreateInventarioMovimientoPayload {
   idCliente?: number
   codigoTipoDocumentoOrigen?: string
   idDocumentoOrigen?: number
+  idDocumentoDetalle?: number
   glosa?: string
   idUsuarioAuditoria: number
   sentidoAjuste?: 'MAS' | 'MENOS'

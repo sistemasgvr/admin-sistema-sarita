@@ -15,7 +15,7 @@ export interface AdminMenuSubItem {
   path: string
   /**
    * Rutas adicionales que deben resaltar este subítem
-   * (ej. Stock activo también en /admin/productos/movimientos/*).
+   * (ej. Stock activo también en /admin/inventario/movimientos).
    */
   activeMatchPaths?: string[]
   permission?: PermissionBandera

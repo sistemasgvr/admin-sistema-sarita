@@ -52,9 +52,9 @@
           <AppBadge
             v-else-if="producto?.es_gas"
             color="success"
-            title="Catálogo/precio POS · inventario en Balones"
+            title="Gas con saldo en Almacenes / Stock"
           >
-            Gas · catálogo
+            Gas
           </AppBadge>
           <AppBadge v-else-if="producto" color="primary">Accesorio</AppBadge>
           <AppBadge
@@ -72,7 +72,7 @@
           </AppBadge>
           <AppHelpTip
             v-if="producto?.es_gas"
-            text="Solo sirve para el precio de venta. La cantidad disponible está en Balones / Stock de gas."
+            text="El saldo de gas vive en Almacenes / Stock, igual que los accesorios."
           />
         </div>
 
@@ -174,7 +174,7 @@ const sections = computed<DetailSection[]>(() => {
           value: data.es_servicio
             ? 'Servicio'
             : data.es_gas
-              ? 'Gas (solo precio)'
+              ? 'Gas'
               : 'Accesorio',
         },
         { label: 'Es alquilable', value: formatDetailYesNo(data.es_alquilable) },
@@ -187,7 +187,7 @@ const sections = computed<DetailSection[]>(() => {
         {
           label: 'Inventario',
           value: data.es_gas
-            ? 'Balones / Stock de gas'
+            ? 'Almacenes / Stock'
             : data.es_servicio
               ? 'No aplica'
               : data.afecta_stock

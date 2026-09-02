@@ -50,7 +50,6 @@ export interface BalonOrigenRecarga {
   id_tipo_balon?: number | null
   nombre_tipo_balon?: string | null
   capacidad_tipo?: number | null
-  capacidad_disponible: number
   fecha_creacion?: string | null
 }
 
@@ -62,12 +61,15 @@ export interface OrigenRecargaFilters {
   limite?: number
 }
 
-/** Slice de un balón empresa en una asignación FIFO multi-origen. */
+/**
+ * Balón registrado como origen de una recarga. Es trazabilidad: indica de qué
+ * cilindro se trasvasó, no un saldo por cilindro (el gas se descuenta del stock
+ * global del almacén).
+ */
 export interface OrigenRecargaAsignado {
   id_balon: number
   codigo_balon: string
   cantidad: number
-  capacidad_disponible: number
   capacidad_tipo?: number | null
   nombre_almacen?: string | null
   orden: number

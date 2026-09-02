@@ -49,12 +49,7 @@ export const balonesRoutes: RouteRecordRaw[] = [
       {
         path: 'stock-gas',
         name: 'admin-balones-stock-gas',
-        component: () => import('@/modules/balones/stock-gas/views/StockGasListView.vue'),
-        meta: {
-          title: 'Stock de gas',
-          module: 'balones',
-          permission: PermisoBanderas.BALONES_LISTAR,
-        },
+        redirect: { name: 'admin-productos-stock' },
       },
       {
         path: 'tipos',

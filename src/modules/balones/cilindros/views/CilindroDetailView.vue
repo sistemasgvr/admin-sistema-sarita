@@ -123,7 +123,7 @@
                   <th class="pb-2 pr-4">Tipo</th>
                   <th class="pb-2 pr-4">Origen / destino</th>
                   <th class="pb-2 pr-4">Cliente</th>
-                  <th class="pb-2">Observación</th>
+                  <th class="pb-2">Glosa</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,7 +133,7 @@
                   class="border-b border-gray-50 dark:border-gray-800/80"
                 >
                   <td class="py-2 pr-4 whitespace-nowrap">
-                    {{ formatDetailDateTime(item.fecha_movimiento) }}
+                    {{ formatDetailDateTime(item.fecha) }}
                   </td>
                   <td class="py-2 pr-4 whitespace-nowrap">
                     <ListaOpcionBadge
@@ -153,8 +153,8 @@
                   >
                     {{ item.nombre_cliente || '—' }}
                   </td>
-                  <td class="py-2 max-w-[14rem] truncate" :title="item.observacion || undefined">
-                    {{ item.observacion || '—' }}
+                  <td class="py-2 max-w-[14rem] truncate" :title="item.glosa || undefined">
+                    {{ item.glosa || '—' }}
                   </td>
                 </tr>
               </tbody>
@@ -454,7 +454,7 @@ import {
   usePhHistorialQuery,
 } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import type { TipoEventoEstadoBalon } from '@/modules/balones/cilindros/interfaces/balon.interface'
-import { useMovimientosBalonQuery } from '@/modules/balones/movimientos/composables/useMovimientosBalonQuery'
+import { useInventarioMovimientosQuery } from '@/modules/inventario/composables/useInventarioMovimientosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
@@ -487,6 +487,7 @@ const estadoHistorialQuery = useEstadoHistorialQuery(balonIdRef)
 const empresaQuery = useEmpresaActualQuery()
 
 const movimientosFilters = computed(() => ({
+  naturaleza: 'BALON' as const,
   idBalon: balonIdRef.value ?? undefined,
   pagina: 1,
   limite: 50,
@@ -501,7 +502,7 @@ const alquileresFilters = computed(() => ({
   pagina: 1,
   limite: 50,
 }))
-const movimientosHistorialQuery = useMovimientosBalonQuery(movimientosFilters)
+const movimientosHistorialQuery = useInventarioMovimientosQuery(movimientosFilters)
 const prestamosHistorialQuery = usePrestamosDetalleQuery(prestamosFilters)
 const alquileresHistorialQuery = useAlquileresDetalleQuery(alquileresFilters)
 

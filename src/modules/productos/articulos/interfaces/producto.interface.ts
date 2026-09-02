@@ -92,6 +92,15 @@ export interface UpdateProductoPayload {
   precioGarantia?: number
   factorKgM3?: number
   factorLbM3?: number
+  /**
+   * Confirma la conversión del saldo al cambiar `idUnidadMedida`.
+   *
+   * `pro_stock` no guarda unidad propia: el saldo se lee en la unidad actual del
+   * producto, así que cambiarla lo reinterpretaría. La API rechaza el cambio si el
+   * producto tiene stock o movimientos y devuelve `requiere_confirmacion: true`;
+   * reenviar con este flag convierte el saldo dejando un movimiento de AJUSTE.
+   */
+  convertirStock?: boolean
 }
 
 export interface DeleteProductoResponse {

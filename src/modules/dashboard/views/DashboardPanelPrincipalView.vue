@@ -547,8 +547,8 @@ const envasesCards = computed<SummaryCardItem[]>(() => {
       label: 'En almacén',
       value: loading ? '—' : formatNumber(data?.enAlmacen.cantidad ?? 0),
       icon: ICONS.warehouse,
-      to: { name: 'admin-balones-stock-gas' },
-      tooltip: 'Ver stock de gas por almacén',
+      to: { name: 'admin-productos-stock' },
+      tooltip: 'Ver stock por almacén',
     },
     {
       key: 'enCampo',

@@ -386,6 +386,36 @@
     nombre-placeholder="Ej. m³, L, kg, UNID"
     @saved="onUnidadCreated"
   />
+
+  <AppConfirmDialog
+    v-model="confirmUnidadOpen"
+    title="Cambiar la unidad de medida"
+    subtitle="Este producto ya tiene stock registrado"
+    variant="warning"
+    confirm-label="Convertir saldo y guardar"
+    cancel-label="Cancelar"
+    loading-label="Convirtiendo..."
+    :loading="convirtiendoUnidad"
+    @confirm="confirmarConversionUnidad"
+    @cancel="cancelarConversionUnidad"
+  >
+    <span v-if="confirmacionUnidad">
+      El saldo de stock se lleva en la unidad del producto, así que al cambiarla hay que
+      convertirlo. Se convertirá el stock de
+      <strong>{{ confirmacionUnidad.almacenesConStock }}</strong>
+      {{ confirmacionUnidad.almacenesConStock === 1 ? 'almacén' : 'almacenes' }}
+      (<strong>{{
+        formatCantidadUnidad(confirmacionUnidad.stockTotal, confirmacionUnidad.unidadActual)
+      }}</strong>
+      en total) de
+      <strong>{{ confirmacionUnidad.unidadActual }}</strong> a
+      <strong>{{ confirmacionUnidad.unidadNueva }}</strong
+      >, usando los factores configurados en el producto.
+      <br /><br />
+      Quedará registrado como un movimiento de ajuste en el kardex. Si no es lo que
+      buscabas, cancela y deja la unidad como estaba.
+    </span>
+  </AppConfirmDialog>
 </template>
 
 <script setup lang="ts">
@@ -410,6 +440,7 @@ import { productosQueryKeys } from '@/modules/productos/articulos/constants/prod
 import type {
   Producto,
   ProductoFormMode,
+  UpdateProductoPayload,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productoImagenesService } from '@/modules/productos/articulos/services/producto-imagenes.service'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
@@ -417,6 +448,11 @@ import {
   codigoProductoSistema,
   esProductoSistema,
 } from '@/modules/productos/articulos/utils/productosSistema'
+import {
+  formatCantidadUnidad,
+  leerConfirmacionCambioUnidad,
+  type CambioUnidadConfirmacion,
+} from '@/modules/productos/articulos/utils/cambioUnidadConfirmacion'
 import CategoriaProductoFormModal from '@/modules/productos/categorias/components/CategoriaProductoFormModal.vue'
 import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
@@ -425,6 +461,7 @@ import { subCategoriasProductoService } from '@/modules/productos/sub-categorias
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import {
   AppCheckbox,
+  AppConfirmDialog,
   AppDropzone,
   AppFormField,
   AppInput,
@@ -503,6 +540,48 @@ const unidadesMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
 const createMutation = useCreateProductoMutation()
 const updateMutation = useUpdateProductoMutation()
 
+// Confirmación del cambio de unidad de medida sobre un producto con stock.
+const confirmUnidadOpen = ref(false)
+const convirtiendoUnidad = ref(false)
+const confirmacionUnidad = ref<CambioUnidadConfirmacion | null>(null)
+const payloadPendienteUnidad = ref<UpdateProductoPayload | null>(null)
+
+async function guardarProducto(id: number, payload: UpdateProductoPayload) {
+  const guardado = await updateMutation.mutateAsync({ id, payload })
+  await queryClient.invalidateQueries({
+    queryKey: productosQueryKeys.detail(id),
+  })
+  return guardado
+}
+
+async function confirmarConversionUnidad() {
+  if (!props.productoId || !payloadPendienteUnidad.value) return
+
+  convirtiendoUnidad.value = true
+  try {
+    const guardado = await guardarProducto(props.productoId, {
+      ...payloadPendienteUnidad.value,
+      convertirStock: true,
+    })
+    confirmUnidadOpen.value = false
+    limpiarConfirmacionUnidad()
+    emit('saved', guardado)
+  } catch {
+    // La mutación ya muestra el toast; el diálogo queda abierto para reintentar.
+  } finally {
+    convirtiendoUnidad.value = false
+  }
+}
+
+function cancelarConversionUnidad() {
+  limpiarConfirmacionUnidad()
+}
+
+function limpiarConfirmacionUnidad() {
+  confirmacionUnidad.value = null
+  payloadPendienteUnidad.value = null
+}
+
 const categoriaOptions = computed(() =>
   categorias.value.map((categoria) => ({
     value: categoria.id,
@@ -528,7 +607,7 @@ const ayudaCaracteristicas = computed(() => {
     return 'Solo cobro: flete u otro servicio. Entra al comprobante y no crea nada en taller.'
   }
   if (esGas.value) {
-    return 'Gas: solo precio para vender. La cantidad disponible está en Balones / Stock de gas.'
+    return 'Gas: se vende por m³ y el saldo vive en Almacenes / Stock, igual que los accesorios.'
   }
   return 'Producto: al guardar se crea stock en 0 en cada almacén activo. Las cantidades se cambian con Movimientos.'
 })
@@ -707,8 +786,11 @@ function syncFormFromProducto() {
       esServicio: data.es_servicio ?? false,
       esAlquilable: data.es_alquilable ?? false,
       esMantenimiento: Boolean(data.es_mantenimiento),
-      afectaStock:
-        data.es_servicio || data.es_gas ? false : (data.afecta_stock ?? true),
+      afectaStock: data.es_servicio
+        ? false
+        : data.es_gas
+          ? true
+          : (data.afecta_stock ?? true),
       precio: formatMoneyField(data.precio),
       precioCompra: formatMoneyField(data.precio_compra),
       precioGarantia: formatMoneyField(data.precio_garantia),
@@ -852,9 +934,10 @@ const onSubmit = handleSubmit(async (formValues) => {
         esServicioValue && !formValues.esAlquilable
           ? Boolean(formValues.esMantenimiento)
           : false,
-      afectaStock:
-        esServicioValue || Boolean(formValues.esGas)
-          ? false
+      afectaStock: esServicioValue
+        ? false
+        : formValues.esGas
+          ? true
           : Boolean(formValues.afectaStock),
       precio: roundMoney(parseMoneyInput(formValues.precio) ?? 0),
       precioCompra: esServicioValue
@@ -877,13 +960,20 @@ const onSubmit = handleSubmit(async (formValues) => {
     let productoGuardado: Producto
 
     if (isEdit.value && props.productoId) {
-      productoGuardado = await updateMutation.mutateAsync({
-        id: props.productoId,
-        payload,
-      })
-      await queryClient.invalidateQueries({
-        queryKey: productosQueryKeys.detail(props.productoId),
-      })
+      try {
+        productoGuardado = await guardarProducto(props.productoId, payload)
+      } catch (error) {
+        // Cambiar la unidad con stock: la API pide confirmar la conversión del
+        // saldo. Se guarda el payload y se abre el diálogo en vez de fallar.
+        const confirmacion = leerConfirmacionCambioUnidad(error)
+        if (confirmacion) {
+          confirmacionUnidad.value = confirmacion
+          payloadPendienteUnidad.value = payload
+          confirmUnidadOpen.value = true
+          return
+        }
+        throw error
+      }
     } else {
       productoGuardado = await createMutation.mutateAsync(payload)
       if (productoGuardado?.id) {
@@ -926,7 +1016,7 @@ watch(
 )
 
 watch(esGas, (esGasValue) => {
-  if (esGasValue) setFieldValue('afectaStock', false)
+  if (esGasValue) setFieldValue('afectaStock', true)
   if (!isEdit.value && esCodigoAutoGenerado(codigo.value)) {
     void generarCodigoProducto(false)
   }

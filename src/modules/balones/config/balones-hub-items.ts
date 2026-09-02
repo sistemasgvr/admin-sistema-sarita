@@ -31,25 +31,6 @@ export const balonesHubItems: BalonesHubItem[] = [
     implemented: true,
   },
   {
-    key: 'stock-gas',
-    title: 'Stock de gas',
-    description:
-      'Saldo global de productos gas por almacén (pro_stock). El envase se gestiona en el libro de cilindros.',
-    path: '/admin/balones/stock-gas',
-    icon: ICONS.gauge,
-    permission: PermisoBanderas.BALONES_LISTAR,
-    implemented: true,
-  },
-  {
-    key: 'movimientos',
-    title: 'Movimientos',
-    description: 'Kardex unificado de producto y balón (inventario).',
-    path: '/admin/inventario/movimientos',
-    icon: ICONS.arrowLeftRight,
-    permission: PermisoBanderas.INVENTARIO_MOVIMIENTOS_LISTAR,
-    implemented: true,
-  },
-  {
     key: 'recargas',
     title: 'Recargas',
     description:

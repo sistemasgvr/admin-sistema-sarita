@@ -72,6 +72,7 @@ apiClient.interceptors.response.use(
         normalizeApiMessage(payload?.message, error.message || 'Error de conexión'),
         statusCode,
         payload?.errors ?? null,
+        payload?.detalle ?? null,
       )
     }
 

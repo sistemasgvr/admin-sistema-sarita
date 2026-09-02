@@ -23,15 +23,6 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
-    key: 'stock-gas',
-    title: 'Stock de gas',
-    path: '/admin/balones/stock-gas',
-    icon: ICONS.gauge,
-    permission: PermisoBanderas.BALONES_LISTAR,
-    phase: 2,
-    implemented: true,
-  },
-  {
     key: 'recargas',
     title: 'Recargas',
     path: '/admin/balones/recargas',
@@ -65,15 +56,6 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     icon: ICONS.arrowDownToLine,
     permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
     phase: 5,
-    implemented: true,
-  },
-  {
-    key: 'movimientos',
-    title: 'Movimientos',
-    path: '/admin/inventario/movimientos',
-    icon: ICONS.arrowLeftRight,
-    permission: PermisoBanderas.INVENTARIO_MOVIMIENTOS_LISTAR,
-    phase: 3,
     implemented: true,
   },
   {

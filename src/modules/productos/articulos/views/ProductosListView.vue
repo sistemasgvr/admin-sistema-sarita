@@ -160,9 +160,9 @@
             v-else-if="row.es_gas"
             color="success"
             variant="light"
-            title="Solo precio para vender. La cantidad está en Balones / Stock de gas"
+            title="Gas con saldo en Almacenes / Stock"
           >
-            Gas · catálogo
+            Gas
           </AppBadge>
           <AppBadge
             v-else
@@ -329,7 +329,7 @@ const estadoFiltroOptions: SelectOption[] = [
 ]
 
 const pageHelpText =
-  'Accesorio: tiene stock en almacén. Gas: solo precio (cantidad en Balones / Stock de gas). Servicio: no usa stock. Filtra por categoría o subcategoría con el ícono de filtros.'
+  'Accesorio y gas: saldo en almacén. Servicio: no usa stock. Filtra por categoría o subcategoría con el ícono de filtros.'
 
 const buildSoloActivos = (value: ProductoEstadoFiltro): number | null | undefined => {
   switch (value) {

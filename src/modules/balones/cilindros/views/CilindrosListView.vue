@@ -172,7 +172,7 @@
         </div>
       </template>
 
-      <template #cell-estado_contenido="{ row }">
+      <template #cell-estado_custodia="{ row }">
         <div class="flex flex-col gap-1">
           <BalonEstadoBadge :balon="row" />
           <span
@@ -736,7 +736,7 @@ const columns = computed<TableColumn<Balon>[]>(() => [
   { key: 'tipo_gas', label: 'Tipo / Gas' },
   { key: 'capacidad_marca', label: 'Capacidad / Marca', cellClass: 'whitespace-nowrap' },
   { key: 'propiedad', label: 'Propiedad' },
-  { key: 'estado_contenido', label: 'Estado', cellClass: 'whitespace-nowrap' },
+  { key: 'estado_custodia', label: 'Estado', cellClass: 'whitespace-nowrap' },
   { key: 'nombre_almacen', label: 'Almacén', cellClass: 'w-16 text-center' },
   {
     key: 'fecha_proxima_prueba_hidrostatica',

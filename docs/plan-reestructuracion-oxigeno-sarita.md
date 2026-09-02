@@ -91,15 +91,19 @@ Estos principios aplican a **todas** las fases:
 | `id_almacen_origen` | FK NULL | |
 | `id_almacen_destino` | FK NULL | traslados |
 | `id_cliente` | FK NULL | contraparte |
-| `id_documento_origen` | int NULL | id del documento que lo originó |
+| `id_documento_origen` | int NULL | id de la **cabecera** del documento que lo originó |
 | `id_tipo_documento_origen` | FK `gen_lista_opciones` NULL | VENTA, COMPRA, ORDEN_SALIDA, RECARGA_PLANTA, PRESTAMO, ALQUILER, RECOJO, ACTIVIDAD, AJUSTE_MANUAL… |
+| `id_documento_detalle` | int NULL | id de la **línea** del documento. Junto con la cabecera forma la clave de idempotencia, de modo que dos líneas del mismo producto en un mismo documento generan dos movimientos distintos |
 | `id_movimiento_padre` | FK `inv_movimiento` NULL | anti-duplicación: si otro proceso ya generó el movimiento, se referencia y no se crea uno nuevo |
 | `stock_anterior` / `stock_nuevo` | numeric NULL | solo cuando aplica a stock de producto |
-| `snapshot_id_estado_balon` | FK NULL | estado operativo del balón (EN_ALMACEN, CON_CLIENTE, EN_PLANTA, EN_MANTENIMIENTO, BAJA) — **no** contenido |
+| `id_estado_balon_snapshot` | FK NULL | estado operativo **resultante** del balón (EN_ALMACEN, PRESTADO_CLIENTE, EN_PODER_CLIENTE, EN_RECARGA_EXTERNA, EN_MANTENIMIENTO…) — **no** contenido |
+| `id_estado_balon_anterior` / `id_cliente_ubicacion_anterior` / `id_almacen_anterior` | FK NULL | custodia **previa** al movimiento, para que la reversa restaure el estado real y no fuerce `EN_ALMACEN` a ciegas |
 | `glosa` | varchar | |
 | auditoría | `estado`, `id_usuario_creacion`, `fecha_creacion`, … | |
 
-Índices: `(id_tipo_documento_origen, id_documento_origen)`, `(id_balon, fecha)`, `(id_producto, id_almacen_origen, fecha)`, `id_movimiento_padre`.
+Índices: `(id_tipo_documento_origen, id_documento_origen)`, `(id_tipo_documento_origen, id_documento_origen, id_documento_detalle)`, `(id_balon, fecha)`, `(id_producto, id_almacen_origen, fecha)`, `id_movimiento_padre`.
+
+**Regla de claves:** todos los orquestadores registran con `id_documento_origen = <id de cabecera>` y, cuando el movimiento nace de una línea, `id_documento_detalle = <id de la línea>`. Los ajustes agregados por edición (que consolidan varias líneas en un delta por producto) van con `id_documento_detalle = NULL` y `p_forzar = TRUE`. `inv_revertir_por_documento` sin `p_id_documento_detalle` revierte el documento completo; con él, solo esa línea.
 
 **Cambios en `bal_balon`:** eliminar del modelo de negocio `id_estado_contenido`, `capacidad_restante`, `capacidad_restante_lb`. `presion_actual` pasa a ser lectura opcional de control de calidad (o se mueve a `bal_balon_lectura`). Se conserva `id_estado_balon` (estado operativo del envase) e `id_producto_gas` (qué gas contiene ese balón por diseño).
 
@@ -112,8 +116,10 @@ Estos principios aplican a **todas** las fases:
 
 - Nuevo módulo `inventario-movimientos` (unifica `movimientos-inventario` + `movimientos-balon`). Endpoints: listar (con filtros por naturaleza, documento origen, balón, producto, almacén, rango de fechas), obtener, crear ajuste manual, anular.
 - **API interna de dominio** (funciones PL/pgSQL pequeñas y componibles, reemplazan al orquestador monolítico):
-  - `inv_registrar_movimiento(...)` — punto único de escritura; valida anti-duplicación por `id_movimiento_padre` / `(tipo_doc, id_doc)`.
-  - `inv_revertir_por_documento(tipo_doc, id_doc)` — revierte todos los movimientos de un documento.
+  - `inv_registrar_movimiento(...)` — punto único de escritura; idempotente por `(naturaleza, tipo_doc, id_doc, id_doc_detalle, tipo_mov, producto/balón)`, con `p_forzar` para los casos agregados. Devuelve `creado: true|false`; **el llamador debe verificar ese flag** además de `error`.
+  - `inv_revertir_por_documento(tipo_doc, id_doc, usuario, [id_doc_detalle])` — revierte los movimientos de un documento (o de una sola línea) en orden **LIFO**, restaurando la custodia previa del balón.
+  - `inv_repuntar_documento(...)` — reasigna los movimientos de un documento a otro (VSD→CPE hoy; venta→orden de salida en F2) sin volver a mover stock.
+  - `inv_signo_tipo_movimiento(id_tipo_movimiento)` — **fuente única** del sentido (−1 salida / +1 entrada / 0 traslado / NULL ajuste-o-desconocido). Ninguna función debe volver a inferir el sentido con `ILIKE '%SALIDA%'`; un tipo sin signo configurado es un error explícito, no una entrada silenciosa.
   - `inv_stock_producto(id_producto, id_almacen)` / `inv_saldo_gas(id_producto_gas, id_almacen)`.
 - Reescritura de `ven_crear_comprobante`, `com_crear_compra`, `bal_crear_recarga_cliente`, `bal_crear_recarga_planta`, préstamos, alquileres, recojos y mantenimientos para que **todos** llamen a `inv_registrar_movimiento`.
 
@@ -132,6 +138,86 @@ Estos principios aplican a **todas** las fases:
 
 #### Dependencias
 Ninguna. Es la base de F2, F4, F5, F7.
+
+#### Estado — ✅ COMPLETADA (2026-09-02)
+
+Verificado contra la base DEV: `inv_movimiento` con las 4 columnas de cierre, `bal_balon` sin columnas de contenido, `pro_movimientos` y `bal_movimiento` eliminadas junto con sus funciones legadas, gases con `afecta_stock = true`, y 28 orquestadores llamando a `inv_registrar_movimiento`.
+
+Decisiones tomadas durante la implementación que **no** estaban en el diseño original:
+
+| Decisión | Motivo |
+|---|---|
+| `id_documento_detalle` en `inv_movimiento` | Sin ella, la idempotencia por cabecera colapsaba dos líneas del mismo producto en un solo movimiento y el stock quedaba sobrestimado. |
+| Snapshots `id_estado_balon_anterior` / `id_cliente_ubicacion_anterior` / `id_almacen_anterior` | La reversa forzaba `EN_ALMACEN` a ciegas y sacaba de casa del cliente balones que seguían prestados por otro documento vigente. |
+| `inv_signo_tipo_movimiento` | El sentido se infería del nombre del catálogo; un tipo nuevo o mal nombrado se trataba como entrada en silencio. |
+| Reversa en orden `id DESC` (LIFO) | Con dos movimientos del mismo balón en un documento, revertir en orden ascendente dejaba la custodia en un estado intermedio. |
+| Guard sobre el flag `creado` en `ven_crear_comprobante` | Convierte una supresión inesperada por idempotencia en un error visible en lugar de un descuadre silencioso de stock. |
+| `scripts/rebuild-schema-from-repo.js` | Las migraciones históricas no son reejecutables en cadena (`fundamento` define funciones que `faseB` invalida). El esquema vivo es `tablas/ + funciones/ + seeds/`; este script lo reconstruye (`--full --wipe`) o refresca funciones en DEV (`--functions`). |
+
+Pendientes menores heredados (no bloquean F2):
+
+- `balones/stock-gas` (constants/interfaces/service) y el endpoint `GET /balones/stock-gas` sobreviven como *fallback* del POS. Ya leen `pro_stock`, así que no hay doble fuente de datos, pero son ruta redundante: eliminarlos cuando se toque el POS en F4.
+- Los archivos SQL editados a mano conservan el header `Generated:` de la sincronización anterior. Re-ejecutar `sync-functions-from-dev.js` / `sync-tables-from-dev.js` para que la procedencia vuelva a ser honesta.
+- ~~Capacidad por cilindro — lógica vestigial.~~ **Cerrado el 2026-09-03** con las decisiones 3 y 16 (ver abajo).
+
+---
+
+### Cierre de decisiones 3 y 16 — ✅ IMPLEMENTADO (2026-09-03)
+
+#### Unidad canónica del stock de gas (decisión 3)
+
+**Manda la unidad configurada en el producto** (`pro_producto.id_unidad_medida`). `pro_stock` siempre está expresado en ella.
+
+El problema real: la cantidad que llegaba a `pro_stock` salía de `bal_tipo_balon.capacidad`, en la unidad **del tipo de balón**, sin convertir. En el catálogo actual hay 8 tipos desalineados — los 4 de Acetileno y los 4 de Dióxido de Carbono, catalogados en MT3 mientras su gas se vende en KG. Recargar un "CO₂ 10m³" restaba `10` de un saldo en kilos.
+
+Solución: **convertir en el borde, sin reescribir el catálogo.** Es legítimo que un cilindro esté rateado en m³ aunque el gas se venda por kilo, así que no se tocaron las capacidades de los tipos.
+
+| Pieza | Rol |
+|---|---|
+| `inv_convertir_a_unidad_producto(id_producto, cantidad, id_unidad_origen)` | Conversión con m³ como pivote. Los factores de `pro_producto` son **m³ por unidad-origen**: se multiplica hacia m³ y se divide desde m³ (dirección verificada contra `bal_factor_lb_m3`). Si falta el factor o la unidad no es convertible **lanza excepción**: nunca se descuenta stock con la unidad equivocada. |
+| `bal_capacidad_balon_en_unidad_gas(id_balon)` | Capacidad nominal del tipo del balón, ya expresada en la unidad de su gas. |
+
+Aplicado en los cuatro puntos donde la capacidad de un cilindro entra al stock: `bal_crear_recarga_cliente`, `bal_vincular_recarga_cliente_comprobante`, `bal_crear_movimiento_recarga` y `bal_finalizar_recarga_planta` (este último convierte desde la unidad del propio `bal_recarga_planta_detalle`). `bal_asignar_origenes_recarga` dejó de asumir "m³" en su mensaje de stock insuficiente y usa la unidad real del producto.
+
+Verificado en DEV: CO₂ 10 m³ → **19.7628 kg** (densidad 1.976 kg/m³ ✓), Oxígeno 10 kg → 7 m³.
+
+> ⚠️ **Revisar con operaciones:** `Acetileno.factor_kg_m3 = 1.000000` es sospechosamente redondo — la densidad del acetileno es ~1.09 kg/m³. La conversión es tan buena como el factor configurado; si ese 1.0 es un valor por defecto y no una decisión comercial, corregirlo.
+
+#### Escenarios de edición del catálogo
+
+La unidad de medida y los factores **se pueden editar**, y eso rompía el stock de tres formas. Todas cerradas:
+
+| Escenario | Qué pasaba | Qué pasa ahora |
+|---|---|---|
+| Editar cualquier campo de un gas | `pro_crear_producto` y `pro_actualizar_producto` forzaban `afecta_stock = FALSE` cuando `es_gas = TRUE` — lógica pre-Fase 1, de cuando el gas se controlaba por cilindro. Bastaba renombrar un gas para que `inv_registrar_movimiento` dejara de mover `pro_stock` **en silencio**. | Solo los servicios quedan sin stock; un gas siempre es `afecta_stock = TRUE`. Migración de reparación incluida. |
+| Cambiar la unidad del producto | `pro_stock` no guarda unidad propia: su saldo se lee en la unidad **actual** del producto. Cambiar Acetileno de KG a MT3 hacía que 12 kg pasaran a leerse como 12 m³, sin aviso. | Se **rechaza** si hay stock o movimientos, con un mensaje que dice cuánto stock hay y en qué unidad. Con `p_convertir_stock = TRUE` (bandera que la UI expone como confirmación explícita) el saldo se convierte mediante un **movimiento de `AJUSTE`**, de modo que `inv_registrar_movimiento` sigue siendo el único punto de escritura de `pro_stock` y la conversión queda visible en el kardex. |
+| Quitar un factor de conversión | Un gas con tipos de balón en otra unidad se quedaba sin factor y las recargas empezaban a fallar después, lejos de la causa. | Al guardar el producto se revalida la conversión de cada tipo de balón desalineado reutilizando `inv_convertir_a_unidad_producto`; si no es posible, se rechaza el guardado. |
+
+Probado contra DEV con un producto desechable: crear gas → `afecta_stock=true`; cambiar unidad sin confirmar → bloqueado y saldo intacto; con confirmación → 10 MT3 pasan a 14.2857 KG con un `AJUSTE` de 4.2857 en el kardex; renombrar el gas → `afecta_stock` sigue activo.
+
+**UI de confirmación.** El formulario de producto detecta el rechazo y abre un `AppConfirmDialog` que dice cuántos almacenes y cuánto saldo se van a convertir, de qué unidad a cuál, y que quedará como ajuste en el kardex. Al confirmar, reenvía con `convertirStock: true`. Para que el diálogo pueda construirse, la API gana un canal genérico de **errores accionables**: una excepción lanzada como `new BadRequestException({ message, detalle: {...} })` propaga ese `detalle` por el filtro global hasta `ApiError.detalle` en el cliente. Sirve para cualquier caso futuro en que el backend deba ofrecer una salida en vez de solo un mensaje.
+
+Verificado end-to-end por HTTP contra la API real: `PATCH /productos/:id` con cambio de unidad devuelve **400** con `detalle.requiereConfirmacion`, y el reintento con `convertirStock: true` devuelve **200** dejando el saldo en 14.2857 KG y un movimiento de ajuste.
+
+> **Dos bugs colaterales corregidos:**
+>
+> 1. El patrón `TO_CHAR(x, 'FM999999990.####')`, usado en 3 funciones, es inválido en PostgreSQL (`#` no es carácter de formato numérico) y **descartaba todos los decimales**: `14.2857` se mostraba como `14`. Los mensajes de stock insuficiente y de conversión mentían. Reemplazado por `gen_formato_cantidad(numeric)`.
+> 2. **`nest build` llevaba tiempo dejando `dist/` obsoleto en silencio.** `playwright.config.ts`, al vivir en la raíz y no estar excluido del build, desplazaba la raíz común inferida por TypeScript, de modo que la compilación emitía en `dist/src/...` mientras `start:prod` ejecuta `node dist/main` — el build de julio. Encima, el modo `incremental` hacía que tsc terminara con código 0 escribiendo solo el `.tsbuildinfo`, sin emitir un solo `.js`. Corregido en `tsconfig.build.json` con `rootDir: "./src"`, la exclusión de `playwright.config.ts` e `incremental: false` solo para el build de producción. **Conviene revisar qué se desplegó desde ese `dist/`.**
+
+Migración: `database_sql/migraciones/20260903_gas_afecta_stock_y_cambio_unidad.sql`.
+
+#### Balón origen (decisión 16)
+
+**Solo trazabilidad.** Se sigue registrando de qué cilindro se trasvasó, pero la cantidad se descuenta del stock global del almacén; no existe saldo por cilindro.
+
+- Eliminadas `bal_capacidad_disponible_balon`, `bal_consumir_capacidad_balon_origen` y `bal_consumir_capacidad_origenes_recarga` (no persistían nada tras la Fase 1 y ningún flujo vivo las llamaba).
+- Quitados los filtros `WHERE bal_capacidad_disponible_balon(b.id) > 0` de `bal_listar_balones_origen_recarga` y `bal_sugerir_balon_origen_recarga`, que al devolver capacidad nominal eran siempre verdaderos.
+- El frontend ya no muestra `disp. N` en el selector de origen: era la capacidad nominal del tipo, así que un cilindro vacío se mostraba lleno.
+- La validación de disponibilidad la hace **solo** `bal_asignar_origenes_recarga` contra `inv_stock_producto` (`pro_stock`), que es lo correcto.
+
+> Esta decisión **conserva** el vínculo balón-origen ↔ recarga, que es lo que F5 necesita para rastrear de qué lote/protocolo salió cada recarga de oxígeno medicinal.
+
+Migración: `database_sql/migraciones/20260903_f4_unidad_canonica_y_balon_origen.sql` (solo DDL; los cuerpos de función viven en `funciones/` y se aplican con `rebuild-schema-from-repo.js --functions`).
 
 ---
 
@@ -172,7 +258,7 @@ Ninguna. Es la base de F2, F4, F5, F7.
 **`doc_rango_numeracion`** (reemplaza `gre_rango_numeracion`).
 
 Reglas:
-- `ORDEN_SALIDA_VENTA` con `id_venta`: al pasar a `GENERADA` se puede "convertir" a GRE (llenar bloque GRE) y luego `EMITIDA_SUNAT` (apunte 1.c.iv.1). El movimiento de inventario ya existe (lo creó la venta) → se enlaza vía `inv_movimiento.id_movimiento_padre`, **no se recrea** (apunte 1.c.iv.6).
+- `ORDEN_SALIDA_VENTA` con `id_venta`: al pasar a `GENERADA` se puede "convertir" a GRE (llenar bloque GRE) y luego `EMITIDA_SUNAT` (apunte 1.c.iv.1). El movimiento de inventario ya existe (lo creó la venta) → se enlaza vía `inv_movimiento.id_movimiento_padre`, **no se recrea** (apunte 1.c.iv.6). Si en cambio la orden *sustituye* a la venta como documento origen, se usa `inv_repuntar_documento` (ya implementado en F1 para VSD→CPE). Ojo: los movimientos de venta vienen con `id_documento_detalle` poblado, así que el repunte debe conservar esa columna para no perder la trazabilidad por línea.
 - `RECARGA_PLANTA_EXTERNA`: lleva datos de GRE (bloque GRE opcional) y puede emitirse a SUNAT (apunte 1.c.iv.2). Su ingreso de balones/gas se registra como **compra** (ver F7, apunte 4.b.ii) y genera su propio movimiento.
 - Toda `doc_salida` puede imprimirse (uno o varios) desde un botón; PDF generado en backend (apunte 1.c.iv.7).
 
@@ -487,8 +573,8 @@ Se revisan por consistencia visual/UX, sin rediseño: Comprobantes, Ventas sin d
 Confirmar antes o durante la fase indicada:
 
 1. **(Global) "Desde cero" — alcance real.** ¿Se regenera solo el **esquema de BD** + seeds (catálogos, ubigeo, permisos) y se re-cargan maestros manualmente, o hay maestros (clientes, productos, balones, empresas) que **sí** deben conservarse y por tanto necesitan un export/import puntual aunque no sea una "migración" formal?
-2. **(F1) `bal_balon.presion_actual`.** ¿Se elimina del todo o se conserva como última lectura de control de calidad (sin valor de saldo)? Propuesta: conservarla como lectura, no como stock.
-3. **(F1) Unidad del stock de gas.** ¿El stock global de gas se lleva siempre en **m³**? Hoy conviven m³, lb y "UNID". Propuesta: m³ como unidad canónica de stock; conversión con `factor_lb_m3` / `factor_kg_m3` de `pro_producto`.
+2. ~~**(F1) `bal_balon.presion_actual`.**~~ **RESUELTO:** se conserva como última lectura de control de calidad, sin valor de saldo. Se eliminaron `id_estado_contenido`, `capacidad_restante` y `capacidad_restante_lb`.
+3. ~~**(F1) Unidad del stock de gas.**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): manda la unidad del producto** (`pro_producto.id_unidad_medida`). Ver "Unidad canónica del stock de gas" más abajo.
 4. **(F2) Numeración.** ¿La "orden de salida" tiene correlativo propio por sucursal/almacén? ¿Series de GRE por punto de emisión?
 5. **(F2) "Solicitar Foto"** (apunte 1.c.iv.7): el PDF menciona guiarse de un ejemplo llamado "Solicitar Foto". ¿Qué es ese ejemplo? ¿Un formato de PDF existente a replicar?
 6. **(F3) Cuentas bancarias de la empresa.** ¿Una cuenta puede estar asociada a **varios** medios de pago (p. ej. una cuenta que recibe Yape y transferencia)? ¿Multi-sucursal?
@@ -501,6 +587,7 @@ Confirmar antes o durante la fase indicada:
 13. **(F6) ¿`operativa/actividades` absorbe `balones/recojos`,** o siguen como módulos separados enlazados? El PDF los pone juntos bajo "Sueltos > Actividades".
 14. **(F8) Apunte 8.d ("…").** Queda un ítem abierto en el PDF. ¿Qué debe ir ahí?
 15. **(Orden de fases)** Propuesta: F1 → F2 → (F3 ∥ F4) → F7 → F5 → F6 → F8. ¿Se ajusta a tus prioridades de negocio?
+16. ~~**(F4) ¿Qué significa "balón origen" ahora que el stock de gas es global?**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): solo trazabilidad.** Ver "Balón origen" más abajo.
 
 ---
 

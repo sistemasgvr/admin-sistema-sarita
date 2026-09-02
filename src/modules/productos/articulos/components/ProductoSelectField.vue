@@ -290,7 +290,7 @@ function productoToSelectOption(producto: Producto): SelectOption {
 function productoBloqueadoPorStock(producto: Producto) {
   if (!props.bloquearSinStock) return false
   if (!Number(props.idAlmacen)) return false
-  if (producto.es_gas || producto.es_servicio) return false
+  if (producto.es_servicio) return false
   if (producto.afecta_stock === false) return false
   if (producto.stock_actual == null) return false
   return Number(producto.stock_actual) <= 0

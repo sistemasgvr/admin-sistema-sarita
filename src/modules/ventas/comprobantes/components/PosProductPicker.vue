@@ -337,7 +337,7 @@ const props = defineProps<{
   filterFields: DynamicFilterFieldDef[]
   loading?: boolean
   total?: number | null
-  /** Stock de gas por id_producto (cilindros en almacén). */
+  /** Stock de gas por id_producto (pro_stock / fallback stock-gas). */
   stockGasPorProducto?: Record<number, StockGasPosInfo>
   /** Si true y no hay almacén, el stock de gas muestra aviso. */
   sinAlmacenParaGas?: boolean

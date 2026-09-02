@@ -34,7 +34,7 @@ export const productosHubItems: ProductosHubItem[] = [
     key: 'productos',
     title: 'Catálogo',
     description:
-      'Accesorios, gases (precio de venta) y servicios. El stock de gas está en Balones / Stock de gas.',
+      'Accesorios, gases y servicios. El saldo de gas y accesorios está en Almacenes / Stock.',
     path: '/admin/productos/articulos',
     icon: ICONS.package,
     permission: PermisoBanderas.PRODUCTOS_LISTAR,

@@ -6,6 +6,7 @@ import type {
   UpdateProductoPayload,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
+import { esConfirmacionCambioUnidad } from '@/modules/productos/articulos/utils/cambioUnidadConfirmacion'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
 export function useCreateProductoMutation() {
@@ -36,6 +37,10 @@ export function useUpdateProductoMutation() {
       toastSuccess('Producto actualizado correctamente')
     },
     onError: (error) => {
+      // Cambiar la unidad de medida con stock no es un fallo: la API pide confirmar
+      // la conversión del saldo. Lo resuelve el formulario con un diálogo, así que
+      // aquí no se muestra toast para no dar la impresión de error.
+      if (esConfirmacionCambioUnidad(error)) return
       toastApiError(error, 'No se pudo actualizar el producto')
     },
   })

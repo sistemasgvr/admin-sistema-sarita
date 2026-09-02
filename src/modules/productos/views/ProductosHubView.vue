@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb
       page-title="Almacenes"
-      help="Catálogo: precios. Stock: saldo actual; ajustes y traslados desde Stock. Ingresos por Compras y salidas por Ventas. Gas: Balones / Stock de gas."
+      help="Catálogo: precios. Stock: saldo actual de accesorios y gas. Ajustes y traslados desde Stock. Ingresos por Compras y salidas por Ventas."
     />
 
     <div class="grid gap-4 sm:grid-cols-1 xl:grid-cols-2">

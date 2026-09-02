@@ -28,7 +28,6 @@
               :filters="{
                 soloActivos: 1,
                 afectaStock: true,
-                esGas: false,
                 esServicio: false,
               }"
               @scanned="onProductoScanned"

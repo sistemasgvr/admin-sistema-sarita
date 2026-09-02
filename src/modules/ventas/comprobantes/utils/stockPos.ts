@@ -1,17 +1,10 @@
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 
-/**
- * Accesorios físicos descontan pro_stock.
- * Gas: inventario físico en balones (no pro_stock).
- * Servicios / alquilables no afectan stock de almacén.
- */
 export function productoAfectaStock(
   producto: Pick<Producto, 'afecta_stock' | 'es_servicio' | 'es_alquilable' | 'es_gas'>,
 ): boolean {
-  if (producto.es_gas) return false
-  if (producto.afecta_stock === false) return false
-  if (producto.afecta_stock === true) return true
   if (producto.es_servicio || producto.es_alquilable) return false
+  if (producto.afecta_stock === false) return false
   return true
 }
 
@@ -21,13 +14,16 @@ export function productoSinStockParaVenta(producto: Producto): boolean {
   return Number(producto.stock_actual) <= 0
 }
 
-/** Gas: sin cilindros con m³ disponible en el almacén (no usa pro_stock). */
+/** Gas: usa pro_stock (misma fuente que Almacenes / Stock). Fallback a stock-gas si aún no hay stock_actual. */
 export function productoGasSinStockParaVenta(
-  producto: Pick<Producto, 'es_gas'>,
+  producto: Pick<Producto, 'es_gas' | 'afecta_stock' | 'es_servicio' | 'es_alquilable' | 'stock_actual'>,
   info?: StockGasPosInfo | null,
   options?: { sinAlmacen?: boolean; stockGasListo?: boolean },
 ): boolean {
   if (!producto.es_gas) return false
+  if (productoAfectaStock(producto) && producto.stock_actual != null) {
+    return Number(producto.stock_actual) <= 0
+  }
   if (options?.sinAlmacen) return true
   if (options?.stockGasListo === false) return false
   return stockGasSinDisponible(info)
@@ -47,6 +43,16 @@ export function validarStockParaAgregar(
   },
 ): string | null {
   if (producto.es_gas) {
+    if (productoAfectaStock(producto) && producto.stock_actual != null) {
+      const stock = Number(producto.stock_actual)
+      if (stock <= 0) {
+        return `${producto.nombre} no tiene stock disponible`
+      }
+      if (cantidadDeseada > stock) {
+        return `${producto.nombre}: stock insuficiente (disponible: ${formatStockPos(stock)})`
+      }
+      return null
+    }
     if (options?.sinAlmacen) {
       return options?.requiereAlmacenSeleccionado
         ? 'Selecciona un almacén para verificar el stock del producto'
