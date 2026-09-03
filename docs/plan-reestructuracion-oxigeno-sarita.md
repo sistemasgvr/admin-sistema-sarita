@@ -162,6 +162,44 @@ Pendientes menores heredados (no bloquean F2):
 
 ---
 
+### Validación funcional de F1 — ✅ CERRADA (2026-09-03)
+
+La auditoría estructural daba todo en verde, pero `inv_movimiento` estaba **vacío**: cero movimientos. F1 nunca se había ejercitado. Los 17 saldos de `pro_stock` (35 m³ de O₂, 12 kg de acetileno, accesorios) existían sin respaldo en el kardex, incumpliendo el criterio *"el saldo cuadra con la suma de `inv_movimiento`"*.
+
+**Lo que se cerró:**
+
+| Punto | Acción |
+|---|---|
+| Puerta trasera de stock | `pro_crear_stock` insertaba la cantidad inicial directo en `pro_stock`, saltándose el punto único de escritura (y estaba expuesta en `POST /productos/stock`). Ahora la fila nace en 0 y la cantidad se aplica como `AJUSTE` vía `inv_registrar_movimiento`. Coherente con `pro_actualizar_stock`, que ya bloqueaba cambiar la cantidad, y con el propio texto de la UI: *"La cantidad solo cambia con movimientos"*. |
+| Saldos sin kardex | `20260903_carga_inicial_kardex.sql` regulariza las 17 filas: pone cada una en el saldo ya respaldado y aplica la diferencia como `AJUSTE`. **No inserta movimientos a mano.** Saldo final idéntico, ahora trazable. Idempotente. |
+
+**Bugs que solo aparecieron al ejercitar los flujos con registros reales:**
+
+1. **[CRÍTICO] Toda la naturaleza BALON estaba rota en ejecución.** 13 llamadas en 12 funciones pasaban `p_fecha => NOW()` (que devuelve `timestamptz`) a un parámetro `timestamp without time zone`. Con notación de parámetros nombrados PostgreSQL no resuelve la sobrecarga y falla con `42883: function ... does not exist`. Afectaba alquileres, préstamos, recojos, recargas de mostrador, recarga en planta y guías de remisión — es decir, **ningún movimiento de balón podía registrarse**, lo que explicaba el kardex vacío. Corregido usando `LOCALTIMESTAMP` (las funciones ya fijan `America/Lima`).
+
+2. **[ALTO] Doble descuento de gas en la recarga de mostrador** — literalmente el apunte 1.c.iv.6 (*"que no se duplique el movimiento"*). Una recarga de 10 m³ descontaba **11**: la línea de venta restaba su cantidad comercial (1) y el movimiento del balón restaba la capacidad real (10). Corregido con una marca explícita por línea `no_mueve_kardex` en `p_detalles`, propagada por número de ítem (el bucle de stock lee las filas ya insertadas, no el JSON de entrada). Sin coincidencias de texto.
+
+**Flujos ejercitados por HTTP contra la API real, con reversa:**
+
+```
+Compra de accesorio      -> stock 12 → 17, 1 movimiento INGRESO con id_documento_detalle  ✅
+Eliminar compra          -> stock 17 → 12, reversa exacta                                  ✅
+Recarga de mostrador     -> gas 35 → 25 (exactamente la capacidad), balón EN_ALMACEN
+                            → EN_PODER_CLIENTE, movimiento RECARGA_CLIENTE/BALON           ✅
+Reversa de la recarga    -> gas vuelve a 35, balón vuelve a EN_ALMACEN                     ✅
+Reconciliación           -> 0 descuadres en todo momento                                   ✅
+```
+
+Los rechazos por *"no hay caja abierta"* y *"los préstamos a cliente deben nacer de una venta"* son validaciones de negocio funcionando, no fallos.
+
+**Queda abierto para F4** (no bloquea F2):
+
+- El mismo doble descuento existe en la ruta del POS: `bal_vincular_recarga_cliente_comprobante` registra el movimiento del balón con la capacidad sobre un comprobante cuya línea de gas ya movió stock. El arreglo es marcar esa línea con `no_mueve_kardex` desde el POS, que es donde se decide la cantidad (apunte 1.c.v).
+- Solo 2 de 28 llamadores validan el flag `creado` de `inv_registrar_movimiento`. Hoy el riesgo es bajo porque las claves con `id_documento_detalle` o `id_balon` evitan colisiones, pero una supresión inesperada pasaría en silencio.
+- `com_revertir_cilindros_recarga_compra` repunta `inv_movimiento` con un `UPDATE` propio en vez de `inv_repuntar_documento`, y no actualiza `id_documento_detalle`, dejando una referencia cruzada obsoleta.
+
+---
+
 ### Cierre de decisiones 3 y 16 — ✅ IMPLEMENTADO (2026-09-03)
 
 #### Unidad canónica del stock de gas (decisión 3)
