@@ -227,14 +227,10 @@
                 v-if="guardarBalonesAlmacen"
                 class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
               >
-                <GuiaRemisionSelectField
+                <DocumentoSalidaSelectField
                   v-model="idGuiaRetorno"
                   label="GRE ingreso / retorno"
                   placeholder="Opcional"
-                  create-title="Nueva GRE de retorno"
-                  origen="recarga-planta"
-                  :return-to="returnToFormularioCompra"
-                  return-id-param="idGuiaRetorno"
                   :disabled="saving"
                 />
 
@@ -797,8 +793,8 @@ import CompraPagoPreview from '@/modules/compras/components/CompraPagoPreview.vu
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
 import CompraRecargaPlantaDetalle from '@/modules/compras/components/CompraRecargaPlantaDetalle.vue'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
-import GuiaRemisionSelectField from '@/modules/ventas/guias-remision/components/GuiaRemisionSelectField.vue'
-import { useGuiaRemisionQuery } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
+import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
+import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
@@ -1243,7 +1239,7 @@ const toDateInput = (value?: string | null) => (value ? String(value).slice(0, 1
 const guiaRetornoIdRef = computed(() =>
   idGuiaRetorno.value !== '' ? Number(idGuiaRetorno.value) : null,
 )
-const guiaRetornoDetalleQuery = useGuiaRemisionQuery(guiaRetornoIdRef)
+const guiaRetornoDetalleQuery = useDocumentoSalidaQuery(guiaRetornoIdRef)
 
 const suppressRecargaPlantaReset = ref(false)
 
@@ -1257,17 +1253,6 @@ function queryId(key: string): number | null {
   const id = Number(queryParam(key))
   return Number.isFinite(id) && id > 0 ? id : null
 }
-
-/** Ruta a la que debe volver la GRE recién creada, conservando el contexto actual. */
-const returnToFormularioCompra = computed(() => {
-  const params = new URLSearchParams()
-  for (const key of ['referencia', 'idRecargaPlanta', 'serieFactura', 'numeroFactura']) {
-    const value = queryParam(key)
-    if (value) params.set(key, value)
-  }
-  const queryString = params.toString()
-  return queryString ? `${route.path}?${queryString}` : route.path
-})
 
 function resetRetornoFields() {
   guardarBalonesAlmacen.value = false
@@ -1335,7 +1320,7 @@ watch(
   (guia) => {
     if (!guia || !idGuiaRetorno.value) return
     serieGuiaIngreso.value = guia.serie ?? ''
-    numeroGuiaIngreso.value = guia.numero ?? ''
+    numeroGuiaIngreso.value = guia.numero_sunat ?? ''
   },
 )
 

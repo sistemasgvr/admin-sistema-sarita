@@ -6,7 +6,13 @@
         <AppHelpTip :text="helpText" />
       </div>
 
-      <nav class="shrink-0">
+      <nav class="flex shrink-0 items-center gap-3">
+        <router-link
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+          :to="{ name: 'admin-documentos-salida', query: { codigoTipoOrden: 'RECARGA_PLANTA_EXTERNA' } }"
+        >
+          Planta externa →
+        </router-link>
         <ol class="flex items-center gap-1.5">
           <li>
             <router-link
@@ -37,72 +43,18 @@
       </nav>
     </div>
 
-    <AppTabs
-      v-model="activeTab"
-      :tabs="tabs"
-      inline
-      full-width
-      aria-label="Recargas"
-      class="mb-4"
-    />
-
-    <KeepAlive>
-      <RecargasListView v-if="activeTab === 'mostrador'" embedded />
-      <RecargasPlantaListView v-else-if="activeTab === 'planta'" embedded />
-    </KeepAlive>
+    <RecargasListView embedded />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
+// La pestaña "Planta externa" se unificó en Documentos de salida (Fase 2):
+// las órdenes de recarga en planta ahora viven en doc_salida junto con las
+// órdenes de venta y las guías de remisión, no en esta pantalla — de ahí el
+// enlace de arriba en vez de una segunda pestaña embebida.
 import RecargasListView from '@/modules/balones/recargas/views/RecargasListView.vue'
-import RecargasPlantaListView from '@/modules/balones/recargas/views/RecargasPlantaListView.vue'
-import { AppHelpTip, AppTabs } from '@/shared/components'
-import { ICONS } from '@/shared/constants/icons'
-import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
+import { AppHelpTip } from '@/shared/components'
 
-const route = useRoute()
-const router = useRouter()
-
-const resolveTab = (tab: LocationQueryValue | LocationQueryValue[]) => {
-  const value = Array.isArray(tab) ? tab[0] : tab
-  return value === 'planta' ? 'planta' : 'mostrador'
-}
-
-const activeTab = ref(resolveTab(route.query.tab))
-
-const helpText = computed(() =>
-  activeTab.value === 'planta'
-    ? 'Órdenes a planta externa: GRE / checklist / retorno / compra / lote. Exportá el protocolo Excel (ida, guías, factura, retorno, nº lote) desde el listado.'
-    : 'Recargas de cliente en mostrador (POS). Los envíos de vacíos propios a planta externa están en la pestaña Planta externa.',
-)
-
-const tabs = computed<AppTabItem[]>(() => [
-  { key: 'mostrador', label: 'Mostrador', icon: ICONS.clipboardList },
-  { key: 'planta', label: 'Planta externa', icon: ICONS.warehouse },
-])
-
-watch(activeTab, (tab) => {
-  const wantsPlanta = tab === 'planta'
-  const hasPlantaQuery = route.query.tab === 'planta'
-  if (wantsPlanta !== hasPlantaQuery) {
-    if (wantsPlanta) {
-      void router.replace({ query: { ...route.query, tab: 'planta' } })
-    } else {
-      const { tab: _tab, ...rest } = route.query
-      void router.replace({ query: rest })
-    }
-  }
-})
-
-watch(
-  () => route.query.tab,
-  (tab) => {
-    const resolved = resolveTab(tab)
-    if (activeTab.value !== resolved) {
-      activeTab.value = resolved
-    }
-  },
-)
+const helpText =
+  'Recargas de cliente en mostrador (POS). Los envíos de vacíos propios a planta externa se gestionan en Documentos de salida.'
 </script>

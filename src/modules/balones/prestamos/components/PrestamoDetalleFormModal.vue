@@ -105,7 +105,7 @@
           help="Elige la guía emitida para vincularla por ID. La serie y el número se rellenan solos; escríbelos a mano solo si la guía no está en el sistema."
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <GuiaRemisionSelectField
+            <DocumentoSalidaSelectField
               v-model="idGuiaEntrega"
               v-model:search="guiaEntregaBuscar"
               label="GRE de entrega"
@@ -132,7 +132,7 @@
               :error="errors.numeroGuiaEntrega"
             />
 
-            <GuiaRemisionSelectField
+            <DocumentoSalidaSelectField
               v-model="idGuiaDevolucion"
               v-model:search="guiaDevolucionBuscar"
               label="GRE de devolución"
@@ -217,8 +217,8 @@ import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalone
 import type { PrestamoDetalleFormMode } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
-import GuiaRemisionSelectField from '@/modules/ventas/guias-remision/components/GuiaRemisionSelectField.vue'
-import { useGuiaRemisionQuery } from '@/modules/ventas/guias-remision/composables/useGuiasRemisionQuery'
+import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
+import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -341,15 +341,15 @@ const guiaEntregaIdRef = computed(() =>
 const guiaDevolucionIdRef = computed(() =>
   idGuiaDevolucion.value !== '' ? Number(idGuiaDevolucion.value) : null,
 )
-const guiaEntregaQuery = useGuiaRemisionQuery(guiaEntregaIdRef)
-const guiaDevolucionQuery = useGuiaRemisionQuery(guiaDevolucionIdRef)
+const guiaEntregaQuery = useDocumentoSalidaQuery(guiaEntregaIdRef)
+const guiaDevolucionQuery = useDocumentoSalidaQuery(guiaDevolucionIdRef)
 
 watch(
   () => guiaEntregaQuery.data.value,
   (guia) => {
     if (!guia || !idGuiaEntrega.value) return
     serieGuiaEntrega.value = guia.serie ?? ''
-    numeroGuiaEntrega.value = guia.numero ?? ''
+    numeroGuiaEntrega.value = guia.numero_sunat ?? ''
   },
 )
 
@@ -358,7 +358,7 @@ watch(
   (guia) => {
     if (!guia || !idGuiaDevolucion.value) return
     serieGuiaDevolucion.value = guia.serie ?? ''
-    numeroGuiaDevolucion.value = guia.numero ?? ''
+    numeroGuiaDevolucion.value = guia.numero_sunat ?? ''
   },
 )
 

@@ -23,7 +23,9 @@ export function resolveDocumentoOrigenRoute(
     case 'NOTA_VENTA':
       return { name: 'admin-ventas-comprobantes', query: { id: String(docId) } }
     case 'GRE':
-      return { name: 'admin-ventas-guias-remision', query: { id: String(docId) } }
+    case 'ORDEN_SALIDA':
+    case 'RECARGA_PLANTA':
+      return { name: 'admin-documentos-salida-editar', params: { id: String(docId) } }
     case 'COMPRA':
     case 'DEVOLUCION':
       return { name: 'admin-compras-detalle', params: { id: String(docId) } }
@@ -32,7 +34,6 @@ export function resolveDocumentoOrigenRoute(
     case 'ALQUILER':
       return { name: 'admin-balones-alquileres', query: { id: String(docId) } }
     case 'RECARGA':
-    case 'RECARGA_PLANTA':
       return { name: 'admin-balones-recargas', query: { id: String(docId) } }
     case 'MANTENIMIENTO':
       return { name: 'admin-balones-mantenimientos-editar', params: { id: String(docId) } }
@@ -42,8 +43,6 @@ export function resolveDocumentoOrigenRoute(
       return { name: 'admin-actividades', query: { id: String(docId) } }
     case 'AJUSTE_MANUAL':
       return { name: 'admin-inventario-movimientos' }
-    case 'ORDEN_SALIDA':
-      return { name: 'admin-ventas-guias-remision', query: { id: String(docId) } }
     default:
       return null
   }

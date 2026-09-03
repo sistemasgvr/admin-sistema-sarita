@@ -106,29 +106,18 @@ export const balonesRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'recargas/planta',
-        redirect: { name: 'admin-balones-recargas', query: { tab: 'planta' } },
+        name: 'admin-balones-recargas-planta',
+        redirect: { name: 'admin-documentos-salida', query: { codigoTipoOrden: 'RECARGA_PLANTA_EXTERNA' } },
       },
       {
         path: 'recargas/planta/nueva',
         name: 'admin-balones-recargas-planta-nueva',
-        component: () =>
-          import('@/modules/balones/recargas/views/RecargaPlantaFormView.vue'),
-        meta: {
-          title: 'Nueva orden planta externa',
-          module: 'balones',
-          permission: PermisoBanderas.MOVIMIENTOS_RECARGA_CREAR,
-        },
+        redirect: { name: 'admin-documentos-salida-nueva' },
       },
       {
         path: 'recargas/planta/:id(\\d+)/editar',
         name: 'admin-balones-recargas-planta-editar',
-        component: () =>
-          import('@/modules/balones/recargas/views/RecargaPlantaFormView.vue'),
-        meta: {
-          title: 'Editar orden planta externa',
-          module: 'balones',
-          permission: PermisoBanderas.MOVIMIENTOS_RECARGA_EDITAR,
-        },
+        redirect: (to) => ({ name: 'admin-documentos-salida-editar', params: to.params }),
       },
       {
         path: 'recargas',

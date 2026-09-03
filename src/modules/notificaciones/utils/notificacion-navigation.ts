@@ -88,8 +88,8 @@ export function resolveNotificacionTarget(
 
     case 'GUIA_REMISION':
       return idRef
-        ? { name: 'admin-ventas-guias-remision', query: { id: String(idRef) } }
-        : { name: 'admin-ventas-guias-remision' }
+        ? { name: 'admin-documentos-salida-editar', params: { id: String(idRef) } }
+        : { name: 'admin-documentos-salida' }
 
     case 'DOCUMENTO_VENCIMIENTO': {
       const idVehiculo = payloadNumber(payload, 'idVehiculo')

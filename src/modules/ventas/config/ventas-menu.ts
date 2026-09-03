@@ -41,10 +41,10 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
   {
-    name: 'Guías de remisión',
-    path: '/admin/ventas/guias-remision',
+    name: 'Documentos de salida',
+    path: '/admin/ventas/documentos-salida',
     icon: ICONS.truck,
-    permission: PermisoBanderas.GUIAS_REMISION_LISTAR,
+    permission: PermisoBanderas.DOCUMENTOS_SALIDA_LISTAR,
   },
   {
     name: 'Resumen diario',

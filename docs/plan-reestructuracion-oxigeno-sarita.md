@@ -322,6 +322,17 @@ Reglas:
 #### Dependencias
 F1 (usa `inv_movimiento` y `id_movimiento_padre`).
 
+#### Estado — ✅ COMPLETADA (2026-09-03)
+
+La capa de BD (`doc_salida`/`doc_salida_detalle`/`doc_salida_referencia`/`doc_rango_numeracion`, catálogos `TipoOrdenSalida`/`EstadoCicloSalida`, y `doc_crear_salida`/`doc_crear_salida_detalle`/`doc_generar_salida`/`doc_convertir_a_gre`/`doc_crear_desde_venta`/`doc_anular_salida`/`doc_listar_salidas`/`doc_obtener_salida`/`doc_obtener_siguiente_numero`/`doc_registrar_respuesta_sunat`, más la migración de `gre_guia_remision`/`bal_recarga_planta` en ~20 funciones dependientes) ya estaba aplicada en vivo contra DEV al iniciar este cierre — sin rastro en los archivos versionados del repo. Se sincronizó a `database_sql/tablas/documentos-salida/` y `database_sql/funciones/documentos-salida/` (`sync-tables-from-dev.js`/`sync-functions-from-dev.js`), se cerraron dos huecos reales (`doc_eliminar_salida_detalle`, y `lote`/`fecha_vencimiento_lote`/`fecha_prueba_hidrostatica` en `bal_finalizar_recarga_planta`), y se construyó encima el módulo NestJS `documentos-salida` (reemplaza `guias-remision` + `recargas-planta`, cuyas funciones SQL ya no existían — ambos módulos estaban rotos en DEV) y el módulo frontend `documentos-salida` (lista + formulario únicos, reemplaza `ventas/guias-remision` y la parte de recarga-planta de `balones/recargas`).
+
+Verificado: ciclo BORRADOR→GENERADA→ANULADA de punta a punta contra DEV (crear, agregar/quitar línea, generar movimiento, anular con reversa), `bal_finalizar_recarga_planta` con lote/P.H./compra, backend (`tsc --noEmit`) y frontend (`vue-tsc -b`) compilan limpio, rutas registradas y guardas de permiso responden 401 sin token (sin errores 500).
+
+Pendiente como seguimiento (no bloquea el cierre de F2):
+- El formulario "Convertir a guía de remisión" usa IDs numéricos para distrito/transportista/chofer/vehículo en vez de buscadores dedicados (la GRE clásica los tenía) — falta portar esos selectores.
+- `doc_listar_salidas` no filtra por `id_proveedor`; el selector de orden de recarga en `CompraForm.vue` ya no filtra server-side por proveedor seleccionado.
+- No se pudo probar el flujo completo por HTTP con un usuario autenticado real (sin credenciales de prueba disponibles) — se verificó en su lugar contra la BD directamente (mismas llamadas que hace el modelo NestJS) y que el pipeline HTTP responde sin errores 500.
+
 ---
 
 ### Fase 3 — Caja, medios de pago y cuentas bancarias

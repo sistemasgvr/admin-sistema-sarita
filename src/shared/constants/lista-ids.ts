@@ -12,6 +12,8 @@ export const ListaIds = {
   TIPO_DOCUMENTO: 3,
   /** gen_lista.nombre = TipoMovInv */
   TIPO_MOV_INV: 4,
+  /** gen_lista.nombre = TipoMovInvUnificado (Fase 1: producto + balón unificados) */
+  TIPO_MOV_INV_UNIFICADO: 71,
   /** gen_lista.nombre = TipoCatalogoPrecio */
   TIPO_CATALOGO_PRECIO: 5,
   /** gen_lista.nombre = TipoDocumentoRef */

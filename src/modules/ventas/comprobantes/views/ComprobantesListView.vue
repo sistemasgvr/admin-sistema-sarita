@@ -237,7 +237,7 @@ import {
   evaluarPlazoEmision,
   mensajePlazoEmisionVencido,
 } from '@/modules/ventas/comprobantes/utils/plazoEmision'
-import { rutaNuevaGuiaDesdeComprobante } from '@/modules/ventas/guias-remision/utils/rutaGuiaDesdeComprobante'
+import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -322,7 +322,7 @@ const pdfBusyId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canCrearGre = computed(() =>
-  authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR),
+  authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR),
 )
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
@@ -728,12 +728,18 @@ function toRepartoItems(comprobante: Comprobante | ComprobanteListItem): Activid
   }))
 }
 
-function openGuiaDesdeComprobante(row: ComprobanteListItem) {
+const crearDesdeVentaMutation = useCrearDesdeVentaMutation()
+
+async function openGuiaDesdeComprobante(row: ComprobanteListItem) {
   if (!row.id_cliente) {
-    toastWarning('El comprobante no tiene cliente para generar la guía.')
+    toastWarning('El comprobante no tiene cliente para generar la orden de salida.')
     return
   }
-  void router.push(rutaNuevaGuiaDesdeComprobante(row))
+  const doc = await crearDesdeVentaMutation.mutateAsync({
+    idVenta: row.id,
+    idUsuarioAuditoria: authStore.user?.id,
+  })
+  void router.push({ name: 'admin-documentos-salida-editar', params: { id: doc.id }, query: { direccion: '1' } })
 }
 
 function openRepartoDesdeVenta(row: Comprobante | ComprobanteListItem) {

@@ -234,7 +234,7 @@ import {
   printBlobInWindow,
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
-import { rutaNuevaGuiaDesdeComprobante } from '@/modules/ventas/guias-remision/utils/rutaGuiaDesdeComprobante'
+import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
 import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -262,8 +262,9 @@ const canEditarActividad = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR),
 )
 const canCrearGre = computed(() =>
-  authStore.hasPermission(PermisoBanderas.GUIAS_REMISION_CREAR),
+  authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR),
 )
+const crearDesdeVentaMutation = useCrearDesdeVentaMutation()
 
 const open = computed({
   get: () => props.modelValue,
@@ -369,15 +370,19 @@ async function cancelarReparto() {
   }
 }
 
-function generarGuiaRemision() {
+async function generarGuiaRemision() {
   const c = comprobante.value
   if (!c) return
   if (!c.id_cliente) {
-    toastWarning('El comprobante no tiene cliente para generar la guía.')
+    toastWarning('El comprobante no tiene cliente para generar la orden de salida.')
     return
   }
+  const doc = await crearDesdeVentaMutation.mutateAsync({
+    idVenta: c.id,
+    idUsuarioAuditoria: authStore.user?.id,
+  })
   open.value = false
-  void router.push(rutaNuevaGuiaDesdeComprobante(c))
+  void router.push({ name: 'admin-documentos-salida-editar', params: { id: doc.id }, query: { direccion: '1' } })
 }
 
 function handleClose() {

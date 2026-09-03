@@ -49,36 +49,36 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'guias-remision',
-        name: 'admin-ventas-guias-remision',
+        path: 'documentos-salida',
+        name: 'admin-documentos-salida',
         component: () =>
-          import('@/modules/ventas/guias-remision/views/GuiasRemisionListView.vue'),
+          import('@/modules/documentos-salida/views/DocumentosSalidaListView.vue'),
         meta: {
-          title: 'Guías de remisión',
+          title: 'Documentos de salida',
           module: 'ventas',
-          permission: PermisoBanderas.GUIAS_REMISION_LISTAR,
+          permission: PermisoBanderas.DOCUMENTOS_SALIDA_LISTAR,
         },
       },
       {
-        path: 'guias-remision/nueva',
-        name: 'admin-ventas-guias-remision-nueva',
+        path: 'documentos-salida/nueva',
+        name: 'admin-documentos-salida-nueva',
         component: () =>
-          import('@/modules/ventas/guias-remision/views/GuiaRemisionFormView.vue'),
+          import('@/modules/documentos-salida/views/DocumentoSalidaFormView.vue'),
         meta: {
-          title: 'Nueva guía de remisión',
+          title: 'Nuevo documento de salida',
           module: 'ventas',
-          permission: PermisoBanderas.GUIAS_REMISION_CREAR,
+          permission: PermisoBanderas.DOCUMENTOS_SALIDA_CREAR,
         },
       },
       {
-        path: 'guias-remision/:id/editar',
-        name: 'admin-ventas-guias-remision-editar',
+        path: 'documentos-salida/:id(\\d+)/editar',
+        name: 'admin-documentos-salida-editar',
         component: () =>
-          import('@/modules/ventas/guias-remision/views/GuiaRemisionFormView.vue'),
+          import('@/modules/documentos-salida/views/DocumentoSalidaFormView.vue'),
         meta: {
-          title: 'Editar guía de remisión',
+          title: 'Documento de salida',
           module: 'ventas',
-          permission: PermisoBanderas.GUIAS_REMISION_EDITAR,
+          permission: PermisoBanderas.DOCUMENTOS_SALIDA_VER,
         },
       },
       {

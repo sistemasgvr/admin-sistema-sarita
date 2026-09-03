@@ -10,15 +10,22 @@
         :error="errors.naturaleza"
       />
 
-      <AppSelect
-        v-model="form.codigoTipoMovimiento"
-        label="Tipo de movimiento"
-        :options="tipoMovimientoOptions"
-        placeholder="Seleccionar"
-        required
-        :disabled="!form.naturaleza"
-        :error="errors.codigoTipoMovimiento"
-      />
+      <AppSelectWithCreate
+        :can-create="canCreateListaOpcion"
+        create-title="Nuevo tipo de movimiento"
+        :disabled="!form.naturaleza || tipoMovimientoQuery.isLoading.value"
+        @create="tipoMovimientoModalOpen = true"
+      >
+        <AppSelect
+          v-model="form.codigoTipoMovimiento"
+          label="Tipo de movimiento"
+          :options="tipoMovimientoOptions"
+          :placeholder="tipoMovimientoQuery.isLoading.value ? 'Cargando...' : 'Seleccionar'"
+          required
+          :disabled="!form.naturaleza || tipoMovimientoQuery.isLoading.value"
+          :error="errors.codigoTipoMovimiento"
+        />
+      </AppSelectWithCreate>
 
       <AppDatePicker
         v-model="form.fecha"
@@ -47,6 +54,15 @@
           :disabled="balonesQuery.isLoading.value"
           :searchable="true"
           :error="errors.idBalon"
+        />
+      </div>
+
+      <div v-if="form.naturaleza === 'BALON'" class="space-y-4">
+        <ClienteSelectField
+          v-model="form.idCliente"
+          label="Cliente / proveedor"
+          placeholder="Opcional: a quién queda / de quién viene el balón"
+          :required="false"
         />
       </div>
 
@@ -128,6 +144,15 @@
       </button>
     </template>
   </AppModal>
+
+  <ListaOpcionFormModal
+    v-model="tipoMovimientoModalOpen"
+    :id-lista="ListaIds.TIPO_MOV_INV_UNIFICADO"
+    title="Nuevo tipo de movimiento"
+    :subtitle="tipoMovimientoModalSubtitle"
+    nombre-placeholder="Ej. SALIDA_MERMA / ENTRADA_AJUSTE"
+    @saved="onTipoMovimientoCreated"
+  />
 </template>
 
 <script setup lang="ts">
@@ -141,11 +166,19 @@ import {
   AppTextarea,
 } from '@/shared/components'
 import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
+import AppSelectWithCreate from '@/shared/components/form/AppSelectWithCreate.vue'
+import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
+import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import { useCreateInventarioMovimientoMutation } from '../composables/useInventarioMovimientoMutations'
 import type { CreateInventarioMovimientoPayload } from '../interfaces/inventario-movimiento.interface'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
+import { ListaIds } from '@/shared/constants/lista-ids'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 export type InventarioMovimientoPrefill = {
   tipo?: 'AJUSTE' | 'TRASLADO'
@@ -167,15 +200,45 @@ const naturalezaOptions = [
   { value: 'BALON', label: 'Balón' },
 ]
 
-const tipoMovimientoProductoOptions = [
-  { value: 'AJUSTE', label: 'Ajuste' },
-  { value: 'TRASLADO', label: 'Traslado' },
-]
+const TIPOS_PRODUCTO_MANUAL = new Set(['AJUSTE', 'TRASLADO', 'REPOSICION', 'CONSUMO_INTERNO'])
+const TIPOS_BALON_MANUAL = new Set([
+  'SALIDA_MANTENIMIENTO',
+  'ENTRADA_DEVOLUCION',
+  'ENTRADA_MANTENIMIENTO',
+  'TRASLADO_LIMA',
+  'RETORNO_LIMA',
+])
 
-const tipoMovimientoBalonOptions = [
-  { value: 'ENTRADA_DEVOLUCION', label: 'Entrada por devolución' },
-  { value: 'SALIDA_MANTENIMIENTO', label: 'Salida por mantenimiento' },
-]
+const tipoMovInvUnificadoId = ref(ListaIds.TIPO_MOV_INV_UNIFICADO)
+const tipoMovimientoQuery = useListaOpcionesQuery(tipoMovInvUnificadoId)
+
+const canCreateListaOpcion = computed(() =>
+  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_CREAR),
+)
+const tipoMovimientoModalOpen = ref(false)
+
+const tiposSesionExtra = reactive<{ producto: Set<string>; balon: Set<string> }>({
+  producto: new Set(),
+  balon: new Set(),
+})
+
+const tipoMovimientoModalSubtitle = computed(() => {
+  if (form.naturaleza === 'BALON') {
+    return 'Usa MAYÚSCULAS_CON_GUION_BAJO empezando con SALIDA_ o ENTRADA_ (define el signo automáticamente). ' +
+      'Ojo: si no es uno de los tipos ya conocidos por el sistema, el balón no cambiará de custodia ' +
+      '(a quién/dónde está) — solo quedará el registro del movimiento. Avisa a soporte técnico si necesitas que también mueva la custodia.'
+  }
+  return 'Usa MAYÚSCULAS_CON_GUION_BAJO empezando con SALIDA_ o ENTRADA_ para que el sistema sepa si resta o suma stock automáticamente.'
+})
+
+function onTipoMovimientoCreated(opcion: ListaOpcion) {
+  if (form.naturaleza === 'BALON') {
+    tiposSesionExtra.balon.add(opcion.nombre)
+  } else {
+    tiposSesionExtra.producto.add(opcion.nombre)
+  }
+  form.codigoTipoMovimiento = opcion.nombre
+}
 
 const sentidoAjusteOptions = [
   { value: 'MAS', label: 'Sumar (+)' },
@@ -191,6 +254,7 @@ const form = reactive<Omit<CreateInventarioMovimientoPayload, 'idUsuarioAuditori
   cantidad: 1,
   idAlmacenOrigen: undefined,
   idAlmacenDestino: undefined,
+  idCliente: undefined,
   glosa: '',
   sentidoAjuste: undefined,
 })
@@ -224,9 +288,17 @@ const almacenesOptions = computed(() =>
   })),
 )
 
-const tipoMovimientoOptions = computed(() =>
-  form.naturaleza === 'BALON' ? tipoMovimientoBalonOptions : tipoMovimientoProductoOptions,
-)
+const tipoMovimientoOptions = computed(() => {
+  const esBalon = form.naturaleza === 'BALON'
+  const permitidos = esBalon ? TIPOS_BALON_MANUAL : TIPOS_PRODUCTO_MANUAL
+  const extra = esBalon ? tiposSesionExtra.balon : tiposSesionExtra.producto
+  return (tipoMovimientoQuery.data.value ?? [])
+    .filter((opcion) => permitidos.has(opcion.nombre) || extra.has(opcion.nombre))
+    .map((opcion) => ({
+      value: opcion.nombre,
+      label: formatListaOpcionLabel(opcion.nombre, opcion.descripcion),
+    }))
+})
 
 const isAjuste = computed(() => form.codigoTipoMovimiento === 'AJUSTE')
 const isTraslado = computed(() => form.codigoTipoMovimiento === 'TRASLADO')
@@ -312,6 +384,7 @@ function onSubmit() {
     ...(form.naturaleza === 'BALON' ? { idBalon: form.idBalon } : {}),
     ...(form.idAlmacenOrigen ? { idAlmacenOrigen: form.idAlmacenOrigen } : {}),
     ...(form.idAlmacenDestino ? { idAlmacenDestino: form.idAlmacenDestino } : {}),
+    ...(form.naturaleza === 'BALON' && form.idCliente ? { idCliente: form.idCliente } : {}),
     ...(isAjuste.value && form.sentidoAjuste ? { sentidoAjuste: form.sentidoAjuste } : {}),
     ...(form.glosa ? { glosa: form.glosa } : {}),
   }
@@ -333,6 +406,7 @@ function resetForm() {
   form.cantidad = 1
   form.idAlmacenOrigen = undefined
   form.idAlmacenDestino = undefined
+  form.idCliente = undefined
   form.glosa = ''
   form.sentidoAjuste = undefined
   Object.keys(errors).forEach((k) => delete errors[k])
@@ -358,5 +432,6 @@ watch(() => form.naturaleza, () => {
   if (!props.prefill?.tipo) form.codigoTipoMovimiento = ''
   if (!props.prefill?.idProducto) form.idProducto = undefined
   form.idBalon = undefined
+  form.idCliente = undefined
 })
 </script>

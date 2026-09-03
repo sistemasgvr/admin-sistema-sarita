@@ -27,7 +27,7 @@
       </template>
 
       <template #cell-fecha="{ value }">
-        <p class="font-medium text-gray-800 dark:text-white/90">{{ value }}</p>
+        <p class="font-medium text-gray-800 dark:text-white/90">{{ formatDateTime(value as string) }}</p>
       </template>
 
       <template #cell-naturaleza="{ value }">
@@ -66,7 +66,10 @@
           <p v-if="row.nombre_almacen_destino" class="text-xs text-gray-500 dark:text-gray-400">
             → {{ row.nombre_almacen_destino }}
           </p>
-          <span v-else class="text-xs text-gray-400">—</span>
+          <p v-else-if="row.nombre_cliente" class="text-xs text-gray-500 dark:text-gray-400">
+            → {{ row.nombre_cliente }} <span class="text-gray-400">(cliente)</span>
+          </p>
+          <span v-else-if="!row.nombre_almacen_origen" class="text-xs text-gray-400">—</span>
         </div>
       </template>
 
@@ -176,6 +179,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatDateTime } from '@/shared/utils/date'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -291,7 +295,7 @@ const columns: TableColumn[] = [
   { key: 'nombre_tipo_movimiento', label: 'Tipo movimiento' },
   { key: 'producto_balon', label: 'Producto / Balón' },
   { key: 'cantidad', label: 'Cantidad', align: 'right' },
-  { key: 'almacenes', label: 'Almacén origen → destino' },
+  { key: 'almacenes', label: 'Almacén origen → destino / cliente' },
   { key: 'documento_origen', label: 'Documento origen' },
   { key: 'glosa', label: 'Glosa' },
   { key: 'estado', label: 'Estado' },
