@@ -190,7 +190,7 @@
         @click="generarGuiaRemision"
       >
         <AppIcon :name="ICONS.fileText" :size="16" />
-        Generar guía de remisión
+        Generar orden de salida
       </button>
       <button
         v-if="puedeAgregarReparto"

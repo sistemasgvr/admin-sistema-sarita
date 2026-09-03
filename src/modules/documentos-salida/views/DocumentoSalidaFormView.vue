@@ -247,13 +247,13 @@
       <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.02]">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/75 px-6 py-3.5 dark:border-gray-800 dark:bg-white/[0.02]">
           <div class="flex items-center gap-2.5">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400">
-             <AppIcon :name="ICONS.mapPin" :size="20" />
+            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400">
+              <AppIcon :name="ICONS.mapPin" :size="15" />
             </div>
             <div>
-              <spam class="text-xl font-bold text-gray-800 dark:text-white/90">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-white/90">
                 Dirección de entrega y geolocalización
-              </spam>
+              </h3>
               <p class="text-[11px] text-gray-400">Información geográfica y coordenadas GPS para despacho</p>
             </div>
           </div>
@@ -346,10 +346,10 @@
       <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.02]">
         <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-gray-800">
           <div class="flex items-center gap-2">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400">
-              <AppIcon :name="ICONS.shoppingCart" :size="20" />
+            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400">
+              <AppIcon :name="ICONS.shoppingCart" :size="15" />
             </div>
-            <h3 class="text-sl font-bold tracking-tight text-gray-800 dark:text-white/90">
+            <h3 class="text-sm font-bold tracking-tight text-gray-800 dark:text-white/90">
               {{ documento.detalle_desde_venta ? 'Detalle (tomado de la venta)' : 'Detalle' }}
             </h3>
           </div>
@@ -357,6 +357,24 @@
             <AppIcon :name="ICONS.layers" :size="12" class="text-gray-400" />
             {{ documento.detalle.length }} ítem{{ documento.detalle.length === 1 ? '' : 's' }} registrado{{ documento.detalle.length === 1 ? '' : 's' }}
           </span>
+        </div>
+
+        <div
+          v-if="documento.venta_anulada"
+          class="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-6 py-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+        >
+          <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
+          <p>
+            La venta
+            <router-link
+              :to="{ name: 'admin-ventas-comprobantes', query: { id: String(documento.id_venta) } }"
+              class="font-semibold underline hover:no-underline"
+            >
+              {{ documento.serie_venta }}-{{ documento.numero_venta }}
+            </router-link>
+            que originó este documento fue anulada. El detalle de abajo es el que tuvo la venta antes de anularse
+            (solo informativo); el documento quedó anulado automáticamente y no movió inventario propio.
+          </p>
         </div>
 
         <div class="overflow-x-auto">
@@ -468,12 +486,12 @@
 
       <!-- Auditoría -->
       <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.02]">
-        <div class="flex items-center gap-2 border-b border-gray-100 px-6 py-3.5 dark:border-gray-800">
-          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400">
-             <AppIcon :name="ICONS.shield" :size="15" />
-          </div>
-          <div class="flex items-center text-l font-bold tracking-tight text-gray-800 dark:text-white/90">
-            <span>Auditoría del registro</span>
+        <div class="flex items-center justify-between gap-2 border-b border-gray-100 px-6 py-3.5 dark:border-gray-800">
+          <div class="flex items-center gap-2.5">
+            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400">
+              <AppIcon :name="ICONS.shield" :size="15" />
+            </div>
+            <h3 class="text-sm font-bold tracking-tight text-gray-800 dark:text-white/90">Auditoría del registro</h3>
           </div>
           <span class="flex items-center gap-1 text-[11px] font-medium text-gray-400">
             <AppIcon :name="ICONS.clock" :size="12" />
@@ -535,44 +553,7 @@
     />
 
     <!-- Modal: Convertir a GRE -->
-    <AppModal v-model="greModalOpen" title="Convertir a guía de remisión" size="lg">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput v-model="greForm.serie" label="Serie (4 caracteres)" required maxlength="4" placeholder="T001" />
-        <AppSelect v-model="greForm.idTipoGuiaRemision" label="Tipo de guía" :options="tipoGuiaOptions" />
-        <AppSelect v-model="greForm.idMotivoTraslado" label="Motivo de traslado" :options="motivoTrasladoOptions" />
-        <AppSelect v-model="greForm.idModalidadTraslado" label="Modalidad" :options="modalidadTrasladoOptions" />
-        <AppInput v-model="greForm.direccionOrigen" label="Dirección origen" />
-        <AppInput v-model.number="greForm.idDistritoOrigen" type="number" label="ID distrito origen" />
-        <AppInput v-model="greForm.direccionLlegada" label="Dirección llegada" />
-        <AppInput v-model.number="greForm.idDistritoLlegada" type="number" label="ID distrito llegada" />
-        <AppInput v-model.number="greForm.idTransportista" type="number" label="ID cliente transportista (público)" />
-        <AppInput v-model.number="greForm.idChofer" type="number" label="ID chofer (privado)" />
-        <AppInput v-model.number="greForm.idVehiculo" type="number" label="ID vehículo (privado)" />
-        <AppInput v-model.number="greForm.pesoBruto" type="number" step="0.0001" label="Peso bruto (kg)" />
-        <AppInput v-model.number="greForm.numeroBultos" type="number" label="N° bultos" />
-      </div>
-      <p class="mt-3 text-xs text-gray-500">
-        Los IDs de distrito, transportista, chofer y vehículo se toman de Configuración; esta pantalla no incluye
-        todavía los buscadores dedicados de la guía de remisión clásica.
-      </p>
-      <template #footer>
-        <button
-          type="button"
-          class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
-          @click="greModalOpen = false"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
-          :disabled="!greForm.serie || convertirGreMutation.isPending.value"
-          @click="onConvertirGre"
-        >
-          Guardar
-        </button>
-      </template>
-    </AppModal>
+    <ConvertirGreModal v-if="documento" v-model="greModalOpen" :documento="documento" />
 
     <!-- Modal: Finalizar recarga -->
     <AppModal v-model="finalizarModalOpen" title="Registrar retorno de recarga" size="md">
@@ -641,18 +622,15 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import DireccionEntregaModal from '../components/DireccionEntregaModal.vue'
+import ConvertirGreModal from '../components/ConvertirGreModal.vue'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
-import {
-  useDocumentoSalidaCatalogosQuery,
-  useDocumentoSalidaQuery,
-} from '../composables/useDocumentosSalidaQuery'
+import { useDocumentoSalidaQuery } from '../composables/useDocumentosSalidaQuery'
 import {
   useAgregarDetalleDocSalidaMutation,
   useAnularDocSalidaMutation,
   useConsultarEstadoDocSalidaMutation,
-  useConvertirAGreMutation,
   useCreateDocumentoSalidaMutation,
   useEliminarDetalleDocSalidaMutation,
   useEmitirSunatDocSalidaMutation,
@@ -688,13 +666,12 @@ const documentoId = computed(() => {
 const idUsuarioAuditoria = computed(() => authStore.user?.id)
 
 const breadcrumbItems = [
-  { label: 'Documentos de salida', path: '/admin/documentos-salida' },
+  { label: 'Documentos de salida', path: '/admin/inventario/documentos-salida' },
   { label: documentoId.value ? 'Detalle' : 'Nuevo' },
 ]
 const pageTitle = documentoId.value ? 'Documento de salida' : 'Nuevo documento de salida'
 
 // ---- Catálogos ----
-const catalogosQuery = useDocumentoSalidaCatalogosQuery()
 const sucursalesQuery = useSucursalesQuery(ref({ pagina: 1, limite: 100 }))
 const almacenesFilters = ref({ pagina: 1, limite: 200, buscar: undefined as string | undefined })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
@@ -704,16 +681,6 @@ const sucursalOptions = computed(
 )
 const almacenOptions = computed(
   () => almacenesQuery.data.value?.data?.map((a) => ({ value: a.id, label: a.nombre })) ?? [],
-)
-const tipoGuiaOptions = computed(
-  () => catalogosQuery.data.value?.tiposGuia.map((o) => ({ value: o.id, label: o.descripcion ?? o.nombre })) ?? [],
-)
-const motivoTrasladoOptions = computed(
-  () =>
-    catalogosQuery.data.value?.motivosTraslado.map((o) => ({ value: o.id, label: o.nombre.replace(/_/g, ' ') })) ?? [],
-)
-const modalidadTrasladoOptions = computed(
-  () => catalogosQuery.data.value?.modalidadesTraslado.map((o) => ({ value: o.id, label: o.nombre })) ?? [],
 )
 
 const TIPO_ORDEN_OPCIONES: { value: CodigoTipoOrdenSalida; label: string }[] = [
@@ -888,64 +855,8 @@ async function onAnular() {
   anularMotivo.value = ''
 }
 
-// ---- Convertir a GRE / emitir / consultar ----
+// ---- Convertir a GRE (modal propio, ver ConvertirGreModal.vue) ----
 const greModalOpen = ref(false)
-const greForm = reactive({
-  serie: '',
-  idTipoGuiaRemision: '' as number | '',
-  idMotivoTraslado: '' as number | '',
-  idModalidadTraslado: '' as number | '',
-  direccionOrigen: '',
-  idDistritoOrigen: undefined as number | undefined,
-  direccionLlegada: '',
-  idDistritoLlegada: undefined as number | undefined,
-  idTransportista: undefined as number | undefined,
-  idChofer: undefined as number | undefined,
-  idVehiculo: undefined as number | undefined,
-  pesoBruto: undefined as number | undefined,
-  numeroBultos: undefined as number | undefined,
-})
-
-watch(greModalOpen, (open) => {
-  if (open && documento.value) {
-    greForm.serie = documento.value.serie ?? ''
-    greForm.idMotivoTraslado = documento.value.id_motivo_traslado ?? ''
-    greForm.idModalidadTraslado = documento.value.id_modalidad_traslado ?? ''
-    greForm.direccionOrigen = documento.value.direccion_origen ?? ''
-    greForm.direccionLlegada = documento.value.direccion_llegada ?? ''
-    greForm.pesoBruto = documento.value.peso_bruto ?? undefined
-    greForm.numeroBultos = documento.value.numero_bultos ?? undefined
-  }
-})
-
-const convertirGreMutation = useConvertirAGreMutation()
-async function onConvertirGre() {
-  if (!documento.value || !greForm.serie) return
-  try {
-    await convertirGreMutation.mutateAsync({
-      id: documento.value.id,
-      payload: {
-        serie: greForm.serie.toUpperCase(),
-        idTipoGuiaRemision: greForm.idTipoGuiaRemision ? Number(greForm.idTipoGuiaRemision) : undefined,
-        idMotivoTraslado: greForm.idMotivoTraslado ? Number(greForm.idMotivoTraslado) : undefined,
-        idModalidadTraslado: greForm.idModalidadTraslado ? Number(greForm.idModalidadTraslado) : undefined,
-        direccionOrigen: greForm.direccionOrigen || undefined,
-        idDistritoOrigen: greForm.idDistritoOrigen,
-        direccionLlegada: greForm.direccionLlegada || undefined,
-        idDistritoLlegada: greForm.idDistritoLlegada,
-        idTransportista: greForm.idTransportista,
-        idChofer: greForm.idChofer,
-        idVehiculo: greForm.idVehiculo,
-        pesoBruto: greForm.pesoBruto,
-        numeroBultos: greForm.numeroBultos,
-        idUsuarioAuditoria: idUsuarioAuditoria.value,
-      },
-    })
-    greModalOpen.value = false
-  } catch (error) {
-    toastApiError(error, 'No se pudo completar la guía')
-  }
-}
 
 const emitirMutation = useEmitirSunatDocSalidaMutation()
 async function onEmitir() {

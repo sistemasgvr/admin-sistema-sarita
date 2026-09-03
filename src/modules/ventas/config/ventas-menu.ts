@@ -41,12 +41,6 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
   {
-    name: 'Documentos de salida',
-    path: '/admin/ventas/documentos-salida',
-    icon: ICONS.truck,
-    permission: PermisoBanderas.DOCUMENTOS_SALIDA_LISTAR,
-  },
-  {
     name: 'Resumen diario',
     path: '/admin/ventas/resumen-diario',
     icon: ICONS.calendarRange,

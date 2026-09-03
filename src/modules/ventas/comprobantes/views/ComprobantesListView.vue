@@ -410,6 +410,17 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     type: 'text',
     placeholder: 'B001 / F001',
   },
+  {
+    key: 'soloActivos',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Activos',
+    options: [
+      { value: '1', label: 'Activos' },
+      { value: '0', label: 'Anulados / eliminados' },
+      { value: '', label: 'Todos' },
+    ],
+  },
 ])
 
 const columns: TableColumn[] = [
@@ -441,6 +452,10 @@ function syncFilters() {
     idEstadoSunat:
       active.idEstadoSunat != null ? Number(active.idEstadoSunat) : undefined,
     serie: serie || undefined,
+    soloActivos:
+      active.soloActivos != null && active.soloActivos !== ''
+        ? Number(active.soloActivos)
+        : 1,
   }
 }
 
@@ -574,7 +589,7 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
     },
     {
       key: 'guia-remision',
-      label: 'Generar guía de remisión',
+      label: 'Generar orden de salida',
       icon: ICONS.fileText,
       disabled: busy,
       hidden: !(canCrearGre.value && Boolean(row.id_cliente)),

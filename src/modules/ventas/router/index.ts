@@ -49,39 +49,6 @@ export const ventasRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        path: 'documentos-salida',
-        name: 'admin-documentos-salida',
-        component: () =>
-          import('@/modules/documentos-salida/views/DocumentosSalidaListView.vue'),
-        meta: {
-          title: 'Documentos de salida',
-          module: 'ventas',
-          permission: PermisoBanderas.DOCUMENTOS_SALIDA_LISTAR,
-        },
-      },
-      {
-        path: 'documentos-salida/nueva',
-        name: 'admin-documentos-salida-nueva',
-        component: () =>
-          import('@/modules/documentos-salida/views/DocumentoSalidaFormView.vue'),
-        meta: {
-          title: 'Nuevo documento de salida',
-          module: 'ventas',
-          permission: PermisoBanderas.DOCUMENTOS_SALIDA_CREAR,
-        },
-      },
-      {
-        path: 'documentos-salida/:id(\\d+)/editar',
-        name: 'admin-documentos-salida-editar',
-        component: () =>
-          import('@/modules/documentos-salida/views/DocumentoSalidaFormView.vue'),
-        meta: {
-          title: 'Documento de salida',
-          module: 'ventas',
-          permission: PermisoBanderas.DOCUMENTOS_SALIDA_VER,
-        },
-      },
-      {
         path: 'resumen-diario',
         name: 'admin-ventas-resumen-diario',
         component: () =>

@@ -77,11 +77,24 @@
       <template v-else>
         <AppInput v-model="direccionManual" label="Dirección" required placeholder="Av. Balta 780, Chiclayo" />
         <AppInput v-model="referenciaManual" label="Referencia" placeholder="Frente al hospital, portón blanco" />
+        <UbigeoCascadeSelect
+          v-model:id-pais="idPaisManual"
+          v-model:id-departamento="idDepartamentoManual"
+          v-model:id-provincia="idProvinciaManual"
+          v-model:id-distrito="idDistritoManual"
+          v-model:presetting="presettingUbigeo"
+        />
         <div>
           <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
             Ubicación en el mapa
           </label>
-          <MapaLeaflet v-model:latitud="latitudManual" v-model:longitud="longitudManual" height="280px" />
+          <MapaLeaflet
+            v-model:latitud="latitudManual"
+            v-model:longitud="longitudManual"
+            height="280px"
+            :resolve-google-maps-link="resolverCoordenadasDesdeLink"
+            @location-confirmed="onMapLocationConfirmed"
+          />
         </div>
       </template>
     </div>
@@ -107,11 +120,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useDireccionesQuery } from '@/modules/direcciones/composables/useDireccionesQuery'
+import { usePaisesQuery } from '@/modules/catalogos/composables/useUbigeoQueries'
+import { buscarIdsUbigeoPorNombre } from '@/modules/catalogos/services/ubigeo.service'
+import { extractUbigeoDesdeNominatim } from '@/modules/catalogos/utils/ubigeoFromNominatim'
+import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
+import type { MapaLocationAddress, MapaLocationConfirmed } from '@/shared/components/map/MapaLeaflet.vue'
 import { useRegistrarDireccionEntregaMutation } from '../composables/useDocumentoSalidaMutations'
-import { AppInput, AppModal, MapaLeaflet } from '@/shared/components'
+import { AppInput, AppModal, MapaLeaflet, UbigeoCascadeSelect } from '@/shared/components'
 
 const props = defineProps<{
   idDocSalida: number
@@ -130,6 +148,12 @@ const direccionManual = ref('')
 const referenciaManual = ref('')
 const latitudManual = ref<number | null>(null)
 const longitudManual = ref<number | null>(null)
+const idPaisManual = ref<number | undefined>(undefined)
+const idDepartamentoManual = ref<number | undefined>(undefined)
+const idProvinciaManual = ref<number | undefined>(undefined)
+const idDistritoManual = ref<number | undefined>(undefined)
+const presettingUbigeo = ref(false)
+const paisesQuery = usePaisesQuery()
 
 const direccionesFiltros = computed(() => ({
   idCliente: props.idCliente ?? undefined,
@@ -150,7 +174,72 @@ watch(open, (isOpen) => {
   referenciaManual.value = ''
   latitudManual.value = null
   longitudManual.value = null
+  idPaisManual.value = paisesQuery.data.value?.[0]?.id
+  idDepartamentoManual.value = undefined
+  idProvinciaManual.value = undefined
+  idDistritoManual.value = undefined
 })
+
+function buildDireccionTexto(address: MapaLocationAddress | null | undefined, fallback?: string | null) {
+  if (!address) return (fallback ?? '').trim()
+  const partes = [
+    [address.road, address.house_number].filter(Boolean).join(' ').trim(),
+    address.suburb || address.neighbourhood,
+  ].filter(Boolean)
+  return partes.join(', ') || (fallback ?? '').trim()
+}
+
+const ubicacionHint = ref('')
+
+// Al marcar un punto en el mapa, intenta completar país/departamento/provincia/
+// distrito por geocodificación inversa (mismo patrón que DireccionFormModal.vue).
+async function onMapLocationConfirmed(location: MapaLocationConfirmed) {
+  ubicacionHint.value = ''
+  const address = location.address
+  const textoDireccion = buildDireccionTexto(address, location.displayName)
+  if (textoDireccion && !direccionManual.value.trim()) {
+    direccionManual.value = textoDireccion
+  }
+
+  const extraido = extractUbigeoDesdeNominatim(address, location.displayName)
+  const idPaisPeru = idPaisManual.value || paisesQuery.data.value?.[0]?.id || 1
+
+  presettingUbigeo.value = true
+  try {
+    idPaisManual.value = idPaisPeru
+    idDepartamentoManual.value = undefined
+    idProvinciaManual.value = undefined
+    idDistritoManual.value = undefined
+
+    if (!extraido.departamento && !extraido.provincias.length && !extraido.distritos.length) {
+      ubicacionHint.value = 'Ubicación marcada. Completa departamento, provincia y distrito manualmente.'
+      return
+    }
+
+    const coincidencias = await buscarIdsUbigeoPorNombre({
+      idPais: idPaisPeru,
+      departamento: extraido.departamento,
+      provincias: extraido.provincias,
+      distritos: extraido.distritos,
+    })
+
+    if (coincidencias.idDepartamento) idDepartamentoManual.value = coincidencias.idDepartamento
+    if (coincidencias.idProvincia) idProvinciaManual.value = coincidencias.idProvincia
+    if (coincidencias.idDistrito) idDistritoManual.value = coincidencias.idDistrito
+  } finally {
+    await nextTick()
+    presettingUbigeo.value = false
+  }
+}
+
+const resolverCoordenadasDesdeLink = async (link: string) => {
+  try {
+    const { latitud, longitud } = await direccionesService.coordenadasDesdeLink(link)
+    return { lat: latitud, lng: longitud }
+  } catch {
+    return null
+  }
+}
 
 watch(direccionesGuardadas, (lista) => {
   if (modo.value !== 'guardada' || idDireccionSeleccionada.value) return
@@ -180,6 +269,7 @@ async function onGuardar() {
             referenciaEntrega: referenciaManual.value.trim() || undefined,
             latitud: latitudManual.value ?? undefined,
             longitud: longitudManual.value ?? undefined,
+            idDistritoEntrega: idDistritoManual.value,
             idUsuarioAuditoria: authStore.user?.id,
           },
   })

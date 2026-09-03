@@ -101,16 +101,19 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { useDocumentosSalidaQuery } from '../composables/useDocumentosSalidaQuery'
+import { useDocumentoSalidaCatalogosQuery, useDocumentosSalidaQuery } from '../composables/useDocumentosSalidaQuery'
 import type {
   CodigoTipoOrdenSalida,
   DocumentoSalidaListFilters,
 } from '../interfaces/documento-salida.interface'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { AppBadge, AppListToolbar, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -126,6 +129,13 @@ const limite = ref(10)
 
 const filters = ref<DocumentoSalidaListFilters>({ buscar: '', pagina: 1, limite: 10 })
 const listQuery = useDocumentosSalidaQuery(filters)
+const catalogosQuery = useDocumentoSalidaCatalogosQuery()
+
+const almacenesFilters = ref({ pagina: 1, limite: 200 })
+const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+
+const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
+const clientesQuery = useClientesQuery(clientesFilters)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR))
 
@@ -166,6 +176,53 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     options: Object.entries(TIPO_LABELS).map(([value, label]) => ({ value, label })),
   },
   {
+    key: 'idEstadoCiclo',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Todos',
+    disabled: catalogosQuery.isLoading.value,
+    options: (catalogosQuery.data.value?.estadosCiclo ?? []).map((o) => ({
+      value: o.id,
+      label: formatListaOpcionLabel(o.nombre, o.descripcion),
+    })),
+  },
+  {
+    key: 'idAlmacen',
+    label: 'Almacén',
+    type: 'select',
+    placeholder: 'Todos',
+    disabled: almacenesQuery.isLoading.value,
+    options: (almacenesQuery.data.value?.data ?? []).map((a) => ({
+      value: a.id,
+      label: a.nombre,
+    })),
+  },
+  {
+    key: 'idCliente',
+    label: 'Cliente',
+    type: 'select',
+    placeholder: 'Seleccionar cliente',
+    searchable: true,
+    disabled: clientesQuery.isLoading.value,
+    options: (clientesQuery.data.value?.data ?? []).map((cliente) => ({
+      value: cliente.id,
+      label:
+        cliente.razon_social ||
+        [cliente.nombres, cliente.apellido_paterno].filter(Boolean).join(' ') ||
+        cliente.numero_documento,
+    })),
+  },
+  {
+    key: 'emitidoSunat',
+    label: 'Emitido SUNAT',
+    type: 'select',
+    placeholder: 'Todos',
+    options: [
+      { value: '1', label: 'Sí' },
+      { value: '0', label: 'No' },
+    ],
+  },
+  {
     key: 'fechaDesde',
     label: 'Desde',
     type: 'date',
@@ -198,6 +255,13 @@ function syncFilters() {
     limite: limite.value,
     codigoTipoOrden:
       (active.codigoTipoOrden as CodigoTipoOrdenSalida) || codigoFromQuery || undefined,
+    idEstadoCiclo: active.idEstadoCiclo != null ? Number(active.idEstadoCiclo) : undefined,
+    idAlmacen: active.idAlmacen != null ? Number(active.idAlmacen) : undefined,
+    idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
+    emitidoSunat:
+      active.emitidoSunat != null && active.emitidoSunat !== ''
+        ? active.emitidoSunat === '1' || active.emitidoSunat === true
+        : undefined,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
   }

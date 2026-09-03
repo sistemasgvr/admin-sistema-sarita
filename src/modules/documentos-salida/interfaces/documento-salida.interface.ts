@@ -86,9 +86,15 @@ export interface DocumentoSalida {
   direccion_origen: string | null
   id_distrito_origen: number | null
   ubigeo_origen: string | null
+  id_provincia_origen: number | null
+  id_departamento_origen: number | null
+  id_pais_origen: number | null
   direccion_llegada: string | null
   id_distrito_llegada: number | null
   ubigeo_llegada: string | null
+  id_provincia_llegada: number | null
+  id_departamento_llegada: number | null
+  id_pais_llegada: number | null
   direccion_entrega: string | null
   referencia_entrega: string | null
   latitud: number | null
@@ -96,6 +102,9 @@ export interface DocumentoSalida {
   id_distrito_entrega: number | null
   nombre_distrito_entrega: string | null
   ubigeo_entrega: string | null
+  id_provincia_entrega: number | null
+  id_departamento_entrega: number | null
+  id_pais_entrega: number | null
   id_direccion_cliente: number | null
   id_transportista: number | null
   nombre_transportista: string | null
@@ -121,6 +130,7 @@ export interface DocumentoSalida {
   fecha_modificacion: string | null
   nombre_usuario_creacion: string | null
   detalle_desde_venta: boolean
+  venta_anulada: boolean
   detalle: DocumentoSalidaDetalle[]
   referencias: DocumentoSalidaReferencia[]
 }

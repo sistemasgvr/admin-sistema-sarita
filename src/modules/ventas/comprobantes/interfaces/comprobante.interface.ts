@@ -99,6 +99,8 @@ export interface ComprobanteListFilters {
   fechaDesde?: string
   fechaHasta?: string
   serie?: string
+  /** 1 = solo activos (default), 0 = solo inactivos/anulados, omitir = todos */
+  soloActivos?: number
 }
 
 export interface ComprobanteDetallePayload {

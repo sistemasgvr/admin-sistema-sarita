@@ -9,4 +9,10 @@ export const inventarioMenuSubItems: AdminMenuSubItem[] = [
     icon: ICONS.arrowLeftRight,
     permission: PermisoBanderas.INVENTARIO_MOVIMIENTOS_LISTAR,
   },
+  {
+    name: 'Documentos de salida',
+    path: '/admin/inventario/documentos-salida',
+    icon: ICONS.truck,
+    permission: PermisoBanderas.DOCUMENTOS_SALIDA_LISTAR,
+  },
 ]

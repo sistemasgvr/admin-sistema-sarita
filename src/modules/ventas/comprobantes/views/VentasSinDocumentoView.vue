@@ -139,11 +139,13 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   useComprobanteCatalogosPosQuery,
   useComprobantesQuery,
 } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { useDeleteComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
 import EmitirFacturaBoletaModal from '@/modules/ventas/comprobantes/components/EmitirFacturaBoletaModal.vue'
@@ -176,6 +178,7 @@ import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const breadcrumbItems = ventasBreadcrumbItems('Ventas sin documento')
 const authStore = useAuthStore()
+const router = useRouter()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -191,6 +194,7 @@ const filters = ref<ComprobanteListFilters>({
 const comprobantesQuery = useComprobantesQuery(filters)
 const catalogosQuery = useComprobanteCatalogosPosQuery()
 const deleteMutation = useDeleteComprobanteMutation()
+const crearDesdeVentaMutation = useCrearDesdeVentaMutation()
 
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
 const clientesQuery = useClientesQuery(clientesFilters)
@@ -211,6 +215,9 @@ const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBAN
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
+const canCrearGre = computed(() =>
+  authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR),
+)
 
 const idTipoNotaVenta = computed(() => {
   const tipos = catalogosQuery.data.value?.tiposComprobante ?? []
@@ -258,6 +265,17 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     type: 'text',
     placeholder: 'VSD01',
   },
+  {
+    key: 'soloActivos',
+    label: 'Estado',
+    type: 'select',
+    placeholder: 'Activos',
+    options: [
+      { value: '1', label: 'Activos' },
+      { value: '0', label: 'Anulados / eliminados' },
+      { value: '', label: 'Todos' },
+    ],
+  },
 ])
 
 const columns: TableColumn[] = [
@@ -287,6 +305,10 @@ function syncFilters() {
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
     idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
     serie: serie || undefined,
+    soloActivos:
+      active.soloActivos != null && active.soloActivos !== ''
+        ? Number(active.soloActivos)
+        : 1,
   }
 }
 
@@ -360,6 +382,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !canView.value,
     },
     {
+      key: 'guia-remision',
+      label: 'Generar orden de salida',
+      icon: ICONS.truck,
+      disabled: busy,
+      hidden: !(canCrearGre.value && Boolean(row.id_cliente)),
+    },
+    {
       key: 'emitir-boleta',
       label: 'Emitir Boleta',
       icon: ICONS.ticket,
@@ -388,6 +417,9 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
     case 'edit':
       openEditModal(row)
+      return
+    case 'guia-remision':
+      openGuiaDesdeComprobante(row)
       return
     case 'pdf-a4':
       return descargarPdf(row, 'a4')
@@ -451,6 +483,22 @@ async function imprimirPdf(row: ComprobanteListItem, formato: ComprobantePdfForm
 function openDetailModal(row: ComprobanteListItem) {
   comprobanteToViewId.value = row.id
   detailModalOpen.value = true
+}
+
+async function openGuiaDesdeComprobante(row: ComprobanteListItem) {
+  if (!row.id_cliente) {
+    toastWarning('La venta no tiene cliente para generar la orden de salida.')
+    return
+  }
+  const doc = await crearDesdeVentaMutation.mutateAsync({
+    idVenta: row.id,
+    idUsuarioAuditoria: authStore.user?.id,
+  })
+  void router.push({
+    name: 'admin-documentos-salida-editar',
+    params: { id: doc.id },
+    query: { direccion: '1' },
+  })
 }
 
 function openEditModal(row: ComprobanteListItem) {
