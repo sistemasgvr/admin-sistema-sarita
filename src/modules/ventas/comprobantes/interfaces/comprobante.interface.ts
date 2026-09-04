@@ -86,6 +86,8 @@ export interface Comprobante extends ComprobanteListItem {
   origen_pos?: string | null
   detalles: ComprobanteDetalle[]
   cuotas?: unknown[]
+  /** Fase 3: desglose del cobro. Vacío en ventas a crédito y en las anteriores a F3. */
+  pagos?: ComprobantePago[]
 }
 
 export interface ComprobanteListFilters {
@@ -137,7 +139,53 @@ export interface CreateComprobantePayload {
   origenPos?: string
   /** Recarga, préstamo, alquiler, garantía, mantenimiento y baja en la misma transacción del CPE */
   efectosPos?: EfectosPosPayload
+  /** Desglose del cobro. Omitir en crédito. */
+  pagos?: ComprobantePagoPayload[]
 }
+
+/** Una línea de cobro ya registrada, tal como la devuelve el detalle. */
+export interface ComprobantePago {
+  id: number
+  item: number
+  id_medio_pago: number
+  nombre_medio_pago?: string | null
+  id_cuenta_bancaria?: number | null
+  cuenta_bancaria?: string | null
+  monto: number
+  numero_operacion?: string | null
+  referencia?: string | null
+  observacion?: string | null
+}
+
+/** Lo que se envía para completar el voucher de una venta ya emitida. */
+export interface RegistrarCobroLineaPayload {
+  idPago: number
+  numeroOperacion?: string
+  referencia?: string
+  observacion?: string
+  idCuentaBancaria?: number
+}
+
+export interface RegistrarCobroPayload {
+  pagos: RegistrarCobroLineaPayload[]
+  idUsuarioAuditoria?: number
+}
+
+/** Una línea de cobro de la venta (Fase 3: cobro multi-medio). */
+export interface ComprobantePagoPayload {
+  idMedioPago: number
+  /**
+   * Monto cobrado por este medio. Puede omitirse cuando hay un solo pago: el
+   * backend toma el total del comprobante.
+   */
+  monto?: number
+  /** Obligatoria cuando el medio de pago no es efectivo. */
+  idCuentaBancaria?: number
+  numeroOperacion?: string
+  referencia?: string
+  observacion?: string
+}
+
 
 export interface EfectoPosGarantiaPayload {
   monto: number

@@ -50,6 +50,17 @@
             :error="errors.titular"
           />
 
+          <AppInput
+            v-if="soloEmpresa"
+            v-model="alias"
+            label="Alias"
+            placeholder="BCP Principal, Yape caja..."
+            hint="Nombre corto con el que aparecera al elegir la cuenta en un cobro."
+            v-bind="aliasAttrs"
+            :disabled="isSubmitting"
+            :error="errors.alias"
+          />
+
           <AppSelect
             v-model="idBanco"
             label="Banco"
@@ -99,6 +110,53 @@
             :disabled="isSubmitting"
             :error="errors.telefonoBilletera"
           />
+        </div>
+      </section>
+
+      <section
+        v-if="soloEmpresa"
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <h5 class="mb-1 text-sm font-semibold text-gray-800 dark:text-white/90">
+          Medios de pago que recibe
+        </h5>
+        <p class="mb-3 text-theme-xs text-gray-500 dark:text-gray-400">
+          Al cobrar con uno de estos medios, esta cuenta aparecera entre las opciones. Marca
+          <span class="font-medium">predeterminada</span> para que se proponga sola.
+        </p>
+        <div class="grid gap-2 sm:grid-cols-2">
+          <div
+            v-for="medio in mediosAsociables"
+            :key="medio.id"
+            class="flex items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800"
+          >
+            <AppCheckbox
+              :model-value="estaAsociado(medio.id)"
+              :disabled="isSubmitting"
+              :label="medio.nombre"
+              @update:model-value="(v: boolean) => toggleMedio(medio.id, v)"
+            />
+            <button
+              v-if="estaAsociado(medio.id)"
+              type="button"
+              class="shrink-0 rounded-full px-2 py-0.5 text-theme-xs font-medium transition"
+              :class="
+                esPredeterminada(medio.id)
+                  ? 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400'
+                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+              "
+              :disabled="isSubmitting"
+              @click="togglePredeterminada(medio.id)"
+            >
+              {{ esPredeterminada(medio.id) ? 'Predeterminada' : 'Marcar predeterminada' }}
+            </button>
+          </div>
+          <p
+            v-if="!mediosAsociables.length"
+            class="text-theme-xs text-gray-500 dark:text-gray-400 sm:col-span-2"
+          >
+            No hay medios de pago que admitan cuenta bancaria.
+          </p>
         </div>
       </section>
 
@@ -160,6 +218,7 @@ import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalString, requiredSelect, requiredString } from '@/shared/validation'
+import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
 
 interface CuentaBancariaFormModalProps {
   mode: CuentaBancariaFormMode
@@ -191,6 +250,33 @@ const cuentaActual = computed<CuentaBancaria | null>(
 )
 
 const catalogsEnabled = ref(false)
+
+// Solo tienen sentido los medios que exigen cuenta: el efectivo y el credito no
+// pasan por banco, y el backend rechaza asociarlos.
+const mediosQuery = useMediosPagoQuery()
+const mediosAsociables = computed(() =>
+  (mediosQuery.data.value ?? []).filter((m) => m.configurado && m.requiereCuentaBancaria),
+)
+
+/** idMedioPago -> esPredeterminada */
+const mediosSeleccionados = ref(new Map<number, boolean>())
+
+const estaAsociado = (idMedioPago: number) => mediosSeleccionados.value.has(idMedioPago)
+const esPredeterminada = (idMedioPago: number) =>
+  mediosSeleccionados.value.get(idMedioPago) === true
+
+const toggleMedio = (idMedioPago: number, activo: boolean) => {
+  const next = new Map(mediosSeleccionados.value)
+  if (activo) next.set(idMedioPago, false)
+  else next.delete(idMedioPago)
+  mediosSeleccionados.value = next
+}
+
+const togglePredeterminada = (idMedioPago: number) => {
+  const next = new Map(mediosSeleccionados.value)
+  next.set(idMedioPago, !next.get(idMedioPago))
+  mediosSeleccionados.value = next
+}
 
 const bancoQuery = useQuery({
   queryKey: catalogosQueryKeys.listaOpciones(ListaIds.BANCO),
@@ -258,6 +344,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       numeroCuenta: requiredString('El número de cuenta'),
       numeroCuentaInterbancaria: optionalString(),
       telefonoBilletera: optionalString(),
+      alias: optionalString(),
       idCliente: yup
         .number()
         .nullable()
@@ -276,6 +363,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     numeroCuenta: '',
     numeroCuentaInterbancaria: '',
     telefonoBilletera: '',
+    alias: '',
     idCliente: undefined as number | undefined,
     esPrincipal: false,
   },
@@ -287,6 +375,7 @@ const [idTipoCuenta, idTipoCuentaAttrs] = defineField('idTipoCuenta')
 const [numeroCuenta, numeroCuentaAttrs] = defineField('numeroCuenta')
 const [numeroCuentaInterbancaria, numeroCuentaInterbancariaAttrs] = defineField('numeroCuentaInterbancaria')
 const [telefonoBilletera, telefonoBilleteraAttrs] = defineField('telefonoBilletera')
+const [alias, aliasAttrs] = defineField('alias')
 const [idCliente, idClienteAttrs] = defineField('idCliente')
 const [esPrincipal] = defineField('esPrincipal')
 
@@ -301,15 +390,26 @@ const syncFormValues = () => {
       numeroCuenta: d?.numero_cuenta ?? '',
       numeroCuentaInterbancaria: d?.numero_cuenta_interbancaria ?? '',
       telefonoBilletera: d?.telefono_billetera ?? '',
+      alias: d?.alias ?? '',
       idCliente: d?.id_cliente ?? props.defaultClienteId ?? undefined,
       esPrincipal: d?.es_principal ?? false,
     },
   })
+
+  mediosSeleccionados.value = new Map(
+    (d?.medios_pago ?? []).map((m) => [m.idMedioPago, m.esPredeterminada]),
+  )
 }
 
 const handleClose = () => {
   open.value = false
 }
+
+const mediosPagoPayload = () =>
+  Array.from(mediosSeleccionados.value.entries()).map(([idMedioPago, esPredeterminada]) => ({
+    idMedioPago,
+    esPredeterminada,
+  }))
 
 const onSubmit = handleSubmit(async (values) => {
   const currentUserId = authStore.user?.id
@@ -325,6 +425,9 @@ const onSubmit = handleSubmit(async (values) => {
         numeroCuenta: values.numeroCuenta,
         numeroCuentaInterbancaria: values.numeroCuentaInterbancaria || undefined,
         telefonoBilletera: values.telefonoBilletera || undefined,
+        ambito: props.soloEmpresa ? ('EMPRESA' as const) : ('CLIENTE' as const),
+        alias: props.soloEmpresa ? values.alias || null : undefined,
+        mediosPago: props.soloEmpresa ? mediosPagoPayload() : undefined,
         idCliente: props.soloEmpresa
           ? undefined
           : values.idCliente
@@ -343,6 +446,8 @@ const onSubmit = handleSubmit(async (values) => {
           numeroCuenta: values.numeroCuenta,
           numeroCuentaInterbancaria: values.numeroCuentaInterbancaria || undefined,
           telefonoBilletera: values.telefonoBilletera || undefined,
+          alias: props.soloEmpresa ? values.alias || null : undefined,
+          mediosPago: props.soloEmpresa ? mediosPagoPayload() : undefined,
           idCliente: props.soloEmpresa
             ? undefined
             : values.idCliente

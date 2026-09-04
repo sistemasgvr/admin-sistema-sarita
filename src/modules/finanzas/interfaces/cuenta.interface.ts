@@ -106,9 +106,33 @@ export interface SaldoPorTerceroFilters {
   limite?: number
 }
 
+/** Cuenta de la empresa asociada a un medio de pago (Fase 3). */
+export interface MedioPagoCuenta {
+  id: number
+  alias: string | null
+  titular: string | null
+  numeroCuenta: string | null
+  telefonoBilletera: string | null
+  banco: string | null
+  esPredeterminada: boolean
+}
+
 export interface MedioPago {
   id: number
   nombre: string
+  /**
+   * `false` cuando el medio existe en el catálogo pero no tiene fila en
+   * `fin_medio_pago_config`. Usarlo lanza error en el backend, así que la UI lo
+   * deshabilita en vez de dejar que el cobro falle al guardar.
+   */
+  configurado: boolean
+  esEfectivo: boolean
+  afectaCaja: boolean
+  requiereCuentaBancaria: boolean
+  requiereNumeroOperacion: boolean
+  esCredito: boolean
+  /** Cuentas de la empresa que aceptan este medio. */
+  cuentas: MedioPagoCuenta[]
 }
 
 export interface CuentaListFilters {

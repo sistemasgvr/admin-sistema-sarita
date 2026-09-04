@@ -38,13 +38,16 @@
         :error="errores.idCliente"
       />
 
-      <AppFormField label="Método de pago" optional>
-        <AppSelect
-          v-model="form.idMedioPago"
-          :options="medioPagoOptions"
-          placeholder="Selecciona el método con el que se recibió el dinero"
-        />
-      </AppFormField>
+      <MedioPagoCuentaField
+        v-model:id-medio-pago="form.idMedioPago"
+        v-model:id-cuenta-bancaria="form.idCuentaBancaria"
+        v-model:numero-operacion="form.numeroOperacion"
+        v-model:valido="pagoValido"
+        label-medio="Método de pago"
+        :disabled="guardando"
+        :mostrar-errores="intentoEnvio"
+        excluir-credito
+      />
 
       <AppFormField label="Observaciones" optional :error="errores.observacion">
         <AppTextarea
@@ -78,13 +81,13 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
-import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
+import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import {
   useActualizarGarantiaMutation,
   useCrearGarantiaMutation,
@@ -138,18 +141,17 @@ const clienteOptions = computed<SelectOption[]>(() =>
   }),
 )
 
-const mediosQuery = useMediosPagoQuery()
-const medioPagoOptions = computed<SelectOption[]>(() => [
-  { label: '— No especificado —', value: '' },
-  ...(mediosQuery.data.value ?? []).map((m) => ({ label: m.nombre, value: m.id })),
-])
+const pagoValido = ref(true)
+const intentoEnvio = ref(false)
 
 const hoy = () => new Date().toISOString().slice(0, 10)
 
 const form = reactive({
   fecha: hoy(),
   idCliente: null as number | null,
-  idMedioPago: '' as string | number,
+  idMedioPago: null as number | null,
+  idCuentaBancaria: null as number | null,
+  numeroOperacion: '',
   importe: '',
   observacion: '',
 })
@@ -163,7 +165,8 @@ const { error: errorImporte, valido: importeValido, onBlur: onBlurImporte } = us
 )
 const errorImporteDisplay = computed(() => errores.importe || errorImporte.value)
 const formularioValido = computed(
-  () => importeValido.value && Boolean(form.fecha) && Boolean(form.idCliente),
+  () =>
+    importeValido.value && pagoValido.value && Boolean(form.fecha) && Boolean(form.idCliente),
 )
 
 const cargarDesdeProps = () => {
@@ -171,13 +174,15 @@ const cargarDesdeProps = () => {
   if (props.garantia) {
     form.fecha = props.garantia.fecha_registro
     form.idCliente = props.garantia.id_cliente
-    form.idMedioPago = props.garantia.id_medio_pago ?? ''
+    form.idMedioPago = props.garantia.id_medio_pago ?? null
+    form.idCuentaBancaria = props.garantia.id_cuenta_bancaria ?? null
     form.importe = Number(props.garantia.monto_cobrado).toFixed(2)
     form.observacion = props.garantia.observacion ?? ''
   } else {
     form.fecha = hoy()
     form.idCliente = null
-    form.idMedioPago = ''
+    form.idMedioPago = null
+    form.idCuentaBancaria = null
     form.importe = ''
     form.observacion = ''
   }
@@ -206,14 +211,17 @@ const validar = (): boolean => {
 }
 
 const submit = async () => {
+  intentoEnvio.value = true
   if (mensajeErrorMontoMoneda(form.importe, moneyOpts)) return
-  if (!validar()) return
+  if (!validar() || !pagoValido.value) return
 
   const importe = roundMoney(parseMoneyInput(form.importe))
   const payload = {
     fecha: form.fecha,
     idCliente: form.idCliente as number,
-    idMedioPago: form.idMedioPago ? Number(form.idMedioPago) : undefined,
+    idMedioPago: form.idMedioPago ?? undefined,
+    idCuentaBancaria: form.idCuentaBancaria ?? undefined,
+    numeroOperacion: form.numeroOperacion.trim() || undefined,
     importe,
     observacion: form.observacion.trim() || undefined,
     idUsuarioAuditoria: authStore.user?.id ?? undefined,

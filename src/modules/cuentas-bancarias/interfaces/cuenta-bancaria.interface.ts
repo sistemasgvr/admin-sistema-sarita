@@ -1,5 +1,19 @@
+/** Medio de pago que acepta una cuenta de la empresa (Fase 3). */
+export interface CuentaBancariaMedioPago {
+  idMedioPago: number
+  medioPago: string
+  esPredeterminada: boolean
+}
+
 export interface CuentaBancaria {
   id: number
+  /** CLIENTE = cuenta del cliente (devoluciones). EMPRESA = cuenta propia que recibe cobros. */
+  ambito: 'CLIENTE' | 'EMPRESA'
+  alias?: string | null
+  id_empresa?: number | null
+  empresa_razon_social?: string | null
+  /** Solo en cuentas de EMPRESA. */
+  medios_pago?: CuentaBancariaMedioPago[]
   id_cliente?: number | null
   cliente_razon_social?: string | null
   cliente_nombres?: string | null
@@ -32,10 +46,17 @@ export interface CuentaBancariaListFilters {
   limite?: number
   isActivos?: number | null
   idCliente?: number
+  ambito?: 'CLIENTE' | 'EMPRESA'
+  /** Solo cuentas que aceptan este medio de pago. */
+  idMedioPago?: number
 }
 
 export interface CuentaBancariaPayload {
   idUsuarioAuditoria: number
+  ambito?: 'CLIENTE' | 'EMPRESA'
+  alias?: string | null
+  /** Medios que recibe la cuenta. Omitir para no tocarlos; [] para quitarlos todos. */
+  mediosPago?: Array<{ idMedioPago: number; esPredeterminada?: boolean }>
   idCliente?: number | null
   idBanco?: number | null
   idTipoCuenta?: number | null

@@ -8,6 +8,8 @@ import {
 } from '@/shared/api/apiClient'
 import type {
   Comprobante,
+  ComprobantePago,
+  RegistrarCobroPayload,
   ComprobanteCatalogosPos,
   ComprobanteListFilters,
   ComprobanteListItem,
@@ -51,6 +53,14 @@ export const comprobantesService = {
 
   actualizar(id: number, payload: UpdateComprobantePayload) {
     return apiPatch<Comprobante>(`/comprobantes/${id}`, payload)
+  },
+
+  /** Completa la referencia del cobro (voucher) de una venta ya emitida. */
+  registrarCobro(id: number, payload: RegistrarCobroPayload) {
+    return apiPatch<{ idComprobante: number; actualizados: number; pagos: ComprobantePago[] }>(
+      `/comprobantes/${id}/cobro`,
+      payload,
+    )
   },
 
   emitir(id: number, idUsuarioAuditoria: number) {

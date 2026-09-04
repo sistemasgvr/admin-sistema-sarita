@@ -40,9 +40,15 @@ export interface Garantia {
   observacion?: string | null
   id_medio_pago?: number | null
   medio_pago?: string | null
+  /** Fase 3: cuenta de la empresa que recibió el cobro. */
+  id_cuenta_bancaria?: number | null
+  cuenta_bancaria?: string | null
   fecha_reembolso?: string | null
   id_medio_reembolso?: number | null
   medio_reembolso?: string | null
+  /** Fase 3: cuenta de la empresa desde la que se devolvió. */
+  id_cuenta_bancaria_reembolso?: number | null
+  cuenta_bancaria_reembolso?: string | null
   observacion_reembolso?: string | null
   origen?: OrigenGarantia | null
   es_manual?: boolean | null
@@ -71,6 +77,9 @@ export interface CrearGarantiaPayload {
   idCliente: number
   importe: number
   idMedioPago?: number
+  /** Obligatoria cuando el medio de pago no es efectivo. */
+  idCuentaBancaria?: number
+  numeroOperacion?: string
   observacion?: string
   idComprobante?: number
   idPrestamo?: number
@@ -83,6 +92,8 @@ export interface ActualizarGarantiaPayload {
   fecha?: string
   idCliente?: number
   idMedioPago?: number
+  idCuentaBancaria?: number
+  numeroOperacion?: string
   importe?: number
   observacion?: string
   idUsuarioAuditoria?: number
@@ -93,6 +104,9 @@ export interface ReembolsarGarantiaPayload {
   fecha?: string
   idComprobante?: number
   idMedioReembolso?: number
+  /** Obligatoria cuando el medio de reembolso no es efectivo. */
+  idCuentaBancariaReembolso?: number
+  numeroOperacion?: string
   observacion?: string
   idUsuarioAuditoria?: number
 }

@@ -22,11 +22,18 @@
                 {{ sesion.estadoCaja }}
               </AppBadge>
               <AppBadge v-else-if="!isLoading" color="neutral">SIN APERTURA</AppBadge>
-              <RouterLink
-                :to="{ name: 'admin-ventas-caja-historial' }"
+              <button
+                type="button"
                 class="text-theme-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+                @click="showHistorial = true"
               >
                 Historial
+              </button>
+              <RouterLink
+                :to="{ name: 'admin-ventas-caja-historial' }"
+                class="text-theme-sm font-medium text-gray-500 hover:underline dark:text-gray-400"
+              >
+                Sesiones
               </RouterLink>
             </div>
             <p
@@ -376,6 +383,8 @@
         :id-sucursal="idSucursal"
       />
 
+      <HistorialCajaModal v-model="showHistorial" :fecha="fecha" :id-sucursal="idSucursal" />
+
       <AppConfirmDialog
         v-model="confirmAnularOpen"
         :title="confirmAnularTitulo"
@@ -415,6 +424,7 @@ import AbrirCajaModal from '@/modules/caja/components/AbrirCajaModal.vue'
 import CerrarCajaModal from '@/modules/caja/components/CerrarCajaModal.vue'
 import RegistrarGastoCajaModal from '@/modules/caja/components/RegistrarGastoCajaModal.vue'
 import RegistrarDepositoCajaModal from '@/modules/caja/components/RegistrarDepositoCajaModal.vue'
+import HistorialCajaModal from '@/modules/caja/components/HistorialCajaModal.vue'
 import {
   useCajaDiaQuery,
   useCajaPendienteCierreQuery,
@@ -464,6 +474,7 @@ function fechaInicial(): string {
 
 const fecha = ref(fechaInicial())
 const idSucursal = ref<number | null>(null)
+const showHistorial = ref(false)
 const sucursalesFilters = ref({ pagina: 1, limite: 100 })
 const sucursalesQuery = useSucursalesQuery(sucursalesFilters)
 const sucursalOptions = computed(() => [

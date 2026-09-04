@@ -92,6 +92,11 @@ export function usePosComprobanteForm(options?: {
   const clientesVarios = ref<Cliente | null>(null)
   const idCondicionPago = ref<number | ''>('')
   const idMedioPago = ref<number | ''>('')
+  // Fase 3: el cobro al contado se guarda como línea de ven_comprobante_pago,
+  // con la cuenta de la empresa cuando el medio no es efectivo.
+  const idCuentaBancaria = ref<number | null>(null)
+  const numeroOperacionPago = ref('')
+  const pagoValido = ref(true)
 
   const condicionesPagoFilters = ref({ pagina: 1, limite: 100 })
   const condicionesPagoQuery = useCondicionesPagoQuery(condicionesPagoFilters)
@@ -227,13 +232,6 @@ export function usePosComprobanteForm(options?: {
     return ''
   })
 
-  const medioPagoOptions = computed(() =>
-    (catalogosQuery.data.value?.mediosPago ?? []).map((item) => ({
-      value: item.id,
-      label: (item.nombre ?? '').replace(/_/g, ' '),
-    })),
-  )
-
   watch(
     () => condicionesPagoQuery.data.value?.data,
     (lista) => {
@@ -320,6 +318,8 @@ export function usePosComprobanteForm(options?: {
       }
     } else if (!idMedioPago.value) {
       return 'Selecciona el medio de pago (contado)'
+    } else if (!pagoValido.value) {
+      return 'Completa la cuenta bancaria y el número de operación del cobro'
     }
 
     const codigo = codigoTipoComprobante.value
@@ -397,10 +397,29 @@ export function usePosComprobanteForm(options?: {
     aplicarClientesVariosPorDefecto()
     fecha.value = hoyIsoLima()
     idMedioPago.value = ''
+    idCuentaBancaria.value = null
+    numeroOperacionPago.value = ''
     const lista = condicionesPagoQuery.data.value?.data ?? []
     const contado = resolverCondicionContado(lista)
     if (contado) idCondicionPago.value = contado.id
     await refrescarSiguienteNumero()
+  }
+
+  /**
+   * Línea de cobro para `ven_comprobante_pago`. Se omite el `monto` a propósito:
+   * con un solo pago el backend toma el total del comprobante, que es el que
+   * acaba de calcular. Así los paneles no tienen que recalcularlo cada uno.
+   * En crédito no hay cobro todavía, así que no se manda nada.
+   */
+  function pagosPayload() {
+    if (esVentaCredito.value || !idMedioPago.value) return undefined
+    return [
+      {
+        idMedioPago: Number(idMedioPago.value),
+        idCuentaBancaria: idCuentaBancaria.value ?? undefined,
+        numeroOperacion: numeroOperacionPago.value.trim() || undefined,
+      },
+    ]
   }
 
   const canCreateCliente = computed(() =>
@@ -430,6 +449,10 @@ export function usePosComprobanteForm(options?: {
     clienteDescripcion,
     idCondicionPago,
     idMedioPago,
+    idCuentaBancaria,
+    numeroOperacionPago,
+    pagoValido,
+    pagosPayload,
     canEmit,
     canPrint,
     canCreateCliente,
@@ -440,7 +463,6 @@ export function usePosComprobanteForm(options?: {
     clienteSeleccionado,
     clientesVarios,
     condicionPagoOptions,
-    medioPagoOptions,
     esVentaCredito,
     diasCredito,
     numeroCuotasCondicion,

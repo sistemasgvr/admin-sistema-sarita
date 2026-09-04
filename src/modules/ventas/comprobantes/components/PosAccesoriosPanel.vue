@@ -143,9 +143,11 @@
         v-model:glosa="glosa"
         v-model:id-condicion-pago="idCondicionPago"
         v-model:id-medio-pago="idMedioPago"
+        v-model:id-cuenta-bancaria="idCuentaBancaria"
+        v-model:numero-operacion="numeroOperacionPago"
+        v-model:pago-valido="pagoValido"
         :totales="totales"
         :condicion-pago-options="condicionPagoOptions"
-        :medio-pago-options="medioPagoOptions"
         :es-venta-credito="esVentaCredito"
         :dias-credito="diasCredito"
         :numero-cuotas="numeroCuotasCondicion"
@@ -228,6 +230,10 @@ const {
   idCliente,
   idCondicionPago,
   idMedioPago,
+  idCuentaBancaria,
+  numeroOperacionPago,
+  pagoValido,
+  pagosPayload,
   canEmit,
   canPrint,
   canCreateCliente,
@@ -235,7 +241,6 @@ const {
   esNotaVenta,
   clienteOptions,
   condicionPagoOptions,
-  medioPagoOptions,
   esVentaCredito,
   diasCredito,
   numeroCuotasCondicion,
@@ -617,6 +622,7 @@ async function guardarComprobante() {
     idMoneda: idMonedaPen.value,
     idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
     idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+    pagos: pagosPayload(),
     fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
     glosa: glosa.value || undefined,
     observaciones: clienteDescripcion.value || undefined,

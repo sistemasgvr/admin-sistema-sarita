@@ -46,18 +46,21 @@
           />
         </AppFormField>
 
-        <AppFormField label="Medio de pago">
-          <AppSelect
-            v-model="form.idMedioPago"
-            :options="medioPagoOptions"
-            placeholder="Selecciona un medio"
-          />
-        </AppFormField>
-
-        <AppFormField label="Referencia / N° operación">
+        <AppFormField label="Referencia">
           <AppInput v-model="form.referencia" type="text" placeholder="Opcional" />
         </AppFormField>
       </div>
+
+      <MedioPagoCuentaField
+        v-model:id-medio-pago="form.idMedioPago"
+        v-model:id-cuenta-bancaria="form.idCuentaBancaria"
+        v-model:numero-operacion="form.numeroOperacion"
+        v-model:valido="pagoValido"
+        :disabled="mutation.isPending.value"
+        :mostrar-errores="intentoEnvio"
+        mostrar-siempre-numero-operacion
+        excluir-credito
+      />
 
       <AppFormField label="Observación">
         <AppTextarea v-model="form.observacion" :rows="2" placeholder="Opcional" />
@@ -115,11 +118,11 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
-import { AppConfirmDialog, AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppConfirmDialog, AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
+import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import { useRegistrarPagoMutation } from '@/modules/finanzas/composables/usePagoMutations'
 import { finanzasService } from '@/modules/finanzas/services/finanzas.service'
 import type {
@@ -135,7 +138,6 @@ import {
   roundMoney,
 } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const props = defineProps<{
   cuenta: CuentaFinanciera | null
@@ -147,7 +149,6 @@ const emit = defineEmits<{ saved: [] }>()
 const open = defineModel<boolean>({ required: true })
 
 const authStore = useAuthStore()
-const mediosPagoQuery = useMediosPagoQuery()
 const mutation = useRegistrarPagoMutation(props.tipo)
 
 const esCobrar = computed(() => props.tipo === 'COBRAR')
@@ -158,10 +159,6 @@ const subtitulo = computed(() =>
 const ctaLabel = computed(() => (esCobrar.value ? 'Registrar cobranza' : 'Registrar pago'))
 const terceroLabel = computed(() => (esCobrar.value ? 'Cliente' : 'Proveedor'))
 
-const medioPagoOptions = computed<SelectOption[]>(() =>
-  (mediosPagoQuery.data.value ?? []).map((medio) => ({ label: medio.nombre, value: medio.id })),
-)
-
 const hoy = () => new Date().toISOString().slice(0, 10)
 
 const fechaEmisionMin = computed(() => props.cuenta?.fecha_emision ?? undefined)
@@ -169,10 +166,15 @@ const fechaEmisionMin = computed(() => props.cuenta?.fecha_emision ?? undefined)
 const form = reactive({
   monto: '',
   fechaPago: hoy(),
-  idMedioPago: '' as string | number,
+  idMedioPago: null as number | null,
+  idCuentaBancaria: null as number | null,
+  numeroOperacion: '',
   referencia: '',
   observacion: '',
 })
+
+const pagoValido = ref(true)
+const intentoEnvio = ref(false)
 
 const errores = reactive<{ monto?: string; fechaPago?: string }>({})
 
@@ -185,6 +187,7 @@ const errorMontoDisplay = computed(() => errores.monto || errorMonto.value)
 const formularioValido = computed(
   () =>
     montoValido.value &&
+    pagoValido.value &&
     Boolean(form.fechaPago) &&
     (!props.cuenta?.fecha_emision || form.fechaPago >= props.cuenta.fecha_emision),
 )
@@ -196,11 +199,14 @@ const resetForm = () => {
   form.fechaPago = props.cuenta?.fecha_emision && h < props.cuenta.fecha_emision
     ? props.cuenta.fecha_emision
     : h
-  form.idMedioPago = ''
+  form.idMedioPago = null
+  form.idCuentaBancaria = null
+  form.numeroOperacion = ''
   form.referencia = ''
   form.observacion = ''
   errores.monto = undefined
   errores.fechaPago = undefined
+  intentoEnvio.value = false
 }
 
 watch(open, (isOpen) => {
@@ -260,7 +266,9 @@ const ejecutarPago = async (forzar: boolean) => {
       idCuenta: props.cuenta.id,
       monto: montoFinal,
       fechaPago: form.fechaPago || undefined,
-      idMedioPago: form.idMedioPago ? Number(form.idMedioPago) : undefined,
+      idMedioPago: form.idMedioPago ?? undefined,
+      idCuentaBancaria: form.idCuentaBancaria ?? undefined,
+      numeroOperacion: form.numeroOperacion.trim() || undefined,
       referencia: form.referencia.trim() || undefined,
       observacion: form.observacion.trim() || undefined,
       idUsuarioAuditoria: authStore.user?.id ?? undefined,
@@ -276,7 +284,9 @@ const ejecutarPago = async (forzar: boolean) => {
 }
 
 const submit = async () => {
+  intentoEnvio.value = true
   if (!props.cuenta) return
+  if (!pagoValido.value) return
   if (mensajeErrorMontoMoneda(form.monto, moneyOpts)) return
   if (!validar()) return
 

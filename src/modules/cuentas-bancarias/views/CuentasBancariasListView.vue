@@ -174,7 +174,9 @@ import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 /** Sentinel API: id_cliente IS NULL (cuentas de empresa). */
-const ID_CLIENTE_EMPRESA = -1
+// Fase 3: el ámbito reemplaza al truco histórico `idCliente = -1` para pedir
+// "las cuentas sin cliente". El backend sigue aceptando ese valor, pero aquí ya
+// se pide lo que se quiere decir.
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -232,7 +234,7 @@ const filters = ref<CuentaBancariaListFilters>({
   pagina: 1,
   limite: 10,
   isActivos: 1,
-  idCliente: soloEmpresa.value ? ID_CLIENTE_EMPRESA : undefined,
+  ambito: soloEmpresa.value ? ('EMPRESA' as const) : undefined,
 })
 
 const query = useCuentasBancariasQuery(filters)
@@ -241,7 +243,7 @@ const deleteMutation = useDeleteCuentaBancariaMutation()
 // --- Chips de resumen (total / activos / inactivos, respetando la búsqueda) ---
 const breakdownFiltersBase = computed<CuentaBancariaListFilters>(() => ({
   buscar: buscar.value.trim(),
-  idCliente: soloEmpresa.value ? ID_CLIENTE_EMPRESA : undefined,
+  ambito: soloEmpresa.value ? ('EMPRESA' as const) : undefined,
   pagina: 1,
   limite: 1,
 }))
@@ -305,7 +307,7 @@ let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 onMounted(() => {
   if (soloEmpresa.value) {
-    filters.value = { ...filters.value, idCliente: ID_CLIENTE_EMPRESA }
+    filters.value = { ...filters.value, ambito: 'EMPRESA' }
   }
 })
 

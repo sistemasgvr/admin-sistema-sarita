@@ -2,9 +2,15 @@ export interface CajaTotales {
   ventasContado: number
   ventasCredito: number
   ventasMediosCaja: number
+  /** Fase 3: desglose del cobro de ventas por naturaleza del medio. */
+  ventasEfectivo?: number
+  ventasOtrosMedios?: number
   cobranzas: number
   cobranzasMediosCaja: number
+  cobranzasEfectivo?: number
   gastosCaja: number
+  /** Gastos pagados con medios que afectan caja: los únicos que vacían el cajón. */
+  gastosCajaMediosCaja?: number
   gastosCompra: number
   gastos: number
   depositos: number
@@ -21,6 +27,8 @@ export interface CajaMovimientoGasto {
   monto: number
   idMedioPago?: number | null
   medioPago?: string | null
+  idCuentaBancaria?: number | null
+  cuentaBancaria?: string | null
   idCategoriaGasto?: number | null
   categoriaGasto?: string | null
   numeroOperacion?: string | null
@@ -98,6 +106,8 @@ export interface CrearCajaGastoPayload {
   concepto: string
   monto: number
   idMedioPago?: number | null
+  /** Cuenta de la empresa de la que sale el dinero (obligatoria si el medio no es efectivo). */
+  idCuentaBancaria?: number | null
   idCategoriaGasto?: number | null
   numeroOperacion?: string
   observacion?: string
@@ -110,6 +120,8 @@ export interface ActualizarCajaGastoPayload {
   concepto: string
   monto: number
   idMedioPago?: number | null
+  /** Cuenta de la empresa de la que sale el dinero (obligatoria si el medio no es efectivo). */
+  idCuentaBancaria?: number | null
   idCategoriaGasto?: number | null
   numeroOperacion?: string
   observacion?: string
@@ -149,6 +161,66 @@ export interface LibroDiarioVenta {
   detalleProductos?: string
 }
 
+/**
+ * Una linea de cobro de una venta (Fase 3). Una venta cobrada mitad en efectivo
+ * y mitad por transferencia produce dos filas, cada una en su pestana.
+ */
+export interface LibroDiarioVentaPago {
+  idComprobante: number
+  idPago?: number | null
+  item: number
+  fecha: string
+  tipoComprobante?: string | null
+  serieNumero?: string | null
+  idCliente?: number | null
+  cliente?: string | null
+  idMedioPago?: number | null
+  medioPago?: string | null
+  idCuentaBancaria?: number | null
+  cuentaBancaria?: string | null
+  numeroOperacion?: string | null
+  monto: number
+  /** DETALLE = linea real; CABECERA = derivada del medio de pago del comprobante. */
+  origen: 'DETALLE' | 'CABECERA'
+  grupo: 'EFECTIVO' | 'OTROS' | 'CREDITO'
+}
+
+export interface LibroDiarioGarantia {
+  id: number
+  fecha: string
+  tipo: 'COBRO' | 'DEVOLUCION'
+  idGarantia: number
+  monto: number
+  idMedioPago?: number | null
+  medioPago?: string | null
+  idCuentaBancaria?: number | null
+  cuentaBancaria?: string | null
+  numeroOperacion?: string | null
+  idCliente?: number | null
+  cliente?: string | null
+  observacion?: string | null
+}
+
+/**
+ * Definicion de una pestana del historial de caja. La sirve el backend
+ * (`fin_obtener_libro_diario`) en vez de estar escrita aqui, para que anadir un
+ * resumen no obligue a tocar el componente.
+ */
+export interface LibroDiarioResumen {
+  clave: string
+  etiqueta: string
+  /** Array del payload del que salen las filas de esta pestana. */
+  coleccion: 'ventasPagos' | 'cobranzas' | 'gastos' | 'depositos' | 'garantias' | 'observaciones'
+  /** Campo por el que filtrar esa coleccion (null = toda). */
+  filtroCampo?: string | null
+  filtroValor?: string | null
+  /** +1 entra a caja, -1 sale, 0 no la mueve. */
+  signo: number
+  total: number | null
+  cantidad: number
+  orden: number
+}
+
 export interface LibroDiarioCobranza {
   id: number
   fechaPago: string
@@ -159,6 +231,8 @@ export interface LibroDiarioCobranza {
   idCuenta?: number
   cliente?: string
   idCliente?: number | null
+  idCuentaBancaria?: number | null
+  cuentaBancaria?: string | null
 }
 
 export interface LibroDiarioGasto {
@@ -167,7 +241,10 @@ export interface LibroDiarioGasto {
   origen: 'CAJA' | 'COMPRA' | string
   concepto: string
   monto: number
+  idMedioPago?: number | null
   medioPago?: string | null
+  idCuentaBancaria?: number | null
+  cuentaBancaria?: string | null
   observacion?: string | null
 }
 
@@ -195,10 +272,15 @@ export interface LibroDiario {
   idCliente?: number | null
   idSucursal?: number | null
   ventas: LibroDiarioVenta[]
+  /** Fase 3: una fila por linea de cobro, para las pestanas de ventas. */
+  ventasPagos?: LibroDiarioVentaPago[]
   cobranzas: LibroDiarioCobranza[]
   gastos: LibroDiarioGasto[]
   depositos: LibroDiarioDeposito[]
+  garantias?: LibroDiarioGarantia[]
   observaciones: LibroDiarioObservacion[]
+  /** Fase 3: definicion de las pestanas del historial. */
+  resumenes?: LibroDiarioResumen[]
   totales: CajaTotales
   dias?: Array<{ fecha: string; totales: CajaTotales }>
 }

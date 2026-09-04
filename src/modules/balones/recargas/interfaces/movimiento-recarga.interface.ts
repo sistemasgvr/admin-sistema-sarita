@@ -1,3 +1,4 @@
+import type { ComprobantePagoPayload } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 export interface MovimientoRecarga {
   id: number
   fecha_salida_almacen: string
@@ -147,6 +148,8 @@ export interface CreateRecargaClientePayload {
   observacion?: string
   /** Preferido / primer origen; el backend completa el resto por FIFO si hace falta. */
   idBalonOrigen?: number
+  /** Fase 3: desglose del cobro (ven_comprobante_pago). Omitir en crédito. */
+  pagos?: ComprobantePagoPayload[]
 }
 
 export interface RecargaClienteResult {

@@ -38,19 +38,18 @@
           />
         </AppFormField>
 
-        <AppFormField
-          label="Método de reembolso"
-          optional
-          :error="errores.idMedioReembolso"
-          class="sm:col-span-2"
-        >
-          <AppSelect
-            v-model="form.idMedioReembolso"
-            :options="medioPagoOptions"
-            placeholder="Selecciona el método"
-          />
-        </AppFormField>
       </div>
+
+      <MedioPagoCuentaField
+        v-model:id-medio-pago="form.idMedioReembolso"
+        v-model:id-cuenta-bancaria="form.idCuentaBancariaReembolso"
+        v-model:numero-operacion="form.numeroOperacion"
+        v-model:valido="pagoValido"
+        label-medio="Método de reembolso"
+        :disabled="mutation.isPending.value"
+        :mostrar-errores="intentoEnvio"
+        excluir-credito
+      />
 
       <AppFormField label="Observaciones" optional :error="errores.observacion">
         <AppTextarea
@@ -83,15 +82,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, toRef, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import { computed, reactive, ref, toRef, watch } from 'vue'
+import { AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
+import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import { useReembolsarGarantiaMutation } from '@/modules/finanzas/composables/useGarantiaMutations'
 import type { Garantia } from '@/modules/finanzas/interfaces/garantia.interface'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
 import {
   formatCurrency,
   mensajeErrorMontoMoneda,
@@ -106,16 +104,15 @@ const open = defineModel<boolean>({ required: true })
 const authStore = useAuthStore()
 const mutation = useReembolsarGarantiaMutation()
 
-const mediosQuery = useMediosPagoQuery()
-const medioPagoOptions = computed<SelectOption[]>(() => [
-  { label: '— No especificado —', value: '' },
-  ...(mediosQuery.data.value ?? []).map((m) => ({ label: m.nombre, value: m.id })),
-])
+const pagoValido = ref(true)
+const intentoEnvio = ref(false)
 
 const form = reactive({
   monto: '',
   fecha: new Date().toISOString().slice(0, 10),
-  idMedioReembolso: '' as string | number,
+  idMedioReembolso: null as number | null,
+  idCuentaBancariaReembolso: null as number | null,
+  numeroOperacion: '',
   observacion: '',
 })
 const errores = reactive<Record<string, string | undefined>>({})
@@ -134,8 +131,11 @@ watch(
     Object.keys(errores).forEach((k) => (errores[k] = undefined))
     form.monto = Number(g.monto_saldo).toFixed(2)
     form.fecha = new Date().toISOString().slice(0, 10)
-    form.idMedioReembolso = ''
+    form.idMedioReembolso = null
+    form.idCuentaBancariaReembolso = null
+    form.numeroOperacion = ''
     form.observacion = ''
+    intentoEnvio.value = false
   },
 )
 
@@ -160,9 +160,10 @@ const validar = (): boolean => {
 }
 
 const submit = async () => {
+  intentoEnvio.value = true
   if (!props.garantia) return
   if (mensajeErrorMontoMoneda(form.monto, moneyOpts)) return
-  if (!validar()) return
+  if (!validar() || !pagoValido.value) return
 
   try {
     await mutation.mutateAsync({
@@ -170,7 +171,9 @@ const submit = async () => {
       payload: {
         monto: roundMoney(parseMoneyInput(form.monto)),
         fecha: form.fecha,
-        idMedioReembolso: form.idMedioReembolso ? Number(form.idMedioReembolso) : undefined,
+        idMedioReembolso: form.idMedioReembolso ?? undefined,
+        idCuentaBancariaReembolso: form.idCuentaBancariaReembolso ?? undefined,
+        numeroOperacion: form.numeroOperacion.trim() || undefined,
         observacion: form.observacion.trim() || undefined,
         idUsuarioAuditoria: authStore.user?.id ?? undefined,
       },

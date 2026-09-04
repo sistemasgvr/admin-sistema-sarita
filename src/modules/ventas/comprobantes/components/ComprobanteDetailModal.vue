@@ -127,6 +127,75 @@
       </div>
 
       <div
+        v-if="pagos.length"
+        class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
+      >
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Cobro
+          </p>
+          <button
+            v-if="puedeRegistrarCobro && !editandoCobro"
+            type="button"
+            class="text-theme-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+            @click="iniciarEdicionCobro"
+          >
+            Registrar voucher
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <div
+            v-for="pago in pagos"
+            :key="pago.id"
+            class="rounded-lg border border-gray-100 p-2 dark:border-gray-800"
+          >
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ pago.nombre_medio_pago || '—' }}
+                <span v-if="pago.cuenta_bancaria" class="font-normal text-gray-500">
+                  · {{ pago.cuenta_bancaria }}
+                </span>
+              </p>
+              <p class="text-sm font-semibold tabular-nums text-gray-800 dark:text-white/90">
+                {{ formatCurrency(Number(pago.monto)) }}
+              </p>
+            </div>
+
+            <div v-if="editandoCobro" class="mt-2">
+              <AppInput
+                v-model="vouchers[pago.id]"
+                placeholder="N° de operación / voucher"
+                :disabled="guardandoCobro"
+              />
+            </div>
+            <p v-else class="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
+              {{ pago.numero_operacion ? `N° op. ${pago.numero_operacion}` : 'Sin N° de operación' }}
+            </p>
+          </div>
+        </div>
+
+        <div v-if="editandoCobro" class="mt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
+            :disabled="guardandoCobro"
+            @click="editandoCobro = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
+            :disabled="guardandoCobro"
+            @click="guardarCobro"
+          >
+            {{ guardandoCobro ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+
+      <div
         v-if="puedePdf"
         class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
       >
@@ -227,7 +296,10 @@ import {
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
-import type { Comprobante } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import type {
+  Comprobante,
+  ComprobantePago,
+} from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
   downloadBlob,
   openPdfPrintWindow,
@@ -235,12 +307,13 @@ import {
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
-import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
+import { AppBadge, AppInput, AppModal, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { formatCurrency } from '@/shared/utils/currency'
 
 const props = defineProps<{
   modelValue: boolean
@@ -288,6 +361,67 @@ watch(open, (isOpen) => {
 })
 
 const comprobante = computed(() => comprobanteQuery.data.value)
+
+/**
+ * Registro tardío del voucher (Fase 3).
+ *
+ * En el mostrador la venta se genera antes de que el cliente pague, así que el
+ * número de operación casi nunca existe al cobrar. Aquí se completa cuando
+ * llega. Solo se edita la referencia: el medio de pago y el importe no se tocan
+ * porque moverían el arqueo de una caja que puede estar ya cerrada.
+ */
+const pagos = computed<ComprobantePago[]>(() => comprobante.value?.pagos ?? [])
+const editandoCobro = ref(false)
+const guardandoCobro = ref(false)
+const vouchers = ref<Record<number, string>>({})
+
+const puedeRegistrarCobro = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR) &&
+    (comprobante.value?.nombre_estado ?? '').toUpperCase() !== 'ANULADO',
+)
+
+function iniciarEdicionCobro() {
+  vouchers.value = Object.fromEntries(
+    pagos.value.map((p) => [p.id, p.numero_operacion ?? '']),
+  )
+  editandoCobro.value = true
+}
+
+async function guardarCobro() {
+  const id = comprobante.value?.id
+  if (!id) return
+
+  // Solo se mandan las líneas que realmente cambiaron.
+  const cambios = pagos.value
+    .filter((p) => (vouchers.value[p.id] ?? '').trim() !== (p.numero_operacion ?? ''))
+    .map((p) => ({ idPago: p.id, numeroOperacion: (vouchers.value[p.id] ?? '').trim() }))
+
+  if (!cambios.length) {
+    editandoCobro.value = false
+    return
+  }
+
+  guardandoCobro.value = true
+  try {
+    await comprobantesService.registrarCobro(id, {
+      pagos: cambios,
+      idUsuarioAuditoria: authStore.user?.id ?? undefined,
+    })
+    await comprobanteQuery.refetch()
+    editandoCobro.value = false
+    toastSuccess('Cobro actualizado')
+  } catch (error) {
+    toastApiError(error)
+  } finally {
+    guardandoCobro.value = false
+  }
+}
+
+// Cambiar de comprobante cierra la edición para no arrastrar lo tecleado.
+watch(comprobanteIdRef, () => {
+  editandoCobro.value = false
+})
 const tieneRepartoVigente = computed(() => tieneActividadVigente(comprobante.value))
 const puedeAgregarReparto = computed(
   () => canCrearActividad.value && Boolean(comprobante.value) && !tieneRepartoVigente.value,

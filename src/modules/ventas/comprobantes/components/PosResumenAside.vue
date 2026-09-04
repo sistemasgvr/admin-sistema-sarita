@@ -52,19 +52,23 @@
           :disabled="Boolean(comprobanteGuardadoId)"
         />
       </div>
-      <AppSelect
-        v-model="idMedioPagoModel"
-        label="Medio de pago"
-        :placeholder="esVentaCredito ? 'Opcional en crédito' : 'Efectivo, Yape…'"
-        :required="!esVentaCredito"
-        :options="medioPagoOptions"
+      <MedioPagoCuentaField
+        v-model:id-medio-pago="idMedioPagoField"
+        v-model:id-cuenta-bancaria="idCuentaBancariaModel"
+        v-model:numero-operacion="numeroOperacionModel"
+        v-model:valido="pagoValidoModel"
+        :medio-requerido="!esVentaCredito"
         :disabled="Boolean(comprobanteGuardadoId)"
-        :hint="
+        excluir-credito
+        numero-operacion-opcional
+      />
+      <p class="-mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+        {{
           esVentaCredito
             ? 'El cobro se registra después en Cuentas por cobrar.'
             : 'Obligatorio al contado (caja / libro diario).'
-        "
-      />
+        }}
+      </p>
       <AppInput v-model="glosaModel" label="Glosa" placeholder="Opcional" />
       <div v-if="mostrarGenerarGre" class="space-y-1">
         <div class="flex items-start gap-1">
@@ -163,6 +167,7 @@
 import { computed } from 'vue'
 import { formatPosMoney } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { AppCheckbox, AppHelpTip, AppInput, AppSelect } from '@/shared/components'
+import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -182,7 +187,6 @@ const props = withDefaults(
     guardarLabel?: string
     guardandoLabel?: string
     condicionPagoOptions?: { value: number; label: string }[]
-    medioPagoOptions?: { value: number; label: string }[]
     esVentaCredito?: boolean
     diasCredito?: number
     numeroCuotas?: number
@@ -199,7 +203,6 @@ const props = withDefaults(
     canPrint: false,
     esNotaVenta: false,
     condicionPagoOptions: () => [],
-    medioPagoOptions: () => [],
     esVentaCredito: false,
     diasCredito: 0,
     numeroCuotas: 0,
@@ -218,6 +221,19 @@ const emit = defineEmits<{
 const glosaModel = defineModel<string>('glosa', { default: '' })
 const idCondicionPagoModel = defineModel<number | ''>('idCondicionPago', { default: '' })
 const idMedioPagoModel = defineModel<number | ''>('idMedioPago', { default: '' })
+const idCuentaBancariaModel = defineModel<number | null>('idCuentaBancaria', { default: null })
+const numeroOperacionModel = defineModel<string>('numeroOperacion', { default: '' })
+const pagoValidoModel = defineModel<boolean>('pagoValido', { default: true })
+
+// El POS guarda el medio como `number | ''` (convención del formulario); el
+// campo compartido usa `number | null`. Se adapta aquí para no cambiar el tipo
+// en los cinco paneles que ya lo consumen.
+const idMedioPagoField = computed<number | null>({
+  get: () => (idMedioPagoModel.value === '' ? null : Number(idMedioPagoModel.value)),
+  set: (v) => {
+    idMedioPagoModel.value = v ?? ''
+  },
+})
 const generarGreModel = defineModel<boolean>('generarGre', { default: false })
 
 const formatMoney = formatPosMoney

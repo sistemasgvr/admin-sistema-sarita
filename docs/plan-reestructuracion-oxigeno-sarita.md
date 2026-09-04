@@ -372,6 +372,69 @@ Pendiente como seguimiento (no bloquea el cierre de F2):
 #### Dependencias
 Independiente de F1/F2 a nivel de datos, pero conviene hacerla después de F1 para no tocar dos veces el orquestador de venta. Puede solaparse con F4.
 
+#### Estado — ✅ COMPLETADA (2026-09-03)
+
+Decisiones 6 y 7 del §5 confirmadas antes de empezar: **cuenta ↔ medio de pago es N:M**, las cuentas de la empresa se **comparten entre sucursales**, y el historial lleva **todas las pestañas de caja**.
+
+**Lo implementado**
+
+| Capa | Cambio |
+|---|---|
+| BD | `gen_cuenta_bancaria` gana `ambito` (`CLIENTE`/`EMPRESA`), `alias` e `id_empresa`, con CHECK de coherencia (una cuenta de cliente exige cliente; una de empresa no puede tenerlo). Nuevas `gen_cuenta_medio_pago` (puente N:M), `fin_medio_pago_config` y `ven_comprobante_pago`. `id_cuenta_bancaria` añadida a `fin_caja_gasto`, `fin_garantia`, `ven_garantia` y `ven_garantia_movimiento`, más `id_cuenta_bancaria_reembolso` donde hay devolución. |
+| BD — funciones | `fin_medio_pago_flag` + `fin_validar_cuenta_medio_pago` (punto único de la regla medio↔cuenta), `gen_sincronizar_medios_cuenta`, `ven_pagos_de_comprobante`, `ven_sincronizar_pagos_comprobante`, `fin_notificar_caja_admins`, `fin_garantia_registro`. Reescritas `fin_caja_calcular_totales` y `fin_obtener_libro_diario`. |
+| API | `ambito`/`alias`/`mediosPago` en cuentas bancarias (+ filtros `ambito` e `idMedioPago`); `idCuentaBancaria` en gastos de caja, garantías y pagos; `pagos[]` en comprobantes y en la recarga a cliente. `GET /finanzas/medios-pago` pasa a servir la configuración de cada medio y sus cuentas. |
+| Frontend | `MedioPagoCuentaField` (medio + cuenta + nº operación, con las reglas leídas del backend) reutilizado en gasto de caja, garantía, reembolso, pago de CxC/CxP y POS. Cuentas de empresa con alias y medios asociados. `HistorialCajaModal` con pestañas y exportación, abierto desde el menú Caja. |
+
+**Decisiones tomadas durante la implementación que no estaban en el diseño original:**
+
+| Decisión | Motivo |
+|---|---|
+| `fin_medio_pago_config` en vez de dejar la clasificación en las funciones | `fin_caja_calcular_totales` repetía `UPPER(mp.nombre) IN ('EFECTIVO','YAPE','PLIN')` en cinco bloques. Un medio nuevo en el catálogo quedaba fuera del arqueo **en silencio**. Mismo criterio que `inv_signo_tipo_movimiento` en F1: un medio sin configurar es un error explícito. |
+| Los resúmenes son datos derivados, no la tabla `fin_caja_resumen` del diseño | Una tabla obligaría a mantenerla sincronizada con cada venta, gasto y depósito. Se implementaron como el array `resumenes` de `fin_obtener_libro_diario`, donde cada entrada declara de qué colección del payload salen sus filas y con qué filtro. Añadir un resumen no obliga a tocar el Vue. |
+| `ven_pagos_de_comprobante` con *fallback* a la cabecera | Sin él, cada consumidor (totales, libro diario, resúmenes) tendría que escribir dos consultas: una para ventas con desglose y otra para las anteriores a F3. |
+| `monto` opcional cuando hay un solo pago | Los cinco paneles del POS arman su propio payload y ninguno conoce el total ya calculado por el orquestador. Con el monto omitido, cada panel manda medio y cuenta y el backend completa el importe. |
+| `alias` en la cuenta | El titular es la razón social completa; en un selector de cobro necesitas «BCP Principal», no «Haydeé Ruiz de los Santos». |
+| El nº de operación no bloquea el cobro en el POS | En el mostrador la venta se genera **antes** de que el cliente pague, así que a menudo no existe todavía un voucher que teclear; frenar la venta por eso la haría imposible. `requiere_numero_operacion` sigue decidiendo si el campo **se muestra**, pero solo es obligatorio en los formularios de back-office (gasto de caja, garantía, reembolso, pago de CxC/CxP), donde el pago ya ocurrió. La cuenta bancaria sí es innegociable en todos: sin ella el dinero no se concilia con el banco. El voucher se registra después desde el detalle del comprobante (`PATCH /comprobantes/:id/cobro`). |
+| `ven_registrar_cobro_comprobante` en vez de reusar `ven_actualizar_comprobante` | Completar el voucher no debe re-ejecutar el orquestador de la venta (detalle, stock, cuentas por cobrar). La función nueva solo toca datos de referencia y la cuenta bancaria, y **rechaza** cambiar medio de pago o importe: eso movería los totales de una caja que puede estar ya cerrada y arqueada. Para corregir medio o importe hay que editar la venta. |
+| Guard de borrado en `gen_eliminar_cuenta_bancaria` | Dar de baja una cuenta con cobros registrados dejaba pagos, depósitos y gastos apuntando a una cuenta inactiva. |
+| Ninguna bandera de permiso nueva | `caja.resumen` y `cuentas_bancarias.empresa` llegaron a crearse y se retiraron: el historial es el mismo libro diario (ya cubierto por `caja.libro_diario`) y las cuentas de empresa usan los mismos endpoints que las de cliente. Una bandera que no gobierna nada solo estorba al mantener roles. |
+
+**Bugs preexistentes que aparecieron al implementar (todos corregidos):**
+
+1. **[ALTO] `auth_listar_ids_usuarios_admin_con_permiso` fallaba en toda llamada.** Estaba declarada `STABLE` y ejecutaba `SET TIME ZONE`, cosa que PostgreSQL rechaza en ejecución (*"SET is not allowed in a non-volatile function"*). La usa `notificaciones.model.ts`, así que **ninguna notificación dirigida a administradores por permiso podía enviarse**. Se quitó el `SET` (no había ningún valor dependiente de zona horaria).
+2. **[MEDIO] `GET /caja/gastos/:id` y `PATCH /caja/gastos/:id` estaban rotos.** `caja.model.ts` llamaba a `fin_obtener_caja_gasto` y `fin_actualizar_caja_gasto`, que no existían ni en el repo ni en DEV. Creadas, con la edición restringida a caja abierta.
+3. **[MEDIO] El arqueo restaba gastos que no salen del cajón.** `cajaEsperada` y `fin_cerrar_caja_sesion` restaban `gastosCaja` completo, así que un gasto pagado por transferencia generaba una diferencia de arqueo inexistente. Ahora se resta `gastosCajaMediosCaja`.
+4. **[BAJO] Los listados del libro diario no filtraban por sucursal** aunque sus totales sí. Al poner el contador junto al total en cada pestaña, la incoherencia quedó a la vista (3 cobranzas bajo un total de 0). Corregido en cobranzas, gastos y depósitos.
+
+**Verificado contra DEV** (script end-to-end, todo dentro de una transacción con `ROLLBACK`, tres corridas consecutivas sin fallos):
+
+```
+Cuenta de empresa con Yape + Transferencia   -> creada con sus 2 medios              ✅
+Efectivo sin cuenta                          -> aceptado                             ✅
+Transferencia sin cuenta                     -> rechazada con mensaje accionable     ✅
+PLIN sobre cuenta que no lo acepta           -> rechazado                            ✅
+Venta cobrada 50 % efectivo / 50 % transf.   -> 2 líneas, suman el total exacto       ✅
+La misma venta en el historial               -> aparece en EFECTIVO y en OTROS,
+                                                la línea no-efectivo lleva su cuenta ✅
+9 pestañas                                   -> cada una entrega tantas filas
+                                                como declara en `cantidad`           ✅
+Gasto de caja por Yape                       -> rechazado sin cuenta, creado con ella ✅
+Cierre de caja                               -> 3 notificaciones a los ADMIN
+                                                (excluyendo a quien la cerró)        ✅
+Eliminar cuenta con movimientos              -> bloqueada                            ✅
+```
+
+Backend (`tsc --noEmit`) y frontend (`vue-tsc -b`) compilan limpio; la API arranca sin errores y los endpoints nuevos responden 401 sin token (ningún 500). `verify-functions-coverage` y `verify-tables-coverage`: 0 diferencias entre repo y DEV.
+
+Migración: `database_sql/migraciones/20260904_f3_caja_medios_pago_cuentas.sql` (solo DDL + catálogos). Semilla: `seeds/fin_medio_pago_config.sql`.
+
+**Pendiente como seguimiento (no bloquea F4):**
+
+- **El POS cobra con un solo medio.** El campo ya envía medio + cuenta + nº de operación como línea de `ven_comprobante_pago`, y el backend soporta el reparto entre varios medios, pero la UI de dividir un cobro (efectivo + Yape en la misma venta) no está: hay que decidir dónde vive ese control en la pantalla de venta.
+- **`pg_dump` no está instalado en el equipo**, así que `sync-tables-from-dev.js` no pudo correr y los cinco archivos de `tablas/` tocados se escribieron a mano. Coinciden columna por columna con DEV (verificado por consulta), pero conviene reejecutar el sync donde haya `pg_dump` para que la procedencia vuelva a ser automática.
+- **La familia `fin_garantia` está muerta.** Ningún módulo NestJS la llama (todo pasa por `ven_garantia`) y tiene 1 fila en DEV. Se actualizó por coherencia, pero es candidata a eliminarse en F8.
+- **`ven_garantia_movimiento` no tiene reversa de cuenta al anular una garantía**: se hereda el comportamiento previo, que no se tocó en esta fase.
+
 ---
 
 ### Fase 4 — Punto de Venta: escenarios de balón y gas
@@ -626,8 +689,8 @@ Confirmar antes o durante la fase indicada:
 3. ~~**(F1) Unidad del stock de gas.**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): manda la unidad del producto** (`pro_producto.id_unidad_medida`). Ver "Unidad canónica del stock de gas" más abajo.
 4. **(F2) Numeración.** ¿La "orden de salida" tiene correlativo propio por sucursal/almacén? ¿Series de GRE por punto de emisión?
 5. **(F2) "Solicitar Foto"** (apunte 1.c.iv.7): el PDF menciona guiarse de un ejemplo llamado "Solicitar Foto". ¿Qué es ese ejemplo? ¿Un formato de PDF existente a replicar?
-6. **(F3) Cuentas bancarias de la empresa.** ¿Una cuenta puede estar asociada a **varios** medios de pago (p. ej. una cuenta que recibe Yape y transferencia)? ¿Multi-sucursal?
-7. **(F3) Resúmenes de caja.** Confirmar la lista exacta de "pestañas" del historial (apunte 1.a.ii): ¿Ventas efectivo / Ventas otros medios / Gastos / Depósitos / Garantías / Ajustes? ¿Alguna más?
+6. ~~**(F3) Cuentas bancarias de la empresa.**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): relación N:M** (tabla `gen_cuenta_medio_pago`) y cuentas **compartidas entre sucursales** — la sucursal ya queda registrada en el movimiento que usa la cuenta.
+7. ~~**(F3) Resúmenes de caja.**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): todas las pestañas de caja** — Ventas en efectivo, Ventas otros medios, Ventas a crédito, Cobranzas, Garantías cobradas, Garantías devueltas, Gastos, Depósitos a banco y Observaciones. Las define el backend en `fin_obtener_libro_diario`, así que añadir una no obliga a tocar el frontend.
 8. **(F4) Escenario 1.c.ix sin stock.** La "extensión del préstamo anterior": ¿se mantiene el **mismo** número de préstamo con un detalle nuevo, o es un préstamo nuevo con `id_prestamo_origen`? Propuesta: préstamo nuevo encadenado.
 9. **(F4) Balón de garantía del cliente (1.c.viii).** ¿Se da de alta en `bal_balon` con propiedad del cliente, o en una tabla aparte de "balones en custodia"? Propuesta: `bal_balon` con `origen_registro = GARANTIA_CLIENTE`.
 10. **(F5) Ingreso manual vs. parser.** La ficha ICP llega en PDF. ¿Basta con adjuntar el PDF y teclear los campos clave, o se quiere OCR/parsing automático? Propuesta: adjuntar + teclear en esta fase.
@@ -635,7 +698,7 @@ Confirmar antes o durante la fase indicada:
 12. **(F6) Auto-recojo (8.b.i.5).** ¿Cuántos días antes del vencimiento se crea la actividad? ¿A quién se asigna por defecto?
 13. **(F6) ¿`operativa/actividades` absorbe `balones/recojos`,** o siguen como módulos separados enlazados? El PDF los pone juntos bajo "Sueltos > Actividades".
 14. **(F8) Apunte 8.d ("…").** Queda un ítem abierto en el PDF. ¿Qué debe ir ahí?
-15. **(Orden de fases)** Propuesta: F1 → F2 → (F3 ∥ F4) → F7 → F5 → F6 → F8. ¿Se ajusta a tus prioridades de negocio?
+15. **(Orden de fases)** Propuesta: F1 → F2 → (F3 ∥ F4) → F7 → F5 → F6 → F8. ¿Se ajusta a tus prioridades de negocio? *(F1, F2 y F3 cerradas; el siguiente por esta propuesta es F4.)*
 16. ~~**(F4) ¿Qué significa "balón origen" ahora que el stock de gas es global?**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): solo trazabilidad.** Ver "Balón origen" más abajo.
 
 ---

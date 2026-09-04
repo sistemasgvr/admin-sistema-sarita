@@ -13,10 +13,17 @@
             @blur="onBlurMonto"
           />
         </AppFormField>
-        <AppFormField label="Medio de pago" optional>
-          <AppSelect v-model="form.idMedioPago" :options="medioOptions" placeholder="Efectivo / Yape..." />
-        </AppFormField>
       </div>
+      <MedioPagoCuentaField
+        v-model:id-medio-pago="form.idMedioPago"
+        v-model:id-cuenta-bancaria="form.idCuentaBancaria"
+        v-model:numero-operacion="form.numeroOperacion"
+        v-model:valido="pagoValido"
+        :disabled="guardando"
+        :mostrar-errores="intentoEnvio"
+        mostrar-siempre-numero-operacion
+        excluir-credito
+      />
       <AppFormField label="Categoría de gasto" optional>
         <AppSelectWithCreate
           :can-create="canCrearCategoriaGasto"
@@ -30,9 +37,6 @@
             placeholder="Seleccionar"
           />
         </AppSelectWithCreate>
-      </AppFormField>
-      <AppFormField label="Nº operación" optional>
-        <AppInput v-model="form.numeroOperacion" />
       </AppFormField>
       <AppFormField label="Observación" optional>
         <AppTextarea v-model="form.observacion" :rows="2" />
@@ -71,10 +75,10 @@
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
 import { AppInput, AppModal, AppSelect, AppSelectWithCreate, AppTextarea, MoneyInput } from '@/shared/components'
+import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useActualizarCajaGastoMutation, useCrearCajaGastoMutation } from '@/modules/caja/composables/useCajaQuery'
 import type { CajaMovimientoGasto } from '@/modules/caja/interfaces/caja.interface'
-import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
@@ -84,7 +88,6 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { mensajeErrorMontoMoneda, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
-import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 const open = defineModel<boolean>({ default: false })
 const props = defineProps<{
@@ -103,18 +106,17 @@ const form = reactive({
   concepto: '',
   monto: '',
   idMedioPago: null as number | null,
+  idCuentaBancaria: null as number | null,
   idCategoriaGasto: null as number | null,
   numeroOperacion: '',
   observacion: '',
 })
 const errores = reactive({ concepto: '' })
+const pagoValido = ref(true)
+const intentoEnvio = ref(false)
 const crearMutation = useCrearCajaGastoMutation()
 const actualizarMutation = useActualizarCajaGastoMutation()
-const mediosQuery = useMediosPagoQuery()
 const guardando = computed(() => crearMutation.isPending.value || actualizarMutation.isPending.value)
-const medioOptions = computed<SelectOption[]>(() =>
-  (mediosQuery.data.value ?? []).map((m) => ({ value: m.id, label: m.nombre })),
-)
 
 const categoriaGastoQuery = useListaOpcionesQuery(computed(() => ListaIds.CATEGORIA_GASTO))
 const categoriaGastoOptions = computed(() => toSelectOptions(categoriaGastoQuery.data.value))
@@ -132,7 +134,7 @@ const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoney
 )
 
 const formularioValido = computed(
-  () => form.concepto.trim().length > 0 && montoValido.value,
+  () => form.concepto.trim().length > 0 && montoValido.value && pagoValido.value,
 )
 
 watch(open, (v) => {
@@ -142,16 +144,19 @@ watch(open, (v) => {
   form.concepto = g?.concepto ?? ''
   form.monto = g?.monto != null ? String(g.monto) : ''
   form.idMedioPago = g?.idMedioPago ?? null
+  form.idCuentaBancaria = g?.idCuentaBancaria ?? null
   form.idCategoriaGasto = g?.idCategoriaGasto ?? null
   form.numeroOperacion = g?.numeroOperacion ?? ''
   form.observacion = g?.observacion ?? ''
   errores.concepto = ''
+  intentoEnvio.value = false
 })
 
 async function submit() {
+  intentoEnvio.value = true
   errores.concepto = form.concepto.trim() ? '' : 'Obligatorio'
   if (mensajeErrorMontoMoneda(form.monto, { min: 0.01 })) return
-  if (errores.concepto) return
+  if (errores.concepto || !pagoValido.value) return
 
   const monto = roundMoney(parseMoneyInput(form.monto))
 
@@ -162,6 +167,7 @@ async function submit() {
         concepto: form.concepto.trim(),
         monto,
         idMedioPago: form.idMedioPago,
+        idCuentaBancaria: form.idCuentaBancaria,
         idCategoriaGasto: form.idCategoriaGasto,
         numeroOperacion: form.numeroOperacion || undefined,
         observacion: form.observacion || undefined,
@@ -174,6 +180,7 @@ async function submit() {
       concepto: form.concepto.trim(),
       monto,
       idMedioPago: form.idMedioPago,
+      idCuentaBancaria: form.idCuentaBancaria,
       idCategoriaGasto: form.idCategoriaGasto,
       numeroOperacion: form.numeroOperacion || undefined,
       observacion: form.observacion || undefined,
