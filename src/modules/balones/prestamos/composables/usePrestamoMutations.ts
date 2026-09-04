@@ -6,6 +6,7 @@ import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGa
 import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
 import type {
   CreatePrestamoPayload,
+  RenovarPrestamoPayload,
   UpdatePrestamoPayload,
 } from '@/modules/balones/prestamos/interfaces/prestamo.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -57,6 +58,24 @@ export function useDeletePrestamoMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo eliminar el préstamo')
+    },
+  })
+}
+
+export function useRenovarPrestamoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: RenovarPrestamoPayload }) =>
+      prestamosService.renovar(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: stockGasQueryKeys.all })
+      toastSuccess('Préstamo renovado correctamente')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo renovar el préstamo')
     },
   })
 }

@@ -70,21 +70,6 @@
         }}
       </p>
       <AppInput v-model="glosaModel" label="Glosa" placeholder="Opcional" />
-      <div v-if="mostrarGenerarGre" class="space-y-1">
-        <div class="flex items-start gap-1">
-          <AppCheckbox
-            v-model="generarGreModel"
-            class="flex-1"
-            label="Generar guía de remisión (GRE)"
-            :disabled="Boolean(comprobanteGuardadoId)"
-          />
-          <AppHelpTip
-            placement="top"
-            text="Marca esta opción si el cilindro sale de almacén y quieres emitir la GRE ahora. El préstamo se registra igual si no la marcas; puedes generar la guía después. Requiere chofer, vehículo y ubigeo configurados."
-            aria-label="Ayuda sobre generar guía de remisión"
-          />
-        </div>
-      </div>
     </div>
 
     <div
@@ -166,7 +151,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { formatPosMoney } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
-import { AppCheckbox, AppHelpTip, AppInput, AppSelect } from '@/shared/components'
+import { AppHelpTip, AppInput, AppSelect } from '@/shared/components'
 import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -194,8 +179,6 @@ const props = withDefaults(
     fechaVencimiento?: string
     /** Motivo en tooltip cuando el botón Guardar está deshabilitado. */
     motivoNoGuardar?: string | null
-    /** Muestra el check para emitir GRE junto al préstamo de cilindro. */
-    mostrarGenerarGre?: boolean
   }>(),
   {
     guardarLabel: 'Guardar',
@@ -209,7 +192,6 @@ const props = withDefaults(
     diaMesPago: 0,
     fechaVencimiento: '',
     motivoNoGuardar: null,
-    mostrarGenerarGre: false,
   },
 )
 
@@ -234,7 +216,6 @@ const idMedioPagoField = computed<number | null>({
     idMedioPagoModel.value = v ?? ''
   },
 })
-const generarGreModel = defineModel<boolean>('generarGre', { default: false })
 
 const formatMoney = formatPosMoney
 

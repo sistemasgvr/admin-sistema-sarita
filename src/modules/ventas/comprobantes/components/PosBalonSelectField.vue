@@ -1,27 +1,35 @@
 <template>
-  <AppSelectWithCreate
-    :can-create="canRegister && !disabled && !balonSelectDisabled"
-    :create-title="registerLabel"
-    :disabled="disabled || balonSelectDisabled"
-    :has-label="Boolean(label?.trim())"
-    @create="balonModalOpen = true"
-  >
-    <AppSelectSearch
-      v-model="model"
-      v-model:search="balonBuscar"
-      remote
-      :label="label"
-      :placeholder="placeholder"
-      :required="required"
-      :error="error"
-      :hint="hint"
-      search-placeholder="Código, serie o tipo..."
-      :options="balonOptions"
-      :loading="balonesQuery.isFetching.value"
-      :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
-      :empty-text="resolvedEmptyText"
+  <div class="flex items-end gap-2">
+    <div class="min-w-0 flex-1">
+      <AppSelectWithCreate
+        :can-create="canRegister && !disabled && !balonSelectDisabled"
+        :create-title="registerLabel"
+        :disabled="disabled || balonSelectDisabled"
+        :has-label="Boolean(label?.trim())"
+        @create="balonModalOpen = true"
+      >
+        <AppSelectSearch
+          v-model="model"
+          v-model:search="balonBuscar"
+          remote
+          :label="label"
+          :placeholder="placeholder"
+          :required="required"
+          :error="error"
+          :hint="hint"
+          search-placeholder="Código, serie o tipo..."
+          :options="balonOptions"
+          :loading="balonesQuery.isFetching.value"
+          :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
+          :empty-text="resolvedEmptyText"
+        />
+      </AppSelectWithCreate>
+    </div>
+    <BalonBarcodeScanButton
+      :disabled="disabled || balonSelectDisabled"
+      @captured="onCodigoScanned"
     />
-  </AppSelectWithCreate>
+  </div>
 
   <BalonFormModal
     v-if="canRegister"
@@ -34,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef, watch, type Ref } from 'vue'
+import BalonBarcodeScanButton from '@/modules/balones/cilindros/components/BalonBarcodeScanButton.vue'
 import BalonFormModal from '@/modules/balones/cilindros/components/BalonFormModal.vue'
 import type {
   Balon,
@@ -93,6 +102,7 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore()
 const balonModalOpen = ref(false)
+const pendingScanAutoSelect = ref(false)
 
 const idClienteRef = toRef(() => props.idCliente)
 const idAlmacenRef = toRef(() => props.idAlmacen)
@@ -187,12 +197,24 @@ watch(
 // Si el valor ya no está en el listado filtrado (p. ej. era propio del cliente), limpiarlo.
 // No limpiar mientras carga: la lista puede venir vacía de forma temporal.
 watch(balonOptions, (options) => {
+  if (balonesQuery.isLoading.value || balonesQuery.isFetching.value) return
+
+  // Tras un escaneo: si el filtro dejó un único cilindro, seleccionarlo directo.
+  // Si hay varios (código repetido en distinta ubicación, etc.) se deja para que
+  // el cajero elija a mano — nunca se auto-selecciona una ambigüedad.
+  if (pendingScanAutoSelect.value) {
+    pendingScanAutoSelect.value = false
+    if (options.length === 1) {
+      model.value = options[0].value as number
+      return
+    }
+  }
+
   if (!model.value) {
     etiqueta.value = ''
     emitSelected()
     return
   }
-  if (balonesQuery.isLoading.value || balonesQuery.isFetching.value) return
   const stillValid = options.some((opt) => opt.value === model.value)
   if (!stillValid) {
     model.value = ''
@@ -203,6 +225,11 @@ watch(balonOptions, (options) => {
   syncEtiqueta()
   emitSelected()
 })
+
+function onCodigoScanned(codigo: string) {
+  pendingScanAutoSelect.value = true
+  balonBuscar.value = codigo.trim()
+}
 
 watch(model, () => {
   syncEtiqueta()

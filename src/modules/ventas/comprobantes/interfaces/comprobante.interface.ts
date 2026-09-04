@@ -114,6 +114,8 @@ export interface ComprobanteDetallePayload {
   idAfectacionIgv?: number
   descripcion?: string
   idBalon?: number
+  /** true cuando otro proceso ya descuenta el stock de esta línea (recarga de mostrador) */
+  noMueveKardex?: boolean
 }
 
 export interface CreateComprobantePayload {
@@ -214,13 +216,26 @@ export interface EfectoPosPrestamoPayload {
   titulo?: string
   observacion?: string
   idEstado?: number
-  idBalon: number
+  idBalon?: number
   idProducto?: number
   fechaEntregado?: string
   fechaPrestamo?: string
   fechaVencimiento?: string
   observacionDetalle?: string
   garantia?: EfectoPosGarantiaPayload
+  /** Cilindro que el cliente deja en garantía (Fase 4, apunte 1.c.viii). */
+  garantiaBalon?: {
+    codigoBalon: string
+    numeroSerie?: string
+    idTipoBalon?: number
+    idProductoGas?: number
+    fechaUltimaPruebaHidrostatica?: string
+    observacion?: string
+  }
+  /** ID del préstamo activo que se renueva (Fase 4, apunte 1.c.ix). */
+  idPrestamoRenovar?: number
+  /** true (default) = reutiliza la garantía del préstamo que se renueva. */
+  mantenerGarantiaPrestamo?: boolean
 }
 
 export interface EfectoPosAlquilerPayload {
@@ -459,6 +474,7 @@ export interface PosLineItem {
    */
   escenarioGas?:
     | 'balon_cliente'
+    | 'balon_cliente_no_registrado'
     | 'entregar_prestamo'
     | 'comprar_balon'
     | 'solo_gas'
@@ -479,6 +495,19 @@ export interface PosLineItem {
   idMedioPagoGarantia?: number
   /** Comentario / nro. operación de la recepción de garantía. */
   observacionGarantia?: string
+  /** Cilindro que el cliente deja en garantía (escenario entregar_prestamo). */
+  garantiaBalon?: {
+    codigoBalon: string
+    numeroSerie?: string
+    idTipoBalon?: number
+    idProductoGas?: number
+    fechaUltimaPruebaHidrostatica?: string
+    observacion?: string
+  }
+  /** ID del préstamo activo que se renueva (Fase 4, apunte 1.c.ix). */
+  idPrestamoRenovar?: number
+  /** true (default) = reutiliza la garantía del préstamo que se renueva. */
+  mantenerGarantiaPrestamo?: boolean
   /** Mantenimiento (registro independiente en balones). */
   esMantenimiento?: boolean
   idTipoMantenimiento?: number

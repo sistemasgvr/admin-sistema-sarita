@@ -4,6 +4,7 @@ import type {
   DeletePrestamoResponse,
   Prestamo,
   PrestamoListFilters,
+  RenovarPrestamoPayload,
   UpdatePrestamoPayload,
 } from '@/modules/balones/prestamos/interfaces/prestamo.interface'
 
@@ -28,5 +29,9 @@ export const prestamosService = {
     return apiDelete<DeletePrestamoResponse>(`/balones/prestamos/${id}`, {
       data: { idUsuarioAuditoria },
     })
+  },
+
+  renovar(id: number, payload: RenovarPrestamoPayload) {
+    return apiPost<Prestamo>(`/balones/prestamos/${id}/renovar`, payload)
   },
 }

@@ -68,6 +68,24 @@
               @created="onAlmacenCreated"
             />
           </div>
+
+          <div
+            v-if="prestamoActivoCliente"
+            class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-50 px-3 py-2.5 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+          >
+            <span>
+              Este cliente ya tiene un préstamo de cilindro activo
+              (<strong>{{ prestamoActivoCliente.numero_prestamo || `#${prestamoActivoCliente.id}` }}</strong
+              >) — ¿renovarlo en vez de crear uno nuevo?
+            </span>
+            <button
+              type="button"
+              class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-500 px-3 py-1.5 text-xs font-medium text-brand-700 transition hover:bg-brand-500/10 dark:text-brand-300"
+              @click="renovarPrestamoCliente"
+            >
+              Renovar
+            </button>
+          </div>
         </DetailSectionCard>
 
         <DetailSectionCard
@@ -344,8 +362,6 @@
         v-model:id-cuenta-bancaria="idCuentaBancaria"
         v-model:numero-operacion="numeroOperacionPago"
         v-model:pago-valido="pagoValido"
-        v-model:generar-gre="generarGre"
-        :mostrar-generar-gre="mostrarGenerarGre"
         :totales="totales"
         :condicion-pago-options="condicionPagoOptions"
         :es-venta-credito="esVentaCredito"
@@ -380,6 +396,7 @@
       :linea="lineaEditando"
       :producto-edicion="productoEdicion"
       :inicio-preferido="inicioPreferidoAnadir"
+      :renovar-prestamo="renovarPrestamoContext"
       @confirm="onConfirmLinea"
     />
   </div>
@@ -389,6 +406,9 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
+import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
+import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
+import { confirmarGenerarOrdenSalida } from '@/shared/utils/confirmarOrdenSalida'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
@@ -501,6 +521,41 @@ const idEstadoPrestamoActivo = computed(
     )?.id ?? null,
 )
 
+// Fase 4 (apunte 1.c.ix): cliente con préstamo de cilindro vigente que pide otra
+// recarga — se ofrece renovar en vez de crear un préstamo nuevo desde cero.
+const idClienteNum = computed(() => (idCliente.value ? Number(idCliente.value) : ''))
+const prestamosClienteFilters = computed(() => ({
+  idCliente: idClienteNum.value || undefined,
+  limite: 5,
+}))
+const prestamosClienteQuery = usePrestamosQuery(prestamosClienteFilters)
+const prestamoActivoCliente = computed(() => {
+  if (!idClienteNum.value) return null
+  return (
+    prestamosClienteQuery.data.value?.data?.find(
+      (p) => (p.nombre_estado ?? '').toUpperCase() === 'ACTIVO',
+    ) ?? null
+  )
+})
+const crearDesdeVentaMutation = useCrearDesdeVentaMutation()
+
+/**
+ * La renovación se hace como una venta nueva (recarga real, cobrada) — no una
+ * acción administrativa suelta. El botón "Renovar" abre el modal de añadir
+ * ítem con el escenario "Le prestamos uno" preseleccionado y ligado a este
+ * préstamo; el backend (bal_renovar_prestamo, vía efectosPos.prestamos) cierra
+ * el préstamo anterior y abre uno nuevo cuando se guarda la venta.
+ */
+const renovarPrestamoContext = ref<{ id: number; numeroPrestamo?: string | null } | null>(null)
+
+function renovarPrestamoCliente() {
+  const prestamo = prestamoActivoCliente.value
+  if (!prestamo) return
+  renovarPrestamoContext.value = { id: prestamo.id, numeroPrestamo: prestamo.numero_prestamo }
+  inicioPreferidoAnadir.value = null
+  anadirOpen.value = true
+}
+
 function esEntregarPrestamo(linea: PosLineItem) {
   return (
     linea.escenarioGas === 'entregar_prestamo' ||
@@ -553,7 +608,6 @@ const productosPorId = ref<Map<number, Producto>>(new Map())
 const inicioPreferidoAnadir = ref<'gas' | 'alquiler' | null>(null)
 
 const glosa = ref('')
-const generarGre = ref(false)
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
 const comprobanteGuardadoNumero = ref<string | null>(null)
@@ -585,11 +639,15 @@ const lineasActivas = computed(() =>
   lineas.value.filter((linea) => linea.idProducto && Number(linea.cantidad) > 0),
 )
 
-const mostrarGenerarGre = computed(
+/**
+ * true si la venta entrega un cilindro (préstamo, compra de envase o alquiler
+ * con entrega) — casos donde corresponde preguntar si se genera la orden de
+ * salida para envío (Fase 4, ver confirmarOrdenSalida tras guardar).
+ */
+const hayEntregaDeBalon = computed(
   () =>
     lineasActivas.value.some((linea) => {
       if (!linea.idBalon) return false
-      // Cilindro sale de almacén: préstamo, compra de envase o alquiler con entrega.
       if (esEntregarPrestamo(linea)) return true
       if (linea.escenarioGas === 'comprar_balon') return true
       if ((linea.tipoPos === 'alquiler' || linea.esAlquilable) && linea.fechaInicioAlquiler) {
@@ -773,6 +831,7 @@ function abrirAnadir() {
   lineaEditando.value = null
   productoEdicion.value = null
   inicioPreferidoAnadir.value = null
+  renovarPrestamoContext.value = null
   anadirOpen.value = true
 }
 
@@ -800,6 +859,9 @@ function productoDesdeLinea(linea: PosLineItem): Producto {
 function abrirEditarLinea(linea: PosLineItem) {
   lineaEditando.value = linea
   productoEdicion.value = productoDesdeLinea(linea)
+  renovarPrestamoContext.value = linea.idPrestamoRenovar
+    ? { id: linea.idPrestamoRenovar }
+    : null
   anadirOpen.value = true
 }
 
@@ -837,6 +899,7 @@ function onConfirmLinea(payload: PosLineaConfirmada) {
   }
   aplicarPayloadALinea(linea, payloadNormalizado)
   lineas.value.push(linea)
+  renovarPrestamoContext.value = null
   toastSuccess(`${producto.nombre} agregado`)
 }
 
@@ -875,6 +938,11 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
     linea.idMedioPagoGarantia = undefined
     linea.observacionGarantia = undefined
   }
+  linea.garantiaBalon = payload.escenarioGas === 'entregar_prestamo' ? payload.garantiaBalon : undefined
+  linea.idPrestamoRenovar =
+    payload.escenarioGas === 'entregar_prestamo' ? payload.idPrestamoRenovar : undefined
+  linea.mantenerGarantiaPrestamo =
+    payload.escenarioGas === 'entregar_prestamo' ? payload.mantenerGarantiaPrestamo : undefined
   linea.idTipoMantenimiento = payload.idTipoMantenimiento
   linea.fechaIngresoMantenimiento = payload.fechaIngresoMantenimiento
   linea.descripcionMantenimiento = payload.descripcionMantenimiento
@@ -1137,6 +1205,11 @@ try {
             ? `${linea.nombre} — ${linea.observacionLinea}`
             : linea.nombre),
         idBalon: linea.idBalon,
+        // El movimiento de stock de esta línea lo hace bal_vincular_recarga_cliente_comprobante
+        // (vía efectosPos.recargas, ver lineasGasConBalon más abajo) — sin esto,
+        // ven_crear_comprobante también la descuenta por su cuenta y el gas sale del
+        // stock dos veces.
+        noMueveKardex: Boolean(linea.esGas && linea.idBalon && esRecargaCliente(linea)),
       }
 
       if (
@@ -1221,7 +1294,7 @@ try {
             (conAlquilerRegulador
               ? `Préstamo de cilindro junto a alquiler de regulador (${lineaPrestamo.nombre})`
               : `Préstamo de cilindro con venta de gas desde POS`),
-          idBalon: Number(lineaPrestamo.idBalon),
+          idBalon: lineaPrestamo.idBalon ? Number(lineaPrestamo.idBalon) : undefined,
           idProducto: conAlquilerRegulador ? undefined : Number(lineaPrestamo.idProducto),
           fechaEntregado: salida,
           fechaPrestamo: salida,
@@ -1245,9 +1318,14 @@ try {
                     `Garantía POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
                 }
               : undefined,
+          garantiaBalon:
+            esEntregarPrestamo(lineaPrestamo) && lineaPrestamo.garantiaBalon
+              ? lineaPrestamo.garantiaBalon
+              : undefined,
+          idPrestamoRenovar: lineaPrestamo.idPrestamoRenovar,
+          mantenerGarantiaPrestamo: lineaPrestamo.mantenerGarantiaPrestamo,
         }
       })
-      efectosPos.generarGre = generarGre.value
     }
 
     if (lineasAlquiler.length > 0) {
@@ -1357,14 +1435,26 @@ try {
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
-    if (generarGre.value) {
-      toastSuccess(
-        'Venta registrada. Si la GRE no aparece en Guías de remisión, configura chofer, vehículo y ubigeo, o créala desde el listado de comprobantes.',
-      )
-    } else {
-      toastSuccess('Venta registrada')
-    }
+    toastSuccess('Venta registrada')
 
+    if (hayEntregaDeBalon.value) {
+      const esParaEnvio = await confirmarGenerarOrdenSalida()
+      if (esParaEnvio) {
+        try {
+          const doc = await crearDesdeVentaMutation.mutateAsync({
+            idVenta: comprobante.id,
+            idUsuarioAuditoria: authStore.user?.id,
+          })
+          void router.push({
+            name: 'admin-documentos-salida-editar',
+            params: { id: doc.id },
+            query: { direccion: '1' },
+          })
+        } catch (error) {
+          toastApiError(error, 'No se pudo generar la orden de salida')
+        }
+      }
+    }
   } catch (error) {
     toastApiError(error, 'No se pudo guardar la venta')
   } finally {
@@ -1375,7 +1465,6 @@ try {
 async function limpiarFormulario() {
   lineas.value = []
   glosa.value = ''
-  generarGre.value = false
 
   // Reset UI del POS (no dejar un modal de edición/añadido abierto).
   anadirOpen.value = false

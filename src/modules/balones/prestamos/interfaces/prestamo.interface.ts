@@ -87,4 +87,9 @@ export interface DeletePrestamoResponse {
   error?: string
 }
 
+export interface RenovarPrestamoPayload {
+  idBalonNuevo?: number
+  idUsuarioAuditoria?: number
+}
+
 export type PrestamoFormMode = 'create' | 'edit'
