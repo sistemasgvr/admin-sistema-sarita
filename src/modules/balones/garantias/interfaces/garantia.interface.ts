@@ -69,6 +69,14 @@ export interface CreateGarantiaPayload {
   observacion?: string
   /** Medio con el que se recibe el depósito. */
   idMedioPago?: number
+  /**
+   * Cuenta de la empresa que recibe el depósito. Obligatoria cuando el medio la
+   * exige (transferencia, billetera): el backend la valida con
+   * fin_validar_cuenta_medio_pago y rechaza el cobro sin ella.
+   */
+  idCuentaBancaria?: number
+  /** Voucher / constancia del depósito. */
+  numeroOperacion?: string
 }
 
 export interface DevolverGarantiaPayload {

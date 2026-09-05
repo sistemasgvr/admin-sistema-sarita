@@ -166,7 +166,9 @@
         guardar-label="Guardar comprobante"
         guardando-label="Guardando..."
         @guardar="guardarComprobante"
+        :segundos-para-limpiar="segundosRestantes"
         @emitir="emitirComprobante"
+        @cancelar-limpieza="detenerAutoLimpieza"
       />
     </aside>
   </div>
@@ -196,6 +198,7 @@ import {
   formatPosMoney,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
+import { usePosAutoLimpieza } from '@/modules/ventas/comprobantes/composables/usePosAutoLimpieza'
 import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
   emitirConImpresionTicket,
@@ -632,9 +635,19 @@ async function guardarComprobante() {
   comprobanteGuardadoId.value = comprobante.id
   comprobanteGuardadoSerie.value = comprobante.serie
   comprobanteGuardadoNumero.value = comprobante.numero
+  iniciarAutoLimpieza()
 }
 
+/**
+ * Tras guardar, el POS da una ventana corta para emitir en caliente y luego
+ * se limpia solo. Sin esto la venta anterior seguía en pantalla y el siguiente
+ * cliente empezaba sobre datos viejos.
+ */
+const { segundosRestantes, iniciarAutoLimpieza, detenerAutoLimpieza } =
+  usePosAutoLimpieza(() => limpiarFormulario())
+
 async function limpiarFormulario() {
+  detenerAutoLimpieza()
   lineas.value = []
   glosa.value = ''
   idAlmacen.value = ''
@@ -648,6 +661,7 @@ async function limpiarFormulario() {
 }
 
 async function emitirComprobante() {
+  detenerAutoLimpieza()
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
 

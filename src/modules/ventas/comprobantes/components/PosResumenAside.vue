@@ -138,6 +138,28 @@
         />
       </div>
 
+      <!--
+        Ventana para emitir en caliente. La venta ya está guardada: si el
+        contador llega a 0 solo se limpia la pantalla para el siguiente cliente,
+        y el comprobante queda pendiente de emitir en la lista.
+      -->
+      <div
+        v-if="segundosParaLimpiar !== null && comprobanteGuardadoId"
+        class="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+      >
+        <span>
+          Se limpia en <strong class="tabular-nums">{{ segundosParaLimpiar }}s</strong>
+          si no emites.
+        </span>
+        <button
+          type="button"
+          class="shrink-0 font-medium underline hover:no-underline"
+          @click="emit('cancelarLimpieza')"
+        >
+          Mantener
+        </button>
+      </div>
+
       <button
         v-if="comprobanteGuardadoId && (esNotaVenta ? canPrint : canEmit)"
         type="button"
@@ -207,6 +229,8 @@ const props = withDefaults(
     fechaVencimiento?: string
     /** Motivo en tooltip cuando el botón Guardar está deshabilitado. */
     motivoNoGuardar?: string | null
+    /** Segundos que faltan para que el POS se limpie solo. null = sin contador. */
+    segundosParaLimpiar?: number | null
   }>(),
   {
     garantia: 0,
@@ -221,12 +245,14 @@ const props = withDefaults(
     diaMesPago: 0,
     fechaVencimiento: '',
     motivoNoGuardar: null,
+    segundosParaLimpiar: null,
   },
 )
 
 const emit = defineEmits<{
   guardar: []
   emitir: []
+  cancelarLimpieza: []
 }>()
 
 const glosaModel = defineModel<string>('glosa', { default: '' })

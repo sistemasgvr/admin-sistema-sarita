@@ -151,7 +151,9 @@
         guardar-label="Registrar mantenimiento"
         guardando-label="Registrando..."
         @guardar="registrarMantenimiento"
+        :segundos-para-limpiar="segundosRestantes"
         @emitir="emitirComprobante"
+        @cancelar-limpieza="detenerAutoLimpieza"
       />
     </aside>
   </div>
@@ -176,6 +178,7 @@ import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
+import { usePosAutoLimpieza } from '@/modules/ventas/comprobantes/composables/usePosAutoLimpieza'
 import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
@@ -415,6 +418,7 @@ async function registrarMantenimiento() {
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
     toastSuccess('Mantenimiento registrado y comprobante generado')
+    iniciarAutoLimpieza()
   } catch (error) {
     toastApiError(error, 'No se pudo registrar el mantenimiento')
   } finally {
@@ -422,7 +426,16 @@ async function registrarMantenimiento() {
   }
 }
 
+/**
+ * Tras guardar, el POS da una ventana corta para emitir en caliente y luego
+ * se limpia solo. Sin esto la venta anterior seguía en pantalla y el siguiente
+ * cliente empezaba sobre datos viejos.
+ */
+const { segundosRestantes, iniciarAutoLimpieza, detenerAutoLimpieza } =
+  usePosAutoLimpieza(() => limpiarFormulario())
+
 async function limpiarFormulario() {
+  detenerAutoLimpieza()
   idBalon.value = ''
   idTipoMantenimiento.value = ''
   idProducto.value = ''
@@ -441,6 +454,7 @@ async function limpiarFormulario() {
 }
 
 async function emitirComprobante() {
+  detenerAutoLimpieza()
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
 

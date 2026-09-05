@@ -75,7 +75,10 @@
 
       <GarantiaRecepcionFields
         v-model:id-medio-pago="idMedioPago"
+        v-model:id-cuenta-bancaria="idCuentaBancaria"
+        v-model:numero-operacion="numeroOperacion"
         v-model:observacion="observacionRecepcion"
+        v-model:valido="recepcionValida"
       />
     </div>
 
@@ -153,7 +156,11 @@ const productoId = ref<number | ''>('')
 const monto = ref('')
 const origenMonto = ref('')
 const idMedioPago = ref<string | number>('')
+const idCuentaBancaria = ref<number | null>(null)
+const numeroOperacion = ref('')
 const observacionRecepcion = ref('')
+/** MedioPagoCuentaField lo publica: false mientras falte la cuenta obligatoria. */
+const recepcionValida = ref(true)
 const guardando = ref(false)
 const clienteBuscar = ref('')
 const productoBuscar = ref('')
@@ -247,7 +254,8 @@ const puedeCobrar = computed(
     Boolean(productoId.value) &&
     Boolean(idTipoComprobante.value) &&
     montoValido.value &&
-    Boolean(idMedioPago.value),
+    Boolean(idMedioPago.value) &&
+    recepcionValida.value,
 )
 
 watch(clienteBuscar, (term) => {
@@ -319,6 +327,8 @@ watch(
     monto.value = ''
     origenMonto.value = ''
     idMedioPago.value = ''
+    idCuentaBancaria.value = null
+    numeroOperacion.value = ''
     observacionRecepcion.value = ''
     if (props.idCliente) {
       prestamosFilters.value = {
@@ -380,6 +390,8 @@ async function confirmar() {
       idUnidadMedida: producto.id_unidad_medida ?? undefined,
       fechaRegistro: fecha.value,
       idMedioPago: Number(idMedioPago.value),
+      idCuentaBancaria: idCuentaBancaria.value ?? undefined,
+      numeroOperacion: numeroOperacion.value.trim() || undefined,
       observacion:
         observacionRecepcion.value.trim() || 'Cobro desde flujo industrial',
     })

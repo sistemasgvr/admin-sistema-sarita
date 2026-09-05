@@ -165,6 +165,12 @@
                     >
                       + Garantía
                     </span>
+                    <span
+                      v-if="linea.garantiaBalon"
+                      class="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"
+                    >
+                      + Garantía cilindro
+                    </span>
                   </div>
                   <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90">
                     {{ linea.nombre }}
@@ -180,15 +186,36 @@
                     </p>
                   </template>
                   <template v-else-if="esEntregarPrestamo(linea)">
+                    <!--
+                      Las tres cosas que registra la línea, cada una en su
+                      renglón: solo el gas es venta; el cilindro prestado y la
+                      garantía se guardan aparte y no van al comprobante.
+                    -->
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Gas {{ formatPosMoney(importeGasLinea(linea)) }}
-                      <template v-if="Number(linea.montoGarantia || 0) > 0">
-                        · Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
-                        (aparte, no va en el comprobante)
-                      </template>
-                      <template v-else>
-                        · Préstamo cilindro (sin garantía)
-                      </template>
+                    </p>
+                    <p class="mt-0.5 text-xs text-violet-600 dark:text-violet-400">
+                      Préstamo: se lleva
+                      {{ etiquetaCilindro(linea) || 'el cilindro seleccionado' }}
+                    </p>
+                    <p
+                      v-if="Number(linea.montoGarantia || 0) > 0"
+                      class="mt-0.5 text-xs text-amber-600 dark:text-amber-400"
+                    >
+                      Garantía: {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                      (aparte, no va en el comprobante)
+                    </p>
+                    <p
+                      v-if="linea.garantiaBalon"
+                      class="mt-0.5 text-xs text-amber-600 dark:text-amber-400"
+                    >
+                      Garantía cilindro: deja {{ linea.garantiaBalon.codigoBalon }}
+                    </p>
+                    <p
+                      v-else-if="!Number(linea.montoGarantia || 0)"
+                      class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      Sin garantía
                     </p>
                     <p class="mt-0.5 truncate text-xs text-brand-600 dark:text-brand-400">
                       {{ resumenLinea(linea) }}
@@ -387,7 +414,9 @@
         guardar-label="Guardar venta"
         guardando-label="Guardando..."
         @guardar="guardarComprobante"
+        :segundos-para-limpiar="segundosRestantes"
         @emitir="emitirComprobante"
+        @cancelar-limpieza="detenerAutoLimpieza"
       />
     </aside>
     </div>
@@ -438,6 +467,7 @@ import {
   formatPosMoney,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
+import { usePosAutoLimpieza } from '@/modules/ventas/comprobantes/composables/usePosAutoLimpieza'
 import type {
   EfectosPosPayload,
   PosLineItem,
@@ -956,9 +986,13 @@ function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
       : undefined
   if (Number(linea.montoGarantia || 0) > 0) {
     linea.idMedioPagoGarantia = payload.idMedioPagoGarantia
+    linea.idCuentaBancariaGarantia = payload.idCuentaBancariaGarantia
+    linea.numeroOperacionGarantia = payload.numeroOperacionGarantia
     linea.observacionGarantia = payload.observacionGarantia
   } else {
     linea.idMedioPagoGarantia = undefined
+    linea.idCuentaBancariaGarantia = undefined
+    linea.numeroOperacionGarantia = undefined
     linea.observacionGarantia = undefined
   }
   linea.garantiaBalon = payload.escenarioGas === 'entregar_prestamo' ? payload.garantiaBalon : undefined
@@ -1321,6 +1355,12 @@ try {
                   idMedioPago: lineaPrestamo.idMedioPagoGarantia
                     ? Number(lineaPrestamo.idMedioPagoGarantia)
                     : undefined,
+                  // Sin la cuenta, un medio que la exige (transferencia,
+                  // billetera) hace fallar ven_crear_garantia y con ella toda
+                  // la venta, porque los efectos POS van en la misma
+                  // transacción que el comprobante.
+                  idCuentaBancaria: lineaPrestamo.idCuentaBancariaGarantia,
+                  numeroOperacion: lineaPrestamo.numeroOperacionGarantia,
                   observacion:
                     lineaPrestamo.observacionGarantia?.trim() ||
                     `Garantía POS · ${etiquetaCilindro(lineaPrestamo) || lineaPrestamo.nombre}`,
@@ -1379,6 +1419,8 @@ try {
                   idMedioPago: lineaAlquilable.idMedioPagoGarantia
                     ? Number(lineaAlquilable.idMedioPagoGarantia)
                     : undefined,
+                  idCuentaBancaria: lineaAlquilable.idCuentaBancariaGarantia,
+                  numeroOperacion: lineaAlquilable.numeroOperacionGarantia,
                   observacion:
                     lineaAlquilable.observacionGarantia?.trim() ||
                     `Garantía POS · alquiler ${lineaAlquilable.nombre}`,
@@ -1445,6 +1487,7 @@ try {
     comprobanteGuardadoNumero.value = comprobante.numero
     toastSuccess('Venta registrada')
 
+    let navegoAOrdenSalida = false
     if (hayEntregaDeBalon.value) {
       const esParaEnvio = await confirmarGenerarOrdenSalida()
       if (esParaEnvio) {
@@ -1453,6 +1496,7 @@ try {
             idVenta: comprobante.id,
             idUsuarioAuditoria: authStore.user?.id,
           })
+          navegoAOrdenSalida = true
           void router.push({
             name: 'admin-documentos-salida-editar',
             params: { id: doc.id },
@@ -1463,6 +1507,14 @@ try {
         }
       }
     }
+
+    // El contador arranca recién aquí: si lo hiciera antes del diálogo de la
+    // orden de salida, podría limpiar el POS con el diálogo abierto. Y si el
+    // usuario se fue a la orden de salida no se arranca en absoluto — esa
+    // pantalla ya reemplazó al POS.
+    if (!navegoAOrdenSalida) {
+      iniciarAutoLimpieza()
+    }
   } catch (error) {
     toastApiError(error, 'No se pudo guardar la venta')
   } finally {
@@ -1470,7 +1522,16 @@ try {
   }
 }
 
+/**
+ * Tras guardar, el POS da una ventana corta para emitir en caliente y luego
+ * se limpia solo. Sin esto la venta anterior seguía en pantalla y el siguiente
+ * cliente empezaba sobre datos viejos.
+ */
+const { segundosRestantes, iniciarAutoLimpieza, detenerAutoLimpieza } =
+  usePosAutoLimpieza(() => limpiarFormulario())
+
 async function limpiarFormulario() {
+  detenerAutoLimpieza()
   lineas.value = []
   glosa.value = ''
 
@@ -1507,6 +1568,7 @@ async function limpiarFormulario() {
 }
 
 async function emitirComprobante() {
+  detenerAutoLimpieza()
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
 

@@ -279,6 +279,14 @@ export interface EfectoPosGarantiaPayload {
   idUnidadMedida?: number
   fechaRegistro?: string
   idMedioPago?: number
+  /**
+   * Cuenta de la empresa que recibe el depósito. Obligatoria cuando el medio la
+   * exige (transferencia, billetera): sin ella el backend rechaza el cobro con
+   * fin_validar_cuenta_medio_pago y falla la venta entera.
+   */
+  idCuentaBancaria?: number
+  /** Voucher / constancia del depósito. */
+  numeroOperacion?: string
   observacion?: string
 }
 
@@ -576,7 +584,11 @@ export interface PosLineItem {
   montoGarantia?: number
   /** Medio con el que se recibe la garantía (si montoGarantia > 0). */
   idMedioPagoGarantia?: number
-  /** Comentario / nro. operación de la recepción de garantía. */
+  /** Cuenta de la empresa que recibe el depósito (medios que la exigen). */
+  idCuentaBancariaGarantia?: number
+  /** Voucher / constancia del depósito de garantía. */
+  numeroOperacionGarantia?: string
+  /** Comentario de la recepción de garantía. */
   observacionGarantia?: string
   /** Cilindro que el cliente deja en garantía (escenario entregar_prestamo). */
   garantiaBalon?: {

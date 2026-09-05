@@ -312,7 +312,10 @@
             </p>
             <GarantiaRecepcionFields
               v-model:id-medio-pago="idMedioPagoGarantia"
+              v-model:id-cuenta-bancaria="idCuentaBancariaGarantia"
+              v-model:numero-operacion="numeroOperacionGarantia"
               v-model:observacion="observacionGarantia"
+              v-model:valido="garantiaRecepcionValida"
             />
           </template>
 
@@ -491,7 +494,10 @@
         <GarantiaRecepcionFields
           v-if="montoNumerico(montoGarantia) > 0"
           v-model:id-medio-pago="idMedioPagoGarantia"
+          v-model:id-cuenta-bancaria="idCuentaBancariaGarantia"
+          v-model:numero-operacion="numeroOperacionGarantia"
           v-model:observacion="observacionGarantia"
+          v-model:valido="garantiaRecepcionValida"
         />
 
         <div v-if="!modoEdicion">
@@ -599,6 +605,51 @@
       </template>
 
       <AppInput v-model="observacion" label="Nota del ítem" placeholder="Opcional" />
+
+      <!--
+        Resumen de la operación completa antes de confirmar. Un préstamo con
+        garantía mueve tres cosas a la vez y hasta ahora el cilindro que el
+        cliente deja no se veía por ningún lado: solo quedaba escrito en un
+        campo del formulario. Aquí se listan las tres para que en mostrador se
+        confirme lo que realmente entra y sale.
+      -->
+      <div
+        v-if="resumenOperacion.length > 1"
+        class="space-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-3 dark:border-gray-700 dark:bg-white/5"
+      >
+        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          Esta línea registra
+        </p>
+        <div
+          v-for="parte in resumenOperacion"
+          :key="parte.clave"
+          class="flex items-start justify-between gap-3 text-sm"
+        >
+          <div class="min-w-0">
+            <span
+              class="mr-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+              :class="parte.clase"
+            >
+              {{ parte.etiqueta }}
+            </span>
+            <span class="text-gray-700 dark:text-gray-300">{{ parte.detalle }}</span>
+          </div>
+          <span
+            class="shrink-0 tabular-nums"
+            :class="
+              parte.monto == null
+                ? 'text-gray-400 dark:text-gray-500'
+                : 'font-medium text-gray-800 dark:text-white/90'
+            "
+          >
+            {{ parte.monto == null ? '—' : formatMoney(parte.monto) }}
+          </span>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400">
+          Solo el gas va al comprobante. El préstamo y la garantía se registran
+          aparte y se muestran en el detalle de la venta.
+        </p>
+      </div>
 
       <p
         v-if="!(tipo === 'gas' && escenarioGas === 'comprar_balon')"
@@ -717,6 +768,9 @@ export interface PosLineaConfirmada {
   etiquetaBalon?: string
   montoGarantia?: number
   idMedioPagoGarantia?: number
+  /** Cuenta de la empresa que recibe el depósito (medios que la exigen). */
+  idCuentaBancariaGarantia?: number
+  numeroOperacionGarantia?: string
   observacionGarantia?: string
   stockDisponible?: number | null
   /** Cilindro que el cliente deja en garantía (escenario entregar_prestamo). */
@@ -821,7 +875,11 @@ const {
 } = useMoneyField(montoGarantia, { min: 0, allowZero: true })
 const origenMontoGarantia = ref('')
 const idMedioPagoGarantia = ref<string | number>('')
+const idCuentaBancariaGarantia = ref<number | null>(null)
+const numeroOperacionGarantia = ref('')
 const observacionGarantia = ref('')
+/** MedioPagoCuentaField lo publica: false mientras falte la cuenta obligatoria. */
+const garantiaRecepcionValida = ref(true)
 /**
  * Garantía del préstamo: una u otra, nunca las dos a la vez. 'heredada' solo
  * aplica en renovación (renovarPrestamo): mantiene la garantía del préstamo
@@ -848,6 +906,8 @@ watch(tipoGarantiaPrestamo, (value) => {
     montoGarantia.value = '0.00'
     origenMontoGarantia.value = ''
     idMedioPagoGarantia.value = ''
+    idCuentaBancariaGarantia.value = null
+    numeroOperacionGarantia.value = ''
     observacionGarantia.value = ''
   }
   if (value !== 'balon') {
@@ -1035,6 +1095,75 @@ const importe = computed(() => {
   return importeGas.value
 })
 
+/**
+ * Desglose de lo que registra la línea: gas vendido, cilindro prestado y
+ * garantía (dinero o cilindro). Son tres hechos distintos que la venta dispara
+ * a la vez y que viven en tablas separadas — solo el gas es venta; el préstamo
+ * va a bal_prestamo y la garantía a ven_garantia o a un balón nuevo.
+ * `monto: null` marca lo que no lleva importe, como el cilindro entregado.
+ */
+const resumenOperacion = computed(() => {
+  if (tipo.value !== 'gas' || escenarioGas.value !== 'entregar_prestamo') return []
+
+  const partes: {
+    clave: string
+    etiqueta: string
+    detalle: string
+    monto: number | null
+    clase: string
+  }[] = [
+    {
+      clave: 'gas',
+      etiqueta: 'Gas',
+      detalle: `${cantidad.value} × ${producto.value?.nombre ?? 'gas'}`,
+      monto: importeGas.value,
+      clase: 'bg-brand-500/10 text-brand-600 dark:text-brand-400',
+    },
+  ]
+
+  if (idBalon.value) {
+    partes.push({
+      clave: 'prestamo',
+      etiqueta: 'Préstamo',
+      detalle: `Se lleva ${etiquetaBalon.value.trim() || 'el cilindro seleccionado'}`,
+      monto: null,
+      clase: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    })
+  }
+
+  if (tipoGarantiaPrestamo.value === 'dinero' && montoNumerico(montoGarantia.value) > 0) {
+    partes.push({
+      clave: 'garantia-dinero',
+      etiqueta: 'Garantía',
+      detalle: 'Depósito reembolsable en dinero',
+      monto: montoNumerico(montoGarantia.value),
+      clase: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    })
+  }
+
+  if (tipoGarantiaPrestamo.value === 'balon' && garantiaBalonCodigo.value.trim()) {
+    partes.push({
+      clave: 'garantia-balon',
+      etiqueta: 'Garantía cilindro',
+      detalle: `Deja ${garantiaBalonCodigo.value.trim()}`,
+      monto: null,
+      clase: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    })
+  }
+
+  if (tipoGarantiaPrestamo.value === 'heredada') {
+    partes.push({
+      clave: 'garantia-heredada',
+      etiqueta: 'Garantía',
+      detalle: 'Se mantiene la del préstamo anterior',
+      monto: null,
+      clase: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    })
+  }
+
+  return partes
+})
+
 function montoNumerico(raw: string): number {
   return parseMoneyInput(raw) ?? 0
 }
@@ -1206,6 +1335,8 @@ function setEscenarioGas(key: EscenarioGas) {
     montoGarantia.value = '0.00'
     origenMontoGarantia.value = ''
     idMedioPagoGarantia.value = ''
+    idCuentaBancariaGarantia.value = null
+    numeroOperacionGarantia.value = ''
     observacionGarantia.value = ''
     tipoGarantiaPrestamo.value = 'ninguna'
     garantiaBalonCodigo.value = ''
@@ -1714,6 +1845,8 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
         montoGarantia.value = montoAString(fromLinea.montoGarantia)
         origenMontoGarantia.value = ''
         idMedioPagoGarantia.value = fromLinea.idMedioPagoGarantia ?? ''
+        idCuentaBancariaGarantia.value = fromLinea.idCuentaBancariaGarantia ?? null
+        numeroOperacionGarantia.value = fromLinea.numeroOperacionGarantia ?? ''
         observacionGarantia.value = fromLinea.observacionGarantia ?? ''
       } else {
         tipoGarantiaPrestamo.value = 'ninguna'
@@ -1727,11 +1860,15 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
         void prefillMontoGarantia(fromProducto)
       }
       idMedioPagoGarantia.value = fromLinea.idMedioPagoGarantia ?? ''
+      idCuentaBancariaGarantia.value = fromLinea.idCuentaBancariaGarantia ?? null
+      numeroOperacionGarantia.value = fromLinea.numeroOperacionGarantia ?? ''
       observacionGarantia.value = fromLinea.observacionGarantia ?? ''
     } else {
       montoGarantia.value = '0.00'
       origenMontoGarantia.value = ''
       idMedioPagoGarantia.value = ''
+      idCuentaBancariaGarantia.value = null
+      numeroOperacionGarantia.value = ''
       observacionGarantia.value = ''
     }
     if (fromLinea.escenarioGas === 'comprar_balon' || fromLinea.precioBalon != null) {
@@ -1762,6 +1899,8 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
   montoGarantia.value = '0.00'
   origenMontoGarantia.value = ''
   idMedioPagoGarantia.value = ''
+  idCuentaBancariaGarantia.value = null
+  numeroOperacionGarantia.value = ''
   observacionGarantia.value = ''
   precioBalon.value = '0.00'
   idProductoEnvase.value = ''
@@ -1959,6 +2098,12 @@ async function confirmar() {
     toastWarning('Indica el medio con el que se recibe la garantía')
     return
   }
+  // Un medio como transferencia o billetera exige la cuenta de la empresa: sin
+  // ella ven_crear_garantia rechaza el cobro y la venta entera falla al guardar.
+  if (cobraGarantia && !garantiaRecepcionValida.value) {
+    toastWarning('Completa la cuenta de la empresa que recibe la garantía')
+    return
+  }
 
   const payload: PosLineaConfirmada = {
     tipo: esTallerProducto.value ? 'mantenimiento' : tipo.value,
@@ -1998,6 +2143,8 @@ async function confirmar() {
           : 0
       if (payload.montoGarantia > 0) {
         payload.idMedioPagoGarantia = Number(idMedioPagoGarantia.value)
+        payload.idCuentaBancariaGarantia = idCuentaBancariaGarantia.value ?? undefined
+        payload.numeroOperacionGarantia = numeroOperacionGarantia.value.trim() || undefined
         payload.observacionGarantia = observacionGarantia.value.trim() || undefined
       }
       if (tipoGarantiaPrestamo.value === 'balon' && garantiaBalonCodigo.value.trim()) {
@@ -2030,6 +2177,8 @@ async function confirmar() {
     payload.montoGarantia = Math.max(0, roundMoney(parseMoneyInput(montoGarantia.value) ?? 0))
     if (payload.montoGarantia > 0) {
       payload.idMedioPagoGarantia = Number(idMedioPagoGarantia.value)
+      payload.idCuentaBancariaGarantia = idCuentaBancariaGarantia.value ?? undefined
+      payload.numeroOperacionGarantia = numeroOperacionGarantia.value.trim() || undefined
       payload.observacionGarantia = observacionGarantia.value.trim() || undefined
     }
   }

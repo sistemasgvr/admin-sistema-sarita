@@ -143,7 +143,10 @@
               >
                 <GarantiaRecepcionFields
                   v-model:id-medio-pago="idMedioPagoGarantia"
+                  v-model:id-cuenta-bancaria="idCuentaBancariaGarantia"
+                  v-model:numero-operacion="numeroOperacionGarantia"
                   v-model:observacion="observacionGarantia"
+                  v-model:valido="garantiaRecepcionValida"
                   :disabled="isSubmitting"
                 />
               </div>
@@ -568,7 +571,11 @@ watch(
 const productoAlquilableBuscar = ref('')
 const montoGarantia = ref('')
 const idMedioPagoGarantia = ref<string | number>('')
+const idCuentaBancariaGarantia = ref<number | null>(null)
+const numeroOperacionGarantia = ref('')
 const observacionGarantia = ref('')
+/** MedioPagoCuentaField lo publica: false mientras falte la cuenta obligatoria. */
+const garantiaRecepcionValida = ref(true)
 
 const { error: errorMontoGarantia, valido: montoGarantiaValidoRaw, onBlur: onBlurMontoGarantia } =
   useMoneyField(montoGarantia, moneyOptsOptional)
@@ -724,6 +731,8 @@ const resetCreateForm = () => {
   })
   montoGarantia.value = '0.00'
   idMedioPagoGarantia.value = ''
+  idCuentaBancariaGarantia.value = null
+  numeroOperacionGarantia.value = ''
   observacionGarantia.value = ''
   void cargarSiguienteNumero()
 }
@@ -766,6 +775,12 @@ const onSubmit = handleSubmit(async (values) => {
       const garantiaPendiente = montoGarantiaNum.value
       if (garantiaPendiente > 0 && !idMedioPagoGarantia.value) {
         toastWarning('Indica el medio con el que se recibe la garantía')
+        return
+      }
+      // Un medio como transferencia o billetera exige la cuenta de la empresa:
+      // sin ella el backend rechaza el cobro de la garantía.
+      if (garantiaPendiente > 0 && !garantiaRecepcionValida.value) {
+        toastWarning('Completa la cuenta de la empresa que recibe la garantía')
         return
       }
 
@@ -820,6 +835,8 @@ const onSubmit = handleSubmit(async (values) => {
               : undefined,
             fechaRegistro: values.fechaInicio,
             idMedioPago: Number(idMedioPagoGarantia.value),
+            idCuentaBancaria: idCuentaBancariaGarantia.value ?? undefined,
+            numeroOperacion: numeroOperacionGarantia.value.trim() || undefined,
             observacion:
               observacionGarantia.value.trim() ||
               `Garantía alquiler ${created.numero_alquiler || created.id}`,
@@ -945,6 +962,8 @@ watch(idProductoRegulador, (value) => {
   if (!id) {
     montoGarantia.value = '0.00'
     idMedioPagoGarantia.value = ''
+    idCuentaBancariaGarantia.value = null
+    numeroOperacionGarantia.value = ''
     observacionGarantia.value = ''
     return
   }
@@ -957,6 +976,8 @@ watch(idAlmacen, (nuevo, anterior) => {
   idProductoRegulador.value = ''
   montoGarantia.value = '0.00'
   idMedioPagoGarantia.value = ''
+  idCuentaBancariaGarantia.value = null
+  numeroOperacionGarantia.value = ''
   observacionGarantia.value = ''
 })
 </script>

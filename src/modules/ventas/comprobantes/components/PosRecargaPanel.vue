@@ -200,7 +200,9 @@
         guardar-label="Registrar recarga"
         guardando-label="Registrando..."
         @guardar="registrarRecarga"
+        :segundos-para-limpiar="segundosRestantes"
         @emitir="emitirComprobante"
+        @cancelar-limpieza="detenerAutoLimpieza"
       />
     </aside>
   </div>
@@ -227,6 +229,7 @@ import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
+import { usePosAutoLimpieza } from '@/modules/ventas/comprobantes/composables/usePosAutoLimpieza'
 import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
@@ -526,9 +529,19 @@ async function registrarRecarga() {
   comprobanteGuardadoId.value = result.comprobante.id
   comprobanteGuardadoSerie.value = result.comprobante.serie
   comprobanteGuardadoNumero.value = result.comprobante.numero
+  iniciarAutoLimpieza()
 }
 
+/**
+ * Tras guardar, el POS da una ventana corta para emitir en caliente y luego
+ * se limpia solo. Sin esto la venta anterior seguía en pantalla y el siguiente
+ * cliente empezaba sobre datos viejos.
+ */
+const { segundosRestantes, iniciarAutoLimpieza, detenerAutoLimpieza } =
+  usePosAutoLimpieza(() => limpiarFormulario())
+
 async function limpiarFormulario() {
+  detenerAutoLimpieza()
   idBalon.value = ''
   idBalonOrigen.value = ''
   idBalonPreferido.value = ''
@@ -554,6 +567,7 @@ async function limpiarFormulario() {
 }
 
 async function emitirComprobante() {
+  detenerAutoLimpieza()
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
 

@@ -246,7 +246,10 @@
           <div v-if="(parseMoneyInput(montoGarantia) ?? 0) > 0" class="mt-4">
             <GarantiaRecepcionFields
               v-model:id-medio-pago="idMedioPagoGarantia"
+              v-model:id-cuenta-bancaria="idCuentaBancariaGarantia"
+              v-model:numero-operacion="numeroOperacionGarantia"
               v-model:observacion="observacionGarantia"
+              v-model:valido="garantiaRecepcionValida"
             />
           </div>
           <div class="mt-5">
@@ -318,7 +321,9 @@
         guardar-label="Registrar kit medicinal"
         guardando-label="Registrando..."
         @guardar="registrarKit"
+        :segundos-para-limpiar="segundosRestantes"
         @emitir="emitirComprobante"
+        @cancelar-limpieza="detenerAutoLimpieza"
       />
     </aside>
   </div>
@@ -361,6 +366,7 @@ import {
   formatPosMoney,
   usePosComprobanteForm,
 } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
+import { usePosAutoLimpieza } from '@/modules/ventas/comprobantes/composables/usePosAutoLimpieza'
 import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
@@ -497,7 +503,11 @@ const {
   onBlur: onBlurMontoGarantia,
 } = useMoneyField(montoGarantia, { min: 0, allowZero: true })
 const idMedioPagoGarantia = ref<string | number>('')
+const idCuentaBancariaGarantia = ref<number | null>(null)
+const numeroOperacionGarantia = ref('')
 const observacionGarantia = ref('')
+/** MedioPagoCuentaField lo publica: false mientras falte la cuenta obligatoria. */
+const garantiaRecepcionValida = ref(true)
 const origenMontoGarantia = ref('')
 const observacion = ref('')
 const generarGre = ref(false)
@@ -685,6 +695,8 @@ function onProductoLinea(linea: KitMedicinalLinea, id: unknown) {
       tarifaPeriodo.value = '0.00'
       montoGarantia.value = '0.00'
       idMedioPagoGarantia.value = ''
+      idCuentaBancariaGarantia.value = null
+      numeroOperacionGarantia.value = ''
       observacionGarantia.value = ''
       origenMontoGarantia.value = ''
     }
@@ -772,6 +784,12 @@ async function registrarKit() {
     toastWarning('Indica el medio con el que se recibe la garantía')
     return
   }
+  // Un medio como transferencia o billetera exige la cuenta de la empresa: sin
+  // ella ven_crear_garantia rechaza el cobro y el kit entero falla al guardar.
+  if (garantia > 0 && !garantiaRecepcionValida.value) {
+    toastWarning('Completa la cuenta de la empresa que recibe la garantía')
+    return
+  }
   if (!idTipoPrestamoEmpresaCliente.value) {
     toastWarning('No se encontró el tipo de préstamo para cobro de envase')
     return
@@ -848,6 +866,8 @@ async function registrarKit() {
                     cantidadVenta: 1,
                     fechaRegistro: fecha.value,
                     idMedioPago: Number(idMedioPagoGarantia.value),
+                    idCuentaBancaria: idCuentaBancariaGarantia.value ?? undefined,
+                    numeroOperacion: numeroOperacionGarantia.value.trim() || undefined,
                     observacion:
                       observacionGarantia.value.trim() ||
                       `Garantía kit medicinal · ${lineaRegulador.value.nombre || 'alquiler'}`,
@@ -881,6 +901,7 @@ async function registrarKit() {
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
     toastSuccess('Kit medicinal: alquiler de regulador + préstamo de cilindro')
+    iniciarAutoLimpieza()
   } catch (error) {
     toastApiError(error, 'No se pudo registrar el kit medicinal')
   } finally {
@@ -888,7 +909,16 @@ async function registrarKit() {
   }
 }
 
+/**
+ * Tras guardar, el POS da una ventana corta para emitir en caliente y luego
+ * se limpia solo. Sin esto la venta anterior seguía en pantalla y el siguiente
+ * cliente empezaba sobre datos viejos.
+ */
+const { segundosRestantes, iniciarAutoLimpieza, detenerAutoLimpieza } =
+  usePosAutoLimpieza(() => limpiarFormulario())
+
 async function limpiarFormulario() {
+  detenerAutoLimpieza()
   idBalon.value = ''
   idAlmacen.value = ''
   const inicio = hoyIsoLima()
@@ -898,6 +928,8 @@ async function limpiarFormulario() {
   montoGarantia.value = ''
   origenMontoGarantia.value = ''
   idMedioPagoGarantia.value = ''
+  idCuentaBancariaGarantia.value = null
+  numeroOperacionGarantia.value = ''
   observacionGarantia.value = ''
   observacion.value = ''
   generarGre.value = false
@@ -913,6 +945,7 @@ async function limpiarFormulario() {
 }
 
 async function emitirComprobante() {
+  detenerAutoLimpieza()
   const userId = authStore.user?.id
   if (!userId || !comprobanteGuardadoId.value) return
 
