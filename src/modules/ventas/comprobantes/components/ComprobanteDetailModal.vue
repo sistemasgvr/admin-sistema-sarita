@@ -410,17 +410,14 @@
         <AppIcon :name="ICONS.fileText" :size="16" />
         Generar orden de salida
       </button>
+      <!--
+        El reparto ya no se programa desde aqui: se hace desde la orden de
+        salida, que es lo que sale a la calle. La venta sigue mostrando su
+        estado y pudiendo cancelarlo, porque lo alcanza por JOIN a traves de su
+        orden (ver ven_obtener_comprobante).
+      -->
       <button
-        v-if="puedeAgregarReparto"
-        type="button"
-        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
-        @click="emit('agregar-reparto', comprobante!)"
-      >
-        <AppIcon :name="ICONS.truck" :size="16" />
-        Agregar a reparto
-      </button>
-      <button
-        v-else-if="puedeCancelarReparto"
+        v-if="puedeCancelarReparto"
         type="button"
         class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-error-300 bg-white px-4 py-2.5 text-sm font-medium text-error-600 hover:bg-error-50 disabled:opacity-70 dark:border-error-500/40 dark:bg-gray-800 dark:text-error-400"
         :disabled="cancelarMutation.isPending.value"
@@ -446,7 +443,6 @@ import {
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import type {
-  Comprobante,
   ComprobanteBalonPrestamo,
   ComprobanteDetalle,
   ComprobanteGarantia,
@@ -475,15 +471,11 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'agregar-reparto': [comprobante: Comprobante]
 }>()
 
 const router = useRouter()
 const authStore = useAuthStore()
 const cancelarMutation = useCancelarActividadMutation()
-const canCrearActividad = computed(() =>
-  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
-)
 const canEditarActividad = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR),
 )
@@ -646,9 +638,6 @@ watch(comprobanteIdRef, () => {
   editandoCobro.value = false
 })
 const tieneRepartoVigente = computed(() => tieneActividadVigente(comprobante.value))
-const puedeAgregarReparto = computed(
-  () => canCrearActividad.value && Boolean(comprobante.value) && !tieneRepartoVigente.value,
-)
 const puedeCancelarReparto = computed(
   () =>
     canEditarActividad.value &&

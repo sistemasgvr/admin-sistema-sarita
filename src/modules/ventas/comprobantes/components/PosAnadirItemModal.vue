@@ -220,6 +220,49 @@
             Si no eliges cilindro, se usa uno disponible de las mismas características o se
             extiende con el que ya tiene el cliente.
           </p>
+
+          <!--
+            Qué tiene hoy el préstamo que se renueva. Sin esto el cajero decidía
+            a ciegas: no había forma de saber si el cliente había dejado un
+            cilindro suyo o dinero. El préstamo anterior se cierra y se crea uno
+            nuevo encadenado, así que lo que se vea aquí es lo que pasa al nuevo.
+          -->
+          <div
+            v-if="renovarPrestamo && (balonEntregadoAnterior || balonGarantiaAnterior || garantiaDineroAnterior)"
+            class="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-sm dark:border-gray-700 dark:bg-white/5"
+          >
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              El préstamo actual tiene
+            </p>
+            <div v-if="balonEntregadoAnterior" class="flex items-start justify-between gap-3">
+              <span class="text-gray-700 dark:text-gray-300">
+                <span class="mr-1.5 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
+                  Prestado
+                </span>
+                {{ balonEntregadoAnterior.codigo_balon }}
+              </span>
+              <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">
+                se canjea o se extiende
+              </span>
+            </div>
+            <div v-if="balonGarantiaAnterior" class="flex items-start justify-between gap-3">
+              <span class="text-gray-700 dark:text-gray-300">
+                <span class="mr-1.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                  Garantía cilindro
+                </span>
+                {{ balonGarantiaAnterior.codigo_balon }}
+                <span class="text-xs text-gray-500 dark:text-gray-400">(del cliente)</span>
+              </span>
+            </div>
+            <div v-if="garantiaDineroAnterior" class="flex items-start justify-between gap-3">
+              <span class="text-gray-700 dark:text-gray-300">
+                <span class="mr-1.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                  Garantía dinero
+                </span>
+                Saldo {{ formatMoney(Number(garantiaDineroAnterior.monto_saldo ?? 0)) }}
+              </span>
+            </div>
+          </div>
           <p class="text-sm text-gray-500 dark:text-gray-400">
             Cobras el gas. El cilindro es de la empresa y el cliente lo devuelve después.
           </p>
@@ -257,7 +300,15 @@
             v-if="renovarPrestamo && tipoGarantiaPrestamo === 'heredada'"
             class="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
           >
-            <span>Se mantiene la garantía del préstamo anterior (dinero o cilindro, la que tenga).</span>
+            <span>
+              <template v-if="etiquetaGarantiaHeredada">
+                Se mantiene {{ etiquetaGarantiaHeredada }}: pasa al préstamo nuevo sin
+                devolverse ni volver a cobrarse.
+              </template>
+              <template v-else>
+                Se mantiene la garantía del préstamo anterior (dinero o cilindro, la que tenga).
+              </template>
+            </span>
             <button
               type="button"
               class="shrink-0 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
@@ -286,7 +337,7 @@
                 class="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
               >
                 <input v-model="tipoGarantiaPrestamo" type="radio" value="heredada" class="border-gray-300" />
-                Mantener la anterior
+                Mantener {{ etiquetaGarantiaHeredada || 'la anterior' }}
               </label>
             </div>
           </div>
@@ -700,6 +751,8 @@ import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGa
 import type { StockGasListFilters } from '@/modules/balones/stock-gas/interfaces/stock-gas.interface'
 import { stockGasService } from '@/modules/balones/stock-gas/services/stock-gas.service'
 import type { Balon } from '@/modules/balones/cilindros/interfaces/balon.interface'
+import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
+import { useGarantiasQuery } from '@/modules/balones/garantias/composables/useGarantiasQuery'
 import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
 import type { BalonOrigenRecarga } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 import { formatOrigenRecargaLabel } from '@/modules/balones/recargas/utils/formatOrigenRecargaLabel'
@@ -886,6 +939,63 @@ const garantiaRecepcionValida = ref(true)
  * anterior sin pedir datos nuevos.
  */
 const tipoGarantiaPrestamo = ref<'ninguna' | 'dinero' | 'balon' | 'heredada'>('ninguna')
+
+/**
+ * Qué tiene hoy el préstamo que se está renovando. La renovación cierra ese
+ * préstamo y abre uno nuevo encadenado (bal_renovar_prestamo), de modo que el
+ * cilindro entregado se canjea o se extiende y la garantía —dinero o cilindro—
+ * se re-enlaza al registro nuevo. Se consulta para poder mostrarlo antes de
+ * confirmar, en vez de que el cajero decida a ciegas.
+ */
+const filtrosDetallePrestamoRenovar = computed(() => ({
+  idPrestamo: props.renovarPrestamo?.id ?? 0,
+  pagina: 1,
+  limite: 50,
+}))
+const detallesPrestamoRenovarQuery = usePrestamosDetalleQuery(filtrosDetallePrestamoRenovar)
+
+const filtrosGarantiaPrestamoRenovar = computed(() => ({
+  idPrestamo: props.renovarPrestamo?.id ?? 0,
+  pagina: 1,
+  limite: 10,
+}))
+const garantiasPrestamoRenovarQuery = useGarantiasQuery(filtrosGarantiaPrestamoRenovar)
+
+/** Sin fecha_devolucion = sigue vigente, que es lo que pasa al préstamo nuevo. */
+function detallePrestamoVigente(rol: 'ENTREGADO' | 'GARANTIA') {
+  if (!props.renovarPrestamo) return null
+  return (
+    (detallesPrestamoRenovarQuery.data.value?.data ?? []).find(
+      (d) => d.rol === rol && !d.fecha_devolucion,
+    ) ?? null
+  )
+}
+
+const balonEntregadoAnterior = computed(() => detallePrestamoVigente('ENTREGADO'))
+const balonGarantiaAnterior = computed(() => detallePrestamoVigente('GARANTIA'))
+
+const garantiaDineroAnterior = computed(() => {
+  if (!props.renovarPrestamo) return null
+  return (
+    (garantiasPrestamoRenovarQuery.data.value?.data ?? []).find(
+      (g) => Number(g.monto_saldo ?? 0) > 0,
+    ) ?? null
+  )
+})
+
+/** Texto concreto de lo que se hereda, para no ofrecer "la anterior" a ciegas. */
+const etiquetaGarantiaHeredada = computed(() => {
+  const partes: string[] = []
+  if (balonGarantiaAnterior.value?.codigo_balon) {
+    partes.push(`el cilindro ${balonGarantiaAnterior.value.codigo_balon}`)
+  }
+  if (garantiaDineroAnterior.value) {
+    partes.push(
+      `${formatMoney(Number(garantiaDineroAnterior.value.monto_saldo ?? 0))} en dinero`,
+    )
+  }
+  return partes.join(' y ')
+})
 const garantiaBalonCodigo = ref('')
 const garantiaBalonNumeroSerie = ref('')
 const garantiaBalonIdTipoBalon = ref<number | ''>('')

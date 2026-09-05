@@ -16,6 +16,15 @@ export interface Prestamo {
   observacion?: string | null
   id_estado?: number | null
   nombre_estado?: string | null
+  /**
+   * Cadena de renovaciones. Renovar no pisa el préstamo vigente: lo cierra y
+   * abre uno nuevo enlazado por `id_prestamo_origen`, para que quede historial.
+   */
+  id_prestamo_origen?: number | null
+  numero_prestamo_origen?: string | null
+  /** Renovación que sustituyó a este préstamo (solo en el detalle). */
+  id_prestamo_renovacion?: number | null
+  numero_prestamo_renovacion?: string | null
   id_comprobante_venta?: number | null
   serie_comprobante_venta?: string | null
   numero_comprobante_venta?: string | null

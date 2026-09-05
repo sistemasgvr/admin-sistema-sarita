@@ -30,6 +30,11 @@ export interface PrestamoDetalle {
   numero_guia_devolucion?: string | null
   id_estado?: number | null
   nombre_estado?: string | null
+  /**
+   * ENTREGADO = cilindro que se lleva el cliente; GARANTIA = cilindro propio
+   * que deja como colateral. Un mismo préstamo puede tener los dos.
+   */
+  rol?: 'ENTREGADO' | 'GARANTIA' | string
   observacion?: string | null
   estado: number
   fecha_creacion: string

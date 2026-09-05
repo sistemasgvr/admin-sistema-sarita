@@ -204,6 +204,22 @@
               >
                 Emitir a SUNAT
               </button>
+              <!--
+                El reparto se programa desde aqui y no desde el comprobante: lo
+                que sale a la calle es la orden, con su direccion de entrega y
+                sus lineas ya resueltas (venta + cilindros en prestamo). La
+                actividad queda ligada por id_doc_salida y la venta la sigue
+                viendo por JOIN a traves de esta orden.
+              -->
+              <button
+                v-if="puedeAgregarReparto"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-theme-xs transition hover:bg-brand-600"
+                @click="abrirReparto"
+              >
+                <AppIcon :name="ICONS.truck" :size="14" />
+                Agregar a reparto
+              </button>
               <button
                 v-if="documento.ticket_sunat && !documento.emitido_sunat"
                 type="button"
@@ -567,6 +583,18 @@
       :id-cliente="documento.id_cliente"
     />
 
+    <ActividadFormModal
+      v-model="repartoModalOpen"
+      mode="create"
+      lock-tipo-reparto
+      :default-fecha="repartoFechaHoy"
+      :default-titulo="repartoPrefill.titulo"
+      :default-cliente-id="repartoPrefill.clienteId"
+      :default-cliente-label="repartoPrefill.clienteLabel"
+      :default-id-guia-remision="repartoPrefill.idDocSalida"
+      :default-items="repartoPrefill.items"
+    />
+
     <!-- Modal: Convertir a GRE -->
     <ConvertirGreModal v-if="documento" v-model="greModalOpen" :documento="documento" />
 
@@ -638,6 +666,8 @@ import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import DireccionEntregaModal from '../components/DireccionEntregaModal.vue'
 import ConvertirGreModal from '../components/ConvertirGreModal.vue'
+import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
+import type { ActividadItem } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
@@ -868,6 +898,43 @@ async function onAnular() {
   })
   anularModalOpen.value = false
   anularMotivo.value = ''
+}
+
+// ---- Reparto (actividad) ----
+// La actividad se crea con `defaultIdGuiaRemision`, que en el backend es
+// `p_id_guia_remision` y apunta a doc_salida: age_crear_actividad guarda ahi el
+// id_doc_salida y copia los items desde doc_salida_detalle.
+const repartoModalOpen = ref(false)
+const repartoFechaHoy = new Date().toISOString().slice(0, 10)
+
+const puedeAgregarReparto = computed(
+  () =>
+    Boolean(documento.value) &&
+    documento.value?.nombre_estado_ciclo !== 'ANULADA' &&
+    Boolean(documento.value?.id_cliente ?? documento.value?.id_destinatario),
+)
+
+const repartoPrefill = computed(() => {
+  const doc = documento.value
+  return {
+    titulo: doc ? `Reparto ${doc.numero}` : '',
+    clienteId: doc?.id_destinatario ?? doc?.id_cliente ?? null,
+    clienteLabel: doc?.nombre_destinatario ?? doc?.nombre_cliente ?? null,
+    idDocSalida: doc?.id ?? null,
+    items: (doc?.detalle ?? []).map<ActividadItem>((linea, idx) => ({
+      item: linea.item ?? idx + 1,
+      id_producto: linea.id_producto,
+      nombre_producto: linea.nombre_producto,
+      descripcion: linea.descripcion || linea.nombre_producto || undefined,
+      cantidad: Number(linea.cantidad) || 1,
+      id_balon: linea.id_balon,
+      codigo_balon: linea.codigo_balon,
+    })),
+  }
+})
+
+function abrirReparto() {
+  repartoModalOpen.value = true
 }
 
 // ---- Convertir a GRE (modal propio, ver ConvertirGreModal.vue) ----
