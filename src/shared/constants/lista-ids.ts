@@ -13,7 +13,7 @@ export const ListaIds = {
   /** gen_lista.nombre = TipoMovInv */
   TIPO_MOV_INV: 4,
   /** gen_lista.nombre = TipoMovInvUnificado (Fase 1: producto + balón unificados) */
-  TIPO_MOV_INV_UNIFICADO: 71,
+  TIPO_MOV_INV_UNIFICADO: 72,
   /** gen_lista.nombre = TipoCatalogoPrecio */
   TIPO_CATALOGO_PRECIO: 5,
   /** gen_lista.nombre = TipoDocumentoRef */
@@ -52,15 +52,15 @@ export const ListaIds = {
   MARCA_CILINDRO: 21,
   /** gen_lista.nombre = OrganoInspectorCilindro */
   ORGANO_INSPECTOR_CILINDRO: 22,
-  /** gen_lista.nombre = tipoLicencia */
+  /** gen_lista.nombre = TipoLicencia */
   TIPO_LICENCIA: 34,
-  /** gen_lista.nombre = categoriaLicencia */
+  /** gen_lista.nombre = CategoriaLicencia */
   CATEGORIA_LICENCIA: 35,
   /** gen_lista.nombre = TipoVehiculo */
   TIPO_VEHICULO: 38,
   /** gen_lista.nombre = TipoCuenta (AHORROS, CCI, YAPE, PLIN) */
   TIPO_CUENTA: 41,
-  /** gen_lista.nombre = Banco (BCP, BBVA, etc.) */
+  /** gen_lista.nombre = Bancos (BCP, BBVA, etc.) */
   BANCO: 40,
   /** gen_lista.nombre = MotivoBajaCliente */
   MOTIVO_BAJA_CLIENTE: 46,
