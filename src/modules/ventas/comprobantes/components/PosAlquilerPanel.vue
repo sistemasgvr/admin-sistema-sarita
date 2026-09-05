@@ -298,6 +298,7 @@
         v-model:generar-gre="generarGre"
         :mostrar-generar-gre="Boolean(idBalon)"
         :totales="totales"
+        :garantia="totalGarantia"
         :condicion-pago-options="condicionPagoOptions"
         :es-venta-credito="esVentaCredito"
         :dias-credito="diasCredito"
@@ -549,8 +550,17 @@ const todasLasLineas = computed(() => [...kitLineas, ...descartables])
 
 const lineasActivas = computed(() => lineasKitConProducto(todasLasLineas.value))
 
-const totalKit = computed(
-  () => totalKitMedicinal(todasLasLineas.value) + Math.max(0, parseMoneyInput(montoGarantia.value) ?? 0),
+/**
+ * Total vendible del kit. La garantía queda fuera: se registra en ven_garantia
+ * vía efectosPos.alquileres[].garantia, con su propio movimiento de cobro. Si
+ * entrara aquí terminaría dentro del total del comprobante, se declararía a
+ * SUNAT como venta y caja la contaría dos veces.
+ */
+const totalKit = computed(() => totalKitMedicinal(todasLasLineas.value))
+
+/** Garantía a recibir hoy, fuera del comprobante. */
+const totalGarantia = computed(() =>
+  Math.max(0, parseMoneyInput(montoGarantia.value) ?? 0),
 )
 
 const totales = computed(() => calcularTotalesDesdeImporte(totalKit.value))
@@ -781,18 +791,9 @@ async function registrarKit() {
       descripcion: `${KIT_MEDICINAL_ROL_LABEL[linea.rol]}: ${linea.nombre || linea.codigo}`,
       idBalon: linea.rol === 'regulador' ? Number(idBalon.value) : undefined,
     }))
-    if (garantia > 0) {
-      detallesKit.push({
-        idProducto: idProductoReg,
-        cantidad: 1,
-        precioUnitario: garantia,
-        descuento: 0,
-        porcentajeIgv: 18,
-        idAfectacionIgv: idAfectacionGravado.value,
-        descripcion: `Garantía reembolsable — ${lineaRegulador.value.nombre || 'alquiler'}`,
-        idBalon: Number(idBalon.value) || undefined,
-      })
-    }
+    // La garantía no se agrega como línea del comprobante: viaja en
+    // efectosPos.alquileres[].garantia y se registra en ven_garantia con su
+    // movimiento de cobro. El detalle del comprobante la muestra por JOIN.
 
     const productoReg = findProducto('regulador', idProductoReg)
     const idProductoStock =

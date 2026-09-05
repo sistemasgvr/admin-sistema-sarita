@@ -183,8 +183,8 @@
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Gas {{ formatPosMoney(importeGasLinea(linea)) }}
                       <template v-if="Number(linea.montoGarantia || 0) > 0">
-                        + Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
-                        = {{ formatPosMoney(calcularImporteLinea(linea)) }}
+                        · Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                        (aparte, no va en el comprobante)
                       </template>
                       <template v-else>
                         · Préstamo cilindro (sin garantía)
@@ -202,8 +202,8 @@
                   >
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Alquiler {{ formatPosMoney(importeGasLinea(linea)) }}
-                      + Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
-                      = {{ formatPosMoney(calcularImporteLinea(linea)) }}
+                      · Garantía {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
+                      (aparte, no va en el comprobante)
                     </p>
                     <p class="mt-0.5 truncate text-xs text-brand-600 dark:text-brand-400">
                       {{ resumenLinea(linea) }}
@@ -327,7 +327,7 @@
                 class="mt-0.5 flex items-baseline justify-between gap-2 pl-3 text-xs"
               >
                 <span class="min-w-0 truncate text-amber-600 dark:text-amber-400">
-                  + Garantía (depósito)
+                  + Garantía (depósito, fuera del comprobante)
                 </span>
                 <span class="shrink-0 tabular-nums text-amber-600 dark:text-amber-400">
                   {{ formatPosMoney(Number(linea.montoGarantia || 0)) }}
@@ -337,9 +337,13 @@
                 v-if="Number(linea.montoGarantia || 0) > 0"
                 class="mt-0.5 flex items-baseline justify-between gap-2 border-t border-dashed border-gray-200 pt-0.5 text-xs dark:border-gray-700"
               >
-                <span class="text-gray-500 dark:text-gray-400">Subtotal</span>
+                <span class="text-gray-500 dark:text-gray-400">A cobrar</span>
                 <span class="tabular-nums font-medium text-gray-800 dark:text-white/90">
-                  {{ formatPosMoney(calcularImporteLinea(linea)) }}
+                  {{
+                    formatPosMoney(
+                      calcularImporteLinea(linea) + Number(linea.montoGarantia || 0),
+                    )
+                  }}
                 </span>
               </div>
             </template>
@@ -363,6 +367,7 @@
         v-model:numero-operacion="numeroOperacionPago"
         v-model:pago-valido="pagoValido"
         :totales="totales"
+        :garantia="totalGarantia"
         :condicion-pago-options="condicionPagoOptions"
         :es-venta-credito="esVentaCredito"
         :dias-credito="diasCredito"
@@ -661,19 +666,28 @@ function importeGasLinea(linea: PosLineItem) {
   return Number(linea.cantidad || 0) * Number(linea.precioUnitario || 0)
 }
 
+/**
+ * Importe vendible de la línea. La garantía NO entra: es dinero reembolsable
+ * que se registra en ven_garantia con su propio movimiento de cobro, no una
+ * operación de venta. Si se sumara aquí terminaría dentro del total del
+ * comprobante y del XML de SUNAT, y además caja la contaría dos veces (una por
+ * los pagos de la venta y otra por el movimiento de garantía).
+ */
 function calcularImporteLinea(linea: PosLineItem) {
   const base = importeGasLinea(linea)
   if (linea.escenarioGas === 'comprar_balon') {
     return base + Number(linea.precioBalon || 0)
   }
-  if (
+  return base
+}
+
+/** Línea que puede llevar garantía asociada: préstamo de cilindro o alquiler. */
+function lineaConGarantia(linea: PosLineItem) {
+  return (
     esEntregarPrestamo(linea) ||
     linea.tipoPos === 'alquiler' ||
     Boolean(linea.esAlquilable)
-  ) {
-    return base + Number(linea.montoGarantia || 0)
-  }
-  return base
+  )
 }
 
 const nombreClienteSeleccionado = computed(() => {
@@ -710,6 +724,15 @@ const totales = computed(() => {
   )
   return calcularTotalesDesdeImporte(importeConIgv)
 })
+
+/** Garantía que se recibe hoy, fuera del comprobante (ver calcularImporteLinea). */
+const totalGarantia = computed(() =>
+  lineasActivas.value.reduce(
+    (sum, linea) =>
+      sum + (lineaConGarantia(linea) ? Number(linea.montoGarantia || 0) : 0),
+    0,
+  ),
+)
 
 const motivoNoGuardar = computed(() => {
   if (comprobanteGuardadoId.value) return null
@@ -1232,27 +1255,12 @@ try {
         ]
       }
 
-      const esAlquilerLinea =
-        linea.tipoPos === 'alquiler' || Boolean(linea.esAlquilable)
-      if (
-        (esEntregarPrestamo(linea) || esAlquilerLinea) &&
-        Number(linea.montoGarantia || 0) > 0
-      ) {
-        return [
-          base,
-          {
-            idProducto: Number(linea.idProducto),
-            cantidad: 1,
-            precioUnitario: Number(linea.montoGarantia || 0),
-            descuento: 0,
-            porcentajeIgv: 18,
-            idAfectacionIgv: linea.idAfectacionIgv ?? idAfectacionGravado.value,
-            descripcion: `Garantía reembolsable — ${linea.nombre}`,
-            idBalon: linea.idBalon,
-          },
-        ]
-      }
-
+      // La garantía NO se agrega como línea del comprobante. Viaja en
+      // efectosPos.prestamos[].garantia, que crea la garantía real en
+      // ven_garantia con su movimiento de cobro; el detalle del comprobante la
+      // muestra por JOIN. Cuando era una línea, el mismo dinero entraba al
+      // total de la venta, se declaraba a SUNAT como operación gravada y caja
+      // lo contaba dos veces.
       return [base]
     })
 

@@ -388,12 +388,27 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-              <tr v-for="linea in documento.detalle" :key="linea.id" class="transition-colors hover:bg-gray-50/60 dark:hover:bg-white/[0.02]">
+              <!--
+                La clave lleva el origen porque el detalle une dos tablas: los
+                ítems de la venta y los cilindros del préstamo, cuyos ids se
+                pueden repetir entre sí.
+              -->
+              <tr
+                v-for="linea in documento.detalle"
+                :key="`${linea.origen_detalle}-${linea.id}`"
+                class="transition-colors hover:bg-gray-50/60 dark:hover:bg-white/[0.02]"
+              >
                 <td class="px-6 py-4 text-center font-medium text-gray-400">{{ linea.item }}</td>
                 <td class="px-6 py-4">
                   <div class="flex items-center gap-3">
                     <span class="font-semibold text-gray-800 dark:text-white/90">
                       {{ linea.glosa || linea.descripcion || linea.nombre_producto || linea.codigo_balon || '—' }}
+                    </span>
+                    <span
+                      v-if="linea.origen_detalle === 'PRESTAMO'"
+                      class="rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
+                    >
+                      Préstamo
                     </span>
                   </div>
                 </td>

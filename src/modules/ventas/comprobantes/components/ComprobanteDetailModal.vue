@@ -78,12 +78,18 @@
           </thead>
           <tbody>
             <tr
-              v-for="detalle in comprobante.detalles"
+              v-for="detalle in detallesVenta"
               :key="detalle.id ?? `${detalle.id_producto}-${detalle.item}`"
               class="border-t border-gray-100 dark:border-gray-800"
             >
               <td class="px-3 py-2">
                 {{ detalle.descripcion || detalle.nombre_producto || detalle.id_producto }}
+                <span
+                  v-if="detalle.codigo_balon"
+                  class="ml-1 text-xs text-gray-500 dark:text-gray-400"
+                >
+                  · {{ detalle.codigo_balon }}
+                </span>
               </td>
               <td class="px-3 py-2 text-right tabular-nums">{{ detalle.cantidad }}</td>
               <td class="px-3 py-2 text-right tabular-nums">
@@ -93,8 +99,138 @@
                 {{ formatMoney(Number(detalle.importe ?? 0)) }}
               </td>
             </tr>
+            <tr v-if="!detallesVenta.length">
+              <td colspan="4" class="px-3 py-4 text-center text-gray-400">
+                Sin líneas de venta
+              </td>
+            </tr>
           </tbody>
         </table>
+      </div>
+
+      <!--
+        Cilindros del préstamo ligado a esta venta. Llegan por JOIN a
+        bal_prestamo / bal_prestamo_detalle: no se venden, se entregan, así que
+        no suman al total ni viajan a SUNAT. Se listan todos los del
+        comprobante, sin filtrar por su estado actual — el comprobante
+        documenta lo que salió ese día y el estado solo se muestra al costado.
+      -->
+      <div
+        v-if="balonesEntregados.length || balonesEnGarantia.length"
+        class="overflow-hidden rounded-xl border border-violet-200 dark:border-violet-500/30"
+      >
+        <div
+          class="flex items-center gap-2 border-b border-violet-100 bg-violet-50/60 px-3 py-2 dark:border-violet-500/20 dark:bg-violet-500/10"
+        >
+          <AppIcon :name="ICONS.package" :size="14" class="text-violet-600 dark:text-violet-400" />
+          <p class="text-xs font-medium uppercase tracking-wide text-violet-700 dark:text-violet-300">
+            Préstamo de cilindros
+          </p>
+        </div>
+        <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
+          <li
+            v-for="{ prestamo, balon } in balonesEntregados"
+            :key="`ent-${balon.id}`"
+            class="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2"
+          >
+            <span class="font-medium text-gray-800 dark:text-white/90">
+              {{ etiquetaBalon(balon) }}
+            </span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              <template v-if="prestamo.numero_prestamo">
+                Préstamo {{ prestamo.numero_prestamo }}
+              </template>
+              <template v-if="balon.fecha_vencimiento">
+                · Devolver: {{ balon.fecha_vencimiento }}
+              </template>
+              <template v-if="balon.fecha_devolucion">
+                · Devuelto: {{ balon.fecha_devolucion }}
+              </template>
+              <template v-else-if="balon.nombre_estado">
+                · {{ formatListaOpcionLabel(balon.nombre_estado) }}
+              </template>
+            </span>
+          </li>
+          <li
+            v-for="{ balon } in balonesEnGarantia"
+            :key="`gar-${balon.id}`"
+            class="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2"
+          >
+            <span class="font-medium text-gray-800 dark:text-white/90">
+              {{ etiquetaBalon(balon) }}
+            </span>
+            <span class="text-xs text-amber-600 dark:text-amber-400">
+              Recibido en garantía
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <!--
+        Garantía en dinero. Vive en ven_garantia con su propio movimiento de
+        cobro, fuera del total del comprobante. Las líneas de garantía de los
+        comprobantes anteriores al cambio se muestran aquí, marcadas, en vez de
+        entre los productos vendidos.
+      -->
+      <div
+        v-if="garantias.length || lineasGarantiaHistoricas.length"
+        class="overflow-hidden rounded-xl border border-amber-200 dark:border-amber-500/30"
+      >
+        <div
+          class="flex items-center gap-2 border-b border-amber-100 bg-amber-50/60 px-3 py-2 dark:border-amber-500/20 dark:bg-amber-500/10"
+        >
+          <AppIcon :name="ICONS.shield" :size="14" class="text-amber-600 dark:text-amber-400" />
+          <p class="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">
+            Garantía (reembolsable)
+          </p>
+        </div>
+        <ul class="divide-y divide-gray-100 text-sm dark:divide-gray-800">
+          <li
+            v-for="garantia in garantias"
+            :key="`g-${garantia.id}`"
+            class="px-3 py-2"
+          >
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <span class="font-medium text-gray-800 dark:text-white/90">
+                {{
+                  garantia.nombre_producto ||
+                  (garantia.numero_prestamo
+                    ? `Préstamo ${garantia.numero_prestamo}`
+                    : 'Garantía')
+                }}
+              </span>
+              <span class="tabular-nums font-medium text-gray-800 dark:text-white/90">
+                {{ formatMoney(montoGarantiaComprobante(garantia)) }}
+              </span>
+            </div>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              Cobrado {{ formatMoney(Number(garantia.monto_cobrado ?? 0)) }}
+              · Devuelto {{ formatMoney(Number(garantia.monto_devuelto ?? 0)) }}
+              · Saldo {{ formatMoney(Number(garantia.monto_saldo ?? 0)) }}
+              <template v-if="garantia.nombre_estado">
+                · {{ formatListaOpcionLabel(garantia.nombre_estado) }}
+              </template>
+            </p>
+          </li>
+          <li
+            v-for="linea in lineasGarantiaHistoricas"
+            :key="`gh-${linea.id ?? linea.item}`"
+            class="px-3 py-2"
+          >
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <span class="font-medium text-gray-800 dark:text-white/90">
+                {{ linea.descripcion || linea.nombre_producto }}
+              </span>
+              <span class="tabular-nums font-medium text-gray-800 dark:text-white/90">
+                {{ formatMoney(Number(linea.importe ?? 0)) }}
+              </span>
+            </div>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              Cobrada dentro de la venta (comprobante anterior al cambio): este
+              importe sí está incluido en el total de abajo.
+            </p>
+          </li>
+        </ul>
       </div>
 
       <div class="flex flex-col items-end gap-1 text-sm">
@@ -103,6 +239,19 @@
         <p class="text-base font-semibold text-gray-800 dark:text-white/90">
           Total: {{ formatMoney(Number(comprobante.total_importe ?? 0)) }}
         </p>
+        <template v-if="garantiaFueraDelTotal > 0">
+          <p class="text-amber-600 dark:text-amber-400">
+            Garantía (fuera del comprobante): {{ formatMoney(garantiaFueraDelTotal) }}
+          </p>
+          <p class="text-base font-semibold text-gray-800 dark:text-white/90">
+            Total cobrado:
+            {{
+              formatMoney(
+                Number(comprobante.total_importe ?? 0) + garantiaFueraDelTotal,
+              )
+            }}
+          </p>
+        </template>
       </div>
 
       <div
@@ -298,7 +447,11 @@ import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/u
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import type {
   Comprobante,
+  ComprobanteBalonPrestamo,
+  ComprobanteDetalle,
+  ComprobanteGarantia,
   ComprobantePago,
+  ComprobantePrestamo,
 } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
   downloadBlob,
@@ -371,6 +524,76 @@ const comprobante = computed(() => comprobanteQuery.data.value)
  * porque moverían el arqueo de una caja que puede estar ya cerrada.
  */
 const pagos = computed<ComprobantePago[]>(() => comprobante.value?.pagos ?? [])
+
+/**
+ * El detalle de una venta con gas + préstamo + garantía se arma con tres
+ * fuentes: las líneas vendibles del comprobante, los cilindros de
+ * `bal_prestamo` y las garantías de `ven_garantia`. Las dos últimas llegan por
+ * JOIN desde ven_obtener_comprobante: no son venta y no viajan a SUNAT.
+ */
+const detallesVenta = computed<ComprobanteDetalle[]>(() =>
+  (comprobante.value?.detalles ?? []).filter(
+    (detalle) => !detalle.es_linea_garantia,
+  ),
+)
+
+/**
+ * Comprobantes anteriores al cambio: la garantía quedó guardada como línea de
+ * venta. No se toca el dato —está emitido— pero se muestra en el bloque de
+ * garantía para que el histórico se lea igual que lo nuevo.
+ */
+const lineasGarantiaHistoricas = computed<ComprobanteDetalle[]>(() =>
+  (comprobante.value?.detalles ?? []).filter(
+    (detalle) => detalle.es_linea_garantia === true,
+  ),
+)
+
+const prestamos = computed<ComprobantePrestamo[]>(
+  () => comprobante.value?.prestamos ?? [],
+)
+
+const balonesEntregados = computed<
+  { prestamo: ComprobantePrestamo; balon: ComprobanteBalonPrestamo }[]
+>(() =>
+  prestamos.value.flatMap((prestamo) =>
+    (prestamo.balones ?? [])
+      .filter((balon) => balon.rol === 'ENTREGADO')
+      .map((balon) => ({ prestamo, balon })),
+  ),
+)
+
+const balonesEnGarantia = computed<
+  { prestamo: ComprobantePrestamo; balon: ComprobanteBalonPrestamo }[]
+>(() =>
+  prestamos.value.flatMap((prestamo) =>
+    (prestamo.balones ?? [])
+      .filter((balon) => balon.rol === 'GARANTIA')
+      .map((balon) => ({ prestamo, balon })),
+  ),
+)
+
+const garantias = computed<ComprobanteGarantia[]>(
+  () => comprobante.value?.garantias ?? [],
+)
+
+const montoGarantiaComprobante = (garantia: ComprobanteGarantia) =>
+  Number(garantia.monto_cobrado_comprobante ?? garantia.monto_cobrado ?? 0)
+
+/**
+ * Garantía que NO está dentro de `total_importe`. Solo cuenta `ven_garantia`:
+ * las líneas históricas ya viajan dentro del total del comprobante, y sumarlas
+ * aquí las contaría dos veces.
+ */
+const garantiaFueraDelTotal = computed(() =>
+  garantias.value.reduce(
+    (total, garantia) => total + montoGarantiaComprobante(garantia),
+    0,
+  ),
+)
+
+const etiquetaBalon = (balon: ComprobanteBalonPrestamo) =>
+  [balon.codigo_balon, balon.nombre_tipo_balon].filter(Boolean).join(' · ') ||
+  `Cilindro ${balon.id_balon ?? ''}`
 const editandoCobro = ref(false)
 const guardandoCobro = ref(false)
 const vouchers = ref<Record<number, string>>({})

@@ -21,6 +21,32 @@
           formatMoney(totales.total)
         }}</span>
       </div>
+      <!--
+        La garantía no entra en el comprobante: se cobra por su propio
+        movimiento (ven_garantia) y se devuelve al retornar el cilindro. Se
+        muestra igual porque es plata que el cliente entrega hoy y el de
+        mostrador necesita saber cuánto recibir en total.
+      -->
+      <template v-if="garantia > 0">
+        <div class="flex justify-between">
+          <span class="text-gray-500 dark:text-gray-400">Garantía (reembolsable)</span>
+          <span class="tabular-nums text-gray-800 dark:text-white/90">{{
+            formatMoney(garantia)
+          }}</span>
+        </div>
+        <div
+          class="flex justify-between border-t border-gray-200 pt-2 text-base font-semibold dark:border-gray-800"
+        >
+          <span class="text-gray-800 dark:text-white/90">Total a cobrar</span>
+          <span class="tabular-nums text-brand-600 dark:text-brand-400">{{
+            formatMoney(totales.total + garantia)
+          }}</span>
+        </div>
+        <p class="text-theme-xs text-gray-500 dark:text-gray-400">
+          El comprobante se emite por {{ formatMoney(totales.total) }}; la garantía
+          se registra aparte y no se declara a SUNAT.
+        </p>
+      </template>
     </div>
 
     <div class="mt-5 space-y-3">
@@ -160,6 +186,8 @@ import { ICONS } from '@/shared/constants/icons'
 const props = withDefaults(
   defineProps<{
     totales: { valorVenta: number; igv: number; total: number }
+    /** Garantía a recibir hoy. Va fuera del comprobante: no es venta. */
+    garantia?: number
     puedeGuardar: boolean
     guardando?: boolean
     emitiendo?: boolean
@@ -181,6 +209,7 @@ const props = withDefaults(
     motivoNoGuardar?: string | null
   }>(),
   {
+    garantia: 0,
     guardarLabel: 'Guardar',
     guardandoLabel: 'Guardando...',
     canPrint: false,

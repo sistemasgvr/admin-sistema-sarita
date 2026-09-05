@@ -24,7 +24,12 @@ export interface DocumentoSalidaDetalle {
   nombre_producto: string | null
   glosa: string | null
   id_movimiento: number | null
-  origen_detalle: 'VENTA' | 'PROPIO'
+  /**
+   * De dónde sale la fila: `VENTA` = ítem del comprobante, `PRESTAMO` =
+   * cilindro entregado en préstamo por esa misma venta (llega por JOIN a
+   * bal_prestamo_detalle), `PROPIO` = línea registrada en el documento.
+   */
+  origen_detalle: 'VENTA' | 'PRESTAMO' | 'PROPIO'
 }
 
 export interface DocumentoSalidaReferencia {

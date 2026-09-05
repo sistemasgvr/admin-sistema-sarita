@@ -57,6 +57,85 @@ export interface ComprobanteDetalle {
   importe?: number | null
   id_balon?: number | null
   codigo_balon?: string | null
+  /**
+   * Línea de garantía cobrada dentro de la venta. El POS ya no las crea —la
+   * garantía vive en `garantias`— pero los comprobantes emitidos antes del
+   * cambio las conservan, y el detalle las muestra en el bloque de garantía en
+   * vez de entre los productos vendidos.
+   */
+  es_linea_garantia?: boolean | null
+}
+
+/** Un cilindro del préstamo ligado a la venta (JOIN, no es línea vendible). */
+export interface ComprobanteBalonPrestamo {
+  id: number
+  /** ENTREGADO = se lo lleva el cliente; GARANTIA = lo deja como colateral. */
+  rol: 'ENTREGADO' | 'GARANTIA' | string
+  id_balon?: number | null
+  codigo_balon?: string | null
+  numero_serie?: string | null
+  id_tipo_balon?: number | null
+  nombre_tipo_balon?: string | null
+  capacidad?: number | null
+  id_estado_balon?: number | null
+  nombre_estado_balon?: string | null
+  id_producto?: number | null
+  nombre_producto?: string | null
+  fecha_entregado?: string | null
+  fecha_prestamo?: string | null
+  fecha_vencimiento?: string | null
+  fecha_devolucion?: string | null
+  id_estado?: number | null
+  nombre_estado?: string | null
+  motivo_especifico?: string | null
+  observacion?: string | null
+}
+
+/** Préstamo de cilindros nacido de esta venta (JOIN). */
+export interface ComprobantePrestamo {
+  id: number
+  numero_prestamo?: string | null
+  id_tipo_prestamo?: number | null
+  nombre_tipo_prestamo?: string | null
+  id_almacen?: number | null
+  nombre_almacen?: string | null
+  fecha_salida?: string | null
+  fecha_retorno_pactada?: string | null
+  fecha_retorno_real?: string | null
+  titulo?: string | null
+  observacion?: string | null
+  id_estado?: number | null
+  nombre_estado?: string | null
+  id_prestamo_origen?: number | null
+  numero_prestamo_origen?: string | null
+  balones: ComprobanteBalonPrestamo[]
+}
+
+/** Garantía en dinero cobrada junto a esta venta (JOIN). No es venta. */
+export interface ComprobanteGarantia {
+  id: number
+  id_cliente: number
+  id_prestamo?: number | null
+  numero_prestamo?: string | null
+  id_alquiler?: number | null
+  numero_alquiler?: string | null
+  id_producto?: number | null
+  nombre_producto?: string | null
+  cantidad_venta?: number | null
+  id_unidad_medida?: number | null
+  nombre_unidad_medida?: string | null
+  ubicacion?: string | null
+  fecha_registro?: string | null
+  monto_cobrado?: number | null
+  monto_devuelto?: number | null
+  monto_saldo?: number | null
+  id_estado?: number | null
+  nombre_estado?: string | null
+  id_medio_pago?: number | null
+  nombre_medio_pago?: string | null
+  observacion?: string | null
+  /** Lo cobrado por esta garantía en ESTE comprobante. */
+  monto_cobrado_comprobante?: number | null
 }
 
 export interface Comprobante extends ComprobanteListItem {
@@ -88,6 +167,10 @@ export interface Comprobante extends ComprobanteListItem {
   cuotas?: unknown[]
   /** Fase 3: desglose del cobro. Vacío en ventas a crédito y en las anteriores a F3. */
   pagos?: ComprobantePago[]
+  /** Préstamos de cilindro de esta venta, con sus balones (JOIN). */
+  prestamos?: ComprobantePrestamo[]
+  /** Garantías cobradas junto a esta venta (JOIN). Fuera del total. */
+  garantias?: ComprobanteGarantia[]
 }
 
 export interface ComprobanteListFilters {
