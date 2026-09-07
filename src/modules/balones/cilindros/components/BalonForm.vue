@@ -148,6 +148,12 @@
                 :error="errors.idEstadoBalon"
               />
             </AppSelectWithCreate>
+            <AlmacenSelectField
+              v-model="idAlmacen"
+              :required="requiereAlmacen"
+              :disabled="isSubmitting"
+              :error="errors.idAlmacen"
+            />
             <AppSelectWithCreate
               :can-create="canCreateListaOpcion"
               create-title="Nueva referencia"
@@ -169,9 +175,9 @@
         </DetailSectionCard>
 
         <DetailSectionCard
-          title="Ubicación y propiedad"
+          title="Propiedad"
           :icon="ICONS.mapPin"
-          help="Primero el dueño del envase: empresa usa almacén; cliente pide un cliente (no proveedor); planta pide el proveedor."
+          help="De quién es el envase: cliente pide un cliente (no proveedor); planta pide el proveedor. El almacén donde está va en Datos."
         >
           <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AppSelect
@@ -183,13 +189,6 @@
               :disabled="isSubmitting || propietarioQuery.isLoading.value"
               v-bind="idPropietarioAttrs"
               :error="errors.idPropietario"
-            />
-            <AlmacenSelectField
-              v-if="muestraAlmacen"
-              v-model="idAlmacen"
-              :required="requiereAlmacen"
-              :disabled="isSubmitting"
-              :error="errors.idAlmacen"
             />
             <ClienteSelectField
               v-if="requiereClientePropietario"
@@ -548,16 +547,14 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       paginaLibro: optionalNumber(),
       fechaRegistro: optionalString(),
       numeroRecepcion: optionalString().max(30, 'Máximo 30 caracteres'),
+      // El almacén es obligatorio para cualquier propietario: todo cilindro que
+      // entra al sistema está físicamente en algún almacén nuestro, incluido el
+      // que el cliente deja en garantía desde el POS. Antes solo se exigía a los
+      // de la empresa, así que los de cliente quedaban sin ubicación.
       idAlmacen: optionalNumber().test(
         'almacen-requerido',
         'El almacén es obligatorio',
-        function (value) {
-          const nombre = nombrePropietario(this.parent.idPropietario)
-          if (nombre === 'EMPRESA' || nombre === 'PROPIA') {
-            return value != null
-          }
-          return true
-        },
+        (value) => value != null,
       ),
       idClienteUbicacion: optionalNumber(),
       idPropietario: requiredSelect('El propietario'),
@@ -704,11 +701,11 @@ const requierePlantaPropietario = computed(
   () => propietarioSeleccionadoNombre.value === 'PLANTA',
 )
 
-const muestraAlmacen = computed(
-  () => esPropietarioEmpresa.value || requierePlantaPropietario.value,
-)
-
-const requiereAlmacen = computed(() => esPropietarioEmpresa.value)
+// Siempre obligatorio: el almacén es dónde está el cilindro, no de quién es. Un
+// envase de cliente recibido en garantía también ocupa sitio en el local y hay
+// que poder localizarlo. (Ya no hay `muestraAlmacen`: el campo se muestra
+// siempre, en la sección Datos.)
+const requiereAlmacen = computed(() => true)
 
 const tipoSeleccionado = computed(() => {
   const id = Number(idTipoBalon.value)
@@ -752,9 +749,13 @@ watch(idPropietario, (nuevo, anterior) => {
   if (anterior == null) return
 
   if (requiereClientePropietario.value) {
-    idAlmacen.value = undefined
+    // No se limpia idAlmacen: el cilindro del cliente igual está en un almacén
+    // nuestro mientras lo tengamos (garantía, recarga pendiente de recojo).
     idPlanta.value = undefined
     idClienteUbicacion.value = idClientePropietario.value
+    if (props.mode === 'create' && !idAlmacen.value) {
+      aplicarAlmacenPorDefecto()
+    }
   } else if (requierePlantaPropietario.value) {
     idClientePropietario.value = undefined
     idClienteUbicacion.value = undefined

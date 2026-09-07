@@ -278,9 +278,10 @@
             mode="alquiler"
             :id-almacen="idAlmacen"
             :extra-filters="extraFiltersProductoGas"
-            label="Cilindro de la empresa"
+            label="Cilindros de la empresa"
             placeholder="Buscar en almacén"
-            empty-text="No hay cilindros con gas de este producto en el almacén."
+            incluir-custodia-cliente
+            empty-text="No hay cilindros de este gas disponibles en el almacén."
             :required="!renovarPrestamo"
             @selected="onBalonEmpresaSelected"
           />
@@ -294,7 +295,19 @@
           </p>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppInput v-model="fechaInicio" label="Fecha de entrega" type="date" required />
-            <AppInput v-model="fechaFin" label="Fecha de devolución" type="date" />
+            <AppInput
+              v-model="fechaFin"
+              :label="exigeFechaRetorno ? 'Fecha de retorno pactada' : 'Fecha de devolución'"
+              type="date"
+              :required="exigeFechaRetorno"
+              :min="fechaInicio || undefined"
+              :error="errorFechaRetorno || undefined"
+              :hint="
+                exigeFechaRetorno
+                  ? 'Fin del préstamo: cuándo se compromete a volver por su cilindro.'
+                  : undefined
+              "
+            />
           </div>
           <div
             v-if="renovarPrestamo && tipoGarantiaPrestamo === 'heredada'"
@@ -371,6 +384,14 @@
           </template>
 
           <template v-if="tipoGarantiaPrestamo === 'balon'">
+            <p
+              v-if="nombreCliente"
+              class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
+            >
+              El cilindro se registrará a nombre de
+              <span class="font-semibold">{{ nombreCliente }}</span
+              >, el cliente de esta venta, y en el almacén de la venta.
+            </p>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="flex items-end gap-2">
                 <div class="min-w-0 flex-1">
@@ -485,7 +506,7 @@
             :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
             es-gas
             label="Cantidad de gas (m³)"
-            :error="errorCantidadVsBalon || undefined"
+            :error="errorCantidadGas || undefined"
             :hint="hintCantidadBalon"
           />
           <div :class="cantidadBloqueadaPorBalon ? 'sm:col-span-2' : ''">
@@ -769,6 +790,7 @@ import {
 } from '@/modules/ventas/comprobantes/constants/ventaEnvase'
 import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
+  formatStockPos,
   productoGasSinStockParaVenta,
   productoSinStockParaVenta,
   validarStockParaAgregar,
@@ -1002,6 +1024,26 @@ const garantiaBalonIdTipoBalon = ref<number | ''>('')
 const garantiaBalonFechaUltimaPh = ref('')
 const garantiaBalonObservacion = ref('')
 
+/**
+ * Cuando el cliente deja su cilindro en garantía hay que pactar cuándo vuelve
+ * por él: si no, el préstamo queda abierto sin fecha y nadie sabe cuándo
+ * reclamarlo. En un préstamo normal (sin envase de por medio) sigue siendo
+ * opcional, como estaba.
+ */
+const exigeFechaRetorno = computed(
+  () =>
+    escenarioGas.value === 'entregar_prestamo' && tipoGarantiaPrestamo.value === 'balon',
+)
+
+const errorFechaRetorno = computed(() => {
+  if (!exigeFechaRetorno.value) return ''
+  if (!fechaFin.value) return 'Indica la fecha de retorno pactada'
+  if (fechaInicio.value && fechaFin.value < fechaInicio.value) {
+    return 'No puede ser anterior a la fecha de entrega'
+  }
+  return ''
+})
+
 const garantiaBalonPhVencida = computed(() => {
   if (!garantiaBalonFechaUltimaPh.value) return false
   const ultima = new Date(garantiaBalonFechaUltimaPh.value)
@@ -1090,6 +1132,42 @@ const errorCantidadVsBalon = computed(() => {
   }
   return ''
 })
+
+/**
+ * Gas disponible en el almacén (m³). `null` = todavía no lo sabemos, y en ese
+ * caso no se bloquea nada: preferimos dejar pasar a inventar un error mientras
+ * carga la consulta.
+ */
+const stockGasDisponible = computed<number | null>(() => {
+  const prod = producto.value
+  if (tipo.value !== 'gas' || !prod) return null
+  // pro_stock ya viene resuelto en el producto cuando la lista se pidió con almacén.
+  if (prod.stock_actual != null) return Number(prod.stock_actual)
+  if (!props.idAlmacen || !stockGasQuery.isFetched.value) return null
+  const info = stockGasPorProducto.value[prod.id]
+  return info ? Number(info.capacidad_disponible || 0) : 0
+})
+
+/**
+ * Tope por stock. Aplica a TODOS los escenarios de gas, pero es el único límite
+ * que existe en "Cilindro no registrado": ahí no hay cilindro contra el que
+ * topar, así que hasta ahora se podía cobrar más gas del que hay en el almacén.
+ */
+const errorCantidadVsStock = computed(() => {
+  if (tipo.value !== 'gas') return ''
+  const disponible = stockGasDisponible.value
+  const cant = Number(cantidad.value)
+  if (disponible == null || !(cant > 0)) return ''
+  if (cant > disponible) {
+    return `Máximo ${formatStockPos(disponible)} m³ (stock disponible en el almacén)`
+  }
+  return ''
+})
+
+/** La capacidad del cilindro y el stock del almacén topan la cantidad a la vez. */
+const errorCantidadGas = computed(
+  () => errorCantidadVsBalon.value || errorCantidadVsStock.value,
+)
 
 const hintCantidadBalon = computed(() => {
   if (!escenarioUsaBalon.value) return undefined
@@ -1787,7 +1865,7 @@ const puedeConfirmar = computed(() => {
     )
   }
   if (Number(cantidad.value) <= 0) return false
-  if (errorCantidadVsBalon.value) return false
+  if (errorCantidadGas.value) return false
   if (tipo.value === 'alquiler') {
     if (!montoGarantiaValido.value) return false
     return (
@@ -1817,6 +1895,7 @@ const puedeConfirmar = computed(() => {
       ) {
         return false
       }
+      if (errorFechaRetorno.value) return false
       return (
         Boolean(props.idCliente) &&
         !props.esClientesVarios &&
@@ -2111,8 +2190,8 @@ async function confirmar() {
     toastWarning(errorCantidad)
     return
   }
-  if (errorCantidadVsBalon.value) {
-    toastWarning(errorCantidadVsBalon.value)
+  if (errorCantidadGas.value) {
+    toastWarning(errorCantidadGas.value)
     return
   }
 

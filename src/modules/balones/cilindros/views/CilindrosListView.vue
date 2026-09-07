@@ -349,6 +349,10 @@ import {
   useRestaurarBalonMutation,
 } from '@/modules/balones/cilindros/composables/useBalonMutations'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
+import {
+  ESTADOS_TERMINALES,
+  motivoNoDisponible,
+} from '@/modules/balones/cilindros/utils/disponibilidadBalon'
 import type {
   Balon,
   BalonListFilters,
@@ -612,28 +616,26 @@ const inicialesAlmacen = (nombre: string) => {
 
 const estadoBalonNombre = (balon: Balon) => balon.nombre_estado_balon?.toUpperCase() ?? ''
 
-const ESTADOS_DISPONIBLES = ['EN_ALMACEN', '']
+// La disponibilidad la decide motivoNoDisponible (utils/disponibilidadBalon),
+// la MISMA regla que usa el selector del POS. Antes aquí se comparaba contra
+// ['EN_ALMACEN', ''], un estado que ya no existe en el catálogo: cualquier
+// cilindro DISPONIBLE fallaba la comprobación y el aviso salía siempre.
+// Tampoco depende del propietario: un envase de cliente que tenemos en custodia
+// es entregable, y de hecho el POS ya lo ofrece.
+const esNoDisponible = (balon: Balon) => motivoNoDisponible(balon) !== null
 
-const esNoDisponible = (balon: Balon) => !ESTADOS_DISPONIBLES.includes(estadoBalonNombre(balon))
-
-const referenciaNoDisponible = (balon: Balon) => {
-  const estado = balon.nombre_estado_balon || 'Estado desconocido'
-  if (balon.nombre_cliente_ubicacion) {
-    return `Cilindro ${estado} y asignado a ${balon.nombre_cliente_ubicacion}; no está disponible para préstamo/alquiler`
-  }
-  return `Cilindro ${estado}; no está disponible para préstamo/alquiler`
-}
+const referenciaNoDisponible = (balon: Balon) => motivoNoDisponible(balon) ?? ''
 
 const puedeDarDeBaja = (balon: Balon) =>
   balon.estado === 1 &&
   !balon.baja &&
   !balon.tiene_solicitud_baja_pendiente &&
-  !['DADO_DE_BAJA', 'ROBO'].includes(estadoBalonNombre(balon))
+  !ESTADOS_TERMINALES.has(estadoBalonNombre(balon))
 
 const puedeRestaurar = (balon: Balon) =>
   balon.estado === 1 &&
   !balon.tiene_solicitud_baja_pendiente &&
-  ['DADO_DE_BAJA', 'ROBO'].includes(estadoBalonNombre(balon))
+  ESTADOS_TERMINALES.has(estadoBalonNombre(balon))
 
 const phPorVencerOptions = [
   { label: '30 días', value: 30 },

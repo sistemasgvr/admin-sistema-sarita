@@ -65,6 +65,8 @@ const props = withDefaults(
     error?: string
     hint?: string
     mode: PosBalonSelectMode
+    /** Ver usePosBalonSelect: incluye los cilindros de cliente en custodia. */
+    incluirCustodiaCliente?: boolean
     idCliente?: number | ''
     idAlmacen?: number | ''
     /** Ej. medicinal: solo cilindros de esa familia de gas */
@@ -79,6 +81,7 @@ const props = withDefaults(
   {
     label: 'Cilindro',
     placeholder: 'Selecciona cilindro',
+    incluirCustodiaCliente: false,
     idCliente: '',
     idAlmacen: '',
     familiaGas: undefined,
@@ -126,6 +129,7 @@ const {
   syncBalonFilters,
 } = usePosBalonSelect({
   mode: props.mode,
+  incluirCustodiaCliente: toRef(() => props.incluirCustodiaCliente),
   idCliente: idClienteRef,
   idAlmacen: idAlmacenRef,
   familiaGas: familiaGasRef,

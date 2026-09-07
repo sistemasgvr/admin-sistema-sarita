@@ -457,3 +457,22 @@ layer(base);
   border-color: rgba(255, 255, 255, 0.12);
   color: #d1d5db;
 }
+
+/* SweetAlert2 --------------------------------------------------------------
+   La librería inyecta su CSS en runtime con `div:where(.swal2-container)`, que
+   fija `z-index: 1060`. En esta app el header del layout es z-99999, AppModal
+   por defecto 99999 y AppTimePicker 999999, así que el diálogo quedaba por
+   debajo: el fondo oscuro solo cubría el área de contenido y el header y el
+   sidebar seguían visibles y clicables encima. El contenedor ya es
+   `position: fixed; inset: 0`, así que el único ajuste necesario es elevarlo.
+
+   Va FUERA de `@layer` a propósito: el CSS de la librería no está en ninguna
+   capa, y una regla dentro de una capa perdería contra él por mucha
+   especificidad que tuviera. Es el mismo motivo por el que los estilos de
+   vue-sonner se sobrescriben aquí arriba.
+--------------------------------------------------------------------------- */
+.swal2-container {
+  /* Por encima del z-index más alto de la app (999999, AppTimePicker): un
+     confirm que bloquea la operación debe estar sobre todo lo demás. */
+  z-index: 1000000;
+}

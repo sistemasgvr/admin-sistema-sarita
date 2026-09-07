@@ -138,7 +138,8 @@
             </AppFormField>
             <AppSelect
               v-model="idBalonPreferido"
-              label="Cilindro de la empresa (opcional)"
+              label="Cilindros de la empresa (opcional)"
+              incluir-custodia-cliente
               placeholder="Automático (el más antiguo)"
               :options="origenOptions"
               :disabled="cargandoOrigenes || !idProducto"

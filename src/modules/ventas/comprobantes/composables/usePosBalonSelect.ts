@@ -7,6 +7,11 @@ import type {
   BalonListFilters,
 } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { getBalonEstadoBadge } from '@/modules/balones/utils/balonEstadoBadge'
+// Misma regla de disponibilidad que el listado de cilindros.
+import {
+  ESTADOS_FUERA_DEL_ALMACEN,
+  ESTADOS_NO_ENTREGABLES,
+} from '@/modules/balones/cilindros/utils/disponibilidadBalon'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption, SelectOptionBadge } from '@/shared/interfaces/form.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
@@ -121,6 +126,12 @@ export function balonToSelectOption(balon: Balon): SelectOption {
 
 export function usePosBalonSelect(options: {
   mode: PosBalonSelectMode
+  /**
+   * Solo modo 'alquiler': incluir además los cilindros de propietario CLIENTE
+   * que tenemos en custodia (garantía / pendientes de recojo). No activarlo en
+   * campos que transfieren la propiedad del envase.
+   */
+  incluirCustodiaCliente?: Ref<boolean>
   idCliente: Ref<number | ''>
   idAlmacen?: Ref<number | ''>
   /** Ej. `medicinal` para kit POS: solo cilindros de esa familia de gas. */
@@ -174,12 +185,16 @@ export function usePosBalonSelect(options: {
       filters.idClienteRelacionado = Number(options.idCliente.value)
     }
 
-    // Venta / entrega / alquiler: solo stock de la empresa en almacén (nunca "Propio de cliente")
+    // Venta / entrega / alquiler: cilindros que tenemos FÍSICAMENTE en el almacén
+    // elegido al inicio.
+    //
+    // Lo que define la custodia es el almacén, no el estado: cuando un cilindro
+    // sale, inv_registrar_movimiento le pone `id_almacen = NULL` (SALIDA_PRESTAMO,
+    // SALIDA_ALQUILER, SALIDA_VENTA, SALIDA_ENTREGA_CLIENTE, SALIDA_PLANTA_EXTERNA).
+    // Así "tiene almacén" significa "está aquí" y "no tiene" significa que está con
+    // el cliente o en camino. Filtrar además por estado sobraba y dejaba fuera
+    // cilindros entregables por tener un estado distinto del esperado.
     if (options.mode === 'alquiler') {
-      if (estadoEnAlmacenId.value) {
-        filters.idEstadoBalon = estadoEnAlmacenId.value
-      }
-
       if (options.idAlmacen?.value) {
         filters.idAlmacen = Number(options.idAlmacen.value)
       }
@@ -211,7 +226,6 @@ export function usePosBalonSelect(options: {
       () => options.idAlmacen?.value,
       () => options.familiaGas?.value,
       () => options.extraFilters?.value,
-      estadoEnAlmacenId,
       propietarioEmpresaId,
       propietarioPropiaId,
     ],
@@ -224,9 +238,36 @@ export function usePosBalonSelect(options: {
   const balonOptions = computed(() => {
     let rows = balonesQuery.data.value?.data ?? []
 
-    // Red de seguridad: stock empresa = EMPRESA | PROPIA (legado). Nunca CLIENTE.
+    // Stock entregable = envases de la empresa (EMPRESA | PROPIA legado) y, si el
+    // campo lo pide con `incluirCustodiaCliente`, también los de propietario
+    // CLIENTE que tenemos en custodia: los dejados en garantía son stock
+    // utilizable mientras estén con nosotros. Lo que delimita "tenerlos" es el
+    // filtro de la consulta (estado EN_ALMACEN + almacén), no de quién es el
+    // envase: uno que está en casa del cliente queda en EN_PODER_CLIENTE /
+    // PRESTADO_CLIENTE y no aparece.
+    //
+    // Es opt-in a propósito. En "Cilindro a vender" transferimos la propiedad,
+    // así que ahí solo pueden salir envases nuestros: vender el de otro cliente
+    // sería regalar algo que no es nuestro. Tampoco entra PLANTA, que es del
+    // proveedor y hay que devolvérselo.
     if (options.mode === 'alquiler') {
-      rows = rows.filter((balon) => esPropietarioEmpresaStock(balon.nombre_propietario))
+      const admiteCustodiaCliente = options.incluirCustodiaCliente?.value === true
+      rows = rows.filter(
+        (balon) =>
+          // Sin almacén = no está en nuestras manos. Misma regla que el filtro de
+          // la consulta, repetida por si se lista sin almacén seleccionado.
+          balon.id_almacen != null &&
+          !ESTADOS_NO_ENTREGABLES.has(
+            (balon.nombre_estado_balon ?? '').trim().toUpperCase(),
+          ) &&
+          // Red de seguridad si el estado y el almacén se contradicen.
+          !ESTADOS_FUERA_DEL_ALMACEN.has(
+            (balon.nombre_estado_balon ?? '').trim().toUpperCase(),
+          ) &&
+          (esPropietarioEmpresaStock(balon.nombre_propietario) ||
+            (admiteCustodiaCliente &&
+              (balon.nombre_propietario ?? '').trim().toUpperCase() === 'CLIENTE')),
+      )
     }
 
     const clientFilter = options.clientFilter?.value
