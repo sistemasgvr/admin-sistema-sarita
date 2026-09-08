@@ -63,10 +63,10 @@
               {{ comprobanteLabel(actividad) ?? '—' }}
             </dd>
           </div>
-          <div v-if="guiaRemisionLabel(actividad)">
-            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Guía de remisión</dt>
+          <div v-if="docSalidaLabel(actividad)">
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Orden de salida</dt>
             <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
-              {{ guiaRemisionLabel(actividad) }}
+              {{ docSalidaLabel(actividad) }}
             </dd>
           </div>
         </dl>
@@ -193,26 +193,75 @@
 
         <div class="overflow-x-auto">
           <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 text-left text-xs text-gray-500 dark:bg-white/5">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-white/5">
               <tr>
-                <th class="px-3 py-2">Ítem</th>
-                <th class="px-3 py-2">Producto</th>
-                <th class="px-3 py-2 text-right">Cant.</th>
-                <th class="px-3 py-2">Balón</th>
+                <th class="px-3 py-2 font-medium">Producto</th>
+                <th class="px-3 py-2 font-medium">Tipo / gas</th>
+                <th class="px-3 py-2 text-right font-medium">Cant.</th>
+                <th class="px-3 py-2 font-medium">Balón</th>
               </tr>
             </thead>
             <tbody>
               <tr
                 v-for="(item, idx) in items"
-                :key="item.id ?? `${item.id_producto}-${idx}`"
+                :key="item.id ?? `${item.id_producto}-${item.id_balon}-${idx}`"
                 class="border-t border-gray-100 dark:border-gray-800"
               >
-                <td class="px-3 py-2 text-gray-500">{{ item.item ?? idx + 1 }}</td>
-                <td class="px-3 py-2 text-gray-800 dark:text-white/90">
-                  {{ item.descripcion || item.nombre_producto || '—' }}
+                <td class="px-3 py-2.5 align-top">
+                  <p class="font-medium text-gray-800 dark:text-white/90">
+                    {{ item.nombre_producto || item.descripcion || '—' }}
+                  </p>
+                  <p
+                    v-if="item.descripcion && item.nombre_producto && item.descripcion !== item.nombre_producto"
+                    class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    {{ item.descripcion }}
+                  </p>
                 </td>
-                <td class="px-3 py-2 text-right tabular-nums">{{ item.cantidad }}</td>
-                <td class="px-3 py-2 text-gray-500">{{ item.codigo_balon || '—' }}</td>
+                <td class="px-3 py-2.5 align-top">
+                  <div class="flex flex-col gap-1">
+                    <AppBadge
+                      v-if="item.nombre_tipo_balon"
+                      size="sm"
+                      variant="light"
+                      :color="tipoBalonBadgeColor(item.nombre_tipo_balon)"
+                    >
+                      {{ item.nombre_tipo_balon }}
+                    </AppBadge>
+                    <span
+                      v-if="item.nombre_producto_gas"
+                      class="text-xs text-gray-600 dark:text-gray-300"
+                    >
+                      {{ item.nombre_producto_gas }}
+                    </span>
+                    <span
+                      v-if="!item.nombre_tipo_balon && !item.nombre_producto_gas"
+                      class="text-xs text-gray-400"
+                    >
+                      —
+                    </span>
+                  </div>
+                </td>
+                <td class="px-3 py-2.5 text-right align-top tabular-nums text-gray-800 dark:text-white/90">
+                  <span class="font-medium">{{ formatCantidadItem(item.cantidad) }}</span>
+                  <span
+                    v-if="item.nombre_unidad_medida"
+                    class="ml-1 text-xs font-normal uppercase text-gray-500"
+                  >
+                    {{ item.nombre_unidad_medida }}
+                  </span>
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <p class="font-medium text-gray-800 dark:text-white/90">
+                    {{ item.codigo_balon || '—' }}
+                  </p>
+                  <p
+                    v-if="item.numero_serie_balon"
+                    class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    S/N {{ item.numero_serie_balon }}
+                  </p>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -289,8 +338,9 @@ import {
   puedeTomar,
 } from '@/modules/operativa/actividades/utils/actividadEstado'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { AppModal, ListaOpcionBadge } from '@/shared/components'
+import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
 import {
   formatDetailDateTime,
 } from '@/shared/components/detail/detailFormatters'
@@ -350,6 +400,12 @@ const canFinalizar = computed(
 
 const items = computed(() => actividad.value?.items ?? [])
 
+function formatCantidadItem(valor: number | string | null | undefined) {
+  const n = Number(valor)
+  if (!Number.isFinite(n)) return '0'
+  return String(Number(n.toFixed(4)))
+}
+
 const mapsUrl = computed(() => {
   const match = actividad.value?.descripcion?.match(/ver en mapa:\s*(\S+)/i)
   return match ? match[1] : null
@@ -381,11 +437,12 @@ const comprobanteLabel = (a: Actividad) => {
   return null
 }
 
-const guiaRemisionLabel = (a: Actividad) => {
-  if (a.serie_guia_remision && a.numero_guia_remision) {
-    return `${a.serie_guia_remision}-${a.numero_guia_remision}`
+const docSalidaLabel = (a: Actividad) => {
+  if (a.serie_doc_salida && a.numero_sunat_doc_salida) {
+    return `${a.serie_doc_salida}-${a.numero_sunat_doc_salida}`
   }
-  return a.id_guia_remision ? `GRE #${a.id_guia_remision}` : null
+  if (a.numero_doc_salida) return a.numero_doc_salida
+  return a.id_doc_salida ? `Orden #${a.id_doc_salida}` : null
 }
 
 async function marcarRealizada() {

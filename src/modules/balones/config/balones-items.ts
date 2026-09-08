@@ -47,7 +47,8 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     icon: ICONS.arrowDownToLine,
     permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
     phase: 5,
-    implemented: true,
+    // Absorbido por operativa/actividades; no mostrar en menú.
+    implemented: false,
   },
   {
     key: 'rutas-pueblos',

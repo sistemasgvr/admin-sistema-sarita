@@ -7,11 +7,11 @@
       sirven de nada.
     -->
     <div
-      class="flex items-stretch overflow-hidden rounded-lg border transition"
+      class="flex items-stretch overflow-hidden rounded-lg border bg-white transition dark:bg-gray-900"
       :class="
         excede
           ? 'border-error-400 ring-1 ring-error-500/20'
-          : 'border-gray-300 focus-within:border-brand-400 focus-within:ring-1 focus-within:ring-brand-500/20 dark:border-gray-700'
+          : 'border-gray-200 focus-within:border-brand-400 focus-within:ring-1 focus-within:ring-brand-500/20 dark:border-gray-700'
       "
     >
       <input
@@ -24,7 +24,7 @@
         placeholder="0"
         inputmode="decimal"
         :disabled="disabled || readonly"
-        class="w-full min-w-0 bg-transparent px-3 py-2 text-sm font-medium tabular-nums text-gray-800 placeholder:font-normal placeholder:text-gray-400 focus:outline-none disabled:cursor-not-allowed disabled:text-gray-400 dark:text-white/90"
+        class="w-full min-w-0 border-0 bg-transparent px-3 py-2 text-sm font-medium tabular-nums text-gray-800 shadow-none outline-none ring-0 placeholder:font-normal placeholder:text-gray-400 focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none disabled:cursor-not-allowed disabled:text-gray-400 dark:text-white/90"
         @input="onInput"
         @focusin="emit('focus')"
         @blur="emit('commit')"
@@ -32,7 +32,7 @@
       />
       <span
         v-if="unidad"
-        class="flex shrink-0 items-center border-l border-gray-200 bg-gray-50 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-white/[0.04] dark:text-gray-400"
+        class="flex shrink-0 items-center border-l border-gray-200 bg-gray-50 px-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-600 dark:bg-white/[0.04] dark:text-gray-400"
       >
         {{ unidad }}
       </span>
@@ -178,6 +178,12 @@ const pistaCritica = computed(() => {
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
+  /* @tailwindcss/forms pinta borde/sombra en inputs nativos; el borde lo
+     lleva el contenedor con el addon de unidad. */
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
 }
 
 input[type='number']::-webkit-outer-spin-button,

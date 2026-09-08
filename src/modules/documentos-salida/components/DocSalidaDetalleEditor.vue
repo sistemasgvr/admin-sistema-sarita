@@ -650,12 +650,20 @@ const cantidades = ref<Record<number, number | string>>({})
 const editando = ref<number | null>(null)
 
 watch(
-  [productos, gruposGas],
-  ([lineasProducto, grupos]) => {
+  [() => props.lineas, gruposGas],
+  ([lineas, grupos]) => {
     const siguiente: Record<number, number | string> = {}
     for (const grupo of grupos) siguiente[grupo.idProducto] = ''
-    for (const linea of lineasProducto) {
-      if (linea.idProducto != null) siguiente[linea.idProducto] = Number(linea.cantidad)
+    // Incluye líneas VENTA con balón+producto: el gas despachado en el
+    // cilindro. Antes solo se leían filas tipo PRODUCTO, y esas cantidades
+    // (las del detalle de la venta) no llenaban el input.
+    for (const linea of lineas) {
+      if (linea.idProducto == null) continue
+      const qty = Number(linea.cantidad)
+      if (!Number.isFinite(qty) || qty <= 0) continue
+      const prev = siguiente[linea.idProducto]
+      const prevNum = prev === '' || prev == null ? 0 : Number(prev)
+      siguiente[linea.idProducto] = prevNum + qty
     }
     if (editando.value != null && editando.value in cantidades.value) {
       siguiente[editando.value] = cantidades.value[editando.value]

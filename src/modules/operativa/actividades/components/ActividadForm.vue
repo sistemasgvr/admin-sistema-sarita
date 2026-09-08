@@ -1,11 +1,5 @@
-<template>
-  <AppModal
-    v-model="open"
-    :title="modalTitle"
-    :subtitle="modalSubtitle"
-    size="lg"
-    @close="handleClose"
-  >
+﻿<template>
+  <div class="space-y-4">
     <form id="actividad-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
       <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
         <header class="mb-3 flex items-center gap-2.5">
@@ -183,7 +177,36 @@
       </section>
 
       <section
-        v-if="itemsPreview.length || defaultIdComprobante || defaultIdGuiaRemision"
+        v-if="mode === 'create' && esTipoReparto"
+        class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]"
+      >
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.fileText" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Orden de salida</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              El detalle del reparto se toma de la orden (venta / préstamo / propio)
+            </p>
+          </div>
+        </header>
+
+        <DocumentoSalidaSelectField
+          v-model="idDocSalidaSeleccionado"
+          label="Orden de salida"
+          placeholder="Selecciona una orden disponible..."
+          search-placeholder="Número o cliente..."
+          codigo-tipo-orden="ORDEN_SALIDA_VENTA"
+          :sin-actividad-vigente="true"
+          :required="true"
+          :disabled="isSubmitting || lockDocSalida"
+          :error="errorDocSalida"
+        />
+      </section>
+
+      <section
+        v-if="itemsPreview.length || defaultIdComprobante || idDocSalidaEfectivo"
         class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]"
       >
         <header class="mb-3 flex items-center gap-2.5">
@@ -196,38 +219,90 @@
               <span v-if="comprobanteLabel" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
                 ({{ comprobanteLabel }})
               </span>
-              <span v-if="guiaRemisionLabel" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
-                (GRE {{ guiaRemisionLabel }})
+              <span v-if="docSalidaLabel" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+                ({{ docSalidaLabel }})
               </span>
             </h4>
           </div>
         </header>
 
-        <p v-if="!itemsPreview.length" class="text-xs text-gray-500 dark:text-gray-400">
-          Se copiarán los ítems del comprobante al guardar.
+        <p v-if="docSalidaQuery.isFetching.value" class="text-xs text-gray-500 dark:text-gray-400">
+          Cargando detalle de la orden...
+        </p>
+        <p v-else-if="!itemsPreview.length" class="text-xs text-gray-500 dark:text-gray-400">
+          Se copiarán los ítems de la orden de salida al guardar.
         </p>
         <div v-else class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
           <table class="min-w-full text-sm">
-            <thead class="bg-white text-left text-xs text-gray-500 dark:bg-gray-900/40">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-white/[0.03] dark:text-gray-400">
               <tr>
-                <th class="px-3 py-2">Producto</th>
-                <th class="px-3 py-2 text-right">Cant.</th>
-                <th class="px-3 py-2">Balón</th>
+                <th class="px-3 py-2 font-medium">Producto</th>
+                <th class="px-3 py-2 font-medium">Tipo / gas</th>
+                <th class="px-3 py-2 text-right font-medium">Cant.</th>
+                <th class="px-3 py-2 font-medium">Balón</th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-900/20">
               <tr
                 v-for="(item, idx) in itemsPreview"
-                :key="item.id ?? `${item.id_producto}-${idx}`"
+                :key="item.id ?? `${item.id_producto}-${item.id_balon}-${idx}`"
                 class="border-t border-gray-100 dark:border-gray-800"
               >
-                <td class="px-3 py-2 text-gray-800 dark:text-white/90">
-                  {{ item.descripcion || item.nombre_producto || '—' }}
+                <td class="px-3 py-2.5 align-top">
+                  <p class="font-medium text-gray-800 dark:text-white/90">
+                    {{ item.nombre_producto || item.descripcion || '—' }}
+                  </p>
+                  <p
+                    v-if="item.descripcion && item.nombre_producto && item.descripcion !== item.nombre_producto"
+                    class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    {{ item.descripcion }}
+                  </p>
                 </td>
-                <td class="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
-                  {{ item.cantidad }}
+                <td class="px-3 py-2.5 align-top">
+                  <div class="flex flex-col gap-1">
+                    <AppBadge
+                      v-if="item.nombre_tipo_balon"
+                      size="sm"
+                      variant="light"
+                      :color="tipoBalonBadgeColor(item.nombre_tipo_balon)"
+                    >
+                      {{ item.nombre_tipo_balon }}
+                    </AppBadge>
+                    <span
+                      v-if="item.nombre_producto_gas"
+                      class="text-xs text-gray-600 dark:text-gray-300"
+                    >
+                      {{ item.nombre_producto_gas }}
+                    </span>
+                    <span
+                      v-if="!item.nombre_tipo_balon && !item.nombre_producto_gas"
+                      class="text-xs text-gray-400"
+                    >
+                      —
+                    </span>
+                  </div>
                 </td>
-                <td class="px-3 py-2 text-gray-500">{{ item.codigo_balon || '—' }}</td>
+                <td class="px-3 py-2.5 text-right align-top tabular-nums text-gray-800 dark:text-white/90">
+                  <span class="font-medium">{{ formatCantidadItem(item.cantidad) }}</span>
+                  <span
+                    v-if="item.nombre_unidad_medida"
+                    class="ml-1 text-xs font-normal uppercase text-gray-500"
+                  >
+                    {{ item.nombre_unidad_medida }}
+                  </span>
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <p class="font-medium text-gray-800 dark:text-white/90">
+                    {{ item.codigo_balon || '—' }}
+                  </p>
+                  <p
+                    v-if="item.numero_serie_balon"
+                    class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    S/N {{ item.numero_serie_balon }}
+                  </p>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -253,29 +328,31 @@
       </section>
     </form>
 
-    <template #footer>
+    <div
+      class="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-gray-200 bg-white/95 px-1 py-4 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:flex-row sm:justify-end"
+    >
       <button
         type="button"
-        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
+        class="inline-flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
         :disabled="isSubmitting"
-        @click="handleClose"
+        @click="emit('cancel')"
       >
         Cancelar
       </button>
       <button
         type="submit"
         form="actividad-form"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        class="inline-flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >
         {{ isSubmitting ? 'Guardando...' : mode === 'create' ? 'Crear actividad' : 'Guardar cambios' }}
       </button>
-    </template>
-  </AppModal>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -291,7 +368,6 @@ import type {
   Actividad,
   ActividadFormMode,
   ActividadItem,
-  ActividadItemPayload,
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { horaFinEsPosterior } from '@/modules/operativa/actividades/utils/actividadHorario'
 import {
@@ -302,8 +378,11 @@ import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
 import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.interface'
+import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
+import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
+import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea, AppTimePicker } from '@/shared/components'
+import { AppBadge, AppInput, AppSelect, AppTextarea, AppTimePicker } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -311,9 +390,10 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
 
-interface ActividadFormModalProps {
+interface ActividadFormProps {
   mode: ActividadFormMode
-  actividad?: Actividad | null
+  /** Id de actividad en modo edit (carga detalle). */
+  actividadId?: number | null
   defaultFecha?: string | null
   lockTipoReparto?: boolean
   defaultTitulo?: string | null
@@ -323,46 +403,35 @@ interface ActividadFormModalProps {
   defaultChoferLabel?: string | null
   defaultTrabajadorId?: number | null
   defaultIdComprobante?: number | null
-  defaultIdGuiaRemision?: number | null
-  defaultGuiaRemisionLabel?: string | null
+  defaultIdDocSalida?: number | null
+  defaultDocSalidaLabel?: string | null
   defaultDescripcion?: string | null
   defaultItems?: ActividadItem[]
 }
 
-const props = withDefaults(defineProps<ActividadFormModalProps>(), {
+const props = withDefaults(defineProps<ActividadFormProps>(), {
   lockTipoReparto: false,
   defaultItems: () => [],
+  actividadId: null,
 })
-
-const open = defineModel<boolean>({ default: false })
 
 const emit = defineEmits<{
   saved: []
+  cancel: []
 }>()
 
 const authStore = useAuthStore()
 
 const createMutation = useCreateActividadMutation()
 const updateMutation = useUpdateActividadMutation()
-const idReferencia = computed(() => props.actividad?.id)
-const actividadDetailQuery = useActividadDetailQuery(idReferencia, open)
+const formActive = computed(() => true)
+const idReferencia = computed(() => props.actividadId ?? undefined)
+const actividadDetailQuery = useActividadDetailQuery(idReferencia, formActive)
 const actividadActual = computed<Actividad | null>(
-  () => actividadDetailQuery.data.value ?? props.actividad ?? null,
+  () => actividadDetailQuery.data.value ?? null,
 )
 
 const lockCliente = computed(() => Boolean(props.lockTipoReparto && props.defaultClienteId))
-
-const modalTitle = computed(() => {
-  if (props.mode === 'edit') return 'Editar actividad'
-  return props.lockTipoReparto ? 'Nuevo reparto' : 'Nueva actividad'
-})
-
-const modalSubtitle = computed(() => {
-  if (props.mode === 'edit') return 'Actualiza los datos de la actividad seleccionada.'
-  if (props.lockTipoReparto) return 'Programa la entrega a partir de la venta.'
-  return 'Programa una actividad de la agenda operativa.'
-})
-
 const getClienteNombre = (cliente: Cliente) => {
   const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
 
@@ -454,6 +523,8 @@ const clienteLabelActual = computed(
   () =>
     actividadActual.value?.razon_social_cliente ??
     props.defaultClienteLabel ??
+    docSalidaSeleccionada.value?.nombre_destinatario ??
+    docSalidaSeleccionada.value?.nombre_cliente ??
     null,
 )
 
@@ -473,25 +544,75 @@ const comprobanteLabel = computed(() => {
   return props.defaultIdComprobante ? `Comprobante #${props.defaultIdComprobante}` : null
 })
 
-const guiaRemisionLabel = computed(() => {
-  const serie = actividadActual.value?.serie_guia_remision
-  const numero = actividadActual.value?.numero_guia_remision
-  if (serie && numero) return `${serie}-${numero}`
-  return props.defaultIdGuiaRemision ? `GRE #${props.defaultIdGuiaRemision}` : null
+const idDocSalidaSeleccionado = ref<number | ''>('')
+const errorDocSalida = ref<string | undefined>()
+
+const lockDocSalida = computed(
+  () => Boolean(props.lockTipoReparto && props.defaultIdDocSalida) || props.mode === 'edit',
+)
+
+const idDocSalidaEfectivo = computed(() => {
+  if (actividadActual.value?.id_doc_salida) return actividadActual.value.id_doc_salida
+  if (props.defaultIdDocSalida) return props.defaultIdDocSalida
+  if (idDocSalidaSeleccionado.value !== '') return Number(idDocSalidaSeleccionado.value)
+  return null
+})
+
+const idDocSalidaQueryRef = computed(() =>
+  props.mode === 'create' && idDocSalidaEfectivo.value ? idDocSalidaEfectivo.value : null,
+)
+const docSalidaQuery = useDocumentoSalidaQuery(idDocSalidaQueryRef)
+const docSalidaSeleccionada = computed(() => docSalidaQuery.data.value ?? null)
+
+const docSalidaLabel = computed(() => {
+  if (props.defaultDocSalidaLabel) return props.defaultDocSalidaLabel
+  const a = actividadActual.value
+  if (a?.serie_doc_salida && a?.numero_sunat_doc_salida) {
+    return `${a.serie_doc_salida}-${a.numero_sunat_doc_salida}`
+  }
+  if (a?.numero_doc_salida) return a.numero_doc_salida
+  const doc = docSalidaSeleccionada.value
+  if (doc) {
+    if (doc.serie && doc.numero_sunat) return `${doc.serie}-${doc.numero_sunat}`
+    return doc.numero
+  }
+  return idDocSalidaEfectivo.value ? `Orden #${idDocSalidaEfectivo.value}` : null
 })
 
 const itemsPreview = computed<ActividadItem[]>(() => {
   const fromActividad = actividadActual.value?.items
   if (fromActividad?.length) return fromActividad
+  const doc = docSalidaSeleccionada.value
+  if (doc?.detalle?.length) {
+    return doc.detalle.map((linea, idx) => ({
+      item: linea.item ?? idx + 1,
+      id_producto: linea.id_producto,
+      nombre_producto:
+        linea.nombre_producto ||
+        linea.nombre_producto_gas_balon ||
+        linea.descripcion ||
+        null,
+      descripcion: linea.descripcion || linea.nombre_producto || undefined,
+      cantidad: Number(linea.cantidad) || 1,
+      nombre_unidad_medida: linea.nombre_unidad_medida ?? linea.unidad_capacidad_balon ?? null,
+      id_balon: linea.id_balon,
+      codigo_balon: linea.codigo_balon,
+      numero_serie_balon: linea.numero_serie_balon ?? null,
+      nombre_tipo_balon: linea.nombre_tipo_balon ?? null,
+      nombre_producto_gas: linea.nombre_producto_gas_balon ?? null,
+    }))
+  }
   return props.defaultItems ?? []
 })
 
+function formatCantidadItem(valor: number | string | null | undefined) {
+  const n = Number(valor)
+  if (!Number.isFinite(n)) return '0'
+  return String(Number(n.toFixed(4)))
+}
+
 const defaultIdComprobante = computed(
   () => actividadActual.value?.id_comprobante ?? props.defaultIdComprobante ?? null,
-)
-
-const defaultIdGuiaRemision = computed(
-  () => actividadActual.value?.id_guia_remision ?? props.defaultIdGuiaRemision ?? null,
 )
 
 function esRepartoSeleccionado(idTipo?: number | null) {
@@ -600,10 +721,26 @@ watch(horaInicioEstimada, () => {
   }
 })
 
-watch(idTipoActividad, () => {
+watch(idTipoActividad, (nuevo, anterior) => {
   void validateField('idCliente')
   void validateField('idTrabajadorResponsable')
+
+  if (props.lockTipoReparto || props.mode === 'edit') return
+  const eraReparto = esRepartoSeleccionado(anterior)
+  const sigueReparto = esRepartoSeleccionado(nuevo)
+  if (eraReparto && !sigueReparto) {
+    limpiarVinculoOrdenSalida()
+  }
 })
+
+function limpiarVinculoOrdenSalida() {
+  if (props.lockTipoReparto || props.mode === 'edit') return
+  idDocSalidaSeleccionado.value = ''
+  errorDocSalida.value = undefined
+  if (!lockCliente.value) {
+    setFieldValue('idCliente', undefined)
+  }
+}
 
 const syncFormValues = () => {
   const a = actividadActual.value
@@ -646,29 +783,21 @@ const syncFormValues = () => {
   }
 }
 
-const handleClose = () => {
-  open.value = false
-}
-
-function toItemPayload(items: ActividadItem[]): ActividadItemPayload[] {
-  return items.map((item, idx) => ({
-    item: item.item ?? idx + 1,
-    idProducto: item.id_producto ?? undefined,
-    descripcion: item.descripcion || item.nombre_producto || undefined,
-    cantidad: Number(item.cantidad) || 1,
-    idBalon: item.id_balon ?? undefined,
-  }))
-}
-
 const onSubmit = handleSubmit(async (values) => {
   const currentUserId = authStore.user?.id
   if (!currentUserId) return
 
+  if (props.mode === 'create' && esRepartoSeleccionado(values.idTipoActividad)) {
+    if (!idDocSalidaEfectivo.value) {
+      errorDocSalida.value = 'Selecciona una orden de salida'
+      return
+    }
+    errorDocSalida.value = undefined
+  }
+
   try {
-    const itemsFromPreview =
-      props.mode === 'create' && props.defaultItems?.length
-        ? toItemPayload(props.defaultItems)
-        : undefined
+    const idDocSalida =
+      props.mode === 'create' ? (idDocSalidaEfectivo.value ?? undefined) : undefined
 
     const payload = {
       idUsuarioAuditoria: currentUserId,
@@ -678,9 +807,8 @@ const onSubmit = handleSubmit(async (values) => {
       idTrabajadorResponsable: values.idTrabajadorResponsable
         ? Number(values.idTrabajadorResponsable)
         : undefined,
-      idComprobante: defaultIdComprobante.value ?? undefined,
-      idGuiaRemision: defaultIdGuiaRemision.value ?? undefined,
-      items: itemsFromPreview,
+      idComprobante: idDocSalida ? undefined : (defaultIdComprobante.value ?? undefined),
+      idDocSalida,
       idTipoActividad: Number(values.idTipoActividad),
       idPrioridad: Number(values.idPrioridad),
       idEstadoActividad: Number(values.idEstadoActividad),
@@ -693,9 +821,9 @@ const onSubmit = handleSubmit(async (values) => {
 
     if (props.mode === 'create') {
       await createMutation.mutateAsync(payload)
-    } else if (props.actividad) {
+    } else if (props.actividadId) {
       await updateMutation.mutateAsync({
-        id: props.actividad.id,
+        id: props.actividadId,
         payload,
       })
     } else {
@@ -703,55 +831,67 @@ const onSubmit = handleSubmit(async (values) => {
     }
 
     emit('saved')
-    open.value = false
   } catch {
     // toast en mutation
   }
 })
 
 watch(
-  () => open.value,
-  (isOpen) => {
-    if (isOpen) {
-      syncFormValues()
-      if (props.lockTipoReparto) {
-        void tipoActividadQuery.refetch()
-        void prioridadQuery.refetch()
-        void estadoActividadQuery.refetch()
-      }
+  () => true,
+  () => {
+    idDocSalidaSeleccionado.value = props.defaultIdDocSalida ?? ''
+    errorDocSalida.value = undefined
+    syncFormValues()
+    if (props.lockTipoReparto) {
+      void tipoActividadQuery.refetch()
+      void prioridadQuery.refetch()
+      void estadoActividadQuery.refetch()
     }
   },
+  { immediate: true },
 )
+
+watch(docSalidaSeleccionada, (doc) => {
+  if (props.mode !== 'create' || !doc || !esTipoReparto.value) return
+  if (!titulo.value?.trim()) {
+    setFieldValue('titulo', `Reparto ${doc.numero}`)
+  }
+  const clienteId = doc.id_destinatario ?? doc.id_cliente
+  if (clienteId && !idCliente.value) {
+    setFieldValue('idCliente', clienteId)
+  }
+})
+
+watch(idDocSalidaSeleccionado, () => {
+  errorDocSalida.value = undefined
+})
 
 watch(
   () => actividadDetailQuery.data.value,
   () => {
-    if (open.value) {
-      syncFormValues()
-    }
+    syncFormValues()
   },
 )
 
 watch(
-  () => props.actividad,
+  () =>
+    [
+      props.defaultFecha,
+      props.defaultTitulo,
+      props.defaultClienteId,
+      props.lockTipoReparto,
+      props.defaultIdDocSalida,
+    ] as const,
   () => {
-    if (open.value) {
-      syncFormValues()
-    }
-  },
-)
-
-watch(
-  () => [props.defaultFecha, props.defaultTitulo, props.defaultClienteId, props.lockTipoReparto],
-  () => {
-    if (open.value && props.mode === 'create') {
+    if (props.mode === 'create') {
+      idDocSalidaSeleccionado.value = props.defaultIdDocSalida ?? ''
       syncFormValues()
     }
   },
 )
 
 function aplicarDefaultsReparto() {
-  if (!open.value || props.mode !== 'create' || !props.lockTipoReparto) return
+  if (props.mode !== 'create' || !props.lockTipoReparto) return
 
   if (!idTipoActividad.value && tipoRepartoId.value) {
     setFieldValue('idTipoActividad', tipoRepartoId.value)
@@ -765,13 +905,7 @@ function aplicarDefaultsReparto() {
 }
 
 watch(
-  [
-    tipoRepartoId,
-    defaultPrioridadId,
-    defaultEstadoId,
-    () => open.value,
-    () => props.lockTipoReparto,
-  ],
+  [tipoRepartoId, defaultPrioridadId, defaultEstadoId, () => props.lockTipoReparto],
   () => aplicarDefaultsReparto(),
 )
 </script>

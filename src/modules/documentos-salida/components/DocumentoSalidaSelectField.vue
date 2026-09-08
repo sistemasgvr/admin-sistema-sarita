@@ -39,6 +39,7 @@ const props = withDefaults(
     hint?: string
     help?: string
     codigoTipoOrden?: CodigoTipoOrdenSalida
+    sinActividadVigente?: boolean
   }>(),
   {
     label: 'Documento de salida',
@@ -50,13 +51,31 @@ const props = withDefaults(
     hint: undefined,
     help: undefined,
     codigoTipoOrden: undefined,
+    sinActividadVigente: false,
   },
 )
 
 const model = defineModel<number | ''>({ default: '' })
 const search = defineModel<string>('search', { default: '' })
 
-const filters = ref({ buscar: '', pagina: 1, limite: 30, codigoTipoOrden: props.codigoTipoOrden })
+const filters = ref({
+  buscar: '',
+  pagina: 1,
+  limite: 30,
+  codigoTipoOrden: props.codigoTipoOrden,
+  sinActividadVigente: props.sinActividadVigente || undefined,
+})
+
+watch(
+  () => [props.codigoTipoOrden, props.sinActividadVigente] as const,
+  ([codigoTipoOrden, sinActividadVigente]) => {
+    filters.value = {
+      ...filters.value,
+      codigoTipoOrden,
+      sinActividadVigente: sinActividadVigente || undefined,
+    }
+  },
+)
 
 let searchTimeout: ReturnType<typeof setTimeout> | undefined
 watch(search, (term) => {
@@ -71,7 +90,13 @@ const listQuery = useDocumentosSalidaQuery(filters)
 const selectedIdRef = computed(() => (model.value !== '' ? Number(model.value) : null))
 const selectedQuery = useDocumentoSalidaQuery(selectedIdRef)
 
-function formatLabel(d: { numero: string; serie?: string | null; numero_sunat?: string | null; nombre_cliente?: string | null; nombre_destinatario?: string | null }) {
+function formatLabel(d: {
+  numero: string
+  serie?: string | null
+  numero_sunat?: string | null
+  nombre_cliente?: string | null
+  nombre_destinatario?: string | null
+}) {
   const doc = d.serie && d.numero_sunat ? `${d.serie}-${d.numero_sunat}` : d.numero
   const dest = d.nombre_destinatario || d.nombre_cliente
   return dest ? `${doc} · ${dest}` : doc

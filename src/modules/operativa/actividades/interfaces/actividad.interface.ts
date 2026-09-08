@@ -5,9 +5,12 @@ export interface ActividadItem {
   nombre_producto?: string | null
   descripcion?: string | null
   cantidad: number
+  nombre_unidad_medida?: string | null
   id_balon?: number | null
   codigo_balon?: string | null
   numero_serie_balon?: string | null
+  nombre_tipo_balon?: string | null
+  nombre_producto_gas?: string | null
   /** Estado de verificación por momento (Fase 6). */
   id_estado_verificacion_salida?: number | null
   estado_verificacion_salida?: string | null
@@ -48,9 +51,10 @@ export interface Actividad {
   id_comprobante?: number | null
   serie_comprobante?: string | null
   numero_comprobante?: string | null
-  id_guia_remision?: number | null
-  serie_guia_remision?: string | null
-  numero_guia_remision?: string | null
+  id_doc_salida?: number | null
+  serie_doc_salida?: string | null
+  numero_sunat_doc_salida?: string | null
+  numero_doc_salida?: string | null
   id_estado_actividad: number
   nombre_estado_actividad?: string | null
   observaciones?: string | null
@@ -100,7 +104,7 @@ export interface ActividadPayload {
   idCliente?: number
   idTrabajadorResponsable?: number
   idComprobante?: number
-  idGuiaRemision?: number
+  idDocSalida?: number
   items?: ActividadItemPayload[]
   idEstadoActividad: number
   observaciones?: string
@@ -116,14 +120,14 @@ export interface DeleteActividadResponse {
 
 export type ActividadFormMode = 'create' | 'edit'
 
-/** Prefill al crear un reparto desde una venta o guía de remisión. */
+/** Prefill al crear un reparto desde una orden de salida. */
 export interface ActividadRepartoPrefill {
   titulo?: string | null
   clienteId?: number | null
   clienteLabel?: string | null
   idComprobante?: number | null
-  idGuiaRemision?: number | null
-  guiaLabel?: string | null
+  idDocSalida?: number | null
+  docSalidaLabel?: string | null
   choferId?: number | null
   choferLabel?: string | null
   descripcion?: string | null
