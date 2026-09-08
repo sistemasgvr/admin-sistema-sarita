@@ -315,7 +315,10 @@ watch(open, (isOpen) => {
   form.idMotivoTraslado = d.id_motivo_traslado ?? ''
   form.idModalidadTraslado = d.id_modalidad_traslado ?? ''
   form.direccionOrigen = d.direccion_origen ?? d.direccion_almacen ?? ''
-  form.direccionLlegada = d.direccion_llegada ?? d.direccion_entrega ?? ''
+  // En un traslado no hay dirección de entrega de cliente: la carga va a otro
+  // almacén propio, así que ese es el punto de llegada por defecto.
+  form.direccionLlegada =
+    d.direccion_llegada ?? d.direccion_entrega ?? d.direccion_almacen_destino ?? ''
   form.pesoBruto = d.peso_bruto ?? undefined
   form.numeroBultos = d.numero_bultos ?? undefined
   form.idTransportista = d.id_transportista ?? undefined
@@ -349,6 +352,11 @@ watch(open, (isOpen) => {
     llegadaDeptoId.value = d.id_departamento_entrega ?? undefined
     llegadaProvId.value = d.id_provincia_entrega ?? undefined
     form.idDistritoLlegada = d.id_distrito_entrega
+  } else if (d.id_distrito_almacen_destino) {
+    llegadaPaisId.value = d.id_pais_almacen_destino ?? undefined
+    llegadaDeptoId.value = d.id_departamento_almacen_destino ?? undefined
+    llegadaProvId.value = d.id_provincia_almacen_destino ?? undefined
+    form.idDistritoLlegada = d.id_distrito_almacen_destino
   } else {
     llegadaPaisId.value = undefined
     llegadaDeptoId.value = undefined

@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { documentosSalidaQueryKeys } from '@/modules/documentos-salida/constants/documentosSalidaQueryKeys'
 import { documentosSalidaService } from '@/modules/documentos-salida/services/documentos-salida.service'
 import type {
+  ActualizarDocumentoSalidaDetallePayload,
+  ActualizarDocumentoSalidaPayload,
   ActualizarTrasladoPayload,
   AnularDocumentoSalidaPayload,
   ConvertirGrePayload,
@@ -79,6 +81,37 @@ export function useEliminarDetalleDocSalidaMutation() {
       invalidateAll(queryClient, variables.idDocSalida)
     },
     onError: (error) => toastApiError(error, 'No se pudo quitar la línea'),
+  })
+}
+
+export function useActualizarDetalleDocSalidaMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      detalleId,
+      payload,
+    }: {
+      detalleId: number
+      idDocSalida: number
+      payload: ActualizarDocumentoSalidaDetallePayload
+    }) => documentosSalidaService.actualizarDetalle(detalleId, payload),
+    onSuccess: (_data, variables) => {
+      invalidateAll(queryClient, variables.idDocSalida)
+    },
+    onError: (error) => toastApiError(error, 'No se pudo actualizar la línea'),
+  })
+}
+
+export function useActualizarDocSalidaMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ActualizarDocumentoSalidaPayload }) =>
+      documentosSalidaService.actualizar(id, payload),
+    onSuccess: (_data, variables) => {
+      invalidateAll(queryClient, variables.id)
+      toastSuccess('Observaciones actualizadas')
+    },
+    onError: (error) => toastApiError(error, 'No se pudieron actualizar las observaciones'),
   })
 }
 

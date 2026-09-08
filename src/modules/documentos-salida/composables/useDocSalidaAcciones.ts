@@ -49,8 +49,7 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
 
   const esPlantaExterna = computed(
     () =>
-      documento.value?.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA' ||
-      documento.value?.nombre_tipo_orden === 'RETORNO_PLANTA_EXTERNA',
+      documento.value?.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA',
   )
 
   const puedeGenerar = computed(() => esBorrador.value && puedeEditar.value)

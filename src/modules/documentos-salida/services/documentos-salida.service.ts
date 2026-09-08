@@ -1,5 +1,7 @@
 import { apiGet, apiGetBlob, apiGetPaginated, apiPatch, apiPost, apiDelete } from '@/shared/api/apiClient'
 import type {
+  ActualizarDocumentoSalidaDetallePayload,
+  ActualizarDocumentoSalidaPayload,
   ActualizarTrasladoPayload,
   AnularDocumentoSalidaPayload,
   ConvertirGrePayload,
@@ -50,6 +52,14 @@ export const documentosSalidaService = {
 
   agregarDetalle(id: number, payload: CreateDocumentoSalidaDetallePayload) {
     return apiPost<DocumentoSalida>(`/documentos-salida/${id}/detalle`, payload)
+  },
+
+  actualizarDetalle(detalleId: number, payload: ActualizarDocumentoSalidaDetallePayload) {
+    return apiPatch<DocumentoSalida>(`/documentos-salida/detalle/${detalleId}`, payload)
+  },
+
+  actualizar(id: number, payload: ActualizarDocumentoSalidaPayload) {
+    return apiPatch<DocumentoSalida>(`/documentos-salida/${id}`, payload)
   },
 
   eliminarDetalle(detalleId: number, idUsuarioAuditoria?: number) {

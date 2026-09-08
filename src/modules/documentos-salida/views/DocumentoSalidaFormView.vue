@@ -18,25 +18,36 @@
           :options="tipoOrdenOptions"
         />
         <AppSelect v-model="form.idSucursal" label="Sucursal" required :options="sucursalOptions" />
-        <AppSelect v-model="form.idAlmacen" label="Almacén" required :options="almacenOptions" />
+        <AppSelect
+          v-model="form.idAlmacen"
+          :label="isTraslado ? 'Almacén de origen' : 'Almacén'"
+          required
+          :options="almacenOptions"
+        />
+        <!--
+          Solo en traslado: es el dato con el que el movimiento descuenta de un
+          almacén y suma en el otro. Sin él la orden no se puede generar.
+        -->
+        <AppSelect
+          v-if="isTraslado"
+          v-model="form.idAlmacenDestino"
+          label="Almacén de destino"
+          required
+          :options="almacenDestinoOptions"
+          :error="errorAlmacenDestino"
+        />
         <!-- La fecha del documento es la de emisión: siempre hoy, no se elige. -->
         <AppInput :model-value="form.fecha" label="Fecha" disabled />
         <AppDatePicker v-model="form.fechaTraslado" label="Fecha de traslado" />
 
         <ClienteSelectField
-          v-if="
-            form.codigoTipoOrden !== 'RECARGA_PLANTA_EXTERNA' &&
-            form.codigoTipoOrden !== 'RETORNO_PLANTA_EXTERNA'
-          "
+          v-if="form.codigoTipoOrden !== 'RECARGA_PLANTA_EXTERNA'"
           v-model="form.idCliente"
           label="Cliente"
           searchable
         />
         <ClienteSelectField
-          v-if="
-            form.codigoTipoOrden === 'RECARGA_PLANTA_EXTERNA' ||
-            form.codigoTipoOrden === 'RETORNO_PLANTA_EXTERNA'
-          "
+          v-if="form.codigoTipoOrden === 'RECARGA_PLANTA_EXTERNA'"
           v-model="form.idProveedor"
           label="Proveedor (planta)"
           solo-proveedores
@@ -69,9 +80,6 @@
           placeholder="Ej. 3"
         />
 
-        <div class="sm:col-span-2">
-          <AppTextarea v-model="form.observaciones" label="Observaciones" :rows="2" />
-        </div>
       </div>
 
       <div class="mt-6 border-t border-gray-100 pt-5 dark:border-gray-800">
@@ -87,20 +95,28 @@
           </span>
         </div>
 
-        <DocSalidaLineasEditor
-          :solo-balones="
-            form.codigoTipoOrden === 'RECARGA_PLANTA_EXTERNA' ||
-            form.codigoTipoOrden === 'RETORNO_PLANTA_EXTERNA'
-          "
+        <DocSalidaDetalleEditor
           :id-almacen="form.idAlmacen === '' ? null : Number(form.idAlmacen)"
-          :lineas="lineasBorradorCards"
+          :lineas="lineasBorradorDetalle"
+          :permitir-otros-productos="!isRecargaPlanta"
           :disabled="createMutation.isPending.value || guardandoLineas"
-          vacio-productos="Sin productos. Se guardan junto con el documento."
           vacio-balones="Sin balones. Se guardan junto con el documento."
-          @agregar="onAgregarLineaBorrador"
+          vacio-productos="Sin productos adicionales. Se guardan junto con el documento."
+          @agregar-balon="onAgregarLineaBorrador"
+          @set-producto="onSetProductoBorrador"
           @quitar="onQuitarLineaBorrador"
         />
       </div>
+
+      <div class="mt-6 border-t border-gray-100 pt-5 dark:border-gray-800">
+        <AppTextarea
+          v-model="form.observaciones"
+          label="Observaciones"
+          :rows="2"
+          placeholder="Ej. Envío prioritario — revisar presión de balones"
+        />
+      </div>
+
       <div class="mt-5 flex justify-end gap-2">
         <router-link
           :to="{ name: 'admin-documentos-salida' }"
@@ -195,6 +211,12 @@
                     documento.nombre_almacen ?? '—'
                   }}</span>
                 </div>
+                <div v-if="documento.nombre_almacen_destino">
+                  <span class="block text-[11px] text-gray-400">Almacén de destino</span>
+                  <span class="font-semibold text-gray-800 dark:text-white/90">{{
+                    documento.nombre_almacen_destino
+                  }}</span>
+                </div>
                 <div>
                   <span class="block text-[11px] text-gray-400">Fecha de emisión</span>
                   <span
@@ -279,20 +301,54 @@
                     <AppIcon :name="ICONS.externalLink" :size="11" class="text-gray-400" />
                   </router-link>
                 </div>
-                <div v-if="documento.observaciones">
-                  <span class="block text-[11px] text-gray-400">Observaciones</span>
+                <div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="block text-[11px] text-gray-400">Observaciones</span>
+                    <button
+                      v-if="puedeEditarObservaciones && !editandoObservaciones"
+                      type="button"
+                      class="inline-flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:underline dark:text-brand-400"
+                      @click="abrirObservaciones"
+                    >
+                      <AppIcon :name="ICONS.pencil" :size="11" />
+                      {{ documento.observaciones ? 'Editar' : 'Agregar' }}
+                    </button>
+                  </div>
+
+                  <template v-if="editandoObservaciones">
+                    <AppTextarea
+                      v-model="observacionesBorrador"
+                      :rows="3"
+                      class="mt-1"
+                      placeholder="Ej. Envío prioritario — revisar presión de balones"
+                    />
+                    <div class="mt-1.5 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        class="rounded-lg border border-gray-300 px-2.5 py-1 text-[11px] font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                        @click="editandoObservaciones = false"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-lg bg-brand-500 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-brand-600 disabled:opacity-70"
+                        :disabled="actualizarDocMutation.isPending.value"
+                        @click="onGuardarObservaciones"
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                  </template>
+
                   <p
+                    v-else-if="documento.observaciones"
                     class="mt-1 rounded border border-gray-200 bg-white p-2 leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                   >
                     {{ documento.observaciones }}
                   </p>
+                  <p v-else class="mt-1 text-gray-400">Sin observaciones</p>
                 </div>
-                <p
-                  v-if="!documento.detalle_desde_venta && !documento.observaciones"
-                  class="text-gray-400"
-                >
-                  Sin observaciones
-                </p>
               </div>
             </div>
           </div>
@@ -610,21 +666,22 @@
         </div>
 
         <div class="px-6 py-5">
-          <DocSalidaLineasEditor
-            :solo-balones="isRecargaPlanta"
+          <DocSalidaDetalleEditor
             :id-almacen="documento.id_almacen"
-            :lineas="lineasDocumentoCards"
+            :lineas="lineasDocumentoDetalle"
+            :permitir-otros-productos="!isRecargaPlanta"
             :readonly="!puedeEditarDetalle"
-            :disabled="
-              agregarDetalleMutation.isPending.value || eliminarDetalleMutation.isPending.value
-            "
+            :disabled="detalleOcupado"
             :vacio-productos="
-              documento.detalle_desde_venta ? 'La venta no tiene productos.' : 'Sin productos'
+              documento.detalle_desde_venta
+                ? 'La venta no tiene productos.'
+                : 'Sin productos adicionales.'
             "
             :vacio-balones="
               documento.detalle_desde_venta ? 'La venta no tiene balones.' : 'Sin balones'
             "
-            @agregar="onAgregarLinea"
+            @agregar-balon="onAgregarLinea"
+            @set-producto="onSetProductoDocumento"
             @quitar="onQuitarLineaDocumento"
           />
 
@@ -825,7 +882,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
-import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import LoteProtocoloFormModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloFormModal.vue'
 import { useDocSalidaAcciones } from '../composables/useDocSalidaAcciones'
 import DatosTrasladoSection from '../components/DatosTrasladoSection.vue'
@@ -836,9 +892,11 @@ import ActividadFormModal from '@/modules/operativa/actividades/components/Activ
 import type { ActividadItem } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
-import DocSalidaLineasEditor from '@/modules/documentos-salida/components/DocSalidaLineasEditor.vue'
+import DocSalidaDetalleEditor from '@/modules/documentos-salida/components/DocSalidaDetalleEditor.vue'
 import { useDocumentoSalidaQuery } from '../composables/useDocumentosSalidaQuery'
 import {
+  useActualizarDetalleDocSalidaMutation,
+  useActualizarDocSalidaMutation,
   useAgregarDetalleDocSalidaMutation,
   useAnularDocSalidaMutation,
   useConsultarEstadoDocSalidaMutation,
@@ -851,7 +909,8 @@ import { documentosSalidaService } from '../services/documentos-salida.service'
 import type {
   CodigoTipoOrdenSalida,
   DocSalidaLineaBorrador,
-  DocSalidaLineaCard,
+  DocSalidaDetalleLinea,
+  DocSalidaProductoCantidad,
 } from '../interfaces/documento-salida.interface'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import {
@@ -897,11 +956,14 @@ const almacenOptions = computed(
   () => almacenesQuery.data.value?.data?.map((a) => ({ value: a.id, label: a.nombre })) ?? [],
 )
 
+// Los cuatro que existen en gen_lista_opciones (TipoOrdenSalida). ORDEN_SALIDA_VENTA
+// no se ofrece acá: esa orden nace de la venta, no se arma a mano. El retorno de
+// planta tampoco es un tipo: se registra con "Finalizar recarga" sobre la orden
+// de envío.
 const TIPO_ORDEN_OPCIONES: { value: CodigoTipoOrdenSalida; label: string }[] = [
   { value: 'ORDEN_SALIDA_INTERNA', label: 'Orden interna (sin venta)' },
   { value: 'TRASLADO', label: 'Traslado entre almacenes' },
   { value: 'RECARGA_PLANTA_EXTERNA', label: 'Envío a planta externa (recarga)' },
-  { value: 'RETORNO_PLANTA_EXTERNA', label: 'Retorno desde planta externa' },
 ]
 const tipoOrdenOptions = TIPO_ORDEN_OPCIONES
 
@@ -909,7 +971,6 @@ const TIPO_LABELS: Record<string, string> = {
   ORDEN_SALIDA_VENTA: 'Orden de venta',
   ORDEN_SALIDA_INTERNA: 'Orden interna',
   RECARGA_PLANTA_EXTERNA: 'Recarga planta',
-  RETORNO_PLANTA_EXTERNA: 'Retorno planta',
   TRASLADO: 'Traslado',
 }
 function formatTipoOrden(codigo: string) {
@@ -939,6 +1000,7 @@ const form = reactive<{
   codigoTipoOrden: CodigoTipoOrdenSalida
   idSucursal: number | ''
   idAlmacen: number | ''
+  idAlmacenDestino: number | ''
   idCliente: number | ''
   idProveedor: number | ''
   idDestinatario: number | ''
@@ -951,6 +1013,7 @@ const form = reactive<{
   codigoTipoOrden: 'ORDEN_SALIDA_INTERNA',
   idSucursal: '',
   idAlmacen: '',
+  idAlmacenDestino: '',
   idCliente: '',
   idProveedor: '',
   idDestinatario: '',
@@ -961,9 +1024,34 @@ const form = reactive<{
   observaciones: '',
 })
 
-const canSubmitHeader = computed(() =>
-  Boolean(form.codigoTipoOrden && form.idSucursal && form.idAlmacen),
+const isTraslado = computed(() => form.codigoTipoOrden === 'TRASLADO')
+
+// El destino puede estar en otra sucursal (traslado entre sedes), así que el
+// listado no se acota por sucursal — solo se excluye el propio origen.
+const almacenDestinoOptions = computed(() =>
+  almacenOptions.value.filter((opcion) => opcion.value !== Number(form.idAlmacen)),
 )
+
+const errorAlmacenDestino = computed(() => {
+  if (!isTraslado.value || form.idAlmacenDestino === '') return undefined
+  return Number(form.idAlmacenDestino) === Number(form.idAlmacen)
+    ? 'Debe ser distinto al almacén de origen'
+    : undefined
+})
+
+const canSubmitHeader = computed(() => {
+  if (!form.codigoTipoOrden || !form.idSucursal || !form.idAlmacen) return false
+  if (isTraslado.value) {
+    return form.idAlmacenDestino !== '' && !errorAlmacenDestino.value
+  }
+  return true
+})
+
+// Cambiar de tipo deja de lado un destino que ya no aplica: si no, una orden
+// interna se crearía arrastrando el almacén que se eligió cuando era traslado.
+watch(isTraslado, (traslado) => {
+  if (!traslado) form.idAlmacenDestino = ''
+})
 
 const createMutation = useCreateDocumentoSalidaMutation()
 
@@ -973,37 +1061,55 @@ const createMutation = useCreateDocumentoSalidaMutation()
 const lineasBorrador = ref<DocSalidaLineaBorrador[]>([])
 const guardandoLineas = ref(false)
 
-const lineasBorradorCards = computed<DocSalidaLineaCard[]>(() =>
-  lineasBorrador.value.map((linea, index) => {
-    // En RECARGA, los productos de gas se muestran como tipo GAS
-    const esGasRecarga =
-      isRecargaPlanta.value && linea.idProducto && !linea.idBalon
-
-    return {
-      key: String(index),
-      tipo: linea.idBalon ? 'BALON' : esGasRecarga ? 'GAS' : 'PRODUCTO',
-      titulo: linea.idBalon
-        ? (linea.codigoBalon ?? 'Balón')
-        : (linea.nombreProducto ?? 'Producto'),
-      subtitulo: linea.idBalon
-        ? (linea.nombreAlmacenBalon ?? undefined)
-        : linea.codigoProducto,
-      badge: linea.nombreTipoBalon
-        ? { texto: linea.nombreTipoBalon, color: tipoBalonBadgeColor(linea.nombreTipoBalon) }
-        : undefined,
-      cantidad: linea.cantidad,
-      unidad: linea.nombreUnidadMedida,
-      glosa: linea.glosa,
-      removible: true,
-      idProducto: linea.idProducto,
-      idBalon: linea.idBalon,
-    }
-  }),
+/** Las líneas en borrador, en la forma que consume el editor. */
+const lineasBorradorDetalle = computed<DocSalidaDetalleLinea[]>(() =>
+  lineasBorrador.value.map((linea, index) => ({
+    key: String(index),
+    tipo: linea.idBalon ? 'BALON' : 'PRODUCTO',
+    idBalon: linea.idBalon ?? null,
+    idProducto: linea.idProducto ?? null,
+    cantidad: linea.cantidad,
+    glosa: linea.glosa,
+    codigoBalon: linea.codigoBalon,
+    idTipoBalon: linea.idTipoBalon,
+    nombreTipoBalon: linea.nombreTipoBalon,
+    nombreAlmacenBalon: linea.nombreAlmacenBalon,
+    idProductoGas: linea.idProductoGas,
+    nombreProductoGas: linea.nombreProductoGas,
+    capacidadBalon: linea.capacidadBalon,
+    unidadCapacidadBalon: linea.unidadCapacidadBalon,
+    nombreProducto: linea.nombreProducto,
+    codigoProducto: linea.codigoProducto,
+    nombreUnidadMedida: linea.nombreUnidadMedida,
+    removible: true,
+  })),
 )
 
 function onAgregarLineaBorrador(linea: DocSalidaLineaBorrador) {
-  // El editor emite líneas independientes: balón (cantidad=1) y gas por separado.
   lineasBorrador.value = [...lineasBorrador.value, linea]
+}
+
+/**
+ * "El producto X debe quedar en cantidad N": el editor no sabe si esa línea ya
+ * existe, así que acá se reemplaza la que hubiera y se descarta cuando la
+ * cantidad queda en cero.
+ */
+function onSetProductoBorrador(producto: DocSalidaProductoCantidad) {
+  const resto = lineasBorrador.value.filter(
+    (linea) => linea.idBalon != null || linea.idProducto !== producto.idProducto,
+  )
+
+  if (producto.cantidad > 0) {
+    resto.push({
+      idProducto: producto.idProducto,
+      cantidad: producto.cantidad,
+      nombreProducto: producto.nombreProducto,
+      codigoProducto: producto.codigoProducto,
+      nombreUnidadMedida: producto.nombreUnidadMedida,
+    })
+  }
+
+  lineasBorrador.value = resto
 }
 
 function onQuitarLineaBorrador(key: string) {
@@ -1024,6 +1130,7 @@ async function submitHeader() {
       codigoTipoOrden: form.codigoTipoOrden,
       idSucursal: Number(form.idSucursal),
       idAlmacen: Number(form.idAlmacen),
+      idAlmacenDestino: form.idAlmacenDestino ? Number(form.idAlmacenDestino) : undefined,
       idCliente: form.idCliente ? Number(form.idCliente) : undefined,
       idProveedor: form.idProveedor ? Number(form.idProveedor) : undefined,
       idDestinatario: form.idDestinatario ? Number(form.idDestinatario) : undefined,
@@ -1135,9 +1242,7 @@ const {
 const isRecargaPlanta = computed(
   () =>
     form.codigoTipoOrden === 'RECARGA_PLANTA_EXTERNA' ||
-    form.codigoTipoOrden === 'RETORNO_PLANTA_EXTERNA' ||
-    documento.value?.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA' ||
-    documento.value?.nombre_tipo_orden === 'RETORNO_PLANTA_EXTERNA',
+    documento.value?.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA',
 )
 
 const puedeEditarDetalle = computed(
@@ -1150,39 +1255,34 @@ const puedeEditarDetalle = computed(
 // ---- Detalle del documento ya creado ----
 // La clave lleva el origen porque el detalle une dos tablas: los ítems de la
 // venta y los cilindros del préstamo, cuyos ids se pueden repetir entre sí.
-const lineasDocumentoCards = computed<DocSalidaLineaCard[]>(() =>
-  (documento.value?.detalle ?? []).map((linea) => {
-    // En RECARGA, los productos sin balón son productos de gas
-    const esGasRecarga = isRecargaPlanta.value && linea.id_producto && !linea.id_balon
-
-    return {
-      key: `${linea.origen_detalle}-${linea.id}`,
-      tipo: linea.id_balon ? 'BALON' : esGasRecarga ? 'GAS' : 'PRODUCTO',
-      titulo: linea.nombre_producto || linea.codigo_balon || linea.descripcion || linea.glosa || '—',
-      subtitulo: [
-        linea.id_balon ? linea.nombre_almacen_balon : linea.codigo_producto,
-        linea.origen_detalle === 'PRESTAMO' ? 'Préstamo' : null,
-      ]
-        .filter(Boolean)
-        .join(' · '),
-      badge: linea.nombre_tipo_balon
-        ? { texto: linea.nombre_tipo_balon, color: tipoBalonBadgeColor(linea.nombre_tipo_balon) }
-        : undefined,
-      cantidad: Number(linea.cantidad),
-      unidad: linea.nombre_unidad_medida ?? undefined,
-      glosa: linea.glosa ?? undefined,
-      // Las líneas que vienen de la venta o del préstamo no se editan aquí.
-      removible: linea.origen_detalle === 'PROPIO',
-      idProducto: linea.id_producto,
-      idBalon: linea.id_balon,
-    }
-  }),
+/** El detalle ya guardado, en la forma que consume el editor. */
+const lineasDocumentoDetalle = computed<DocSalidaDetalleLinea[]>(() =>
+  (documento.value?.detalle ?? []).map((linea) => ({
+    key: `${linea.origen_detalle}-${linea.id}`,
+    tipo: linea.id_balon ? 'BALON' : 'PRODUCTO',
+    idBalon: linea.id_balon,
+    idProducto: linea.id_producto,
+    cantidad: Number(linea.cantidad),
+    glosa: linea.glosa,
+    codigoBalon: linea.codigo_balon,
+    idTipoBalon: linea.id_tipo_balon,
+    nombreTipoBalon: linea.nombre_tipo_balon,
+    nombreAlmacenBalon: linea.nombre_almacen_balon,
+    idProductoGas: linea.id_producto_gas_balon,
+    nombreProductoGas: linea.nombre_producto_gas_balon,
+    capacidadBalon: linea.capacidad_balon,
+    unidadCapacidadBalon: linea.unidad_capacidad_balon,
+    nombreProducto: linea.nombre_producto ?? linea.descripcion,
+    codigoProducto: linea.codigo_producto,
+    nombreUnidadMedida: linea.nombre_unidad_medida,
+    // Las líneas que vienen de la venta o del préstamo no se editan aquí.
+    removible: linea.origen_detalle === 'PROPIO',
+  })),
 )
 
 const agregarDetalleMutation = useAgregarDetalleDocSalidaMutation()
 async function onAgregarLinea(linea: DocSalidaLineaBorrador) {
   if (!documento.value) return
-  // El editor emite líneas independientes: balón (cantidad=1) y gas por separado.
   await agregarDetalleMutation.mutateAsync({
     id: documento.value.id,
     payload: {
@@ -1195,7 +1295,57 @@ async function onAgregarLinea(linea: DocSalidaLineaBorrador) {
   })
 }
 
+const actualizarDetalleMutation = useActualizarDetalleDocSalidaMutation()
 const eliminarDetalleMutation = useEliminarDetalleDocSalidaMutation()
+
+/**
+ * Misma semántica que en borrador, resuelta contra la BD: la línea del producto
+ * se crea si no existía, se corrige si cambió y se quita cuando la cantidad
+ * vuelve a cero.
+ */
+async function onSetProductoDocumento(producto: DocSalidaProductoCantidad) {
+  const doc = documento.value
+  if (!doc) return
+
+  const existente = doc.detalle.find(
+    (linea) => linea.id_balon == null && linea.id_producto === producto.idProducto,
+  )
+
+  if (!existente) {
+    if (producto.cantidad <= 0) return
+    await agregarDetalleMutation.mutateAsync({
+      id: doc.id,
+      payload: {
+        idProducto: producto.idProducto,
+        cantidad: producto.cantidad,
+        idUsuarioAuditoria: idUsuarioAuditoria.value,
+      },
+    })
+    return
+  }
+
+  if (producto.cantidad <= 0) {
+    await eliminarDetalleMutation.mutateAsync({
+      detalleId: existente.id,
+      idDocSalida: doc.id,
+      idUsuarioAuditoria: idUsuarioAuditoria.value,
+    })
+    return
+  }
+
+  await actualizarDetalleMutation.mutateAsync({
+    detalleId: existente.id,
+    idDocSalida: doc.id,
+    payload: { cantidad: producto.cantidad, idUsuarioAuditoria: idUsuarioAuditoria.value },
+  })
+}
+
+const detalleOcupado = computed(
+  () =>
+    agregarDetalleMutation.isPending.value ||
+    actualizarDetalleMutation.isPending.value ||
+    eliminarDetalleMutation.isPending.value,
+)
 async function onQuitarLineaDocumento(key: string) {
   if (!documento.value) return
   const detalleId = Number(key.split('-').pop())
@@ -1205,6 +1355,37 @@ async function onQuitarLineaDocumento(key: string) {
     idDocSalida: documento.value.id,
     idUsuarioAuditoria: idUsuarioAuditoria.value,
   })
+}
+
+// ---- Observaciones ----
+// Se escriben al crear, pero una nota mal puesta quedaba fija: acá se corrigen
+// mientras el documento no esté anulado ni emitido.
+const actualizarDocMutation = useActualizarDocSalidaMutation()
+const editandoObservaciones = ref(false)
+const observacionesBorrador = ref('')
+
+const puedeEditarObservaciones = computed(
+  () =>
+    Boolean(documento.value) &&
+    documento.value?.nombre_estado_ciclo !== 'ANULADA' &&
+    !documento.value?.emitido_sunat,
+)
+
+function abrirObservaciones() {
+  observacionesBorrador.value = documento.value?.observaciones ?? ''
+  editandoObservaciones.value = true
+}
+
+async function onGuardarObservaciones() {
+  if (!documento.value) return
+  await actualizarDocMutation.mutateAsync({
+    id: documento.value.id,
+    payload: {
+      observaciones: observacionesBorrador.value.trim(),
+      idUsuarioAuditoria: idUsuarioAuditoria.value,
+    },
+  })
+  editandoObservaciones.value = false
 }
 
 // ---- Generar / anular ----

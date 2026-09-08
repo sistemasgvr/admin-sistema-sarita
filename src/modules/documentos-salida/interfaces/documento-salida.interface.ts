@@ -1,4 +1,3 @@
-import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 
 // Espejo de api-sistema-sarita/src/modules/documentos-salida/interfaces/documento-salida.interface.ts
 
@@ -6,7 +5,6 @@ export type CodigoTipoOrdenSalida =
   | 'ORDEN_SALIDA_VENTA'
   | 'ORDEN_SALIDA_INTERNA'
   | 'RECARGA_PLANTA_EXTERNA'
-  | 'RETORNO_PLANTA_EXTERNA'
   | 'TRASLADO'
 
 export type NombreEstadoCicloSalida = 'BORRADOR' | 'GENERADA' | 'EMITIDA_SUNAT' | 'ANULADA'
@@ -20,8 +18,15 @@ export interface DocumentoSalidaDetalle {
   id_balon: number | null
   codigo_balon: string | null
   /** Solo en el detalle propio: sirven para la card del cilindro. */
+  id_tipo_balon?: number | null
   nombre_tipo_balon?: string | null
   nombre_almacen_balon?: string | null
+  /**
+   * Capacidad del tipo de cilindro y su unidad. En planta externa el editor las
+   * suma por gas para topar cuánta cantidad se puede declarar que sale.
+   */
+  capacidad_balon?: number | null
+  unidad_capacidad_balon?: string | null
   /** Gas del cilindro: una ficha de lote y protocolo cubre un solo gas. */
   id_producto_gas_balon?: number | null
   nombre_producto_gas_balon?: string | null
@@ -69,6 +74,14 @@ export interface DocumentoSalida {
   nombre_sucursal: string | null
   id_almacen: number
   nombre_almacen: string | null
+  /** Destino del traslado: mueve el stock y da el punto de llegada de la GRE. */
+  id_almacen_destino?: number | null
+  nombre_almacen_destino?: string | null
+  direccion_almacen_destino?: string | null
+  id_distrito_almacen_destino?: number | null
+  id_provincia_almacen_destino?: number | null
+  id_departamento_almacen_destino?: number | null
+  id_pais_almacen_destino?: number | null
   /** Ubicación del almacén: origen por defecto de la guía de remisión. */
   direccion_almacen?: string | null
   id_distrito_almacen?: number | null
@@ -180,6 +193,8 @@ export interface DocumentoSalidaListItem {
   nombre_sucursal: string | null
   id_almacen: number
   nombre_almacen: string | null
+  id_almacen_destino?: number | null
+  nombre_almacen_destino?: string | null
   /** Ubicación del almacén: origen por defecto de la guía de remisión. */
   direccion_almacen?: string | null
   id_distrito_almacen?: number | null
@@ -243,6 +258,8 @@ export interface CreateDocumentoSalidaPayload {
   codigoTipoOrden: CodigoTipoOrdenSalida
   idSucursal: number
   idAlmacen: number
+  /** Obligatorio en TRASLADO: a qué almacén va la carga. Distinto del origen. */
+  idAlmacenDestino?: number
   idVenta?: number
   idCliente?: number
   idDestinatario?: number
@@ -271,6 +288,20 @@ export interface CreateDocumentoSalidaDetallePayload {
   descripcion?: string
   idUnidadMedida?: number
   glosa?: string
+  idUsuarioAuditoria?: number
+}
+
+export interface ActualizarDocumentoSalidaDetallePayload {
+  /** Omitir para no cambiarla. */
+  cantidad?: number
+  /** Cadena vacía para borrarla; omitir para no cambiarla. */
+  glosa?: string
+  idUsuarioAuditoria?: number
+}
+
+export interface ActualizarDocumentoSalidaPayload {
+  /** Cadena vacía para borrarlas; omitir para no cambiarlas. */
+  observaciones?: string
   idUsuarioAuditoria?: number
 }
 
@@ -353,21 +384,11 @@ export interface SiguienteNumeroDocumentoSalidaResponse {
 }
 
 /**
- * Línea que el usuario está armando en el editor de cards.
+ * Línea que el usuario está armando en el editor.
  *
- * Los campos `nombre*`/`codigo*` son solo para pintar la card: al crear una
+ * Los campos `nombre*`/`codigo*` son solo para pintar la fila: al crear una
  * orden nueva las líneas viven en memoria hasta que el documento existe, y
  * entonces no hay `doc_salida_detalle` de donde leer esos textos.
- *
- * En recarga/retorno de planta externa se ofrecen dos flujos separados:
- * - **Balones:** el usuario agrega cilindros uno por uno (sin cantidad, cada
- *   uno = 1 unidad). La card solo muestra identidad del cilindro.
- * - **Productos de gas:** el usuario selecciona un producto de gas y una
- *   cantidad total. La card muestra producto + cantidad + unidad.
- *
- * Los campos `idProductoGas`, `cantidadGas`, `nombreProductoGas` y
- * `codigoProductoGas` transportan la info del producto de gas para que el
- * padre cree la línea de producto por separado.
  */
 export interface DocSalidaLineaBorrador {
   idProducto?: number
@@ -378,34 +399,62 @@ export interface DocSalidaLineaBorrador {
   codigoProducto?: string
   nombreUnidadMedida?: string
   codigoBalon?: string
+  idTipoBalon?: number
   nombreTipoBalon?: string
   nombreAlmacenBalon?: string
-  /** ID del producto de gas seleccionado por el usuario (solo en recarga/retorno). */
+  /** Gas del cilindro: agrupa la fila de cantidad en planta externa. */
   idProductoGas?: number
-  /** Cantidad de gas a enviar (solo en recarga/retorno). */
-  cantidadGas?: number
-  /** Nombre del producto de gas (para pintar la card en borrador). */
   nombreProductoGas?: string
-  /** Código del producto de gas (para pintar la card en borrador). */
-  codigoProductoGas?: string
+  /** Capacidad del tipo de cilindro, para topar la cantidad declarada. */
+  capacidadBalon?: number
+  unidadCapacidadBalon?: string
 }
 
-/** Forma normalizada que consume el editor, venga de un borrador o de la BD. */
-export interface DocSalidaLineaCard {
+/**
+ * Línea normalizada que consume el editor del detalle, venga de un borrador en
+ * memoria o del detalle ya guardado en la BD.
+ *
+ * El detalle se arma en dos planos: una fila por cilindro, que solo mueve el
+ * envase, y una fila por producto con la cantidad TOTAL que sale. Los productos
+ * no se teclean uno por uno: se derivan de los tipos de los balones agregados.
+ * Por eso el editor necesita, de cada fila de balón, su tipo (para agrupar) y
+ * su capacidad (para topar la suma).
+ */
+export interface DocSalidaDetalleLinea {
+  /** Índice en el borrador, o id del detalle si el documento ya existe. */
   key: string
-  tipo: 'PRODUCTO' | 'BALON' | 'GAS'
-  titulo: string
-  subtitulo?: string
-  /** Badge del tipo de balón, con color estable por tipo. */
-  badge?: { texto: string; color: BadgeColor }
-  cantidad: number
-  unidad?: string
-  glosa?: string
-  /** Las líneas que vienen de una venta no se pueden quitar desde aquí. */
-  removible: boolean
-  /** Para que el selector no vuelva a ofrecer lo que ya está en el detalle. */
-  idProducto?: number | null
+  tipo: 'BALON' | 'PRODUCTO'
   idBalon?: number | null
-  /** Stock disponible del producto de gas en el almacén (solo en recarga). */
-  stockDisponible?: number | null
+  idProducto?: number | null
+  cantidad: number
+  glosa?: string | null
+  /** Identidad del cilindro. */
+  codigoBalon?: string | null
+  idTipoBalon?: number | null
+  nombreTipoBalon?: string | null
+  nombreAlmacenBalon?: string | null
+  idProductoGas?: number | null
+  nombreProductoGas?: string | null
+  capacidadBalon?: number | null
+  unidadCapacidadBalon?: string | null
+  /** Identidad del producto. */
+  nombreProducto?: string | null
+  codigoProducto?: string | null
+  nombreUnidadMedida?: string | null
+  /** Las líneas que vienen de una venta no se pueden tocar desde aquí. */
+  removible: boolean
+}
+
+/**
+ * "El producto X de esta orden debe quedar en cantidad N." El editor no sabe si
+ * la línea ya existe: el padre resuelve si toca crearla, actualizarla o
+ * quitarla (cantidad 0). Sirve igual para los gases derivados de los balones y
+ * para los productos que se agregan a mano.
+ */
+export interface DocSalidaProductoCantidad {
+  idProducto: number
+  cantidad: number
+  nombreProducto?: string
+  codigoProducto?: string
+  nombreUnidadMedida?: string
 }

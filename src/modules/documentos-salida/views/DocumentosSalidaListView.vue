@@ -272,8 +272,7 @@ const gasUnicoSeleccionado = computed(() => {
 })
 
 const esPlantaExterna = (row: DocSalidaAccionesFuente) =>
-  row.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA' ||
-  row.nombre_tipo_orden === 'RETORNO_PLANTA_EXTERNA'
+  row.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA'
 
 async function onAccion(accion: DocSalidaAccion, row: DocSalidaAccionesFuente) {
   if (accion === 'ver') {
@@ -334,7 +333,6 @@ const TIPO_LABELS: Record<string, string> = {
   ORDEN_SALIDA_VENTA: 'Orden de venta',
   ORDEN_SALIDA_INTERNA: 'Orden interna',
   RECARGA_PLANTA_EXTERNA: 'Recarga planta',
-  RETORNO_PLANTA_EXTERNA: 'Retorno planta',
   TRASLADO: 'Traslado',
 }
 function formatTipoOrden(codigo: unknown) {
