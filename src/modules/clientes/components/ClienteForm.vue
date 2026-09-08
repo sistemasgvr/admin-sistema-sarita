@@ -446,6 +446,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastApiError, toastInfo, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { esTipoDocumentoSinDocumento } from '@/modules/clientes/constants/tipoDocumento'
 
 const props = withDefaults(
   defineProps<{
@@ -612,7 +613,7 @@ const tipoPersonaSeleccionado = computed(() => {
 })
 
 const esDocumentoVSD = computed(() => {
-  return tipoDocumentoSeleccionado.value?.nombre?.toUpperCase() === 'VSD'
+  return esTipoDocumentoSinDocumento(tipoDocumentoSeleccionado.value?.nombre)
 })
 
 const esDocumentoRUC = computed(() => {

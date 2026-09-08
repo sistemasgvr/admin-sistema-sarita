@@ -1,9 +1,5 @@
 import type { RouteLocationRaw } from 'vue-router'
 
-/**
- * Resuelve la ruta FE para el documento origen de un movimiento unificado.
- * `codigo` = gen_lista_opciones.nombre (TipoDocumentoRef).
- */
 export function resolveDocumentoOrigenRoute(
   codigo: string | null | undefined,
   id: number | null | undefined,

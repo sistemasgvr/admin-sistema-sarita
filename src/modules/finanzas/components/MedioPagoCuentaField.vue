@@ -1,6 +1,6 @@
 <template>
-  <div class="grid grid-cols-1 gap-4" :class="columnas">
-    <AppFormField :label="labelMedio" :optional="!medioRequerido" :required="medioRequerido" :error="errorMedio">
+  <div class="grid grid-cols-2   gap-4" :class="columnas">
+    <AppFormField :label="labelMedio" :optional="!medioRequerido" :required="medioRequerido" :error="errorMedio" class = "sm:col-span-2">
       <AppSelect
         v-model="idMedioPago"
         :options="medioOptions"
@@ -10,11 +10,12 @@
     </AppFormField>
 
     <AppFormField
-      v-if="pideCuenta"
+      v-if="pideCuenta"no
       label="Cuenta de la empresa"
       required
       :error="errorCuenta"
       :hint="hintCuenta"
+      class = "sm:col-span-2"
     >
       <AppSelect
         v-model="idCuentaBancaria"
@@ -38,18 +39,6 @@
 </template>
 
 <script setup lang="ts">
-/**
- * Medio de pago + cuenta bancaria de la empresa + nº de operación.
- *
- * Fase 3, principio 3 del plan ("todo dinero tiene medio de pago y cuenta"):
- * las reglas de qué campos son obligatorios NO se repiten aquí, se leen de
- * `GET /finanzas/medios-pago`, que las sirve desde `fin_medio_pago_config` —
- * la misma tabla que valida el backend. Así un cambio de configuración no exige
- * tocar los formularios.
- *
- * Publica `v-model:valido` para que el formulario contenedor deshabilite su
- * botón de guardar, pero la validación real sigue siendo del backend.
- */
 import { computed, watch, watchEffect } from 'vue'
 import { AppInput, AppSelect } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
@@ -65,18 +54,10 @@ const valido = defineModel<boolean>('valido', { default: true })
 const props = withDefaults(
   defineProps<{
     labelMedio?: string
-    /** Exigir un medio de pago para considerar el formulario válido. */
     medioRequerido?: boolean
     disabled?: boolean
-    /** Ocultar CREDITO: los cobros inmediatos no admiten "venta a crédito". */
     excluirCredito?: boolean
-    /** Mostrar el campo de nº operación aunque el medio no lo exija. */
     mostrarSiempreNumeroOperacion?: boolean
-    /**
-     * Nunca bloquear por falta de nº de operación. En el mostrador el cajero no
-     * siempre tiene el voucher a mano al cobrar, y frenar la venta por eso es
-     * peor que registrarla sin él: el dato se completa después.
-     */
     numeroOperacionOpcional?: boolean
     mostrarErrores?: boolean
   }>(),
@@ -100,8 +81,7 @@ const medios = computed<MedioPago[]>(() =>
 const medioOptions = computed<SelectOption[]>(() =>
   medios.value.map((m) => ({
     value: m.id,
-    // Un medio sin configurar hace fallar el guardado en el backend; se marca
-    // y se deshabilita en vez de dejar que el usuario lo descubra al enviar.
+
     label: m.configurado ? m.nombre : `${m.nombre} (sin configurar)`,
     disabled: !m.configurado,
   })),
@@ -112,11 +92,9 @@ const medioSeleccionado = computed<MedioPago | null>(
 )
 
 const pideCuenta = computed(() => medioSeleccionado.value?.requiereCuentaBancaria === true)
-/** El medio pide voucher según su configuración: decide si el campo se muestra. */
 const medioSugiereNumeroOperacion = computed(
   () => medioSeleccionado.value?.requiereNumeroOperacion === true,
 )
-/** ...y si además bloquea el guardado. */
 const pideNumeroOperacion = computed(
   () => !props.numeroOperacionOpcional && medioSugiereNumeroOperacion.value,
 )
@@ -150,19 +128,10 @@ const errorNumeroOperacion = computed(() =>
     ? 'Obligatorio'
     : '',
 )
-
-/**
- * Como mucho dos columnas: el medio y la cuenta caben juntos, pero el número de
- * operación ocupa la fila completa (`sm:col-span-2`). Con tres columnas los
- * selects quedaban ilegibles en contenedores estrechos como el aside del POS.
- */
 const columnas = computed(() =>
   pideCuenta.value || mostrarNumeroOperacion.value ? 'sm:grid-cols-2' : '',
 )
 
-// Cambiar de medio invalida la cuenta anterior — es la misma regla que aplica
-// el backend, así que la dejamos visible en vez de mandar una combinación que
-// será rechazada. Si el nuevo medio tiene una cuenta predeterminada, se propone.
 watch(idMedioPago, () => {
   if (!pideCuenta.value) {
     idCuentaBancaria.value = null

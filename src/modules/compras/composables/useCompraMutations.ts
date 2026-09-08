@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import type { RegistrarBalonesCompraPayload } from '@/modules/compras/interfaces/compra.interface'
 import { comprasService } from '@/modules/compras/services/compras.service'
 import type {
   ActualizarCompraCabeceraPayload,
@@ -39,6 +41,28 @@ export function useActualizarCabeceraMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo actualizar la cabecera')
+    },
+  })
+}
+
+export function useRegistrarBalonesCompraMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: RegistrarBalonesCompraPayload }) =>
+      comprasService.registrarBalones(id, payload),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      // Los cilindros nuevos aparecen en el libro: su listado queda obsoleto.
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.detail(variables.id) })
+      const total = data?.creados ?? 0
+      toastSuccess(
+        total === 1 ? 'Cilindro agregado al libro' : `${total} cilindros agregados al libro`,
+      )
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudieron registrar los cilindros comprados')
     },
   })
 }

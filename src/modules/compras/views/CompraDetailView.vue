@@ -20,6 +20,19 @@
           <AppIcon :name="ICONS.pencil" :size="16" />
           Editar
         </RouterLink>
+        <!--
+          Comprar un cilindro no es como comprar un producto: entra al libro con
+          identidad propia, así que se captura aparte de las líneas de la compra.
+        -->
+        <button
+          v-if="canEdit && cabecera.estado === 1"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/5"
+          @click="balonesModalOpen = true"
+        >
+          <AppIcon :name="ICONS.cylinder" :size="16" />
+          Registrar cilindros comprados
+        </button>
         <RouterLink
           v-if="cuentaPorPagar"
           :to="{ name: 'admin-finanzas-pagar' }"
@@ -394,13 +407,15 @@
         </DetailSectionCard>
       </template>
     </DetailCardsLayout>
+    <CompraBalonesModal v-model="balonesModalOpen" :id-compra="compraId" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import CompraBalonesModal from '@/modules/compras/components/CompraBalonesModal.vue'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
 import { comprasFormBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
@@ -425,6 +440,8 @@ const compraId = computed(() => {
   const raw = Number(route.params.id)
   return Number.isFinite(raw) && raw > 0 ? raw : null
 })
+
+const balonesModalOpen = ref(false)
 
 const compraQuery = useCompraQuery(compraId)
 const compra = computed(() => compraQuery.data.value ?? null)

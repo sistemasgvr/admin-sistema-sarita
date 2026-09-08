@@ -6,6 +6,8 @@ import {
   apiPost,
 } from '@/shared/api/apiClient'
 import type {
+  RegistrarBalonesCompraPayload,
+  RegistrarBalonesCompraResult,
   ActualizarCompraCabeceraPayload,
   ActualizarCompraDetallePayload,
   Compra,
@@ -33,6 +35,10 @@ export const comprasService = {
 
   actualizarCabecera(id: number, payload: ActualizarCompraCabeceraPayload) {
     return apiPatch<Compra>(`/compras/${id}`, payload)
+  },
+
+  registrarBalones(id: number, payload: RegistrarBalonesCompraPayload) {
+    return apiPost<RegistrarBalonesCompraResult>(`/compras/${id}/balones`, payload)
   },
 
   crearDetalle(id: number, payload: CreateCompraDetalleLineaPayload) {

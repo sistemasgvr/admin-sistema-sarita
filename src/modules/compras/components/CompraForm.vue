@@ -223,6 +223,23 @@
                 />
               </div>
 
+              <!--
+                Sin retorno marcado el gas sigue en la planta: sumarlo al stock
+                acá lo inflaría. El backend además lo rechaza.
+              -->
+              <div
+                v-if="!guardarBalonesAlmacen"
+                class="mt-3 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-xs text-warning-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300"
+              >
+                <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
+                <span>
+                  Mientras no marques el retorno, el gas de esta orden
+                  <strong class="font-semibold">no entra al stock</strong>. La factura queda
+                  vinculada; marca el retorno acá o desde el documento de salida cuando lleguen
+                  los cilindros.
+                </span>
+              </div>
+
               <div
                 v-if="guardarBalonesAlmacen"
                 class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
@@ -257,23 +274,31 @@
                   :disabled="saving || Boolean(idGuiaRetorno)"
                 />
 
-                <AppInput
-                  v-model="lote"
-                  label="Nº lote"
-                  placeholder="Lote del proveedor / protocolo"
-                  required
-                  :disabled="saving"
-                  :error="errors.lote"
-                />
-
-                <AppInput
-                  v-model="fechaVencimientoLote"
-                  label="Vencimiento lote"
-                  type="date"
-                  required
-                  :disabled="saving"
-                  :error="errors.fechaVencimientoLote"
-                />
+                <!--
+                  El lote no se tipea: sale de la ficha ICP de la planta, que
+                  además trae análisis y envases aprobados. Solo aplica cuando
+                  todos los cilindros de la orden son del mismo gas.
+                -->
+                <div v-if="admiteFichaIcp" class="sm:col-span-2">
+                  <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Lote y protocolo
+                  </span>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <AppBadge v-if="lote" size="sm" variant="light" color="success">
+                      Lote {{ lote }}
+                    </AppBadge>
+                    <span v-else class="text-xs text-gray-400">Sin ficha registrada</span>
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+                      :disabled="saving"
+                      @click="fichaModalOpen = true"
+                    >
+                      <AppIcon :name="ICONS.clipboardCheck" :size="13" />
+                      {{ lote ? 'Cambiar ficha' : 'Registrar lote y protocolo' }}
+                    </button>
+                  </div>
+                </div>
 
                 <AppInput
                   v-model="fechaPruebaHidrostatica"
@@ -728,7 +753,15 @@
               </div>
             </div>
           </DetailSectionCard>
-        </template>
+        
+  <LoteProtocoloFormModal
+    v-model="fichaModalOpen"
+    mode="create"
+    :balones-preset="balonesPresetOrden"
+    :id-producto-gas-preset="gasUnicoOrden"
+    @guardada="onFichaRegistrada"
+  />
+</template>
       </FormCardsLayout>
 
       <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -794,6 +827,7 @@ import CompraProductoField from '@/modules/compras/components/CompraProductoFiel
 import CompraRecargaPlantaDetalle from '@/modules/compras/components/CompraRecargaPlantaDetalle.vue'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
 import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
+import LoteProtocoloFormModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloFormModal.vue'
 import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
@@ -1216,23 +1250,69 @@ const proveedorOptions = computed(() => {
 const recargaPlantaFilters = ref<RecargaPlantaListFilters>({ pagina: 1, limite: 50 })
 const recargaPlantaQuery = useRecargasPlantaQuery(recargaPlantaFilters)
 const recargaPlantaOptions = computed(() =>
-  (recargaPlantaQuery.data.value?.data ?? []).map((rp) => {
-    const numero = rp.numero || `RP-${rp.id}`
-    const cilindros = rp.total_cilindros ?? 0
-    const yaCerrada = Boolean(rp.id_comprobante_compra) || rp.nombre_estado === 'CERRADO'
-    return {
-      value: rp.id,
-      label: `${numero} · ${formatListDate(rp.fecha_salida)} · ${cilindros} cilindro${cilindros === 1 ? '' : 's'}`,
-      disabled: yaCerrada,
-      badges: yaCerrada ? [{ label: 'Cerrada / facturada', color: 'neutral' as const }] : undefined,
-    }
-  }),
+  (recargaPlantaQuery.data.value?.data ?? [])
+    // Lo que descarta una orden es estar ya facturada, no haber retornado: el
+    // retorno puede haberse marcado antes de que llegue la factura del proveedor.
+    .filter((rp) => !rp.id_comprobante_compra)
+    .map((rp) => {
+      const numero = rp.numero || `RP-${rp.id}`
+      const cilindros = rp.total_cilindros ?? 0
+      const yaRetorno = Boolean(rp.fecha_llegada_almacen) || rp.nombre_estado === 'RETORNADO'
+      return {
+        value: rp.id,
+        label: `${numero} · ${formatListDate(rp.fecha_salida)} · ${cilindros} cilindro${cilindros === 1 ? '' : 's'}`,
+        // El badge avisa que el retorno ya está hecho; la orden sigue siendo
+        // elegible porque lo que falta es justamente vincular su factura.
+        badges: yaRetorno
+          ? [{ label: 'Retorno registrado', color: 'success' as const }]
+          : undefined,
+      }
+    }),
 )
 
 const idRecargaPlantaNum = computed(() =>
   idRecargaPlanta.value !== '' && idRecargaPlanta.value != null ? Number(idRecargaPlanta.value) : null,
 )
 const recargaPlantaDetalleQuery = useRecargaPlantaQuery(idRecargaPlantaNum)
+
+// ---- Ficha ICP de la orden ----
+const fichaModalOpen = ref(false)
+
+const balonesDeLaOrden = computed(
+  () => recargaPlantaDetalleQuery.data.value?.detalles ?? [],
+)
+
+/**
+ * Una ficha ICP cubre un solo lote de un solo gas: solo se pide cuando todos
+ * los cilindros de la orden coinciden. Si vienen mezclados, no hay ficha que
+ * los describa a todos y no tiene sentido pedirla.
+ */
+const gasUnicoOrden = computed(() => {
+  const balones = balonesDeLaOrden.value
+  if (!balones.length) return null
+  const primero = balones[0].id_producto_gas_balon
+  if (primero == null) return null
+  return balones.every((b) => b.id_producto_gas_balon === primero) ? primero : null
+})
+
+const admiteFichaIcp = computed(() => gasUnicoOrden.value != null)
+
+const balonesPresetOrden = computed(() =>
+  balonesDeLaOrden.value
+    .filter((balon) => balon.id_balon != null)
+    .map((balon) => ({
+      idBalon: balon.id_balon,
+      codigoBalon: balon.codigo_balon ?? '',
+      nombreTipoBalon: balon.nombre_tipo_balon,
+      numeroSerie: balon.numero_serie_balon,
+    })),
+)
+
+// La ficha ya quedó aplicada a los cilindros; acá solo se refleja su número.
+function onFichaRegistrada() {
+  fichaModalOpen.value = false
+  void recargaPlantaDetalleQuery.refetch()
+}
 
 const toDateInput = (value?: string | null) => (value ? String(value).slice(0, 10) : '')
 

@@ -17,6 +17,7 @@ export interface CompraListItem {
   sub_total: number | null
   total_importe: number
   estado: number
+  tiene_comprobante?: boolean
   tiene_movimientos_inventario: boolean
   id_comprobante_referencia: number | null
 }
@@ -120,6 +121,8 @@ export interface CompraListFilters {
   estado?: number
   idTipoRegistro?: number
   idCategoriaGasto?: number
+  /** true = solo las que no tienen comprobante del proveedor. */
+  sinComprobante?: boolean
 }
 
 export interface CreateCompraDetallePayload {
@@ -213,4 +216,28 @@ export interface CompraLineaForm {
   afectaStock?: boolean
   /** Cilindros de la orden de recarga que alimentan esta línea de gas. */
   cilindrosRecarga?: number
+}
+
+/** Cilindro comprado que entra al libro con la compra (Fase 7, apunte 4.b.iv). */
+export interface CompraBalonPayload {
+  codigoBalon: string
+  numeroSerie?: string
+  idTipoBalon: number
+  idProductoGas?: number
+  idMarcaCilindro?: number
+  fechaFabricacion?: string
+  fechaUltimaPruebaHidrostatica?: string
+  /** Gas que trae el cilindro; si es > 0 entra al stock del producto. */
+  cantidadGas?: number
+}
+
+export interface RegistrarBalonesCompraPayload {
+  balones: CompraBalonPayload[]
+  idUsuarioAuditoria: number
+}
+
+export interface RegistrarBalonesCompraResult {
+  creados: number
+  idBalones: number[]
+  gasIngresado?: number
 }

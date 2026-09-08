@@ -28,9 +28,16 @@
       </template>
 
       <template #cell-comprobante="{ row }">
-        <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ row.serie ?? '—' }}-{{ row.numero ?? '—' }}
+        <!--
+          Sin serie o sin número el ingreso está registrado pero el documento
+          del proveedor nunca llegó: es lo que hay que perseguir para declarar.
+        -->
+        <p v-if="row.tiene_comprobante" class="font-medium text-gray-800 dark:text-white/90">
+          {{ row.serie }}-{{ row.numero }}
         </p>
+        <AppBadge v-else size="sm" variant="light" color="warning" title="El proveedor no entregó comprobante">
+          Sin comprobante
+        </AppBadge>
         <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.fecha }}</p>
       </template>
 
@@ -242,6 +249,16 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     ],
   },
   {
+    key: 'sinComprobante',
+    label: 'Comprobante',
+    type: 'select',
+    placeholder: 'Todos',
+    options: [
+      { value: 'true', label: 'Sin comprobante' },
+      { value: 'false', label: 'Con comprobante' },
+    ],
+  },
+  {
     key: 'idTipoRegistro',
     label: 'Tipo registro',
     type: 'select',
@@ -282,6 +299,9 @@ function syncFilters() {
     estado: active.estado != null ? Number(active.estado) : undefined,
     idTipoRegistro: active.idTipoRegistro != null ? Number(active.idTipoRegistro) : undefined,
     idCategoriaGasto: active.idCategoriaGasto != null ? Number(active.idCategoriaGasto) : undefined,
+    // El filtro dinámico entrega el valor como string; la API espera booleano.
+    sinComprobante:
+      active.sinComprobante != null ? String(active.sinComprobante) === 'true' : undefined,
   }
 }
 

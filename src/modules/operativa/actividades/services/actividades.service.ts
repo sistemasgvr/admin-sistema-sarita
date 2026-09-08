@@ -1,6 +1,13 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type { PaginatedResult } from '@/shared/api/interfaces/api.interface'
 import type {
+  CrearRecojoPrestamoPayload,
+  GenerarRecojosPayload,
+  GenerarRecojosResult,
+  RankingActividadFila,
+  RankingActividadesFilters,
+  VerificarActividadPayload,
+  VerificarActividadResult,
   Actividad,
   ActividadListFilters,
   CreateActividadPayload,
@@ -9,6 +16,25 @@ import type {
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 
 export const actividadesService = {
+  verificar(id: number, payload: VerificarActividadPayload) {
+    return apiPost<VerificarActividadResult>(`/actividades/${id}/verificar`, payload)
+  },
+
+  crearRecojoPrestamo(payload: CrearRecojoPrestamoPayload) {
+    return apiPost<{ id: number; creada: boolean; items: number }>(
+      '/actividades/recojo-prestamo',
+      payload,
+    )
+  },
+
+  generarRecojos(payload: GenerarRecojosPayload) {
+    return apiPost<GenerarRecojosResult>('/actividades/generar-recojos', payload)
+  },
+
+  ranking(filters: RankingActividadesFilters = {}) {
+    return apiGetPaginated<RankingActividadFila>('/actividades/ranking', { params: filters })
+  },
+
   listar(filters: ActividadListFilters = {}): Promise<PaginatedResult<Actividad[]>> {
     return apiGetPaginated<Actividad>('/operativa/actividades', { params: filters })
   },

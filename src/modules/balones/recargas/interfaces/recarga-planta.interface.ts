@@ -15,6 +15,11 @@ export interface RecargaPlantaDetalle {
   id_movimiento_recarga?: number | null
   observacion?: string | null
   nombre_estado_balon?: string | null
+  nombre_tipo_balon?: string | null
+  numero_serie_balon?: string | null
+  /** Gas del cilindro: define si la orden admite ficha de lote y protocolo. */
+  id_producto_gas_balon?: number | null
+  nombre_producto_gas_balon?: string | null
 }
 
 export interface RecargaPlanta {

@@ -358,6 +358,16 @@ export interface SiguienteNumeroDocumentoSalidaResponse {
  * Los campos `nombre*`/`codigo*` son solo para pintar la card: al crear una
  * orden nueva las líneas viven en memoria hasta que el documento existe, y
  * entonces no hay `doc_salida_detalle` de donde leer esos textos.
+ *
+ * En recarga/retorno de planta externa se ofrecen dos flujos separados:
+ * - **Balones:** el usuario agrega cilindros uno por uno (sin cantidad, cada
+ *   uno = 1 unidad). La card solo muestra identidad del cilindro.
+ * - **Productos de gas:** el usuario selecciona un producto de gas y una
+ *   cantidad total. La card muestra producto + cantidad + unidad.
+ *
+ * Los campos `idProductoGas`, `cantidadGas`, `nombreProductoGas` y
+ * `codigoProductoGas` transportan la info del producto de gas para que el
+ * padre cree la línea de producto por separado.
  */
 export interface DocSalidaLineaBorrador {
   idProducto?: number
@@ -370,12 +380,20 @@ export interface DocSalidaLineaBorrador {
   codigoBalon?: string
   nombreTipoBalon?: string
   nombreAlmacenBalon?: string
+  /** ID del producto de gas seleccionado por el usuario (solo en recarga/retorno). */
+  idProductoGas?: number
+  /** Cantidad de gas a enviar (solo en recarga/retorno). */
+  cantidadGas?: number
+  /** Nombre del producto de gas (para pintar la card en borrador). */
+  nombreProductoGas?: string
+  /** Código del producto de gas (para pintar la card en borrador). */
+  codigoProductoGas?: string
 }
 
 /** Forma normalizada que consume el editor, venga de un borrador o de la BD. */
 export interface DocSalidaLineaCard {
   key: string
-  tipo: 'PRODUCTO' | 'BALON'
+  tipo: 'PRODUCTO' | 'BALON' | 'GAS'
   titulo: string
   subtitulo?: string
   /** Badge del tipo de balón, con color estable por tipo. */
@@ -388,4 +406,6 @@ export interface DocSalidaLineaCard {
   /** Para que el selector no vuelva a ofrecer lo que ya está en el detalle. */
   idProducto?: number | null
   idBalon?: number | null
+  /** Stock disponible del producto de gas en el almacén (solo en recarga). */
+  stockDisponible?: number | null
 }

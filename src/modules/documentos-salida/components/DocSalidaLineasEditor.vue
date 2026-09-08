@@ -2,163 +2,379 @@
   <div class="space-y-5">
     <!-- Agregar una línea nueva -->
     <div v-if="!readonly" class="rounded-xl border border-gray-200 p-3.5 dark:border-gray-700">
-      <div class="mb-3 flex gap-2 text-sm">
-        <button
-          type="button"
-          class="rounded-lg px-2.5 py-1 transition"
-          :class="modo === 'PRODUCTO' ? 'bg-brand-50 font-medium text-brand-600 dark:bg-brand-500/10' : 'text-gray-500 hover:text-gray-700'"
-          @click="modo = 'PRODUCTO'"
-        >
-          Producto
-        </button>
-        <button
-          type="button"
-          class="rounded-lg px-2.5 py-1 transition"
-          :class="modo === 'BALON' ? 'bg-brand-50 font-medium text-brand-600 dark:bg-brand-500/10' : 'text-gray-500 hover:text-gray-700'"
-          @click="modo = 'BALON'"
-        >
-          Balón
-        </button>
-      </div>
+      <!-- No-RECARGA: tabs Producto / Balón (existente) -->
+      <template v-if="!soloBalones">
+        <div class="mb-3 flex gap-2 text-sm">
+          <button
+            type="button"
+            class="rounded-lg px-2.5 py-1 transition"
+            :class="modo === 'PRODUCTO' ? 'bg-brand-50 font-medium text-brand-600 dark:bg-brand-500/10' : 'text-gray-500 hover:text-gray-700'"
+            @click="modo = 'PRODUCTO'"
+          >
+            Producto
+          </button>
+          <button
+            type="button"
+            class="rounded-lg px-2.5 py-1 transition"
+            :class="modo === 'BALON' ? 'bg-brand-50 font-medium text-brand-600 dark:bg-brand-500/10' : 'text-gray-500 hover:text-gray-700'"
+            @click="modo = 'BALON'"
+          >
+            Balón
+          </button>
+        </div>
 
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <template v-if="modo === 'PRODUCTO'">
-          <ProductoSelectField
-            v-model="idProducto"
-            label=""
-            :placeholder="idAlmacen ? 'Buscar producto...' : 'Elige un almacén primero'"
-            class="sm:col-span-2"
-            :id-almacen="idAlmacen ?? null"
-            :excluir-ids="[...idsProductoUsados]"
-            bloquear-sin-stock
-            :disabled="disabled || !idAlmacen"
-          />
-          <AppInput
-            v-model.number="cantidad"
-            type="number"
-            min="0.0001"
-            step="0.0001"
-            placeholder="Cantidad"
-            :disabled="disabled"
-          />
-        </template>
-
-        <!--
-          El balón no lleva cantidad: es un envase con identidad, va de a uno.
-          Para despachar dos cilindros se agregan dos líneas.
-        -->
-        <AppSelectSearch
-          v-else
-          v-model="idBalon"
-          v-model:search="balonSearch"
-          remote
-          :placeholder="idAlmacen ? 'Buscar balón disponible por código...' : 'Elige un almacén primero'"
-          :options="balonOptions"
-          :loading="balonesQuery.isFetching.value"
-          :disabled="disabled || !idAlmacen"
-          class="sm:col-span-3"
-        />
-
-        <AppInput v-model="glosa" placeholder="Glosa (opcional)" :disabled="disabled" />
-      </div>
-
-      <p v-if="!idAlmacen" class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-        Selecciona el almacén de la orden: solo se ofrecen productos con stock y balones
-        disponibles en ese almacén.
-      </p>
-
-      <button
-        v-else
-        type="button"
-        class="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-        :disabled="!puedeAgregar || disabled"
-        @click="onAgregar"
-      >
-        <AppIcon :name="ICONS.plus" :size="15" />
-        Agregar {{ modo === 'BALON' ? 'balón' : 'producto' }}
-      </button>
-    </div>
-
-    <!-- Listas separadas: productos y balones se leen distinto -->
-    <section v-for="grupo in grupos" :key="grupo.tipo">
-      <div class="mb-2 flex items-center gap-2">
-        <AppIcon
-          :name="grupo.tipo === 'BALON' ? ICONS.cylinder : ICONS.package"
-          :size="14"
-          class="text-gray-400"
-        />
-        <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          {{ grupo.titulo }}
-        </h4>
-        <span class="text-xs text-gray-400">{{ grupo.lineas.length }}</span>
-      </div>
-
-      <div v-if="grupo.lineas.length" class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <article
-          v-for="linea in grupo.lineas"
-          :key="linea.key"
-          class="rounded-xl border border-gray-200 bg-white p-3.5 shadow-theme-xs transition hover:border-brand-300 dark:border-gray-700 dark:bg-white/[0.02]"
-        >
-          <div class="flex items-start gap-3">
-            <div
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
-              :class="
-                linea.tipo === 'BALON'
-                  ? 'border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-brand-400'
-                  : 'border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-white/5 dark:text-gray-300'
-              "
-            >
-              <AppIcon :name="linea.tipo === 'BALON' ? ICONS.cylinder : ICONS.package" :size="17" />
-            </div>
-
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ linea.titulo }}
-              </p>
-              <div v-if="linea.badge || linea.subtitulo" class="mt-1 flex flex-wrap items-center gap-1.5">
-                <AppBadge v-if="linea.badge" size="sm" variant="light" :color="linea.badge.color">
-                  {{ linea.badge.texto }}
-                </AppBadge>
-                <span
-                  v-if="linea.subtitulo"
-                  class="truncate text-xs text-gray-500 dark:text-gray-400"
-                >
-                  {{ linea.subtitulo }}
-                </span>
-              </div>
-              <p
-                v-if="mostrarCantidad(linea)"
-                class="mt-1.5 text-xs font-medium text-gray-700 dark:text-gray-300"
-              >
-                {{ linea.cantidad }}
-                <span v-if="linea.unidad" class="font-normal text-gray-400">{{ linea.unidad }}</span>
-              </p>
-              <p v-if="linea.glosa" class="mt-1 truncate text-xs italic text-gray-400">
-                {{ linea.glosa }}
-              </p>
-            </div>
-
-            <button
-              v-if="linea.removible && !readonly"
-              type="button"
-              title="Quitar línea"
-              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition hover:border-error-300 hover:bg-error-50 hover:text-error-600 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-error-500/10"
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <template v-if="modo === 'PRODUCTO'">
+            <ProductoSelectField
+              v-model="idProducto"
+              label=""
+              :placeholder="idAlmacen ? 'Buscar producto...' : 'Elige un almacén primero'"
+              class="sm:col-span-2"
+              :id-almacen="idAlmacen ?? null"
+              :excluir-ids="[...idsProductoUsados]"
+              bloquear-sin-stock
+              :disabled="disabled || !idAlmacen"
+            />
+            <AppInput
+              v-model.number="cantidad"
+              type="number"
+              min="0.0001"
+              step="0.0001"
+              placeholder="Cantidad"
               :disabled="disabled"
-              @click="emit('quitar', linea.key)"
+            />
+          </template>
+
+          <template v-else>
+            <AppSelectSearch
+              v-model="idBalon"
+              v-model:search="balonSearch"
+              remote
+              :placeholder="idAlmacen ? 'Buscar balón disponible por código...' : 'Elige un almacén primero'"
+              :options="balonOptions"
+              :loading="balonesQuery.isFetching.value"
+              :disabled="disabled || !idAlmacen"
+              class="sm:col-span-2"
+            />
+          </template>
+
+          <AppInput v-model="glosa" placeholder="Glosa (opcional)" :disabled="disabled" />
+        </div>
+
+        <p v-if="!idAlmacen" class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Selecciona el almacén de la orden: solo se ofrecen productos con stock y balones
+          disponibles en ese almacén.
+        </p>
+
+        <button
+          v-else
+          type="button"
+          class="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!puedeAgregar || disabled"
+          @click="onAgregar"
+        >
+          <AppIcon :name="ICONS.plus" :size="15" />
+          Agregar {{ modo === 'BALON' ? 'balón' : 'producto' }}
+        </button>
+      </template>
+
+      <!-- RECARGA: dos secciones separadas (balones + gas) -->
+      <template v-else>
+        <!-- Sección 1: Balones -->
+        <div class="mb-4">
+          <div class="mb-2.5 flex items-center gap-2">
+            <AppIcon :name="ICONS.cylinder" :size="14" class="text-gray-400" />
+            <h4
+              class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
             >
-              <AppIcon :name="ICONS.x" :size="14" />
+              Balones
+            </h4>
+          </div>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <AppSelectSearch
+              v-model="idBalon"
+              v-model:search="balonSearch"
+              remote
+              :placeholder="
+                idAlmacen ? 'Buscar balón disponible por código...' : 'Elige un almacén primero'
+              "
+              :options="balonOptions"
+              :loading="balonesQuery.isFetching.value"
+              :disabled="disabled || !idAlmacen"
+              class="sm:col-span-2"
+            />
+            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/5"
+              :disabled="!idBalon || disabled"
+              @click="onAgregarBalon"
+            >
+              <AppIcon :name="ICONS.plus" :size="14" />
+              Agregar balón
             </button>
           </div>
-        </article>
-      </div>
+        </div>
 
-      <p
-        v-else
-        class="rounded-xl border border-dashed border-gray-300 py-5 text-center text-xs text-gray-400 dark:border-gray-700"
-      >
-        {{ grupo.vacio }}
-      </p>
-    </section>
+        <!-- Separador -->
+        <div class="border-t border-gray-100 dark:border-gray-700"></div>
+
+        <!-- Sección 2: Productos de gas -->
+        <div class="mt-4">
+          <div class="mb-2.5 flex items-center gap-2">
+            <AppIcon :name="ICONS.package" :size="14" class="text-gray-400" />
+            <h4
+              class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+            >
+              Producto de gas
+            </h4>
+          </div>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-4">
+            <ProductoSelectField
+              v-model="idProductoGas"
+              label=""
+              :placeholder="idAlmacen ? 'Buscar producto de gas...' : 'Elige un almacén primero'"
+              class="sm:col-span-2"
+              :id-almacen="idAlmacen ?? null"
+              :excluir-ids="[...idsProductoGasUsados]"
+              es-gas
+              bloquear-sin-stock
+              :disabled="disabled || !idAlmacen"
+            />
+            <div class="relative">
+              <AppInput
+                v-model.number="cantidadGas"
+                type="number"
+                min="0.0001"
+                step="0.0001"
+                placeholder="Cantidad"
+                :disabled="disabled || !idProductoGas"
+                :class="
+                  stockGasDisponible != null &&
+                  Number(cantidadGas) > 0 &&
+                  Number(cantidadGas) > stockGasDisponible
+                    ? 'border-error-300 focus:border-error-500 focus:ring-error-500/20'
+                    : ''
+                "
+              />
+              <span
+                v-if="stockGasDisponible != null && stockGasDisponible > 0"
+                class="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-gray-500 dark:bg-white/10 dark:text-gray-400"
+              >
+                Stock: {{ stockGasDisponible }}
+              </span>
+            </div>
+            <button
+              type="button"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+              :disabled="!puedeAgregarGas || disabled"
+              @click="onAgregarGas"
+            >
+              <AppIcon :name="ICONS.plus" :size="14" />
+              Agregar gas
+            </button>
+          </div>
+
+          <!-- Advertencia de stock excedido -->
+          <p
+            v-if="
+              stockGasDisponible != null &&
+              Number(cantidadGas) > 0 &&
+              Number(cantidadGas) > stockGasDisponible
+            "
+            class="mt-2 flex items-center gap-1.5 text-xs text-error-600 dark:text-error-400"
+          >
+            <AppIcon :name="ICONS.alertTriangle" :size="13" />
+            La cantidad ingresada ({{ cantidadGas }}) excede el stock disponible ({{
+              stockGasDisponible
+            }}).
+          </p>
+
+          <!-- Info del balón seleccionado -->
+          <p
+            v-if="idBalon && balonGasInfo"
+            class="mt-2 flex items-center gap-1.5 text-xs text-brand-600 dark:text-brand-400"
+          >
+            <AppIcon :name="ICONS.info" :size="13" />
+            Balón seleccionado: <strong>{{ balonGasInfo.codigo }}</strong> — gas asociado:
+            {{ balonGasInfo.nombreProductoGas ?? 'Sin gas asociado' }}
+          </p>
+
+          <p
+            v-if="!idAlmacen"
+            class="mt-2 text-xs text-gray-500 dark:text-gray-400"
+          >
+            Selecciona el almacén de la orden: solo se ofrecen productos con stock y balones
+            disponibles en ese almacén.
+          </p>
+        </div>
+      </template>
+    </div>
+
+    <!-- Tablas: Balones y Productos -->
+    <div
+      class="grid grid-cols-1 gap-5"
+      :class="soloBalones ? 'lg:grid-cols-2' : 'lg:grid-cols-2'"
+    >
+      <section v-for="grupo in grupos" :key="grupo.tipo" class="min-w-0">
+        <div class="mb-2 flex items-center gap-2">
+          <AppIcon
+            :name="
+              grupo.tipo === 'BALON'
+                ? ICONS.cylinder
+                : grupo.tipo === 'GAS'
+                  ? ICONS.flame
+                  : ICONS.package
+            "
+            :size="14"
+            class="text-gray-400"
+          />
+          <h4
+            class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+          >
+            {{ grupo.titulo }}
+          </h4>
+          <span class="text-xs text-gray-400">{{ grupo.lineas.length }}</span>
+        </div>
+
+        <div
+          v-if="grupo.lineas.length"
+          class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700"
+        >
+          <table class="min-w-full text-sm">
+            <thead
+              class="bg-gray-50 text-left text-xs uppercase text-gray-500 dark:bg-white/[0.03] dark:text-gray-400"
+            >
+              <tr>
+                <th class="px-3 py-2 font-medium">
+                  {{
+                    grupo.tipo === 'BALON'
+                      ? 'Cilindro'
+                      : grupo.tipo === 'GAS'
+                        ? 'Producto de gas'
+                        : 'Producto'
+                  }}
+                </th>
+                <th class="px-3 py-2 font-medium">
+                  {{
+                    grupo.tipo === 'BALON'
+                      ? 'Tipo / almacén'
+                      : grupo.tipo === 'GAS'
+                        ? 'Cantidad / stock'
+                        : 'Cantidad'
+                  }}
+                </th>
+                <th v-if="!readonly" class="w-12 px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr
+                v-for="linea in grupo.lineas"
+                :key="linea.key"
+                class="transition-colors hover:bg-gray-50/60 dark:hover:bg-white/[0.02]"
+              >
+                <td class="px-3 py-2">
+                  <p class="font-medium text-gray-800 dark:text-white/90">{{ linea.titulo }}</p>
+                  <p v-if="linea.glosa" class="truncate text-xs italic text-gray-400">
+                    {{ linea.glosa }}
+                  </p>
+                </td>
+
+                <td class="px-3 py-2">
+                  <!-- BALON: badge + info -->
+                  <template v-if="grupo.tipo === 'BALON'">
+                    <AppBadge
+                      v-if="linea.badge"
+                      size="sm"
+                      variant="light"
+                      :color="linea.badge.color"
+                    >
+                      {{ linea.badge.texto }}
+                    </AppBadge>
+                    <p
+                      v-if="linea.subtitulo"
+                      class="truncate text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      {{ linea.subtitulo }}
+                    </p>
+                    <p
+                      v-if="mostrarCantidad(linea)"
+                      class="text-xs font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      {{ linea.cantidad }}
+                      <span v-if="linea.unidad" class="font-normal text-gray-400">
+                        {{ linea.unidad }}
+                      </span>
+                    </p>
+                  </template>
+
+                  <!-- GAS: cantidad + stock badge -->
+                  <template v-else-if="grupo.tipo === 'GAS'">
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="font-medium tabular-nums text-gray-800 dark:text-white/90"
+                      >
+                        {{ linea.cantidad }}
+                      </span>
+                      <span class="text-xs text-gray-400">{{ linea.unidad || 'und' }}</span>
+                      <AppBadge
+                        v-if="linea.stockDisponible != null && linea.stockDisponible > 0"
+                        size="sm"
+                        variant="light"
+                        :color="linea.cantidad > linea.stockDisponible ? 'error' : 'success'"
+                      >
+                        Stock: {{ linea.stockDisponible }}
+                      </AppBadge>
+                    </div>
+                    <p
+                      v-if="linea.subtitulo"
+                      class="truncate text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      {{ linea.subtitulo }}
+                    </p>
+                  </template>
+
+                  <!-- PRODUCTO: cantidad + unidad -->
+                  <template v-else>
+                    <span
+                      class="font-medium tabular-nums text-gray-800 dark:text-white/90"
+                    >
+                      {{ linea.cantidad }}
+                    </span>
+                    <span class="ml-1 text-xs text-gray-400">{{ linea.unidad || 'und' }}</span>
+                    <p
+                      v-if="linea.subtitulo"
+                      class="truncate text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      {{ linea.subtitulo }}
+                    </p>
+                  </template>
+                </td>
+
+                <td v-if="!readonly" class="px-3 py-2 text-right">
+                  <button
+                    v-if="linea.removible"
+                    type="button"
+                    title="Quitar línea"
+                    class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-300 text-gray-500 transition hover:border-error-300 hover:bg-error-50 hover:text-error-600 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-error-500/10"
+                    :disabled="disabled"
+                    @click="emit('quitar', linea.key)"
+                  >
+                    <AppIcon :name="ICONS.x" :size="14" />
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p
+          v-else
+          class="rounded-lg border border-dashed border-gray-300 py-5 text-center text-xs text-gray-400 dark:border-gray-700"
+        >
+          {{ grupo.vacio }}
+        </p>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -170,6 +386,7 @@ import type { BalonListFilters } from '@/modules/balones/cilindros/interfaces/ba
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import { useProductoDetailQuery } from '@/modules/productos/articulos/composables/useProductoDetailQuery'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type {
   DocSalidaLineaBorrador,
   DocSalidaLineaCard,
@@ -187,6 +404,11 @@ const props = withDefaults(
      * ahí y balones disponibles ahí. Sin almacén no se ofrece nada.
      */
     idAlmacen?: number | null
+    /**
+     * En recarga/retorno de planta lo que sale y vuelve son cilindros: ofrecer
+     * productos ahí solo invita a mezclar una salida de gas con el envase.
+     */
+    soloBalones?: boolean
     /** true mientras una mutación está en vuelo. */
     disabled?: boolean
     /** El documento ya no admite cambios (generado, anulado, o detalle de venta). */
@@ -196,6 +418,7 @@ const props = withDefaults(
   }>(),
   {
     idAlmacen: null,
+    soloBalones: false,
     disabled: false,
     readonly: false,
     vacioProductos: 'Sin productos',
@@ -208,20 +431,44 @@ const emit = defineEmits<{
   quitar: [key: string]
 }>()
 
-const grupos = computed(() => [
-  {
-    tipo: 'PRODUCTO' as const,
-    titulo: 'Productos',
-    vacio: props.vacioProductos,
-    lineas: props.lineas.filter((linea) => linea.tipo === 'PRODUCTO'),
-  },
-  {
-    tipo: 'BALON' as const,
+const grupos = computed(() => {
+  const items: {
+    tipo: 'PRODUCTO' | 'BALON' | 'GAS'
+    titulo: string
+    vacio: string
+    lineas: DocSalidaLineaCard[]
+  }[] = []
+
+  // Productos (siempre que existan, o si no es soloBalones)
+  if (!props.soloBalones || props.lineas.some((l) => l.tipo === 'PRODUCTO')) {
+    items.push({
+      tipo: 'PRODUCTO',
+      titulo: 'Productos',
+      vacio: props.vacioProductos,
+      lineas: props.lineas.filter((l) => l.tipo === 'PRODUCTO'),
+    })
+  }
+
+  // Gas (solo en RECARGA)
+  if (props.soloBalones && props.lineas.some((l) => l.tipo === 'GAS')) {
+    items.push({
+      tipo: 'GAS',
+      titulo: 'Gas',
+      vacio: 'Sin productos de gas',
+      lineas: props.lineas.filter((l) => l.tipo === 'GAS'),
+    })
+  }
+
+  // Balones (siempre al final)
+  items.push({
+    tipo: 'BALON',
     titulo: 'Balones',
     vacio: props.vacioBalones,
-    lineas: props.lineas.filter((linea) => linea.tipo === 'BALON'),
-  },
-])
+    lineas: props.lineas.filter((l) => l.tipo === 'BALON'),
+  })
+
+  return items
+})
 
 /**
  * Un balón suelto siempre es 1: mostrar "1" en la card es ruido. Se muestra
@@ -229,15 +476,27 @@ const grupos = computed(() => [
  * (el detalle de recarga en planta trae balón, producto y m³ en la misma línea).
  */
 function mostrarCantidad(linea: DocSalidaLineaCard) {
-  if (linea.tipo === 'PRODUCTO') return true
+  if (linea.tipo === 'PRODUCTO' || linea.tipo === 'GAS') return true
   return linea.cantidad !== 1 || Boolean(linea.unidad)
 }
 
-const modo = ref<'PRODUCTO' | 'BALON'>('PRODUCTO')
+const modo = ref<'PRODUCTO' | 'BALON'>(props.soloBalones ? 'BALON' : 'PRODUCTO')
+
+watch(
+  () => props.soloBalones,
+  (solo) => {
+    if (solo) modo.value = 'BALON'
+  },
+  { immediate: true },
+)
 const idProducto = ref<number | ''>('')
 const idBalon = ref<number | ''>('')
 const cantidad = ref<number | ''>('')
 const glosa = ref('')
+
+// ---- RECARGA: gas product ----
+const idProductoGas = ref<number | ''>('')
+const cantidadGas = ref<number | ''>('')
 
 // El detalle del producto se pide para poder pintar la card antes de que el
 // documento exista: en creación no hay doc_salida_detalle de donde leer nada.
@@ -245,6 +504,38 @@ const idProductoRef = computed(() =>
   idProducto.value === '' ? undefined : Number(idProducto.value),
 )
 const productoQuery = useProductoDetailQuery(idProductoRef)
+
+// ---- Stock del producto de gas seleccionado ----
+const gasProductosFilters = ref({
+  pagina: 1,
+  limite: 200,
+  esGas: true as boolean | undefined,
+  idAlmacen: undefined as number | undefined,
+})
+
+watch(
+  [() => props.idAlmacen, idProductoGas] as const,
+  ([idAlmacen, idProd]) => {
+    gasProductosFilters.value = {
+      pagina: 1,
+      limite: 200,
+      esGas: true,
+      idAlmacen: idAlmacen != null ? Number(idAlmacen) : undefined,
+    }
+    void idProd // reactive dependency
+  },
+  { immediate: true },
+)
+
+const gasProductosQuery = useProductosQuery(gasProductosFilters)
+
+const stockGasDisponible = computed(() => {
+  if (idProductoGas.value === '' || idProductoGas.value == null) return null
+  const productos = gasProductosQuery.data.value?.data
+  if (!Array.isArray(productos)) return null
+  const producto = productos.find((p) => p.id === Number(idProductoGas.value))
+  return producto?.stock_actual != null ? Number(producto.stock_actual) : null
+})
 
 const balonSearch = ref('')
 
@@ -295,6 +586,16 @@ const idsProductoUsados = computed(
     new Set(props.lineas.map((linea) => linea.idProducto).filter((id): id is number => id != null)),
 )
 
+const idsProductoGasUsados = computed(() => {
+  if (!props.soloBalones) return new Set<number>()
+  return new Set(
+    props.lineas
+      .filter((l) => l.tipo === 'GAS')
+      .map((l) => l.idProducto)
+      .filter((id): id is number => id != null),
+  )
+})
+
 const balonOptions = computed(() =>
   balones.value
     .filter((balon) => !idsBalonUsados.value.has(balon.id))
@@ -307,9 +608,36 @@ const balonOptions = computed(() =>
     })),
 )
 
+/** Info del gas del balón seleccionado (solo en modo RECARGA). */
+const balonGasInfo = computed(() => {
+  if (!idBalon.value) return null
+  const balon = balones.value.find((b) => b.id === Number(idBalon.value))
+  if (!balon) return null
+  return {
+    id: balon.id,
+    codigo: balon.codigo_balon,
+    idProductoGas: balon.id_producto_gas,
+    nombreProductoGas: balon.nombre_producto_gas ?? null,
+  }
+})
+
+// ---- Validación: agregar línea (no-RECARGA) ----
 const puedeAgregar = computed(() => {
-  if (modo.value === 'BALON') return idBalon.value !== ''
+  if (modo.value === 'BALON') {
+    return idBalon.value !== ''
+  }
   return idProducto.value !== '' && Boolean(cantidad.value) && Number(cantidad.value) > 0
+})
+
+// ---- Validación: agregar gas (RECARGA) ----
+const puedeAgregarGas = computed(() => {
+  if (idProductoGas.value === '' || idProductoGas.value == null) return false
+  if (!Boolean(cantidadGas.value) || Number(cantidadGas.value) <= 0) return false
+  // Bloquear si excede stock
+  if (stockGasDisponible.value != null && Number(cantidadGas.value) > stockGasDisponible.value) {
+    return false
+  }
+  return true
 })
 
 function limpiar() {
@@ -320,6 +648,51 @@ function limpiar() {
   balonSearch.value = ''
 }
 
+function limpiarGas() {
+  idProductoGas.value = ''
+  cantidadGas.value = ''
+}
+
+// ---- Agregar balón (RECARGA) ----
+function onAgregarBalon() {
+  if (!idBalon.value || disabled.value) return
+
+  const balon = balones.value.find((b) => b.id === Number(idBalon.value))
+  emit('agregar', {
+    idBalon: Number(idBalon.value),
+    cantidad: 1,
+    glosa: undefined,
+    codigoBalon: balon?.codigo_balon,
+    nombreTipoBalon: balon?.nombre_tipo_balon ?? undefined,
+    nombreAlmacenBalon: balon?.nombre_almacen ?? undefined,
+  })
+
+  idBalon.value = ''
+  balonSearch.value = ''
+}
+
+// ---- Agregar gas (RECARGA) ----
+function onAgregarGas() {
+  if (!puedeAgregarGas.value || disabled.value) return
+
+  const productos = gasProductosQuery.data.value?.data
+  const producto = Array.isArray(productos)
+    ? productos.find((p) => p.id === Number(idProductoGas.value))
+    : undefined
+
+  emit('agregar', {
+    idProducto: Number(idProductoGas.value),
+    cantidad: Number(cantidadGas.value),
+    glosa: undefined,
+    nombreProducto: producto?.nombre,
+    codigoProducto: producto?.codigo,
+    nombreUnidadMedida: producto?.nombre_unidad_medida,
+  })
+
+  limpiarGas()
+}
+
+// ---- Agregar línea (no-RECARGA) ----
 function onAgregar() {
   if (!puedeAgregar.value) return
 
@@ -339,7 +712,6 @@ function onAgregar() {
     const balon = balones.value.find((b) => b.id === Number(idBalon.value))
     emit('agregar', {
       idBalon: Number(idBalon.value),
-      // Un cilindro es una unidad física: la línea siempre vale 1.
       cantidad: 1,
       glosa: glosaLimpia,
       codigoBalon: balon?.codigo_balon,

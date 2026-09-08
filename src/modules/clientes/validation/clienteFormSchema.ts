@@ -4,6 +4,7 @@ import type { TypedSchema } from 'vee-validate'
 import { optionalEmail, optionalPhone, optionalString, requiredSelect } from '@/shared/validation'
 import { validationMessages as msg } from '@/shared/validation/messages'
 import { formatoDocumentoError } from '@/shared/validation/documento'
+import { esTipoDocumentoSinDocumento } from '@/modules/clientes/constants/tipoDocumento'
 
 export interface ClienteFormSchemaOptions {
   getTipoDocumentoNombre?: (id: string | number) => string | undefined
@@ -43,7 +44,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
         .trim()
         .test('required-documento', msg.required('El número de documento'), function (value) {
           const tipo = normalizeCatalogName(getTipoDocumentoNombre?.(this.parent.idTipoDocumento))
-          if (tipo === 'VSD') return true
+          if (esTipoDocumentoSinDocumento(tipo)) return true
           return !!value
         })
         .test('formato-documento', function (value) {
@@ -63,7 +64,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
         .transform((value, originalValue) => (originalValue === '' ? undefined : value))
         .test('required-tipo-cliente', msg.required('El tipo de cliente'), function (value) {
           const tipo = normalizeCatalogName(getTipoDocumentoNombre?.(this.parent.idTipoDocumento))
-          if (tipo === 'VSD') return true
+          if (esTipoDocumentoSinDocumento(tipo)) return true
           return value != null
         }),
       idTipoPersona: yup
@@ -71,7 +72,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
         .transform((value, originalValue) => (originalValue === '' ? undefined : value))
         .test('required-tipo-persona', msg.required('El tipo de persona'), function (value) {
           const tipo = normalizeCatalogName(getTipoDocumentoNombre?.(this.parent.idTipoDocumento))
-          if (tipo === 'VSD') return true
+          if (esTipoDocumentoSinDocumento(tipo)) return true
           return value != null
         }),
       razonSocial: optionalString()
@@ -86,7 +87,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
         .max(MAX.nombres, msg.maxLength('Los nombres', MAX.nombres))
         .test('required-vsd', msg.required('El nombre'), function (value) {
           const tipo = normalizeCatalogName(getTipoDocumentoNombre?.(this.parent.idTipoDocumento))
-          if (tipo === 'VSD' && !value?.trim()) return false
+          if (esTipoDocumentoSinDocumento(tipo) && !value?.trim()) return false
           return true
         }),
       apellidoPaterno: optionalString().max(
@@ -117,7 +118,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
           ? normalizeCatalogName(getTipoDocumentoNombre?.(idTipoDocumento))
           : undefined
       // Venta/cliente sin documento: basta con el nombre (regla required-vsd).
-      if (tipoDocumento === 'VSD') return true
+      if (esTipoDocumentoSinDocumento(tipoDocumento)) return true
 
       const idTipoPersona = values.idTipoPersona
       const tipoPersona =
@@ -134,7 +135,7 @@ export function createClienteFormSchema(options: ClienteFormSchemaOptions = {}) 
         return true
       }
 
-      if (tipoDocumento === 'DNI' || tipoDocumento === 'VSD' || isPersonaNatural(tipoPersona)) {
+      if (tipoDocumento === 'DNI' || esTipoDocumentoSinDocumento(tipoDocumento) || isPersonaNatural(tipoPersona)) {
         if (!nombres) {
           return this.createError({ path: 'nombres', message: msg.nombresRequeridos })
         }

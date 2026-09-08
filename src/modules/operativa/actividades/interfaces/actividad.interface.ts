@@ -7,6 +7,20 @@ export interface ActividadItem {
   cantidad: number
   id_balon?: number | null
   codigo_balon?: string | null
+  numero_serie_balon?: string | null
+  /** Estado de verificación por momento (Fase 6). */
+  id_estado_verificacion_salida?: number | null
+  estado_verificacion_salida?: string | null
+  observacion_salida?: string | null
+  id_estado_verificacion_llegada?: number | null
+  estado_verificacion_llegada?: string | null
+  observacion_llegada?: string | null
+  id_estado_producto_recogido?: number | null
+  estado_producto_recogido?: string | null
+  /** Detalle de origen: la entrega se carga por FK, no se re-teclea. */
+  id_doc_salida_detalle?: number | null
+  id_venta_detalle?: number | null
+  id_prestamo_detalle?: number | null
 }
 
 export interface Actividad {
@@ -114,4 +128,60 @@ export interface ActividadRepartoPrefill {
   choferLabel?: string | null
   descripcion?: string | null
   items?: ActividadItem[]
+}
+
+/** Fase 6: verificación por escaneo, recojos y ranking. */
+export type MomentoVerificacion = 'SALIDA' | 'LLEGADA'
+
+export interface VerificarActividadPayload {
+  momento: MomentoVerificacion
+  codigos: string[]
+  observacion?: string
+  idUsuarioAuditoria?: number
+}
+
+export interface VerificarActividadResult {
+  momento: MomentoVerificacion
+  coincidencias: number
+  noPertenecen: number
+  pendientes: number
+  completo: boolean
+}
+
+export interface CrearRecojoPrestamoPayload {
+  idPrestamo: number
+  fechaProgramada?: string
+  idTrabajadorResponsable?: number
+  observaciones?: string
+  idUsuarioAuditoria?: number
+}
+
+export interface GenerarRecojosPayload {
+  diasAntes?: number
+  idTrabajadorResponsable?: number
+  idUsuarioAuditoria?: number
+}
+
+export interface GenerarRecojosResult {
+  diasAntes: number
+  creadas: number
+  yaExistian: number
+  idActividades: number[]
+}
+
+export interface RankingActividadFila {
+  id_responsable: number | null
+  nombre: string
+  total: number
+  realizadas: number
+  pendientes: number
+  canceladas: number
+  repartos: number
+  recojos: number
+}
+
+export interface RankingActividadesFilters {
+  fechaDesde?: string
+  fechaHasta?: string
+  limite?: number
 }

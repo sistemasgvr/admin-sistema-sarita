@@ -456,13 +456,13 @@ Migración: `database_sql/migraciones/20260904_f3_caja_medios_pago_cuentas.sql` 
 
 - `bal_prestamo`: añadir `id_prestamo_origen` (FK a sí misma) para encadenar extensiones/renovaciones (apunte 1.c.ix).
 - `bal_prestamo_detalle`: distinguir rol del balón (`ENTREGADO` vs `GARANTIA`).
-- `bal_balon`: `origen_registro` = `EMPRESA` | `GARANTIA_CLIENTE`; `observacion` ya existe para el caso de PH vencido.
+- `bal_balon`: el origen del cilindro se resuelve con `id_propietario` = `EMPRESA` | `CLIENTE` | `GARANTIA_CLIENTE` (opción del catálogo `PropietarioBalon`, ya implementada en `bal_crear_balon`), **no** con una columna `origen_registro` — esa columna nunca se creó y el plan la nombraba por error. `observacion` ya existe para el caso de PH vencido.
 - Los flujos de préstamo/garantía-balón generan `inv_movimiento` (apunte 1.c.x) — habilitado por F1.
 - Vínculo garantía monetaria ↔ cuenta bancaria: ya cubierto en F3 (apunte 1.c.vi).
 
 #### API / Frontend
 
-- `PosCilindroPanel` / `PosRecargaPanel`: unificar la lógica para que "recarga a cliente" sea una línea de venta (apunte 1.c.iii); selección de balón + cantidad m³ + escaneo (apunte 1.c.v).
+- `PosRecargaPanel` (el plan mencionaba también `PosCilindroPanel`, que no existe en el código): unificar la lógica para que "recarga a cliente" sea una línea de venta (apunte 1.c.iii); selección de balón + cantidad m³ + escaneo (apunte 1.c.v).
 - Asistente de POS con selector de **modalidad de balón**: (a) balón de Sarita, (b) balón propio del cliente (no se registra), (c) deja balón en garantía y se lleva uno de Sarita, (d) cliente con préstamo vigente pide recarga → resolver caso 1.c.ix.
 - Reutilizar `usePosBalonSelect`, `usePosKitMedicinal`, `tipoPrestamoReglas`.
 
@@ -544,7 +544,7 @@ F7 (compras) para el punto de ingreso; F1 para el modelo de recarga.
 Verificado: `tsc --noEmit` (API) y `vue-tsc --noEmit` (frontend) compilan limpio; ESLint sin hallazgos en los módulos nuevos y tocados.
 
 Pendiente como seguimiento (depende de F7, no bloquea el cierre de F5):
-- El **paso de compra** ("crear/seleccionar el lote-protocolo al momento del ingreso") no está en el asistente de compras porque ese flujo se rehace en F7. La pieza que necesita ya existe: `POST /balones/lotes-protocolo/:id/aplicar-balones`, y el modal de detalle de la ficha tiene el botón "Marcar como ficha vigente" para los envases ya emparejados.
+- El **paso de compra** ("crear/seleccionar el lote-protocolo al momento del ingreso") no está en el asistente de compras. Se dejó fuera porque ese flujo se rehacía en F7; **con F7 cerrada (2026-09-08) este pendiente quedó desbloqueado** y puede construirse. La pieza que necesita ya existe: `POST /balones/lotes-protocolo/:id/aplicar-balones`, y el modal de detalle de la ficha tiene el botón "Marcar como ficha vigente" para los envases ya emparejados.
 - Las migraciones quedan escritas y **sin aplicar** a la BD.
 
 ---
@@ -590,6 +590,24 @@ Pendiente como seguimiento (depende de F7, no bloquea el cierre de F5):
 #### Dependencias
 F2 (documento de salida), F1 (movimientos de balón en recojo).
 
+#### Estado — 🟡 PARCIAL (2026-09-08)
+
+**BD.** Catálogos `EstadoVerificacionItem` (PENDIENTE / OK / CON_OBSERVACION), `TipoOrigenActividad` y `EstadoProductoRecogido`. `age_actividad` gana `id_prestamo` e `id_tipo_origen`; `age_actividad_item` gana el vínculo al detalle de origen (`id_doc_salida_detalle`, `id_venta_detalle`, `id_prestamo_detalle`), los dos estados de verificación con su observación, y el estado del producto recogido. Nueva tabla `age_actividad_verificacion` como bitácora de escaneos.
+
+**Funciones.** `age_registrar_verificacion` (escaneo por lotes en salida y llegada), `age_crear_recojo_prestamo` (idempotente por préstamo), `age_generar_recojos_por_vencer` (el job) y `age_ranking_usuarios`. `age_obtener_actividad` expone el estado de verificación por ítem y `age_crear_actividad` enlaza cada ítem con la línea de la orden de la que salió.
+
+**API.** `POST /actividades/:id/verificar`, `POST /actividades/recojo-prestamo`, `POST /actividades/generar-recojos` y `GET /actividades/ranking`. Permisos `actividades.verificar` y `actividades.ranking`.
+
+**Frontend.** Modal de verificación por escaneo con pestañas salida/llegada, cola de lecturas y estado por ítem; botón «Generar recojos» en la barra; panel de ranking por rango de fechas.
+
+Verificado contra DEV en transacciones revertidas: el job crea el recojo con sus cilindros pendientes y al repetirlo no duplica; el escaneo distingue coincidencias de códigos ajenos y deja la observación en el ítem correcto; los ítems de un reparto nacen con su `id_doc_salida_detalle` y en estado PENDIENTE.
+
+**Lo que falta para cerrarla:**
+- El job existe como función y como botón manual, pero **no está enganchado al planificador** de jobs de notificación. Hoy alguien tiene que pulsarlo.
+- `id_estado_producto_recogido` está en el esquema pero **ninguna pantalla lo escribe**: al recoger todavía no se registra si el cilindro volvió conforme o dañado (parte del apunte 8.b.i.4).
+- El selector de recojo **desde el listado de préstamos por vencer** no está: hoy se generan todos de una vez con el botón, o uno a uno por API.
+- La ventana del job quedó en 3 días y sin responsable asignado, como **valor por defecto provisional**: lo define la decisión 12, que sigue abierta.
+
 ---
 
 ### Fase 7 — Compras, gastos e inventario (consistencia de stock)
@@ -626,6 +644,23 @@ F2 (documento de salida), F1 (movimientos de balón en recojo).
 #### Dependencias
 F1, F2.
 
+#### Estado — ✅ COMPLETADA (2026-09-08)
+
+**3.a.i (recálculo de stock) ya estaba resuelto** antes de esta fase: `com_actualizar_compra_detalle` y `com_eliminar_compra_detalle` revierten con `inv_revertir_por_documento` y re-registran. Verificado contra DEV: `25 → crear(10) → 35 → editar a 4 → 29 → anular → 25`, con cero movimientos vivos.
+
+**4.b.iii — badge "Sin comprobante".** `com_listar_compras` expone `tiene_comprobante` (serie y número no vacíos) y acepta `p_sin_comprobante` para filtrar en ambos sentidos. La lista muestra el badge y un filtro *Comprobante: Sin / Con*.
+
+**4.b.iv — compra de cilindros.** Nuevo tipo `ENTRADA_COMPRA` (en `TipoMovBalon` **y** en `TipoMovInvUnificado`, que es contra la que valida `inv_registrar_movimiento`) y `com_registrar_balones_compra`: da de alta cada cilindro en `bal_balon` y registra **un movimiento por cilindro**. El gas sale del tipo de balón, y `cantidad_gas` genera además el INGRESO del producto. Endpoint `POST /compras/:id/balones` y modal "Registrar cilindros comprados" en el detalle.
+
+**4.b.ii — vínculo con la orden de planta.** Botón "Registrar como compra" en la orden de salida (planta externa, generada y sin compra vinculada) que abre el formulario con la orden precargada. El parámetro `p_id_recarga_planta` pasó a llamarse `p_id_doc_salida`, que es lo que realmente guarda desde F2.
+
+Reglas de negocio añadidas sobre la marcha, a pedido: una ficha ICP vigente bloquea registrar otra del mismo proveedor y gas; el gas no entra al stock si el retorno de los cilindros no está marcado (con aviso en el formulario); en órdenes de planta el detalle solo admite cilindros; y el N° de lote dejó de ser un input libre para salir de la ficha ICP.
+
+**Tres bugs encontrados al probar, y corregidos:**
+- `com_crear_compra` llamaba a `bal_actualizar_recarga_planta`, eliminada en F2: vincular una compra a una orden de planta fallaba con *"function does not exist"*. Ahora escribe sobre `doc_salida` y delega el retorno físico en `bal_finalizar_recarga_planta`.
+- `com_registrar_balones_compra` daba de alta el cilindro y luego fallaba el movimiento con `RETURN`, dejándolo suelto en el libro. Ahora levanta excepción.
+- La validación del retorno corría dentro del bucle, después de crear cilindros. Ahora valida el lote completo antes de tocar nada.
+
 ---
 
 ### Fase 8 — Ajustes finos y limpieza
@@ -638,6 +673,17 @@ F1, F2.
 | 7.a.i | **Clientes:** el tipo de documento "sin documento" se etiqueta **`SD`** (no `VSD`). Cambiar en `gen_lista_opciones` (seed) y en el frontend (`ClienteSinDocumentoModal`, constantes de tipo de documento, `PosClienteField`). |
 | 4.b.iii | (Si no se hizo en F7) badge "sin comprobante". |
 | 1.c.iv.7 | (Si no se hizo en F2) generación de PDF de orden en backend + botón en front. |
+
+#### Estado — 🟡 PARCIAL (2026-09-08)
+
+Los cuatro apuntes de la tabla están cerrados. **Lo que NO se hizo** es la
+revisión de consistencia visual/UX de los módulos que el PDF solo enumera (ver
+la sección de abajo): son ~20 pantallas y nadie las ha repasado. Mientras eso
+siga pendiente, la fase no está completa.
+
+- **2.a.i** ya estaba resuelto: el contenido del cilindro (lleno/vacío/semilleno) salió del modelo cuando se comprobó que `bal_balon` no tiene columna de contenido. No quedan columnas ni badge que quitar.
+- **7.a.i** — la opción de la lista `TipoDocumento` pasó de `VSD` a `SD`, con `esTipoDocumentoSinDocumento()` en `modules/clientes/constants/tipoDocumento.ts` para no repetir el literal. **No se tocó el `VSD` de `TipoComprobante`** ("venta sin documento"), que es un homónimo distinto. Al migrar, ningún cliente usaba el tipo.
+- **4.b.iii** y **1.c.iv.7** se cerraron en F7 y F2 respectivamente.
 
 #### Módulos que el PDF solo enumera (sin cambios de fondo)
 Se revisan por consistencia visual/UX, sin rediseño: Comprobantes, Ventas sin documento, Notas de crédito, Resumen diario, Guías de remisión (1.d–1.h); Recargas, Alquileres, Préstamos, Ruta Pueblos, Mantenimiento, Tipos de balón (2.c–2.j); Gastos de caja (3.b); Catálogo, Categorías, Subcategorías (4.a, 4.c, 4.d); Configuración completa (5); Gestión Empresa: Permisos y certificados, Trabajadores, Activos (6); Sueltos: Finanzas, Alertas (8.a, 8.c).
@@ -708,13 +754,13 @@ Confirmar antes o durante la fase indicada:
 6. ~~**(F3) Cuentas bancarias de la empresa.**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): relación N:M** (tabla `gen_cuenta_medio_pago`) y cuentas **compartidas entre sucursales** — la sucursal ya queda registrada en el movimiento que usa la cuenta.
 7. ~~**(F3) Resúmenes de caja.**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): todas las pestañas de caja** — Ventas en efectivo, Ventas otros medios, Ventas a crédito, Cobranzas, Garantías cobradas, Garantías devueltas, Gastos, Depósitos a banco y Observaciones. Las define el backend en `fin_obtener_libro_diario`, así que añadir una no obliga a tocar el frontend.
 8. **(F4) Escenario 1.c.ix sin stock.** La "extensión del préstamo anterior": ¿se mantiene el **mismo** número de préstamo con un detalle nuevo, o es un préstamo nuevo con `id_prestamo_origen`? Propuesta: préstamo nuevo encadenado.
-9. **(F4) Balón de garantía del cliente (1.c.viii).** ¿Se da de alta en `bal_balon` con propiedad del cliente, o en una tabla aparte de "balones en custodia"? Propuesta: `bal_balon` con `origen_registro = GARANTIA_CLIENTE`.
-10. **(F5) Ingreso manual vs. parser.** La ficha ICP llega en PDF. ¿Basta con adjuntar el PDF y teclear los campos clave, o se quiere OCR/parsing automático? Propuesta: adjuntar + teclear en esta fase.
-11. **(F5) Datos que "se actualizan en cada recarga".** ¿Todos los campos de la ficha, o solo lote, vencimiento y valoración? El resto (norma, método, presentación) suele ser constante por proveedor.
+9. ~~**(F4) Balón de garantía del cliente (1.c.viii).**~~ **RESUELTO EN EL CÓDIGO (verificado 2026-09-08):** se da de alta en `bal_balon` con `id_propietario = GARANTIA_CLIENTE` (opción del catálogo `PropietarioBalon`), conservando `id_cliente_propietario`. No hay tabla aparte ni columna `origen_registro`.
+10. ~~**(F5) Ingreso manual vs. parser.**~~ **RESUELTO E IMPLEMENTADO (2026-09-07): adjuntar + teclear.** El formulario precarga el formato impreso ICP-INS-011 v05 y acepta la lista de series pegada del PDF; no hay OCR.
+11. ~~**(F5) Datos que "se actualizan en cada recarga".**~~ **RESUELTO E IMPLEMENTADO (2026-09-07): la ficha completa.** Cada recarga referencia una ficha entera (`bal_lote_protocolo`), no campos sueltos; el historial por cilindro se deriva de esas referencias.
 12. **(F6) Auto-recojo (8.b.i.5).** ¿Cuántos días antes del vencimiento se crea la actividad? ¿A quién se asigna por defecto?
 13. **(F6) ¿`operativa/actividades` absorbe `balones/recojos`,** o siguen como módulos separados enlazados? El PDF los pone juntos bajo "Sueltos > Actividades".
 14. **(F8) Apunte 8.d ("…").** Queda un ítem abierto en el PDF. ¿Qué debe ir ahí?
-15. **(Orden de fases)** Propuesta: F1 → F2 → (F3 ∥ F4) → F7 → F5 → F6 → F8. ¿Se ajusta a tus prioridades de negocio? *(F1, F2 y F3 cerradas; el siguiente por esta propuesta es F4.)*
+15. **(Orden de fases)** Propuesta original: F1 → F2 → (F3 ∥ F4) → F7 → F5 → F6 → F8. *(Estado al 2026-09-08: **F1, F2, F3, F5 y F7 cerradas**; **F8 parcial**; **F4 y F6 abiertas**. El orden real acabó siendo F1 → F2 → F3 → F5 → F7 → F8, saltándose F4; queda pendiente decidir si sigue F4 o F6.)*
 16. ~~**(F4) ¿Qué significa "balón origen" ahora que el stock de gas es global?**~~ **RESUELTO E IMPLEMENTADO (2026-09-03): solo trazabilidad.** Ver "Balón origen" más abajo.
 
 ---

@@ -56,6 +56,13 @@
         <p class="font-medium text-gray-800 dark:text-white/90">
           {{ row.nombre_cliente ?? row.nombre_proveedor ?? '—' }}
         </p>
+        <!-- En planta externa el proveedor es el destinatario del documento. -->
+        <p
+          v-if="!row.nombre_cliente && row.nombre_proveedor && esPlantaExterna(row)"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
+          Destinatario (planta externa)
+        </p>
         <p v-if="row.detalle_desde_venta" class="text-xs text-gray-500 dark:text-gray-400">
           Venta {{ row.serie_venta }}-{{ row.numero_venta }}
         </p>
@@ -82,6 +89,10 @@
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </router-link>
+          <AppActionMenu
+            :items="accionesDeFila(row)"
+            :execute="(key) => onAccion(key as DocSalidaAccion, row)"
+          />
         </div>
       </template>
 
@@ -94,14 +105,76 @@
         />
       </template>
     </AppTable>
+
+    <!--
+      Los modales son los mismos del detalle. El documento completo se pide solo
+      cuando se abre una acción: la fila del listado no trae el detalle.
+    -->
+    <DireccionEntregaModal
+      v-if="documentoSeleccionado"
+      v-model="direccionModalOpen"
+      :id-doc-salida="documentoSeleccionado.id"
+      :id-cliente="documentoSeleccionado.id_cliente"
+    />
+    <ConvertirGreModal v-model="greModalOpen" :documento="documentoSeleccionado" />
+    <FinalizarRecargaModal v-model="retornoModalOpen" :documento="documentoSeleccionado" />
+    <LoteProtocoloFormModal
+      v-model="loteModalOpen"
+      mode="create"
+      :balones-preset="balonesPreset"
+      :id-producto-gas-preset="gasUnicoSeleccionado"
+    />
+
+    <AppModal v-model="anularModalOpen" title="Anular documento" size="sm">
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        Esto revierte el inventario que este documento haya movido por su cuenta (no aplica a
+        lo que ya movió la venta de origen).
+      </p>
+      <AppInput v-model="anularMotivo" label="Motivo" class="mt-4" />
+      <template #footer>
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
+          @click="anularModalOpen = false"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-70"
+          :disabled="anularMutation.isPending.value"
+          @click="onConfirmarAnular"
+        >
+          {{ anularMutation.isPending.value ? 'Anulando...' : 'Anular' }}
+        </button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { useDocumentoSalidaCatalogosQuery, useDocumentosSalidaQuery } from '../composables/useDocumentosSalidaQuery'
+import {
+  useDocumentoSalidaCatalogosQuery,
+  useDocumentoSalidaQuery,
+  useDocumentosSalidaQuery,
+} from '../composables/useDocumentosSalidaQuery'
+import {
+  useAnularDocSalidaMutation,
+  useGenerarDocSalidaMutation,
+} from '../composables/useDocumentoSalidaMutations'
+import {
+  useDocSalidaAcciones,
+  type DocSalidaAccion,
+  type DocSalidaAccionesFuente,
+} from '../composables/useDocSalidaAcciones'
+import { documentosSalidaService } from '../services/documentos-salida.service'
+import ConvertirGreModal from '../components/ConvertirGreModal.vue'
+import DireccionEntregaModal from '../components/DireccionEntregaModal.vue'
+import FinalizarRecargaModal from '../components/FinalizarRecargaModal.vue'
+import LoteProtocoloFormModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloFormModal.vue'
 import type {
   CodigoTipoOrdenSalida,
   DocumentoSalidaListFilters,
@@ -109,7 +182,17 @@ import type {
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
-import { AppBadge, AppListToolbar, AppPagination, AppTable } from '@/shared/components'
+import {
+  AppActionMenu,
+  AppBadge,
+  AppInput,
+  AppListToolbar,
+  AppModal,
+  AppPagination,
+  AppTable,
+} from '@/shared/components'
+import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -118,6 +201,8 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const breadcrumbItems = [{ label: 'Documentos de salida' }]
+
+const router = useRouter()
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -138,6 +223,109 @@ const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number }
 const clientesQuery = useClientesQuery(clientesFilters)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR))
+
+// ---- Acciones de fila ----
+// La fila del listado no trae el detalle: al elegir una acción se pide el
+// documento completo y recién ahí se abre el modal, que es el mismo del detalle.
+const idSeleccionado = ref<number | null>(null)
+const documentoQuery = useDocumentoSalidaQuery(idSeleccionado)
+const documentoSeleccionado = computed(() => documentoQuery.data.value ?? null)
+
+const direccionModalOpen = ref(false)
+const greModalOpen = ref(false)
+const retornoModalOpen = ref(false)
+const loteModalOpen = ref(false)
+const anularModalOpen = ref(false)
+const anularMotivo = ref('')
+
+const generarMutation = useGenerarDocSalidaMutation()
+const anularMutation = useAnularDocSalidaMutation()
+
+const filaActiva = ref<DocSalidaAccionesFuente | null>(null)
+const { accionesMenu } = useDocSalidaAcciones(filaActiva)
+
+function accionesDeFila(row: DocSalidaAccionesFuente): ActionMenuItem[] {
+  filaActiva.value = row
+  return accionesMenu.value
+}
+
+const balonesDelSeleccionado = computed(
+  () => (documentoSeleccionado.value?.detalle ?? []).filter((linea) => linea.id_balon != null),
+)
+
+const balonesPreset = computed(() =>
+  balonesDelSeleccionado.value.map((linea) => ({
+    idBalon: linea.id_balon as number,
+    codigoBalon: linea.codigo_balon ?? '',
+    nombreTipoBalon: linea.nombre_tipo_balon,
+    numeroSerie: linea.numero_serie_balon,
+  })),
+)
+
+/** Una ficha ICP cubre un solo gas: solo aplica si todos los cilindros coinciden. */
+const gasUnicoSeleccionado = computed(() => {
+  const balones = balonesDelSeleccionado.value
+  if (!balones.length) return null
+  const primero = balones[0].id_producto_gas_balon
+  if (primero == null) return null
+  return balones.every((b) => b.id_producto_gas_balon === primero) ? primero : null
+})
+
+const esPlantaExterna = (row: DocSalidaAccionesFuente) =>
+  row.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA' ||
+  row.nombre_tipo_orden === 'RETORNO_PLANTA_EXTERNA'
+
+async function onAccion(accion: DocSalidaAccion, row: DocSalidaAccionesFuente) {
+  if (accion === 'ver') {
+    void router.push({ name: 'admin-documentos-salida-editar', params: { id: row.id } })
+    return
+  }
+
+  if (accion === 'generar') {
+    await generarMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: authStore.user?.id })
+    return
+  }
+
+  if (accion === 'pdf') {
+    try {
+      const blob = await documentosSalidaService.obtenerPdf(row.id)
+      window.open(URL.createObjectURL(blob), '_blank')
+      toastSuccess('PDF generado')
+    } catch (error) {
+      toastApiError(error, 'No se pudo generar el PDF')
+    }
+    return
+  }
+
+  // El resto necesita el documento completo para poblar su modal.
+  idSeleccionado.value = row.id
+  await documentoQuery.refetch()
+
+  // Los datos de traslado se editan en el propio detalle, no en un modal suelto.
+  if (accion === 'traslado') {
+    void router.push({ name: 'admin-documentos-salida-editar', params: { id: row.id } })
+  }
+  if (accion === 'direccion') direccionModalOpen.value = true
+  if (accion === 'gre') greModalOpen.value = true
+  if (accion === 'retorno') retornoModalOpen.value = true
+  if (accion === 'lote') loteModalOpen.value = true
+  if (accion === 'emitir') {
+    void router.push({ name: 'admin-documentos-salida-editar', params: { id: row.id } })
+  }
+  if (accion === 'anular') {
+    anularMotivo.value = ''
+    anularModalOpen.value = true
+  }
+}
+
+async function onConfirmarAnular() {
+  if (!documentoSeleccionado.value) return
+  await anularMutation.mutateAsync({
+    id: documentoSeleccionado.value.id,
+    payload: { motivo: anularMotivo.value || undefined, idUsuarioAuditoria: authStore.user?.id },
+  })
+  anularModalOpen.value = false
+}
 
 const isLoading = computed(() => listQuery.isFetching.value)
 const rows = computed(() => listQuery.data.value?.data ?? [])
@@ -240,7 +428,7 @@ const columns: TableColumn[] = [
   { key: 'nombre_estado_ciclo', label: 'Estado' },
   { key: 'estado_sunat', label: 'SUNAT' },
   { key: 'fecha', label: 'Fecha' },
-  { key: 'contraparte', label: 'Cliente / Proveedor' },
+  { key: 'contraparte', label: 'Cliente / Destinatario' },
   { key: 'almacen', label: 'Almacén' },
   { key: 'total_items', label: 'Ítems', align: 'right' },
 ]

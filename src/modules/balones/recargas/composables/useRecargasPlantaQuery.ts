@@ -45,6 +45,12 @@ function mapDetalle(d: DocumentoSalida['detalle'][number]): RecargaPlantaDetalle
     id_movimiento_recarga: null,
     observacion: d.glosa,
     nombre_estado_balon: null,
+    // Datos del cilindro que expone doc_obtener_salida: con ellos la compra
+    // decide si puede pedir ficha ICP y precarga el modal sin re-teclear.
+    nombre_tipo_balon: d.nombre_tipo_balon ?? null,
+    numero_serie_balon: d.numero_serie_balon ?? null,
+    id_producto_gas_balon: d.id_producto_gas_balon ?? null,
+    nombre_producto_gas_balon: d.nombre_producto_gas_balon ?? null,
   }
 }
 

@@ -282,6 +282,8 @@ export const PermisoBanderas = {
   ACTIVIDADES_CREAR: 'actividades.crear',
   ACTIVIDADES_EDITAR: 'actividades.editar',
   ACTIVIDADES_ELIMINAR: 'actividades.eliminar',
+  ACTIVIDADES_VERIFICAR: 'actividades.verificar',
+  ACTIVIDADES_RANKING: 'actividades.ranking',
 
   COMPRAS_LISTAR: 'compras.listar',
   COMPRAS_VER: 'compras.ver',

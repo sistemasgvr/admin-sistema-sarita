@@ -88,6 +88,10 @@
         </div>
 
         <DocSalidaLineasEditor
+          :solo-balones="
+            form.codigoTipoOrden === 'RECARGA_PLANTA_EXTERNA' ||
+            form.codigoTipoOrden === 'RETORNO_PLANTA_EXTERNA'
+          "
           :id-almacen="form.idAlmacen === '' ? null : Number(form.idAlmacen)"
           :lineas="lineasBorradorCards"
           :disabled="createMutation.isPending.value || guardandoLineas"
@@ -219,8 +223,14 @@
                     documento.nombre_cliente
                   }}</span>
                 </div>
+                <!--
+                  En recarga/retorno de planta externa la carga va (o vuelve) del
+                  proveedor: él ES el destinatario del documento, no un tercero.
+                -->
                 <div v-if="documento.nombre_proveedor">
-                  <span class="block text-[11px] text-gray-400">Proveedor</span>
+                  <span class="block text-[11px] text-gray-400">
+                    {{ isRecargaPlanta ? 'Destinatario (planta externa)' : 'Proveedor' }}
+                  </span>
                   <span class="font-semibold text-gray-800 dark:text-white/90">{{
                     documento.nombre_proveedor
                   }}</span>
@@ -287,12 +297,32 @@
             </div>
           </div>
 
+          <!--
+            Con el documento ya generado o emitido casi todo lo que queda son
+            hechos consumados. Se muestran como badges: leer un estado no debería
+            costar lo mismo que buscar la acción que todavía se puede ejecutar.
+          -->
+          <div
+            v-if="hitosDelDocumento.length"
+            class="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4 dark:border-gray-800"
+          >
+            <AppBadge
+              v-for="hito in hitosDelDocumento"
+              :key="hito.texto"
+              size="sm"
+              variant="light"
+              :color="hito.color"
+            >
+              {{ hito.texto }}
+            </AppBadge>
+          </div>
+
           <div
             class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800"
           >
             <div class="flex flex-wrap items-center gap-2.5">
               <button
-                v-if="documento.nombre_estado_ciclo === 'BORRADOR'"
+                v-if="puedeGenerar"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-theme-xs transition hover:bg-brand-600 disabled:opacity-70"
                 :disabled="generarMutation.isPending.value"
@@ -301,6 +331,19 @@
                 <AppIcon :name="ICONS.check" :size="14" />
                 Generar
               </button>
+              <!--
+                El camino natural: estás viendo la orden que volvió de planta y
+                registras su factura desde acá, con proveedor, almacén y
+                cilindros ya resueltos por el id de la orden.
+              -->
+              <RouterLink
+                v-if="puedeRegistrarCompra"
+                :to="{ name: 'admin-compras-nuevo', query: { idRecargaPlanta: String(documento.id) } }"
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+              >
+                <AppIcon :name="ICONS.receipt" :size="14" />
+                Registrar como compra
+              </RouterLink>
               <button
                 v-if="puedeAsociarLote"
                 type="button"
@@ -311,16 +354,7 @@
                 Registrar lote y protocolo
               </button>
               <button
-                v-if="documento.nombre_estado_ciclo !== 'ANULADA' && !documento.emitido_sunat"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-                @click="trasladoModalOpen = true"
-              >
-                <AppIcon :name="ICONS.truck" :size="14" />
-                Datos de traslado
-              </button>
-              <button
-                v-if="canConvertirGre"
+                v-if="puedeConvertirGre"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-theme-xs transition hover:bg-brand-600"
                 @click="greModalOpen = true"
@@ -363,7 +397,7 @@
                 Consultar estado
               </button>
               <button
-                v-if="isRecargaPlanta && documento.nombre_estado_ciclo !== 'ANULADA'"
+                v-if="puedeRegistrarRetorno"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 @click="finalizarModalOpen = true"
@@ -526,6 +560,8 @@
         </div>
       </div>
 
+      <DatosTrasladoSection :documento="documento" :editable="puedeEditarDatos" />
+
       <!-- Detalle -->
       <div
         class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.02]"
@@ -575,6 +611,7 @@
 
         <div class="px-6 py-5">
           <DocSalidaLineasEditor
+            :solo-balones="isRecargaPlanta"
             :id-almacen="documento.id_almacen"
             :lineas="lineasDocumentoCards"
             :readonly="!puedeEditarDetalle"
@@ -722,8 +759,6 @@
       </div>
     </div>
 
-    <DatosTrasladoModal v-model="trasladoModalOpen" :documento="documento" />
-
     <LoteProtocoloFormModal
       v-model="loteModalOpen"
       mode="create"
@@ -755,52 +790,7 @@
     <ConvertirGreModal v-if="documento" v-model="greModalOpen" :documento="documento" />
 
     <!-- Modal: Finalizar recarga -->
-    <AppModal v-model="finalizarModalOpen" title="Registrar retorno de recarga" size="md">
-      <div class="grid grid-cols-1 gap-4">
-        <AppDatePicker
-          v-model="finalizarForm.fechaLlegadaAlmacen"
-          label="Fecha de llegada al almacén"
-          required
-        />
-        <AppSelect
-          v-model="finalizarForm.idAlmacen"
-          label="Almacén de retorno"
-          required
-          :options="almacenOptions"
-        />
-        <AppInput v-model="finalizarForm.lote" label="N° de lote" />
-        <AppDatePicker v-model="finalizarForm.fechaVencimientoLote" label="Vencimiento del lote" />
-        <AppDatePicker
-          v-model="finalizarForm.fechaPruebaHidrostatica"
-          label="Prueba hidrostática"
-        />
-        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <input v-model="finalizarForm.guardarBalonesAlmacen" type="checkbox" class="h-4 w-4" />
-          Actualizar custodia de los balones (DISPONIBLE) y registrar entrada de gas
-        </label>
-      </div>
-      <template #footer>
-        <button
-          type="button"
-          class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
-          @click="finalizarModalOpen = false"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
-          :disabled="
-            !finalizarForm.fechaLlegadaAlmacen ||
-            !finalizarForm.idAlmacen ||
-            finalizarMutation.isPending.value
-          "
-          @click="onFinalizarRecarga"
-        >
-          Guardar
-        </button>
-      </template>
-    </AppModal>
+    <FinalizarRecargaModal v-model="finalizarModalOpen" :documento="documento" />
 
     <!-- Modal: Anular -->
     <AppModal v-model="anularModalOpen" title="Anular documento" size="sm">
@@ -837,7 +827,9 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import LoteProtocoloFormModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloFormModal.vue'
-import DatosTrasladoModal from '../components/DatosTrasladoModal.vue'
+import { useDocSalidaAcciones } from '../composables/useDocSalidaAcciones'
+import DatosTrasladoSection from '../components/DatosTrasladoSection.vue'
+import FinalizarRecargaModal from '../components/FinalizarRecargaModal.vue'
 import DireccionEntregaModal from '../components/DireccionEntregaModal.vue'
 import ConvertirGreModal from '../components/ConvertirGreModal.vue'
 import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
@@ -853,7 +845,6 @@ import {
   useCreateDocumentoSalidaMutation,
   useEliminarDetalleDocSalidaMutation,
   useEmitirSunatDocSalidaMutation,
-  useFinalizarRecargaMutation,
   useGenerarDocSalidaMutation,
 } from '../composables/useDocumentoSalidaMutations'
 import { documentosSalidaService } from '../services/documentos-salida.service'
@@ -983,24 +974,35 @@ const lineasBorrador = ref<DocSalidaLineaBorrador[]>([])
 const guardandoLineas = ref(false)
 
 const lineasBorradorCards = computed<DocSalidaLineaCard[]>(() =>
-  lineasBorrador.value.map((linea, index) => ({
-    key: String(index),
-    tipo: linea.idBalon ? 'BALON' : 'PRODUCTO',
-    titulo: linea.idBalon ? (linea.codigoBalon ?? 'Balón') : (linea.nombreProducto ?? 'Producto'),
-    subtitulo: linea.idBalon ? (linea.nombreAlmacenBalon ?? undefined) : linea.codigoProducto,
-    badge: linea.nombreTipoBalon
-      ? { texto: linea.nombreTipoBalon, color: tipoBalonBadgeColor(linea.nombreTipoBalon) }
-      : undefined,
-    cantidad: linea.cantidad,
-    unidad: linea.nombreUnidadMedida,
-    glosa: linea.glosa,
-    removible: true,
-    idProducto: linea.idProducto,
-    idBalon: linea.idBalon,
-  })),
+  lineasBorrador.value.map((linea, index) => {
+    // En RECARGA, los productos de gas se muestran como tipo GAS
+    const esGasRecarga =
+      isRecargaPlanta.value && linea.idProducto && !linea.idBalon
+
+    return {
+      key: String(index),
+      tipo: linea.idBalon ? 'BALON' : esGasRecarga ? 'GAS' : 'PRODUCTO',
+      titulo: linea.idBalon
+        ? (linea.codigoBalon ?? 'Balón')
+        : (linea.nombreProducto ?? 'Producto'),
+      subtitulo: linea.idBalon
+        ? (linea.nombreAlmacenBalon ?? undefined)
+        : linea.codigoProducto,
+      badge: linea.nombreTipoBalon
+        ? { texto: linea.nombreTipoBalon, color: tipoBalonBadgeColor(linea.nombreTipoBalon) }
+        : undefined,
+      cantidad: linea.cantidad,
+      unidad: linea.nombreUnidadMedida,
+      glosa: linea.glosa,
+      removible: true,
+      idProducto: linea.idProducto,
+      idBalon: linea.idBalon,
+    }
+  }),
 )
 
 function onAgregarLineaBorrador(linea: DocSalidaLineaBorrador) {
+  // El editor emite líneas independientes: balón (cantidad=1) y gas por separado.
   lineasBorrador.value = [...lineasBorrador.value, linea]
 }
 
@@ -1074,8 +1076,66 @@ async function submitHeader() {
 const documentoQuery = useDocumentoSalidaQuery(documentoId)
 const documento = computed(() => documentoQuery.data.value)
 
+/**
+ * Estados que ya no admiten acción: se leen como badges en vez de ocupar sitio
+ * entre los botones. La barra de acciones queda solo con lo que aún se puede hacer.
+ */
+/**
+ * La factura del proveedor se registra desde la orden que la origina. Solo tiene
+ * sentido en planta externa, una vez generada (antes no hay nada que facturar) y
+ * mientras no exista ya una compra vinculada.
+ */
+const puedeRegistrarCompra = computed(
+  () =>
+    isRecargaPlanta.value &&
+    documento.value?.nombre_estado_ciclo !== 'BORRADOR' &&
+    documento.value?.nombre_estado_ciclo !== 'ANULADA' &&
+    !documento.value?.id_comprobante_compra &&
+    authStore.hasPermission(PermisoBanderas.COMPRAS_CREAR),
+)
+
+const hitosDelDocumento = computed(() => {
+  const doc = documento.value
+  if (!doc) return []
+
+  const hitos: { texto: string; color: 'success' | 'warning' | 'neutral' | 'error' }[] = []
+
+  if (doc.nombre_estado_ciclo === 'GENERADA' || doc.nombre_estado_ciclo === 'EMITIDA_SUNAT') {
+    hitos.push({ texto: 'Inventario movido', color: 'success' })
+  }
+  if (doc.nombre_estado_ciclo === 'ANULADA') {
+    hitos.push({ texto: 'Anulada', color: 'error' })
+  }
+  if (doc.serie && doc.numero_sunat) {
+    hitos.push({ texto: `Guía ${doc.serie}-${doc.numero_sunat}`, color: 'neutral' })
+  }
+  if (doc.emitido_sunat) {
+    hitos.push({ texto: 'Emitida a SUNAT', color: 'success' })
+  } else if (doc.ticket_sunat) {
+    hitos.push({ texto: 'Ticket SUNAT pendiente', color: 'warning' })
+  }
+  if (doc.fecha_llegada_almacen) {
+    hitos.push({ texto: `Retorno registrado ${doc.fecha_llegada_almacen}`, color: 'success' })
+  }
+  if (doc.id_comprobante_compra) {
+    hitos.push({ texto: 'Facturada en compras', color: 'neutral' })
+  }
+
+  return hitos
+})
+
+const {
+  puedeGenerar,
+  puedeEditarDatos,
+  puedeRegistrarRetorno,
+  puedeConvertirGre,
+  puedeAsociarLote: puedeRegistrarLote,
+} = useDocSalidaAcciones(documento)
+
 const isRecargaPlanta = computed(
   () =>
+    form.codigoTipoOrden === 'RECARGA_PLANTA_EXTERNA' ||
+    form.codigoTipoOrden === 'RETORNO_PLANTA_EXTERNA' ||
     documento.value?.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA' ||
     documento.value?.nombre_tipo_orden === 'RETORNO_PLANTA_EXTERNA',
 )
@@ -1085,44 +1145,44 @@ const puedeEditarDetalle = computed(
     documento.value?.nombre_estado_ciclo === 'BORRADOR' && !documento.value?.detalle_desde_venta,
 )
 
-const canConvertirGre = computed(
-  () =>
-    documento.value != null &&
-    documento.value.nombre_estado_ciclo !== 'BORRADOR' &&
-    documento.value.nombre_estado_ciclo !== 'ANULADA' &&
-    !documento.value.emitido_sunat,
-)
+
 
 // ---- Detalle del documento ya creado ----
 // La clave lleva el origen porque el detalle une dos tablas: los ítems de la
 // venta y los cilindros del préstamo, cuyos ids se pueden repetir entre sí.
 const lineasDocumentoCards = computed<DocSalidaLineaCard[]>(() =>
-  (documento.value?.detalle ?? []).map((linea) => ({
-    key: `${linea.origen_detalle}-${linea.id}`,
-    tipo: linea.id_balon ? 'BALON' : 'PRODUCTO',
-    titulo: linea.nombre_producto || linea.codigo_balon || linea.descripcion || linea.glosa || '—',
-    subtitulo: [
-      linea.id_balon ? linea.nombre_almacen_balon : linea.codigo_producto,
-      linea.origen_detalle === 'PRESTAMO' ? 'Préstamo' : null,
-    ]
-      .filter(Boolean)
-      .join(' · '),
-    badge: linea.nombre_tipo_balon
-      ? { texto: linea.nombre_tipo_balon, color: tipoBalonBadgeColor(linea.nombre_tipo_balon) }
-      : undefined,
-    cantidad: Number(linea.cantidad),
-    unidad: linea.nombre_unidad_medida ?? undefined,
-    glosa: linea.glosa ?? undefined,
-    // Las líneas que vienen de la venta o del préstamo no se editan aquí.
-    removible: linea.origen_detalle === 'PROPIO',
-    idProducto: linea.id_producto,
-    idBalon: linea.id_balon,
-  })),
+  (documento.value?.detalle ?? []).map((linea) => {
+    // En RECARGA, los productos sin balón son productos de gas
+    const esGasRecarga = isRecargaPlanta.value && linea.id_producto && !linea.id_balon
+
+    return {
+      key: `${linea.origen_detalle}-${linea.id}`,
+      tipo: linea.id_balon ? 'BALON' : esGasRecarga ? 'GAS' : 'PRODUCTO',
+      titulo: linea.nombre_producto || linea.codigo_balon || linea.descripcion || linea.glosa || '—',
+      subtitulo: [
+        linea.id_balon ? linea.nombre_almacen_balon : linea.codigo_producto,
+        linea.origen_detalle === 'PRESTAMO' ? 'Préstamo' : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      badge: linea.nombre_tipo_balon
+        ? { texto: linea.nombre_tipo_balon, color: tipoBalonBadgeColor(linea.nombre_tipo_balon) }
+        : undefined,
+      cantidad: Number(linea.cantidad),
+      unidad: linea.nombre_unidad_medida ?? undefined,
+      glosa: linea.glosa ?? undefined,
+      // Las líneas que vienen de la venta o del préstamo no se editan aquí.
+      removible: linea.origen_detalle === 'PROPIO',
+      idProducto: linea.id_producto,
+      idBalon: linea.id_balon,
+    }
+  }),
 )
 
 const agregarDetalleMutation = useAgregarDetalleDocSalidaMutation()
 async function onAgregarLinea(linea: DocSalidaLineaBorrador) {
   if (!documento.value) return
+  // El editor emite líneas independientes: balón (cantidad=1) y gas por separado.
   await agregarDetalleMutation.mutateAsync({
     id: documento.value.id,
     payload: {
@@ -1233,36 +1293,6 @@ async function onConsultarEstado() {
 
 // ---- Finalizar recarga (retorno de planta) ----
 const finalizarModalOpen = ref(false)
-const finalizarForm = reactive({
-  fechaLlegadaAlmacen: '',
-  idAlmacen: '' as number | '',
-  lote: '',
-  fechaVencimientoLote: '',
-  fechaPruebaHidrostatica: '',
-  guardarBalonesAlmacen: true,
-})
-watch(finalizarModalOpen, (open) => {
-  if (open && documento.value) {
-    finalizarForm.idAlmacen = documento.value.id_almacen
-  }
-})
-const finalizarMutation = useFinalizarRecargaMutation()
-async function onFinalizarRecarga() {
-  if (!documento.value || !finalizarForm.fechaLlegadaAlmacen || !finalizarForm.idAlmacen) return
-  await finalizarMutation.mutateAsync({
-    id: documento.value.id,
-    payload: {
-      fechaLlegadaAlmacen: finalizarForm.fechaLlegadaAlmacen,
-      idAlmacen: Number(finalizarForm.idAlmacen),
-      lote: finalizarForm.lote || undefined,
-      fechaVencimientoLote: finalizarForm.fechaVencimientoLote || undefined,
-      fechaPruebaHidrostatica: finalizarForm.fechaPruebaHidrostatica || undefined,
-      guardarBalonesAlmacen: finalizarForm.guardarBalonesAlmacen,
-      idUsuarioAuditoria: idUsuarioAuditoria.value,
-    },
-  })
-  finalizarModalOpen.value = false
-}
 
 // ---- Lote y protocolo (ficha ICP) ----
 const loteModalOpen = ref(false)
@@ -1297,15 +1327,13 @@ const gasUnicoDelDocumento = computed(() => {
   return { id: primero, nombre: balones[0].nombre_producto_gas_balon ?? null }
 })
 
+// Además de la regla común, en el detalle se exige que los cilindros compartan
+// gas: es acá donde se conoce el detalle completo del documento.
 const puedeAsociarLote = computed(
-  () =>
-    gasUnicoDelDocumento.value != null &&
-    documento.value?.nombre_estado_ciclo !== 'ANULADA' &&
-    authStore.hasPermission(PermisoBanderas.LOTES_PROTOCOLO_EDITAR),
+  () => puedeRegistrarLote.value && gasUnicoDelDocumento.value != null,
 )
 
-// ---- Datos de traslado / dirección de entrega ----
-const trasladoModalOpen = ref(false)
+// ---- Dirección de entrega ----
 const direccionModalOpen = ref(false)
 
 // Si venimos de "Crear orden de salida" desde una venta, abrir el modal de

@@ -11,6 +11,20 @@
         @filter-change="onFiltersChange"
       >
         <template #actions>
+          <!--
+            Programa de una vez los recojos de los préstamos vencidos o por
+            vencer. Es idempotente: si ya tienen recojo abierto, no duplica.
+          -->
+          <button
+            v-if="canCreate"
+            type="button"
+            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            :disabled="generarRecojosMutation.isPending.value"
+            @click="generarRecojos"
+          >
+            <AppIcon :name="ICONS.truck" :size="18" />
+            {{ generarRecojosMutation.isPending.value ? 'Generando...' : 'Generar recojos' }}
+          </button>
           <AppExportExcelButton :on-export="exportarExcel" />
           <button
             v-if="canCreate"
@@ -194,6 +208,8 @@
     </div>
 
     <div v-show="activeTab === 'colaboradores'">
+      <ActividadesRankingPanel v-if="canRanking" class="mb-5" />
+
       <ActividadesColaboradoresPanel
         :rows="rankingRows"
         :loading="isLoadingRanking"
@@ -210,6 +226,11 @@
     />
 
     <ActividadDetailModal v-model="detailModalOpen" :actividad="actividadToView" />
+
+    <ActividadVerificacionModal
+      v-model="verificacionModalOpen"
+      :actividad="actividadAVerificar"
+    />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -254,14 +275,18 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import ActividadDetailModal from '@/modules/operativa/actividades/components/ActividadDetailModal.vue'
+import ActividadVerificacionModal from '@/modules/operativa/actividades/components/ActividadVerificacionModal.vue'
 import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
 import ActividadesCalendar from '@/modules/operativa/actividades/components/ActividadesCalendar.vue'
 import ActividadesColaboradoresPanel from '@/modules/operativa/actividades/components/ActividadesColaboradoresPanel.vue'
+import ActividadesRankingPanel from '@/modules/operativa/actividades/components/ActividadesRankingPanel.vue'
 import {
   useCancelarActividadMutation,
   useDeleteActividadMutation,
   useMarcarActividadRealizadaMutation,
+  useGenerarRecojosMutation,
 } from '@/modules/operativa/actividades/composables/useActividadMutations'
+import { useActividadDetailQuery } from '@/modules/operativa/actividades/composables/useActividadDetailQuery'
 import { useActividadesProximasQuery } from '@/modules/operativa/actividades/composables/useActividadesProximasQuery'
 import { useActividadesQuery } from '@/modules/operativa/actividades/composables/useActividadesQuery'
 import type {
@@ -364,6 +389,10 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVID
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_ELIMINAR))
+const canVerificar = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VERIFICAR),
+)
+const canRanking = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_RANKING))
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({})
@@ -674,6 +703,13 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
       hidden: !canEdit.value || cerrada,
     },
     {
+      key: 'verificar',
+      label: 'Verificar por escaneo',
+      icon: ICONS.scanBarcode,
+      disabled: busy,
+      hidden: !canVerificar.value,
+    },
+    {
       key: 'delete',
       label: 'Eliminar',
       icon: ICONS.trash,
@@ -688,6 +724,7 @@ function onActionSelect(key: string, row: Actividad) {
   if (key === 'edit') openEditModal(row)
   if (key === 'realizada') void marcarRealizada(row)
   if (key === 'cancelar') void cancelarActividad(row)
+  if (key === 'verificar') void abrirVerificacion(row)
   if (key === 'delete') openDeleteModal(row)
 }
 
@@ -708,6 +745,32 @@ const openEditModal = (actividad: Actividad) => {
 const openDetailModal = (actividad: Actividad) => {
   actividadToView.value = actividad
   detailModalOpen.value = true
+}
+
+// ---- Verificación por escaneo (Fase 6) ----
+// La fila del listado no trae los ítems: se pide el detalle al abrir.
+const verificacionModalOpen = ref(false)
+const idActividadAVerificar = ref<number | null>(null)
+const verificarQueryHabilitada = computed(() => idActividadAVerificar.value != null)
+const actividadVerificarQuery = useActividadDetailQuery(
+  computed(() => idActividadAVerificar.value ?? undefined),
+  verificarQueryHabilitada,
+)
+const actividadAVerificar = computed(() => actividadVerificarQuery.data.value ?? null)
+
+const abrirVerificacion = async (actividad: Actividad) => {
+  idActividadAVerificar.value = actividad.id
+  await actividadVerificarQuery.refetch()
+  verificacionModalOpen.value = true
+}
+
+// ---- Generación de recojos por vencimiento (Fase 6) ----
+const generarRecojosMutation = useGenerarRecojosMutation()
+
+const generarRecojos = async () => {
+  await generarRecojosMutation.mutateAsync({
+    idUsuarioAuditoria: authStore.user?.id,
+  })
 }
 
 const openDeleteModal = (actividad: Actividad) => {

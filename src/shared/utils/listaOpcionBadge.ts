@@ -132,7 +132,9 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   '09': 'neutral',
   '31': 'primary',
   NV: 'neutral',
+  // VSD = venta sin documento (comprobante); SD = cliente sin documento.
   VSD: 'neutral',
+  SD: 'neutral',
   NOTA_VENTA: 'neutral',
   NO_APLICA: 'neutral',
   BAJA: 'error',
