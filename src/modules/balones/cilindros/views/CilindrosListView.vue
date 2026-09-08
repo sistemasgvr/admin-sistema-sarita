@@ -295,7 +295,7 @@
     <AppModal
       v-model="restaurarModalOpen"
       title="Reactivar cilindro"
-      subtitle="El cilindro volverá a estado EN_ALMACEN y quedará en el historial."
+      subtitle="El cilindro volverá a estado DISPONIBLE y quedará en el historial."
       size="sm"
     >
       <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -571,20 +571,6 @@ const resumenCards = computed<SummaryCardItem[]>(() => [
     icon: ICONS.warehouse,
     iconClass: 'bg-brand-100 text-brand-600 dark:bg-brand-500/20 dark:text-brand-300',
   },
-  {
-    key: 'llenos',
-    label: 'Llenos (almacén)',
-    value: String(resumen.value.llenos ?? 0),
-    icon: ICONS.droplet,
-    iconClass: 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300',
-  },
-  {
-    key: 'vacios',
-    label: 'Vacíos (almacén)',
-    value: String(resumen.value.vacios ?? 0),
-    icon: ICONS.archive,
-    iconClass: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
-  },
 ])
 
 const phBadgeLabel = (estado: EstadoPh) => {
@@ -618,8 +604,8 @@ const estadoBalonNombre = (balon: Balon) => balon.nombre_estado_balon?.toUpperCa
 
 // La disponibilidad la decide motivoNoDisponible (utils/disponibilidadBalon),
 // la MISMA regla que usa el selector del POS. Antes aquí se comparaba contra
-// ['EN_ALMACEN', ''], un estado que ya no existe en el catálogo: cualquier
-// cilindro DISPONIBLE fallaba la comprobación y el aviso salía siempre.
+// ['EN_ALMACEN', ''], el nombre viejo del estado (hoy 'DISPONIBLE'): cualquier
+// cilindro disponible fallaba la comprobación y el aviso salía siempre.
 // Tampoco depende del propietario: un envase de cliente que tenemos en custodia
 // es entregable, y de hecho el POS ya lo ofrece.
 const esNoDisponible = (balon: Balon) => motivoNoDisponible(balon) !== null

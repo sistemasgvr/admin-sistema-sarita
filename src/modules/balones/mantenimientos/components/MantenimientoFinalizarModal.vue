@@ -32,7 +32,7 @@
             {{ etiquetaItem }}
           </span>
           reingresa a
-          <span class="font-medium text-gray-800 dark:text-white/90">EN_ALMACEN</span>.
+          <span class="font-medium text-gray-800 dark:text-white/90">DISPONIBLE</span>.
         </template>
       </p>
 

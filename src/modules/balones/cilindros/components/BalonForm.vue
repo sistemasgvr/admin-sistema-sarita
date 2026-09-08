@@ -370,7 +370,7 @@
       :id-lista="ListaIds.ESTADO_BALON"
       title="Nuevo estado del balón"
       subtitle="Úsalo solo si el flujo operativo lo requiere."
-      nombre-placeholder="Ej. EN_ALMACEN"
+      nombre-placeholder="Ej. DISPONIBLE"
       @saved="onEstadoBalonCreated"
     />
     <ListaOpcionFormModal
@@ -913,8 +913,8 @@ function aplicarEstadoSegunPropietario() {
     if (refCliente) idReferencia.value = refCliente
     return
   }
-  const enAlmacen = idOpcionLista(estadoBalonQuery.data.value, 'EN_ALMACEN')
-  if (enAlmacen) idEstadoBalon.value = enAlmacen
+  const disponible = idOpcionLista(estadoBalonQuery.data.value, 'DISPONIBLE')
+  if (disponible) idEstadoBalon.value = disponible
   const refAlmacen = idOpcionLista(referenciaQuery.data.value, 'ALMACEN')
   if (refAlmacen) idReferencia.value = refAlmacen
 }
@@ -928,7 +928,7 @@ function aplicarDefaultsCreacion() {
   }
   if (!idEstadoBalon.value) {
     idEstadoBalon.value =
-      props.preset?.idEstadoBalon ?? idOpcionLista(estadoBalonQuery.data.value, 'EN_ALMACEN')
+      props.preset?.idEstadoBalon ?? idOpcionLista(estadoBalonQuery.data.value, 'DISPONIBLE')
   }
   if (!idMarcaCilindro.value) {
     idMarcaCilindro.value = idOpcionLista(marcaQuery.data.value, 'BTIC-JP')

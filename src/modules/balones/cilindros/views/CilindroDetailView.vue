@@ -428,6 +428,8 @@
           <p v-else class="text-sm text-gray-400">Sin renovaciones registradas.</p>
         </DetailSectionCard>
 
+        <BalonLoteProtocoloSection v-if="balonIdRef" :id-balon="balonIdRef" />
+
         <DetailSectionCard
           v-if="balon?.observacion"
           title="Observación"
@@ -446,6 +448,7 @@ import { computed, toRef } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
+import BalonLoteProtocoloSection from '@/modules/balones/lotes-protocolo/components/BalonLoteProtocoloSection.vue'
 import { BALONES_HUB_PATH } from '@/modules/balones/config/balones-breadcrumb'
 import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import {

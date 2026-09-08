@@ -1,7 +1,6 @@
 <template>
   <AppModal v-model="open" title="Convertir a guía de remisión" size="xl" @close="handleClose">
     <div class="space-y-5">
-      <!-- Datos SUNAT -->
       <section class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
         <h4 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           <AppIcon :name="ICONS.fileText" :size="14" />
@@ -34,8 +33,6 @@
           <AppInput v-model.number="form.numeroBultos" type="number" label="N° bultos" />
         </div>
       </section>
-
-      <!-- Origen / Llegada -->
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
           <h4 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -82,8 +79,6 @@
           </div>
         </section>
       </div>
-
-      <!-- Transporte -->
       <section class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
         <h4 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           <AppIcon :name="ICONS.truck" :size="14" />
@@ -153,11 +148,9 @@
         </div>
       </section>
     </div>
-
     <ChoferFormModal v-model="choferModalOpen" mode="create" @saved="onChoferCreado" />
     <VehiculoFormModal v-model="vehiculoModalOpen" mode="create" @saved="onVehiculoCreado" />
     <ClienteFormModal v-model="transportistaModalOpen" mode="create" @saved="onTransportistaCreado" />
-
     <template #footer>
       <button
         type="button"
@@ -267,10 +260,6 @@ function usarDireccionEntrega() {
     llegadaPresetting.value = false
   })
 }
-
-// ---- Chofer / Vehículo / Transportista — buscadores que golpean el
-// endpoint de listar al abrir el select (SearchableSelect llama a
-// search-fn en @focus, ver src/shared/components/form/SearchableSelect.vue) ----
 const choferModalOpen = ref(false)
 const vehiculoModalOpen = ref(false)
 const transportistaModalOpen = ref(false)
@@ -325,7 +314,7 @@ watch(open, (isOpen) => {
   form.idTipoGuiaRemision = d.id_tipo_guia_remision ?? ''
   form.idMotivoTraslado = d.id_motivo_traslado ?? ''
   form.idModalidadTraslado = d.id_modalidad_traslado ?? ''
-  form.direccionOrigen = d.direccion_origen ?? ''
+  form.direccionOrigen = d.direccion_origen ?? d.direccion_almacen ?? ''
   form.direccionLlegada = d.direccion_llegada ?? d.direccion_entrega ?? ''
   form.pesoBruto = d.peso_bruto ?? undefined
   form.numeroBultos = d.numero_bultos ?? undefined
@@ -337,10 +326,17 @@ watch(open, (isOpen) => {
   transportistaLabel.value = d.nombre_transportista ?? null
 
   origenPresetting.value = true
-  origenPaisId.value = d.id_pais_origen ?? undefined
-  origenDeptoId.value = d.id_departamento_origen ?? undefined
-  origenProvId.value = d.id_provincia_origen ?? undefined
-  form.idDistritoOrigen = d.id_distrito_origen ?? undefined
+  if (d.id_distrito_origen) {
+    origenPaisId.value = d.id_pais_origen ?? undefined
+    origenDeptoId.value = d.id_departamento_origen ?? undefined
+    origenProvId.value = d.id_provincia_origen ?? undefined
+    form.idDistritoOrigen = d.id_distrito_origen
+  } else {
+    origenPaisId.value = d.id_pais_almacen ?? undefined
+    origenDeptoId.value = d.id_departamento_almacen ?? undefined
+    origenProvId.value = d.id_provincia_almacen ?? undefined
+    form.idDistritoOrigen = d.id_distrito_almacen ?? undefined
+  }
 
   llegadaPresetting.value = true
   if (d.id_distrito_llegada) {
@@ -349,8 +345,6 @@ watch(open, (isOpen) => {
     llegadaProvId.value = d.id_provincia_llegada ?? undefined
     form.idDistritoLlegada = d.id_distrito_llegada
   } else if (d.id_distrito_entrega) {
-    // Precarga automática: si el documento ya tiene dirección de entrega y
-    // todavía no se convirtió a GRE, usarla como punto de llegada por defecto.
     llegadaPaisId.value = d.id_pais_entrega ?? undefined
     llegadaDeptoId.value = d.id_departamento_entrega ?? undefined
     llegadaProvId.value = d.id_provincia_entrega ?? undefined

@@ -369,6 +369,7 @@ Módulo principal de caja/ventas.
 | `/admin/balones/prestamos` | admin-balones-prestamos | PrestamosListView | prestamos_balon.listar |
 | `/admin/balones/alquileres` | admin-balones-alquileres | AlquileresListView | alquileres_balon.listar |
 | `/admin/balones/mantenimientos` | admin-balones-mantenimientos | MantenimientosListView | mantenimientos_balon.listar |
+| `/admin/balones/lotes-protocolo` | admin-balones-lotes-protocolo | LotesProtocoloListView | lotes_protocolo.listar |
 | `/admin/ventas/pos` | admin-ventas-pos | PosView | comprobantes.crear |
 | `/admin/ventas/comprobantes` | admin-ventas-comprobantes | ComprobantesListView | comprobantes.listar |
 | `/admin/ventas/notas-credito` | admin-ventas-notas-credito | NotasCreditoListView | comprobantes.listar |

@@ -531,6 +531,22 @@ F1 (movimientos), F3 (garantía↔cuenta). Idealmente después de F2 para poder 
 #### Dependencias
 F7 (compras) para el punto de ingreso; F1 para el modelo de recarga.
 
+#### Estado — ✅ COMPLETADA (2026-09-07)
+
+**BD** (`20260907_f5_lote_protocolo.sql`): `bal_lote_protocolo` (cabecera ICP con los campos del Anexo A), `bal_lote_protocolo_prueba` (filas de "DATOS DE ANÁLISIS") y `bal_lote_protocolo_envase` (relación de envases aprobados, con `id_balon` resuelto contra `bal_balon.numero_serie`). El historial por recarga se apoya en `id_lote_protocolo` en **`bal_movimiento_recarga` y en `doc_salida`** — la Fase 2 movió la recarga en planta externa a `doc_salida`, así que la ficha tenía que engancharse en ambos. `bal_balon.id_lote_protocolo_vigente` guarda la última aplicada. Índice único parcial sobre `(numero_lote, id_proveedor)` para fichas activas.
+
+**Funciones** (`funciones/lotes-protocolo/`, migración `20260907_f5_lote_protocolo_funciones.sql`): CRUD (`bal_listar_lotes_protocolo`, `bal_obtener_lote_protocolo`, `bal_crear_lote_protocolo`, `bal_actualizar_lote_protocolo`, `bal_eliminar_lote_protocolo`), más `bal_reemplazar_lote_protocolo_detalle` (punto único de escritura de pruebas y envases, compartido por crear/actualizar), `bal_aplicar_lote_protocolo_balones` (marca la ficha como vigente en un conjunto de cilindros) y `bal_historial_lote_protocolo_balon` (deriva el historial de las recargas de los dos orígenes). Se recrearon cuatro funciones existentes: `bal_crear_movimiento_recarga`, `bal_actualizar_movimiento_recarga` y `bal_finalizar_recarga_planta` aceptan `p_id_lote_protocolo` **al final de la firma** (para no romper las llamadas posicionales que ya existían) y aplican la ficha a los cilindros; `bal_obtener_balon` expone la ficha vigente.
+
+**API**: módulo `lotes-protocolo` (controller/logic/model/dto/interfaces) sobre `/balones/lotes-protocolo`, con `POST /:id/aplicar-balones` y `GET /balon/:idBalon/historial` (la ficha vigente viaja en `meta.resumen`). Permisos `lotes_protocolo.*` en `PermisoBanderas`, seeds y rol Supervisor. `idLoteProtocolo` propagado a `FinalizarRecargaDto` y a los DTOs de movimientos de recarga.
+
+**Frontend**: módulo `balones/lotes-protocolo` (lista + modal de ficha + modal de detalle con envases y PDF firmado + `LoteProtocoloSelectField`), sección "Lote y protocolo" con historial en el detalle del cilindro, y selector de ficha en el modal "Registrar retorno de recarga" de `doc_salida`. El formulario precarga el formato impreso ICP-INS-011 v05 (`constants/icpFicha.ts`) y acepta la lista de series pegada del PDF.
+
+Verificado: `tsc --noEmit` (API) y `vue-tsc --noEmit` (frontend) compilan limpio; ESLint sin hallazgos en los módulos nuevos y tocados.
+
+Pendiente como seguimiento (depende de F7, no bloquea el cierre de F5):
+- El **paso de compra** ("crear/seleccionar el lote-protocolo al momento del ingreso") no está en el asistente de compras porque ese flujo se rehace en F7. La pieza que necesita ya existe: `POST /balones/lotes-protocolo/:id/aplicar-balones`, y el modal de detalle de la ficha tiene el botón "Marcar como ficha vigente" para los envases ya emparejados.
+- Las migraciones quedan escritas y **sin aplicar** a la BD.
+
 ---
 
 ### Fase 6 — Actividades: entregas y recojos con verificación por escaneo + ranking

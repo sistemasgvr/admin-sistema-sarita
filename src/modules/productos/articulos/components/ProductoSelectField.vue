@@ -104,6 +104,12 @@ const props = withDefaults(
      * Aparecen deshabilitados en el listado.
      */
     bloquearSinStock?: boolean
+    /**
+     * Ids que no se ofrecen (p. ej. productos ya agregados al detalle de un
+     * documento). El seleccionado actual nunca se oculta: si no, al editar se
+     * quedaría con el campo en blanco.
+     */
+    excluirIds?: (number | string)[]
     /** Botón de pistola / código de barras (default true). */
     canScan?: boolean
   }>(),
@@ -302,8 +308,16 @@ const productosCatalogo = computed(() => {
   return filtrarProductosCatalogo(rows)
 })
 
+const idsExcluidos = computed(() => new Set((props.excluirIds ?? []).map(String)))
+
 const queryOptions = computed<SelectOption[]>(() =>
-  productosCatalogo.value.map((producto) => productoToSelectOption(producto)),
+  productosCatalogo.value
+    .filter(
+      (producto) =>
+        String(producto.id) === String(model.value) ||
+        !idsExcluidos.value.has(String(producto.id)),
+    )
+    .map((producto) => productoToSelectOption(producto)),
 )
 
 watch(

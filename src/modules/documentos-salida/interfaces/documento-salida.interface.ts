@@ -1,3 +1,5 @@
+import type { BadgeColor } from '@/shared/interfaces/badge.interface'
+
 // Espejo de api-sistema-sarita/src/modules/documentos-salida/interfaces/documento-salida.interface.ts
 
 export type CodigoTipoOrdenSalida =
@@ -17,6 +19,14 @@ export interface DocumentoSalidaDetalle {
   descripcion: string | null
   id_balon: number | null
   codigo_balon: string | null
+  /** Solo en el detalle propio: sirven para la card del cilindro. */
+  nombre_tipo_balon?: string | null
+  nombre_almacen_balon?: string | null
+  /** Gas del cilindro: una ficha de lote y protocolo cubre un solo gas. */
+  id_producto_gas_balon?: number | null
+  nombre_producto_gas_balon?: string | null
+  numero_serie_balon?: string | null
+  id_lote_protocolo_vigente?: number | null
   cantidad: number
   id_unidad_medida: number | null
   nombre_unidad_medida: string | null
@@ -59,6 +69,13 @@ export interface DocumentoSalida {
   nombre_sucursal: string | null
   id_almacen: number
   nombre_almacen: string | null
+  /** Ubicación del almacén: origen por defecto de la guía de remisión. */
+  direccion_almacen?: string | null
+  id_distrito_almacen?: number | null
+  id_provincia_almacen?: number | null
+  id_departamento_almacen?: number | null
+  id_pais_almacen?: number | null
+  ubigeo_almacen?: string | null
   id_cliente: number | null
   nombre_cliente: string | null
   id_destinatario: number | null
@@ -68,6 +85,7 @@ export interface DocumentoSalida {
   documento_destinatario: string | null
   id_proveedor: number | null
   nombre_proveedor: string | null
+  documento_proveedor?: string | null
   fecha: string
   fecha_traslado: string | null
   fecha_retorno: string | null
@@ -162,10 +180,18 @@ export interface DocumentoSalidaListItem {
   nombre_sucursal: string | null
   id_almacen: number
   nombre_almacen: string | null
+  /** Ubicación del almacén: origen por defecto de la guía de remisión. */
+  direccion_almacen?: string | null
+  id_distrito_almacen?: number | null
+  id_provincia_almacen?: number | null
+  id_departamento_almacen?: number | null
+  id_pais_almacen?: number | null
+  ubigeo_almacen?: string | null
   id_cliente: number | null
   nombre_cliente: string | null
   id_proveedor: number | null
   nombre_proveedor: string | null
+  documento_proveedor?: string | null
   id_comprobante_compra: number | null
   lote: string | null
   observaciones: string | null
@@ -225,6 +251,9 @@ export interface CreateDocumentoSalidaPayload {
   fecha?: string
   fechaTraslado?: string
   observaciones?: string
+  /** Se piden al crear y la guía de remisión los reutiliza. */
+  pesoBruto?: number
+  numeroBultos?: number
   idUsuarioAuditoria?: number
 }
 
@@ -272,7 +301,18 @@ export interface FinalizarRecargaPayload {
   lote?: string
   fechaVencimientoLote?: string
   fechaPruebaHidrostatica?: string
+  /** Ficha ICP con la que volvieron los cilindros (Fase 5). */
+  idLoteProtocolo?: number
   guardarBalonesAlmacen?: boolean
+  idUsuarioAuditoria?: number
+}
+
+export interface ActualizarTrasladoPayload {
+  idMotivoTraslado?: number
+  idModalidadTraslado?: number
+  pesoBruto?: number
+  numeroBultos?: number
+  idUnidadMedida?: number
   idUsuarioAuditoria?: number
 }
 
@@ -310,4 +350,42 @@ export interface EmitirDocumentoSalidaResponse {
 
 export interface SiguienteNumeroDocumentoSalidaResponse {
   numero: string
+}
+
+/**
+ * Línea que el usuario está armando en el editor de cards.
+ *
+ * Los campos `nombre*`/`codigo*` son solo para pintar la card: al crear una
+ * orden nueva las líneas viven en memoria hasta que el documento existe, y
+ * entonces no hay `doc_salida_detalle` de donde leer esos textos.
+ */
+export interface DocSalidaLineaBorrador {
+  idProducto?: number
+  idBalon?: number
+  cantidad: number
+  glosa?: string
+  nombreProducto?: string
+  codigoProducto?: string
+  nombreUnidadMedida?: string
+  codigoBalon?: string
+  nombreTipoBalon?: string
+  nombreAlmacenBalon?: string
+}
+
+/** Forma normalizada que consume el editor, venga de un borrador o de la BD. */
+export interface DocSalidaLineaCard {
+  key: string
+  tipo: 'PRODUCTO' | 'BALON'
+  titulo: string
+  subtitulo?: string
+  /** Badge del tipo de balón, con color estable por tipo. */
+  badge?: { texto: string; color: BadgeColor }
+  cantidad: number
+  unidad?: string
+  glosa?: string
+  /** Las líneas que vienen de una venta no se pueden quitar desde aquí. */
+  removible: boolean
+  /** Para que el selector no vuelva a ofrecer lo que ya está en el detalle. */
+  idProducto?: number | null
+  idBalon?: number | null
 }

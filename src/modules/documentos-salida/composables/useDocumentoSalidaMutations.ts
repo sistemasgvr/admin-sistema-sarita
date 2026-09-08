@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { documentosSalidaQueryKeys } from '@/modules/documentos-salida/constants/documentosSalidaQueryKeys'
 import { documentosSalidaService } from '@/modules/documentos-salida/services/documentos-salida.service'
 import type {
+  ActualizarTrasladoPayload,
   AnularDocumentoSalidaPayload,
   ConvertirGrePayload,
   CreateDocumentoSalidaDetallePayload,
@@ -78,6 +79,19 @@ export function useEliminarDetalleDocSalidaMutation() {
       invalidateAll(queryClient, variables.idDocSalida)
     },
     onError: (error) => toastApiError(error, 'No se pudo quitar la línea'),
+  })
+}
+
+export function useActualizarTrasladoMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ActualizarTrasladoPayload }) =>
+      documentosSalidaService.actualizarTraslado(id, payload),
+    onSuccess: (_data, variables) => {
+      invalidateAll(queryClient, variables.id)
+      toastSuccess('Datos de traslado actualizados')
+    },
+    onError: (error) => toastApiError(error, 'No se pudieron actualizar los datos de traslado'),
   })
 }
 

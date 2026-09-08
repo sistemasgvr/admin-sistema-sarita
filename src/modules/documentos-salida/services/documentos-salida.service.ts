@@ -1,5 +1,6 @@
-import { apiGet, apiGetBlob, apiGetPaginated, apiPost, apiDelete } from '@/shared/api/apiClient'
+import { apiGet, apiGetBlob, apiGetPaginated, apiPatch, apiPost, apiDelete } from '@/shared/api/apiClient'
 import type {
+  ActualizarTrasladoPayload,
   AnularDocumentoSalidaPayload,
   ConvertirGrePayload,
   CreateDocumentoSalidaDetallePayload,
@@ -41,6 +42,10 @@ export const documentosSalidaService = {
 
   crearDesdeVenta(payload: CrearDesdeVentaPayload) {
     return apiPost<DocumentoSalida>('/documentos-salida/crear-desde-venta', payload)
+  },
+
+  actualizarTraslado(id: number, payload: ActualizarTrasladoPayload) {
+    return apiPatch<DocumentoSalida>(`/documentos-salida/${id}/traslado`, payload)
   },
 
   agregarDetalle(id: number, payload: CreateDocumentoSalidaDetallePayload) {

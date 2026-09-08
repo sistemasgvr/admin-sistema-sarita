@@ -49,7 +49,7 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   RETORNO_LIMA: 'neutral',
 
   // EstadoBalon (también en balonEstadoBadge)
-  EN_ALMACEN: 'success',
+  DISPONIBLE: 'success',
   POR_RECOGER: 'warning',
   PRESTADO_CLIENTE: 'primary',
   EN_RUTA_LIMA: 'neutral',

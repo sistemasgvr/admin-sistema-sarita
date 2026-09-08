@@ -119,6 +119,9 @@ export const balonesRoutes: RouteRecordRaw[] = [
         name: 'admin-balones-recargas-planta-editar',
         redirect: (to) => ({ name: 'admin-documentos-salida-editar', params: to.params }),
       },
+      // Fuera del menú a propósito: la recarga en mostrador se hace desde el POS
+      // y la de planta externa vive en Documentos de salida (Fase 2). La ruta se
+      // conserva para los enlaces que ya apuntan acá.
       {
         path: 'recargas',
         name: 'admin-balones-recargas',
@@ -161,6 +164,20 @@ export const balonesRoutes: RouteRecordRaw[] = [
           title: 'Préstamos',
           module: 'balones',
           permission: PermisoBanderas.PRESTAMOS_BALON_LISTAR,
+        },
+      },
+      // Fuera del menú a propósito: la ficha se registra desde "Asociar lote y
+      // protocolo" en la orden de salida, que es donde están los cilindros. La
+      // ruta se conserva para entrar al listado por URL cuando haga falta.
+      {
+        path: 'lotes-protocolo',
+        name: 'admin-balones-lotes-protocolo',
+        component: () =>
+          import('@/modules/balones/lotes-protocolo/views/LotesProtocoloListView.vue'),
+        meta: {
+          title: 'Lote y protocolo',
+          module: 'balones',
+          permission: PermisoBanderas.LOTES_PROTOCOLO_LISTAR,
         },
       },
       {

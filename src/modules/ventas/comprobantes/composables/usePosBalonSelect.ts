@@ -150,7 +150,7 @@ export function usePosBalonSelect(options: {
   const propietarioQuery = useListaOpcionesQuery(ref(ListaIds.PROPIETARIO_BALON))
 
   const estadoEnAlmacenId = computed(() =>
-    estadoBalonQuery.data.value?.find((item) => item.nombre === 'EN_ALMACEN')?.id,
+    estadoBalonQuery.data.value?.find((item) => item.nombre === 'DISPONIBLE')?.id,
   )
 
   const propietarioClienteId = computed(() =>
@@ -242,7 +242,7 @@ export function usePosBalonSelect(options: {
     // campo lo pide con `incluirCustodiaCliente`, también los de propietario
     // CLIENTE que tenemos en custodia: los dejados en garantía son stock
     // utilizable mientras estén con nosotros. Lo que delimita "tenerlos" es el
-    // filtro de la consulta (estado EN_ALMACEN + almacén), no de quién es el
+    // filtro de la consulta (estado DISPONIBLE + almacén), no de quién es el
     // envase: uno que está en casa del cliente queda en EN_PODER_CLIENTE /
     // PRESTADO_CLIENTE y no aparece.
     //

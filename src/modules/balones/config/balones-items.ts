@@ -23,15 +23,6 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
-    key: 'recargas',
-    title: 'Recargas',
-    path: '/admin/balones/recargas',
-    icon: ICONS.flame,
-    permission: PermisoBanderas.MOVIMIENTOS_RECARGA_LISTAR,
-    phase: 4,
-    implemented: true,
-  },
-  {
     key: 'alquileres',
     title: 'Alquileres',
     path: '/admin/balones/alquileres',

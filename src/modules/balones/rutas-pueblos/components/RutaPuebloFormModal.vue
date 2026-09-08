@@ -157,10 +157,10 @@ function emptyLinea(): Linea {
 const lineas = ref<Linea[]>([emptyLinea()])
 
 const estadoEnAlmacenId = computed(
-  () => estadoBalonQuery.data.value?.find((item) => item.nombre === 'EN_ALMACEN')?.id,
+  () => estadoBalonQuery.data.value?.find((item) => item.nombre === 'DISPONIBLE')?.id,
 )
 
-/** Solo cilindros EN_ALMACEN del almacén elegido (no prestados / en ruta / recarga, etc.). */
+/** Solo cilindros DISPONIBLE del almacén elegido (no prestados / en ruta / recarga, etc.). */
 const balonExtraFilters = computed<Partial<BalonListFilters>>(() => {
   const filters: Partial<BalonListFilters> = { soloBajas: false }
   if (estadoEnAlmacenId.value) filters.idEstadoBalon = estadoEnAlmacenId.value
@@ -170,7 +170,7 @@ const balonExtraFilters = computed<Partial<BalonListFilters>>(() => {
 
 function soloBalonEnviable(balon: Balon) {
   const estado = (balon.nombre_estado_balon ?? '').trim().toUpperCase()
-  if (estado !== 'EN_ALMACEN') return false
+  if (estado !== 'DISPONIBLE') return false
   if (idAlmacen.value && Number(balon.id_almacen) !== Number(idAlmacen.value)) return false
   return true
 }

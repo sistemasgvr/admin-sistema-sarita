@@ -31,16 +31,6 @@ export const balonesHubItems: BalonesHubItem[] = [
     implemented: true,
   },
   {
-    key: 'recargas',
-    title: 'Recargas',
-    description:
-      'Recarga en mostrador (cliente) y órdenes a planta externa (GRE / checklist / compra).',
-    path: '/admin/balones/recargas',
-    icon: ICONS.clipboardList,
-    permission: PermisoBanderas.MOVIMIENTOS_RECARGA_LISTAR,
-    implemented: true,
-  },
-  {
     key: 'prestamos',
     title: 'Préstamos',
     description: 'Flujo industrial: comodato de cilindros y control de días en préstamo (30 / 90–180 / 180+).',
