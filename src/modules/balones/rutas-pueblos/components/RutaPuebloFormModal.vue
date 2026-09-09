@@ -19,6 +19,7 @@
         <AppInput v-model="observacion" label="Observación" placeholder="Zona, pueblos, etc." />
       </div>
 
+      <!-- Sección de Cilindros -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros a enviar</p>
@@ -70,6 +71,59 @@
           </button>
         </div>
       </div>
+
+      <!-- Sección de Productos -->
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">Productos a enviar</p>
+          <button
+            type="button"
+            class="text-xs font-medium text-brand-600 hover:underline"
+            @click="addLineaProducto"
+          >
+            + Añadir producto
+          </button>
+        </div>
+        <div
+          v-if="lineasProducto.length === 0"
+          class="rounded-lg border border-dashed border-gray-300 px-4 py-4 text-center text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400"
+        >
+          Opcional: agrega productos para enviar en la ruta.
+        </div>
+        <div
+          v-for="(linea, index) in lineasProducto"
+          :key="linea.key"
+          class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-[1fr_100px_auto] dark:border-gray-800"
+        >
+          <AppSelectSearch
+            v-model="linea.idProducto"
+            v-model:search="linea.buscar"
+            label="Producto"
+            placeholder="Buscar producto..."
+            search-placeholder="Código o nombre..."
+            :options="filtroProductoOpciones(linea.key)"
+            :loading="productosQuery.isFetching.value"
+            :disabled="!idAlmacen"
+            required
+          />
+          <AppInput
+            v-model="linea.cantidad"
+            label="Cantidad"
+            type="number"
+            step="0.01"
+            min="0.01"
+            required
+          />
+          <button
+            type="button"
+            class="mt-6 inline-flex h-10 w-10 items-center justify-center self-start rounded-lg border border-gray-300 text-error-500"
+            title="Quitar"
+            @click="lineasProducto.splice(index, 1)"
+          >
+            <AppIcon :name="ICONS.trash" :size="16" />
+          </button>
+        </div>
+      </div>
     </div>
 
     <template #footer>
@@ -101,13 +155,15 @@ import { useChoferesQuery } from '@/modules/choferes/composables/useChoferesQuer
 import type { ChoferListFilters } from '@/modules/choferes/interfaces/chofer.interface'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useCreateRutaPuebloMutation } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosMutations'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
 import { hoyIsoLima } from '@/shared/utils/date'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 
 const open = defineModel<boolean>({ default: false })
 const emit = defineEmits<{ saved: [] }>()
@@ -134,17 +190,35 @@ const choferOptions = computed(() =>
   })),
 )
 
-type Linea = {
+// Productos
+const productosFilters = ref({ pagina: 1, limite: 200 })
+const productosQuery = useProductosQuery(productosFilters, open)
+
+const productoOptionsAll = computed(() =>
+  (productosQuery.data.value?.data ?? [])
+    .filter((p) => p.afecta_stock && p.estado === 1)
+    .map((p) => ({
+      value: p.id,
+      label: `${p.codigo ?? ''} — ${p.nombre}`,
+    })),
+)
+
+type LineaBalon = {
   key: string
   idBalon: number | ''
   lbSalida: string
-  /** Tope = capacidad lb del tipo */
   capacidadLbMax: number | null
-  /** De dónde salió la sugerencia */
   sugerenciaOrigen: 'residual' | 'tipo' | null
 }
 
-function emptyLinea(): Linea {
+type LineaProducto = {
+  key: string
+  idProducto: number | ''
+  cantidad: string
+  buscar: string
+}
+
+function emptyLinea(): LineaBalon {
   return {
     key: crypto.randomUUID(),
     idBalon: '',
@@ -154,7 +228,17 @@ function emptyLinea(): Linea {
   }
 }
 
-const lineas = ref<Linea[]>([emptyLinea()])
+function emptyLineaProducto(): LineaProducto {
+  return {
+    key: crypto.randomUUID(),
+    idProducto: '',
+    cantidad: '',
+    buscar: '',
+  }
+}
+
+const lineas = ref<LineaBalon[]>([emptyLinea()])
+const lineasProducto = ref<LineaProducto[]>([])
 
 const estadoEnAlmacenId = computed(
   () => estadoBalonQuery.data.value?.find((item) => item.nombre === 'DISPONIBLE')?.id,
@@ -188,6 +272,16 @@ function filtroBalonLinea(lineaKey: string) {
   }
 }
 
+/** Excluye productos ya elegidos en otras líneas */
+function filtroProductoOpciones(lineaKey: string) {
+  const idsOcupados = new Set(
+    lineasProducto.value
+      .filter((l) => l.key !== lineaKey && l.idProducto)
+      .map((l) => Number(l.idProducto)),
+  )
+  return productoOptionsAll.value.filter((opt) => !idsOcupados.has(opt.value))
+}
+
 function roundLb(n: number) {
   return Math.round(n * 100) / 100
 }
@@ -195,12 +289,12 @@ function roundLb(n: number) {
 function sugerirLbDesdeBalon(balon: Balon): {
   lb: number | null
   max: number | null
-  origen: Linea['sugerenciaOrigen']
+  origen: LineaBalon['sugerenciaOrigen']
 } {
   const tipoLb = Number(balon.capacidad_lb)
   const max = Number.isFinite(tipoLb) && tipoLb > 0 ? tipoLb : null
   let lb: number | null = null
-  let origen: Linea['sugerenciaOrigen'] = null
+  let origen: LineaBalon['sugerenciaOrigen'] = null
 
   if (max != null) {
     lb = max
@@ -213,7 +307,7 @@ function sugerirLbDesdeBalon(balon: Balon): {
   return { lb, max, origen }
 }
 
-function onBalonSelected(linea: Linea, balon: Balon | null) {
+function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
   if (!balon) {
     linea.capacidadLbMax = null
     linea.sugerenciaOrigen = null
@@ -236,11 +330,16 @@ const saving = computed(() => createMutation.isPending.value)
 const canSave = computed(
   () =>
     Boolean(idAlmacen.value) &&
-    lineas.value.some((l) => l.idBalon && lbSalidaValida(l.lbSalida)),
+    (lineas.value.some((l) => l.idBalon && lbSalidaValida(l.lbSalida)) ||
+      lineasProducto.value.some((l) => l.idProducto && Number(l.cantidad) > 0)),
 )
 
 function addLinea() {
   lineas.value.push(emptyLinea())
+}
+
+function addLineaProducto() {
+  lineasProducto.value.push(emptyLineaProducto())
 }
 
 watch(idAlmacen, () => {
@@ -249,6 +348,10 @@ watch(idAlmacen, () => {
     linea.lbSalida = ''
     linea.capacidadLbMax = null
     linea.sugerenciaOrigen = null
+  }
+  for (const linea of lineasProducto.value) {
+    linea.idProducto = ''
+    linea.cantidad = ''
   }
 })
 
@@ -259,6 +362,7 @@ watch(open, (v) => {
   idChofer.value = ''
   observacion.value = ''
   lineas.value = [emptyLinea()]
+  lineasProducto.value = []
 })
 
 async function guardar() {
@@ -273,13 +377,20 @@ async function guardar() {
       capacidadLbMax: l.capacidadLbMax,
     }))
 
-  if (detalles.length === 0) {
-    toastWarning('Agrega al menos un cilindro')
+  const detallesProductos = lineasProducto.value
+    .filter((l) => l.idProducto && Number(l.cantidad) > 0)
+    .map((l) => ({
+      idProducto: Number(l.idProducto),
+      cantidad: Number(l.cantidad),
+    }))
+
+  if (detalles.length === 0 && detallesProductos.length === 0) {
+    toastWarning('Agrega al menos un cilindro o un producto')
     return
   }
 
   if (detalles.some((d) => !lbSalidaValida(String(d.lbSalida)) || Number.isNaN(d.lbSalida))) {
-    toastWarning('Completa las libras de salida (> 0)')
+    toastWarning('Completa las libras de salida (> 0) de los cilindros')
     return
   }
 
@@ -299,6 +410,12 @@ async function guardar() {
     return
   }
 
+  const idsProd = detallesProductos.map((d) => d.idProducto)
+  if (new Set(idsProd).size !== idsProd.length) {
+    toastWarning('Hay productos duplicados en la ruta')
+    return
+  }
+
   await createMutation.mutateAsync({
     idUsuarioAuditoria: userId,
     idUsuarioResponsable: userId,
@@ -306,7 +423,10 @@ async function guardar() {
     idAlmacen: Number(idAlmacen.value),
     idChofer: idChofer.value ? Number(idChofer.value) : undefined,
     observacion: observacion.value.trim() || undefined,
-    detalles: detalles.map(({ idBalon, lbSalida }) => ({ idBalon, lbSalida })),
+    detalles: detalles.length > 0
+      ? detalles.map(({ idBalon, lbSalida }) => ({ idBalon, lbSalida }))
+      : undefined,
+    detallesProductos: detallesProductos.length > 0 ? detallesProductos : undefined,
   })
   open.value = false
   emit('saved')

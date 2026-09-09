@@ -58,7 +58,8 @@ export interface MantenimientoListFilters {
 
 export interface CreateMantenimientoPayload {
   idUsuarioAuditoria: number
-  idBalon: number
+  idBalon?: number
+  idProducto?: number
   fechaIngreso: string
   idTipoMantenimiento?: number
   fechaSalida?: string

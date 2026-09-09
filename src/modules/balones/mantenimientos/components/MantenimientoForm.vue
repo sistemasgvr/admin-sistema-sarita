@@ -43,8 +43,18 @@
         >
           <div class="space-y-4">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div v-if="mode === 'create'" class="sm:col-span-2">
+                <AppSelect
+                  v-model="tipoItem"
+                  label="Tipo de item"
+                  placeholder="Seleccionar"
+                  :options="tipoItemOptions"
+                  :disabled="isSubmitting"
+                />
+              </div>
+
               <div
-                v-if="mode === 'create'"
+                v-if="mode === 'create' && tipoItem === 'CILINDRO'"
                 class="flex w-full min-w-0 items-end gap-2"
               >
                 <div class="min-w-0 flex-1 overflow-hidden">
@@ -74,6 +84,24 @@
                 >
                   <AppIcon :name="ICONS.plus" :size="18" />
                 </button>
+              </div>
+
+              <div
+                v-if="mode === 'create' && tipoItem === 'PRODUCTO'"
+                class="sm:col-span-2"
+              >
+                <AppSelectSearch
+                  v-model="idProducto"
+                  v-model:search="productoBuscar"
+                  label="Producto (regulador / accesorio)"
+                  placeholder="Selecciona producto"
+                  search-placeholder="Código o nombre..."
+                  required
+                  :disabled="isSubmitting || productosQuery.isLoading.value"
+                  :loading="productosQuery.isFetching.value"
+                  :options="productoOptions"
+                  empty-text="Sin productos disponibles."
+                />
               </div>
 
               <AppSelect
@@ -304,6 +332,8 @@ import {
 import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
+import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppSelect, AppSelectSearch, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
@@ -341,6 +371,36 @@ const updateMutation = useUpdateMantenimientoMutation()
 const canCreateBalon = computed(() => authStore.hasPermission(PermisoBanderas.BALONES_CREAR))
 const balonModalOpen = ref(false)
 const balonBuscar = ref('')
+
+// Productos
+const tipoItem = ref<'CILINDRO' | 'PRODUCTO'>('CILINDRO')
+const tipoItemOptions = [
+  { value: 'CILINDRO', label: 'Cilindro (balón)' },
+  { value: 'PRODUCTO', label: 'Producto (regulador / accesorio)' },
+]
+const idProducto = ref<number | ''>('')
+const productoBuscar = ref('')
+const productoFilters = ref({ pagina: 1, limite: 100 })
+const productosQuery = useProductosQuery(productoFilters, open)
+
+let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
+watch(productoBuscar, (term) => {
+  clearTimeout(productoBuscarTimeout)
+  productoBuscarTimeout = setTimeout(() => {
+    productoFilters.value = {
+      pagina: 1,
+      limite: 100,
+      buscar: term.trim() || undefined,
+    }
+  }, 350)
+})
+
+const productoOptions = computed(() =>
+  (productosQuery.data.value?.data ?? []).map((p) => ({
+    value: p.id,
+    label: `${p.codigo ?? ''} — ${p.nombre}`,
+  })),
+)
 
 const mantenimientoIdRef = computed(() => (props.mode === 'edit' ? props.mantenimientoId : null))
 const mantenimientoQuery = useMantenimientoQuery(mantenimientoIdRef)
@@ -466,6 +526,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, meta } = use
   validationSchema: toTypedSchema(
     yup.object({
       idBalon: optionalSelectNumber(),
+      idProducto: optionalSelectNumber(),
       idTipoMantenimiento: optionalSelectNumber(),
       idEstado: optionalSelectNumber(),
       fechaIngreso: requiredString('La fecha de ingreso'),
@@ -485,6 +546,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, meta } = use
   ),
   initialValues: {
     idBalon: '' as string | number,
+    idProducto: '' as string | number,
     idTipoMantenimiento: '' as string | number,
     idEstado: '' as string | number,
     fechaIngreso: today(),
@@ -504,6 +566,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, meta } = use
 })
 
 const [idBalon, idBalonAttrs] = defineField('idBalon')
+const [idProductoField] = defineField('idProducto')
 const [idTipoMantenimiento, idTipoMantenimientoAttrs] = defineField('idTipoMantenimiento')
 const [idEstado, idEstadoAttrs] = defineField('idEstado')
 const [fechaIngreso, fechaIngresoAttrs] = defineField('fechaIngreso')
@@ -521,7 +584,14 @@ const errorCostoDisplay = computed(
   () =>
     errors.value.costo || ((costo.value ?? '').trim() ? errorCosto.value : ''),
 )
-const formularioValido = computed(() => meta.value.valid && costoValido.value)
+const formularioValido = computed(() => {
+  if (!meta.value.valid || !costoValido.value) return false
+  if (props.mode === 'create') {
+    if (tipoItem.value === 'CILINDRO' && !idBalon.value) return false
+    if (tipoItem.value === 'PRODUCTO' && !idProducto.value) return false
+  }
+  return true
+})
 const [esExterno] = defineField('esExterno')
 const [idProveedor] = defineField('idProveedor')
 const [idComprobanteVenta, idComprobanteVentaAttrs] = defineField('idComprobanteVenta')
@@ -635,12 +705,17 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     if (props.mode === 'create') {
       const idBalonValue = toOptionalNumber(values.idBalon)
-      if (!idBalonValue || !values.fechaIngreso) return
+      const idProductoValue = toOptionalNumber(values.idProducto)
+      if (!values.fechaIngreso) return
+
+      if (tipoItem.value === 'CILINDRO' && !idBalonValue) return
+      if (tipoItem.value === 'PRODUCTO' && !idProductoValue) return
 
       await createMutation.mutateAsync({
         ...fields,
         idUsuarioAuditoria: currentUserId,
-        idBalon: idBalonValue,
+        ...(tipoItem.value === 'CILINDRO' ? { idBalon: idBalonValue } : {}),
+        ...(tipoItem.value === 'PRODUCTO' ? { idProducto: idProductoValue } : {}),
         fechaIngreso: values.fechaIngreso,
       })
     } else if (props.mantenimientoId) {

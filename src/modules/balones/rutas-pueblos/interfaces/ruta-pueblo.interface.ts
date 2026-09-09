@@ -16,6 +16,17 @@ export interface RutaPuebloDetalle {
   observacion?: string | null
 }
 
+export interface RutaPuebloDetalleProducto {
+  id: number
+  id_ruta_pueblo: number
+  id_producto: number
+  codigo_producto?: string | null
+  nombre_producto?: string | null
+  cantidad: number | string
+  cantidad_retorno?: number | string | null
+  observacion?: string | null
+}
+
 export interface RutaPueblo {
   id: number
   fecha: string
@@ -36,6 +47,7 @@ export interface RutaPueblo {
   total_cilindros?: number
   total_retornados?: number
   detalles?: RutaPuebloDetalle[]
+  detalles_productos?: RutaPuebloDetalleProducto[]
 }
 
 export interface RutaPuebloListFilters {
@@ -57,10 +69,15 @@ export interface CreateRutaPuebloPayload {
   factorLbM3?: number
   toleranciaM3?: number
   observacion?: string
-  detalles: {
+  detalles?: {
     idBalon: number
     lbSalida: number
     sellado?: boolean
+    observacion?: string
+  }[]
+  detallesProductos?: {
+    idProducto: number
+    cantidad: number
     observacion?: string
   }[]
 }
@@ -79,7 +96,8 @@ export interface UpdateRutaPuebloPayload {
 
 export interface RegistrarRetornoRutaPuebloPayload {
   idUsuarioAuditoria: number
-  detalles: { idBalon: number; lbRetorno: number; observacion?: string }[]
+  detalles?: { idBalon: number; lbRetorno: number; observacion?: string }[]
+  detallesProductos?: { idProducto: number; cantidadRetorno: number; observacion?: string }[]
 }
 
 export const ESTADOS_RUTA_PUEBLO_FILTRO: { value: EstadoRutaPuebloNombre; label: string }[] = [
