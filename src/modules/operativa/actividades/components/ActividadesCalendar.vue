@@ -95,10 +95,13 @@ import {
 interface ActividadesCalendarProps {
   actividades: Actividad[]
   loading?: boolean
+  /** La pestaña está visible (para recalcular tamaño de FullCalendar tras v-show). */
+  visible?: boolean
 }
 
 const props = withDefaults(defineProps<ActividadesCalendarProps>(), {
   loading: false,
+  visible: true,
 })
 
 const isMobile = ref(false)
@@ -137,6 +140,7 @@ onMounted(async () => {
     currentView.value = api.view.type
     syncWeekHeight(api.view.type)
   }
+  if (props.visible) void refreshCalendarLayout()
 })
 
 onUnmounted(() => {
@@ -160,11 +164,17 @@ const FALLBACK_COLORS = [
 const colorForActividad = (actividad: Actividad) => {
   const prioridad = (actividad.nombre_prioridad ?? '').toUpperCase()
   const estado = (actividad.nombre_estado_actividad ?? '').toUpperCase()
+  const tipo = (actividad.nombre_tipo_actividad ?? '').toUpperCase()
 
   if (estado.includes('REALIZ')) return { bg: '#64748b', border: '#475569' }
+  if (estado.includes('CANCEL')) return { bg: '#94a3b8', border: '#64748b' }
+
+  if (tipo.includes('RECOJO')) return { bg: '#ea580c', border: '#c2410c' }
+  if (tipo.includes('REPARTO')) return { bg: '#2563eb', border: '#1d4ed8' }
+
   if (prioridad.includes('ALTA')) return { bg: '#e11d48', border: '#be123c' }
   if (prioridad.includes('MEDIA')) return { bg: '#d97706', border: '#b45309' }
-  if (prioridad.includes('BAJA')) return { bg: '#2563eb', border: '#1d4ed8' }
+  if (prioridad.includes('BAJA')) return { bg: '#0284c7', border: '#0369a1' }
   return FALLBACK_COLORS[actividad.id % FALLBACK_COLORS.length]
 }
 
@@ -200,12 +210,14 @@ const esTodoElDia = (actividad: Actividad) => {
 
 const events = computed<EventInput[]>(() =>
   props.actividades.map((actividad) => {
+    const sinAsignar = esSinAsignar(actividad)
     const { bg, border } = colorForActividad(actividad)
     const fecha = actividad.fecha_programada.slice(0, 10)
     const todoElDia = esTodoElDia(actividad)
+    const textColor = sinAsignar ? '#9a3412' : '#ffffff'
 
     const classNames = [
-      esSinAsignar(actividad) ? 'actividad-sin-asignar' : '',
+      sinAsignar ? 'actividad-sin-asignar' : '',
       esEnCurso(actividad) ? 'actividad-en-curso' : '',
     ].filter(Boolean)
 
@@ -217,7 +229,7 @@ const events = computed<EventInput[]>(() =>
         allDay: true,
         backgroundColor: bg,
         borderColor: border,
-        textColor: '#fff',
+        textColor,
         classNames,
         extendedProps: { actividad },
       }
@@ -241,7 +253,7 @@ const events = computed<EventInput[]>(() =>
       allDay: false,
       backgroundColor: bg,
       borderColor: border,
-      textColor: '#fff',
+      textColor,
       classNames,
       extendedProps: { actividad },
     }
@@ -302,10 +314,35 @@ const syncWeekHeight = (viewType: string) => {
   calendarApi.value?.setOption('height', viewType === 'timeGridWeek' ? 720 : 'auto')
 }
 
+const refreshCalendarLayout = async () => {
+  await nextTick()
+  requestAnimationFrame(() => {
+    const api = calendarApi.value
+    if (!api) return
+    syncWeekHeight(api.view.type)
+    api.updateSize()
+  })
+}
+
+watch(
+  () => props.visible,
+  (visible) => {
+    if (visible) void refreshCalendarLayout()
+  },
+)
+
+watch(
+  () => props.actividades.length,
+  () => {
+    if (props.visible) void refreshCalendarLayout()
+  },
+)
+
 const changeView = (viewId: string) => {
   calendarApi.value?.changeView(viewId)
   currentView.value = viewId
   syncWeekHeight(viewId)
+  if (props.visible) void refreshCalendarLayout()
 }
 
 watch(isMobile, (mobile) => {
@@ -476,6 +513,10 @@ defineExpose({ calendarRef })
   text-decoration: none !important;
 }
 
+.actividades-calendar :deep(.fc-daygrid-body) {
+  min-height: 22rem;
+}
+
 .actividades-calendar :deep(.fc-daygrid-day) {
   min-height: 7rem;
   transition: background-color 160ms ease;
@@ -541,11 +582,22 @@ defineExpose({ calendarRef })
   border-radius: 0.5rem;
   margin: 1px 3px 3px;
   padding: 0;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+  color: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
   transition:
     transform 150ms ease,
     box-shadow 150ms ease,
     filter 150ms ease;
+}
+
+.actividades-calendar :deep(.fc-event .fc-event-main) {
+  color: inherit;
+}
+
+.actividades-calendar :deep(.fc-event .fc-event-time-chip),
+.actividades-calendar :deep(.fc-event .fc-event-title-text),
+.actividades-calendar :deep(.fc-event .fc-event-client) {
+  color: inherit;
 }
 
 .actividades-calendar :deep(.fc-event:hover) {
@@ -755,16 +807,20 @@ defineExpose({ calendarRef })
   }
 }
 
-/* Actividad sin asignar: disponible para tomar (borde punteado, fondo claro) */
+/* Actividad sin asignar: disponible para tomar (borde punteado, contraste alto) */
 .actividades-calendar :deep(.fc-event.actividad-sin-asignar) {
-  background-color: #f1f5f9 !important;
-  border: 2px dashed #94a3b8 !important;
-  color: #334155 !important;
+  background-color: #fff7ed !important;
+  border: 2px dashed #ea580c !important;
+  color: #9a3412 !important;
+  box-shadow: none;
 }
 
+.actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-time-chip),
+.actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-title-text),
+.actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-client),
 .actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-time),
 .actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-title) {
-  color: #334155 !important;
+  color: #9a3412 !important;
 }
 
 /* Actividad en curso: asignada y no cerrada (resalte verde) */
@@ -811,14 +867,17 @@ html.dark .actividades-calendar .fc-col-header-cell-cushion {
   color: #9ca3af !important;
 }
 
-html.dark .actividades-calendar :deep(.fc-event.actividad-sin-asignar) {
-  background-color: rgb(148 163 184 / 0.18) !important;
-  border: 2px dashed rgb(148 163 184 / 0.7) !important;
-  color: rgb(226 232 240 / 0.95) !important;
+html.dark .actividades-calendar .fc-event.actividad-sin-asignar {
+  background-color: rgb(234 88 12 / 0.22) !important;
+  border: 2px dashed rgb(251 146 60 / 0.9) !important;
+  color: #ffedd5 !important;
 }
 
-html.dark .actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-time),
-html.dark .actividades-calendar :deep(.fc-event.actividad-sin-asignar .fc-event-title) {
-  color: rgb(226 232 240 / 0.95) !important;
+html.dark .actividades-calendar .fc-event.actividad-sin-asignar .fc-event-time-chip,
+html.dark .actividades-calendar .fc-event.actividad-sin-asignar .fc-event-title-text,
+html.dark .actividades-calendar .fc-event.actividad-sin-asignar .fc-event-client,
+html.dark .actividades-calendar .fc-event.actividad-sin-asignar .fc-event-time,
+html.dark .actividades-calendar .fc-event.actividad-sin-asignar .fc-event-title {
+  color: #ffedd5 !important;
 }
 </style>

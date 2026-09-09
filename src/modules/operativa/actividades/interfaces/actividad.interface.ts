@@ -159,7 +159,7 @@ export interface ActividadPayload {
   descripcion?: string
   fechaProgramada: string
   horaInicioEstimada: string
-  horaFinEstimada: string
+  horaFinEstimada?: string
   fechaHoraCierre?: string
   idTipoActividad: number
   idPrioridad: number
@@ -218,6 +218,7 @@ export interface CrearRecojoOrigenPayload {
   tipoOrigen: TipoOrigenRecojo
   idOrigen: number
   fechaProgramada?: string
+  horaInicioEstimada: string
   idTrabajadorResponsable?: number
   observaciones?: string
   idUsuarioAuditoria?: number
@@ -226,6 +227,7 @@ export interface CrearRecojoOrigenPayload {
 export interface CrearRecojoPrestamoPayload {
   idPrestamo: number
   fechaProgramada?: string
+  horaInicioEstimada?: string
   idTrabajadorResponsable?: number
   observaciones?: string
   idUsuarioAuditoria?: number

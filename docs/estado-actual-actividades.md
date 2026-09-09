@@ -1,23 +1,31 @@
 # Estado actual — Módulo Actividades
 
-**Fecha del resumen:** 2026-09-08  
+**Fecha del resumen:** 2026-09-09  
 **Alcance:** frontend (`admin-sistema-sarita`) + backend (`api-sistema-sarita`)  
-**Contexto de plan:** Fase 6 del [plan de reestructuración oxígeno](./plan-reestructuracion-oxigeno-sarita.md) — estado **parcial**.
+**Contexto de plan:** Fase 6 del [plan de reestructuración oxígeno](./plan-reestructuracion-oxigeno-sarita.md) — estado **parcial** (el texto “lo que falta” del plan aún no refleja el v2 de recojos).
+
+**Qué cambió desde el resumen del 2026-09-08**
+
+| Cuándo | Qué |
+|--------|-----|
+| 08/09 ~18:50 | Formulario de modal → páginas `/nueva` y `/:id/editar` |
+| 08/09 ~19:23 | Recojo desde vencidos (préstamo/alquiler), prefijos F6 `/operativa/...`, `iniciar-verificacion` |
+| 09/09 (código actual, staged) | Hora de inicio obligatoria en recojo; hora fin opcional en recojo; calendario por tipo; `estaAsignada` mira trabajador |
 
 ---
 
 ## 1. Veredicto
 
-Actividades es un módulo de **agenda operativa** maduro (CRUD, calendario, filtros, asignación de responsable, export Excel, alertas próximas) con **Fase 6 parcialmente cableada** (verificación por escaneo SALIDA/LLEGADA, ranking, generación de recojos, ítems con origen).
+Actividades es un módulo de **agenda operativa** maduro (CRUD, calendario, filtros, asignación, Excel, alertas) con **Fase 6 casi cableada de punta a punta**: verificación por escaneo, ranking, recojo desde préstamo/alquiler (UI + API), generación masiva y materialización lazy de ítems.
 
 | Capa | Madurez | Notas |
 |------|---------|--------|
-| Agenda CRUD + UI | Alta | Lista / calendario / colaboradores funcionan |
-| Verificación escaneo | Media-alta | API + modal UI listos |
-| Recojos desde préstamo | Media | API lista; UI de “crear recojo préstamo” no invoca el endpoint |
-| Auto-recojo / job | Baja | Solo botón/API manual; job no enganchado |
-| Producto recogido | Baja | Columna/catálogo existen; no se escribe ni se muestra |
-| Unificación con `balones/recojos` | Abierta | Decisión de negocio pendiente |
+| Agenda CRUD + UI | Alta | Lista / calendario / colaboradores + páginas crear/editar |
+| Verificación escaneo | Alta | API + modal + `iniciar-verificacion` (materializa ítems de recojo) |
+| Recojos desde origen | Alta | UI + `POST /recojo` (PRESTAMO / ALQUILER); préstamo también desde listados |
+| Auto-recojo / job | Baja | Solo botón/API manual; cron de notificaciones **no** crea actividades |
+| Producto recogido | Baja | Columna/catálogo/lectura existen; no se escribe ni se muestra |
+| Unificación con `balones/recojos` | Abierta | Alquileres siguen usando `RecojoProgramarModal`; préstamos ya van a actividades |
 
 ---
 
@@ -25,7 +33,7 @@ Actividades es un módulo de **agenda operativa** maduro (CRUD, calendario, filt
 
 ```
 [Admin Vue]
-  operativa/actividades (vista única + modales)
+  operativa/actividades (listado + páginas form + modales detalle/verificar)
        │  HTTP (Vue Query)
        ▼
 [API NestJS]
@@ -41,7 +49,7 @@ Actividades es un módulo de **agenda operativa** maduro (CRUD, calendario, filt
 
 Prefijos:
 - BD: `age_` (agenda/actividades)
-- HTTP: `operativa/actividades` (controller Nest)
+- HTTP: `operativa/actividades` (controller Nest; el servicio frontend **ya usa este prefijo en todos los endpoints**)
 - Catálogos frontend (`ListaIds`): Tipo=48, Estado=49, Prioridad=50
 
 ---
@@ -54,6 +62,7 @@ Prefijos:
 CREAR (PENDIENTE / PROGRAMADA)
    │
    ├─ Asignar / liberar responsable (no cambia estado)
+   ├─ Recojo: cabecera sin ítems  → iniciar-verificacion materializa detalle
    ├─ Verificar SALIDA (ítems)  ──┐
    ├─ Verificar LLEGADA (ítems) ─┤ no fuerzan cierre
    │
@@ -74,26 +83,41 @@ Orden visual en listados (prioridad):
 | **EstadoActividad** | `PENDIENTE`, `PROGRAMADA`, `REALIZADA`, `CANCELADA`/`CANCELADO` |
 | **PrioridadActividad** | al menos `ALTA` (recojos); MEDIA en defaults de UI |
 | **EstadoVerificacionItem** (F6) | `PENDIENTE`, `OK`, `CON_OBSERVACION` |
-| **TipoOrigenActividad** (F6) | `VENTA`, `ORDEN_SALIDA`, `PRESTAMO` |
+| **TipoOrigenActividad** (F6) | `VENTA`, `ORDEN_SALIDA`, `PRESTAMO`, **`ALQUILER`** |
 | **EstadoProductoRecogido** (F6) | `RECOGIDO`, `NO_RECOGIDO`, `DANADO` *(diseñado, sin escritura)* |
 
 ### 3.3 Orígenes típicos
 
-1. **Manual** desde operativa/actividades (formulario).
-2. **Reparto desde orden de salida** (`DocumentoSalidaFormView` → “Agendar a reparto” / `ActividadFormModal` con `lockTipoReparto`).
-3. **Recojo desde préstamo** (`POST .../recojo-prestamo`) — API lista, UI del módulo actividades **no la usa** aún.
-4. **Generación masiva** de recojos por vencer (`POST .../generar-recojos`) — botón en toolbar.
+1. **Manual** desde operativa/actividades (página `/nueva`).
+2. **Reparto desde orden de salida** (`DocumentoSalidaFormView` → “Agendar a reparto” navega a `/nueva` con `lockTipoReparto` + `idDocSalida`).
+3. **Recojo desde préstamo** — UI lista préstamos / antigüedad → `/nueva` con `lockTipoRecojo` + origen `PRESTAMO`; o selector de vencidos en el form.
+4. **Recojo desde alquiler** — selector de vencidos en el form de actividades (`POST /recojo`). El listado de **alquileres** sigue abriendo `RecojoProgramarModal` (módulo `balones/recojos`), no actividades.
+5. **Generación masiva** de recojos por vencer (`POST .../generar-recojos`) — botón en toolbar. Hora fija **08:00**.
 
-### 3.4 Reglas de negocio fuertes (SQL)
+### 3.4 Recojo: modelo lazy (ítems)
 
-- Título obligatorio (auto: `Reparto {serie}-{numero}` / GRE / orden si aplica).
+`age_crear_recojo_origen` crea **solo cabecera** (`items: 0`) con FK a préstamo o alquiler. Los ítems se materializan al llamar `POST .../iniciar-verificacion` (el modal de verificación lo dispara si el recojo aún no tiene detalle). Idempotente si ya existe recojo vigente (no cancelado/realizado).
+
+### 3.5 Horarios (recojo)
+
+| Flujo | Hora inicio | Hora fin |
+|-------|-------------|----------|
+| Recojo manual (`POST /recojo`) | **Obligatoria** | Opcional (se puede definir al culminar) |
+| Alias `POST /recojo-prestamo` | Optional en DTO; SQL la exige vía origen | — |
+| Generar recojos (batch) | Fija **`08:00`** | — |
+| Reparto / actividad genérica | Obligatoria | Obligatoria; fin > inicio |
+
+### 3.6 Reglas de negocio fuertes (SQL)
+
+- Título obligatorio (auto: `Reparto {serie}-{numero}` / GRE / orden si aplica; recojo: `Recojo préstamo` / `Recojo alquiler`).
 - Un comprobante u orden **no** puede tener dos actividades vigentes (no canceladas).
 - Tipo `REPARTO` + responsable → debe ser **trabajador chofer de flota propia** (`gen_chofer.id_cliente IS NULL`).
 - Solape horario del mismo responsable el mismo día (excluye canceladas).
-- Hora fin > hora inicio.
-- Recojo por préstamo: **idempotente** si ya existe pendiente.
+- Hora fin > hora inicio **si hay hora fin**.
+- Recojo por origen: **idempotente** si ya existe pendiente; `tipoOrigen` solo `PRESTAMO` o `ALQUILER`.
 - Ítems de orden: vía `doc_obtener_salida` (sin re-tecleo).
 - Ítems de venta: copia de `ven_comprobante_detalle`.
+- Ítems de recojo: copiados del préstamo/alquiler (+ regulador en alquiler) al iniciar verificación.
 - Verificación: match por códigos de balón/serie/barra; ajenos van a bitácora con `coincide=false`.
 - Trigger `trg_age_sync_responsable`: al setear `id_trabajador_responsable` sincroniza `id_chofer_responsable` + `id_usuario_responsable`.
 
@@ -121,10 +145,13 @@ Base real en Nest: **`/operativa/actividades`**
 | `GET` | `/` | `actividades.listar` | `age_listar_actividades` |
 | `GET` | `/proximas` | `actividades.listar` | `age_listar_actividades_proximas` |
 | `GET` | `/ranking` | `actividades.ranking` | `age_ranking_usuarios` |
+| `GET` | `/vencidos-recojo` | `actividades.listar` | `age_listar_vencidos_recojo` |
 | `GET` | `/:id` | `actividades.ver` | `age_obtener_actividad` |
 | `POST` | `/` | `actividades.crear` | `age_crear_actividad` |
-| `POST` | `/recojo-prestamo` | `actividades.crear` | `age_crear_recojo_prestamo` |
+| `POST` | `/recojo` | `actividades.crear` | `age_crear_recojo_origen` |
+| `POST` | `/recojo-prestamo` | `actividades.crear` | `age_crear_recojo_prestamo` → origen (alias, **deprecated**) |
 | `POST` | `/generar-recojos` | `actividades.crear` | `age_generar_recojos_por_vencer` |
+| `POST` | `/:id/iniciar-verificacion` | `actividades.verificar` | `age_iniciar_verificacion` |
 | `POST` | `/:id/verificar` | `actividades.verificar` | `age_registrar_verificacion` |
 | `PATCH` | `/:id` | `actividades.editar` | `age_actualizar_actividad` |
 | `PATCH` | `/:id/realizada` | `actividades.editar` | `age_cambiar_estado_actividad_realizada` |
@@ -136,15 +163,15 @@ Auth: JWT global + `PermisosGuard`. Bypass: `AUTH_TODO`.
 
 ### 4.3 Persistencia
 
-**Tablas**
+**Tablas (contrato real por migraciones)**
 
 | Tabla | Rol |
 |-------|-----|
-| `age_actividad` | Cabecera (cliente, responsable, tipo/estado/prioridad, fechas, `id_comprobante`, `id_doc_salida`, F6: `id_prestamo`, `id_tipo_origen`) |
-| `age_actividad_item` | Ítems (producto, balón, cantidad, vínculos de origen, estados verificación salida/llegada, `id_estado_producto_recogido`) |
-| `age_actividad_verificacion` | Bitácora de escaneos (`SALIDA`\|`LLEGADA`, código, coincide, observación) — creada en migración F6 |
+| `age_actividad` | Cabecera (cliente, responsable, tipo/estado/prioridad, fechas, `id_comprobante`, `id_doc_salida`, F6: `id_prestamo`, **`id_alquiler`**, `id_tipo_origen`) |
+| `age_actividad_item` | Ítems (producto, balón, cantidad, vínculos de origen incl. `id_alquiler_detalle`, estados verificación salida/llegada, `id_estado_producto_recogido`) |
+| `age_actividad_verificacion` | Bitácora de escaneos (`SALIDA`\|`LLEGADA`, código, coincide, observación) |
 
-**Funciones SQL** (`database_sql/funciones/actividades/`): 13 funciones `age_*` alineadas con la tabla de endpoints.
+**Funciones SQL** (`database_sql/funciones/actividades/`): **16** funciones `age_*` alineadas con la tabla de endpoints.
 
 **Migraciones relevantes**
 
@@ -157,6 +184,11 @@ Auth: JWT global + `PermisosGuard`. Bypass: `AUTH_TODO`.
 | `20260908_f6_items_desde_orden.sql` | Crear con detalle de orden + estados verificación |
 | `20260908_f6_obtener_actividad_verificacion.sql` | Obtener con campos de verificación |
 | `20260908_f6_funciones.sql` | Bundle: verificar, recojo, generar, ranking |
+| `20260908_age_id_doc_salida_y_ordenes_disponibles.sql` | Funciones dejan `id_guia_remision`; usan `id_doc_salida` |
+| `20260908_age_obtener_actividad_item_detalle.sql` | Detalle de ítems enriquecido |
+| `20260908_age_recojo_vencidos_fk.sql` | `id_alquiler`, origen ALQUILER, vencidos, crear origen, iniciar verificación |
+| `20260909_age_crear_recojo_hora_inicio.sql` | Hora inicio **obligatoria** en `age_crear_recojo_origen` |
+| `20260909_age_generar_recojos_hora.sql` | Batch pasa `TIME '08:00'` |
 
 ### 4.4 Relaciones con otros módulos
 
@@ -165,11 +197,14 @@ Auth: JWT global + `PermisosGuard`. Bypass: `AUTH_TODO`.
 | `cli_clientes` (+ direcciones) | Cliente y coords en detalle/próximas |
 | `tra_trabajadores` / `gen_chofer` / `auth_usuarios` | Responsable y sync |
 | `ven_comprobante` (+ detalle) | Origen reparto; anti-duplicado; listados de ventas muestran actividad |
-| `doc_salida` (+ detalle) | Origen principal de reparto actual |
+| `doc_salida` (+ detalle) | Origen principal de reparto actual; filtro “sin actividad vigente” |
 | `pro_producto` / `bal_balon` | Ítems + match de escaneo |
 | `bal_prestamo` (+ detalle) | Recojos F6 |
+| `bal_alquiler` (+ detalle) | Recojos vencidos + iniciar verificación (incl. regulador) |
+| `ven_garantia` | Contador en listado vencidos |
 | `gen_lista` / `gen_lista_opciones` | Catálogos |
-| `bal_recojo` | Módulo **separado**; unificación abierta |
+| `bal_recojo` | Módulo **separado**; alquileres UI aún lo usan |
+| Notificaciones | Job 08:00 Lima notifica vencidos; **no** llama `age_generar_recojos_por_vencer` |
 
 Sin FK directa a sedes/categorías.
 
@@ -184,7 +219,9 @@ Raíz: `src/modules/operativa/actividades/`
 ```
 actividades/
 ├── router/index.ts
-├── views/ActividadesView.vue
+├── views/
+│   ├── ActividadesView.vue          # listado / tabs / modales detalle-verificar-delete
+│   └── ActividadFormView.vue        # página crear/editar
 ├── services/actividades.service.ts
 ├── interfaces/actividad.interface.ts
 ├── constants/actividadesQueryKeys.ts
@@ -193,9 +230,11 @@ actividades/
 │   ├── useActividadDetailQuery.ts
 │   ├── useActividadesProximasQuery.ts
 │   ├── useRankingActividadesQuery.ts
-│   └── useActividadMutations.ts
+│   ├── useActividadMutations.ts
+│   └── useVencidosRecojoQuery.ts
 ├── components/
-│   ├── ActividadFormModal.vue
+│   ├── ActividadForm.vue            # form reutilizable (ya no hay ActividadFormModal)
+│   ├── OrigenRecojoSelectField.vue
 │   ├── ActividadDetailModal.vue
 │   ├── ActividadVerificacionModal.vue
 │   ├── ActividadesCalendar.vue
@@ -205,6 +244,7 @@ actividades/
     ├── actividadEstado.ts
     ├── actividadTipo.ts
     ├── actividadHorario.ts
+    ├── origenRecojoKey.ts
     ├── agruparActividadesPorColaborador.ts
     └── exportarActividadesExcel.ts
 ```
@@ -213,24 +253,28 @@ actividades/
 
 | Concepto | Valor |
 |----------|-------|
-| Path | `/admin/operativa/actividades` |
-| Route name | `admin-operativa-actividades` |
-| Meta permission | `actividades.listar` |
+| Listado | `/admin/operativa/actividades` → `admin-operativa-actividades` (`actividades.listar`) |
+| Crear | `/admin/operativa/actividades/nueva` → `admin-operativa-actividades-nueva` (`actividades.crear`) |
+| Editar | `/admin/operativa/actividades/:id/editar` → `admin-operativa-actividades-editar` (`actividades.editar`) |
 | Menú | Gestión → Actividades |
 
-Query URL: `?tab=lista` (default) \| `calendario` \| `colaboradores`
+Query URL listado: `?tab=lista` (default) \| `calendario` \| `colaboradores`
 
-**No hay** rutas hijas de detalle/crear/editar: todo es modal en la misma vista.
+Query URL crear (prefill): `fecha`, `titulo`, `clienteId`, `clienteLabel`, `idDocSalida`, `lockTipoReparto`, `tipoOrigenRecojo`, `idOrigenRecojo`, `origenRecojoLabel`, `lockTipoRecojo`
+
+**Detalle, verificación y eliminar** siguen siendo modales sobre el listado. **No hay** ruta `/:id` de ficha.
 
 ### 5.3 Pantallas / componentes
 
 | Componente | Rol |
 |------------|-----|
 | `ActividadesView` | Orquestador: toolbar, filtros, alertas próximas, 3 tabs, menú acciones, modales |
-| `ActividadFormModal` | Crear/editar (vee-validate + yup); modo reparto con `lockTipoReparto` |
-| `ActividadDetailModal` | Detalle + ítems; tomar/liberar/cancelar/marcar realizada |
-| `ActividadVerificacionModal` | Escaneo SALIDA/LLEGADA (`BalonBarcodeScanButton`) |
-| `ActividadesCalendar` | FullCalendar; click fecha → crear; click evento → detalle |
+| `ActividadFormView` | Página crear/editar; traduce query params a props del form |
+| `ActividadForm` | Crear/editar (vee-validate + yup); modos `lockTipoReparto` / `lockTipoRecojo` |
+| `OrigenRecojoSelectField` | Select remoto de vencidos (`PRESTAMO:id` / `ALQUILER:id`) |
+| `ActividadDetailModal` | Detalle + ítems + `detalle_origen`; tomar/liberar/cancelar/marcar realizada |
+| `ActividadVerificacionModal` | Escaneo SALIDA/LLEGADA (`BalonBarcodeScanButton`); auto `iniciar-verificacion` si hace falta |
+| `ActividadesCalendar` | FullCalendar; colores por tipo (RECOJO naranja, REPARTO azul), canceladas grises; click fecha → crear; click evento → detalle |
 | `ActividadesRankingPanel` | Ranking API (rango fechas, top 20) |
 | `ActividadesColaboradoresPanel` | Ranking client-side de realizadas + modal por colaborador |
 
@@ -238,30 +282,40 @@ Query URL: `?tab=lista` (default) \| `calendario` \| `colaboradores`
 
 1. **Datos generales:** título*, descripción  
 2. **Asignación:** cliente (SearchableSelect), responsable trabajador (badge Chofer/cargo)  
-3. **Clasificación:** tipo*, prioridad*, estado*  
-4. **Programación:** fecha*, hora inicio*, hora fin*; en edit: fecha/hora cierre  
-5. **Ítems del reparto** (preview si hay items/comprobante/GRE)  
-6. **Observaciones**
+3. **Clasificación:** tipo*, prioridad*, estado* (tipo bloqueado si lock reparto/recojo)  
+4. **Programación:** fecha*, hora inicio*; hora fin* **salvo RECOJO** (opcional); en edit: fecha/hora cierre  
+5. **Orden de salida** (create + REPARTO): `DocumentoSalidaSelectField` obligatorio  
+6. **Origen del recojo** (create + RECOJO): `OrigenRecojoSelectField` + resumen cilindros/garantías/regulador  
+7. **Preview ítems** / detalle origen  
+8. **Observaciones**
 
-Validación especial: cliente obligatorio si tipo `REPARTO`.
+Validación especial:
+- Cliente obligatorio si tipo `REPARTO`.
+- Orden de salida obligatoria al crear REPARTO.
+- Origen vencido obligatorio al crear RECOJO.
+- Hora fin > hora inicio solo si hay hora fin.
+
+Submit recojo usa `POST /recojo` (`useCrearRecojoMutation`), no el CRUD genérico. `useCrearRecojoPrestamoMutation` existe (legacy) y **la UI no lo invoca**.
 
 ### 5.5 Flujos UI disponibles
 
 | Flujo | Cómo |
 |-------|------|
 | Listar / filtrar / paginar | Tab Lista |
-| Calendario | Tab Calendario (refetch por rango; límite 500) |
+| Calendario | Tab Calendario (refetch por rango; límite 500; `visible` para `updateSize`) |
 | Colaboradores | Ranking API + panel agrupado local |
-| Crear / Editar | Modal |
+| Crear / Editar | Páginas hijas |
 | Detalle | Modal |
 | Marcar realizada / Cancelar | Menú o detalle |
 | Tomar / Liberar | Solo detalle (`asignarResponsable`) |
-| Verificar | Menú → carga detalle → modal escaneo |
+| Verificar | Menú → carga detalle → modal escaneo (+ iniciar verificación) |
 | Eliminar | Confirmación (baja lógica) |
 | Alertas próximas | Banner “En curso” / “Próxima” (poll 30s, ventana 60 min) |
 | Generar recojos | Botón toolbar |
 | Export Excel | Según tab |
-| Reparto desde orden | `DocumentoSalidaFormView` abre el form con defaults |
+| Reparto desde orden | Navega a `/nueva` con defaults |
+| Recojo desde préstamo | Navega a `/nueva` con origen PRESTAMO |
+| Recojo desde vencidos | Selector en el form (préstamo o alquiler) |
 
 ### 5.6 Permisos (frontend)
 
@@ -281,13 +335,14 @@ Definidos en `src/shared/constants/permissions.ts`.
 
 | Módulo | Integración |
 |--------|-------------|
-| Documentos de salida | “Agregar a reparto” → `ActividadFormModal` |
+| Documentos de salida | “Agregar a reparto” → ruta `admin-operativa-actividades-nueva` |
+| Préstamos / antigüedad | “Programar recojo” → misma ruta con `lockTipoRecojo` + `PRESTAMO` |
+| Alquileres | Siguen `RecojoProgramarModal` (balones); el form de actividades **sí** acepta origen `ALQUILER` vía vencidos |
 | Comprobantes | Badge actividad/reparto; cancelar reparto; **creación de reparto ya no** desde comprobante |
 | Clientes / Trabajadores / Choferes | Selects del formulario |
 | Catálogos | `useListaOpcionesQuery` |
 | Balones | `BalonBarcodeScanButton` en verificación |
 | Inventario | `documentoOrigenRoute` case `ACTIVIDAD` (**deep-link roto**, ver §7) |
-| Prestamos/recojos balones | Siguen con `RecojoProgramarModal` propio; **no** usan `crearRecojoPrestamo` |
 
 Mutaciones invalidan también `comprobantesQueryKeys` (vínculo con ventas).
 
@@ -297,59 +352,56 @@ Mutaciones invalidan también `comprobantesQueryKeys` (vínculo con ventas).
 
 ```mermaid
 flowchart TD
-  A[Origen: Manual / Orden salida / Préstamo / Generar recojos] --> B[age_actividad PENDIENTE]
+  A[Origen: Manual / Orden salida / Préstamo / Alquiler / Generar recojos] --> B[age_actividad PENDIENTE]
   B --> C{Asignar responsable?}
   C -->|Sí| D[Trabajador chofer]
   C -->|No| E[Sin asignar]
-  D --> F[Verificar SALIDA]
+  D --> F{¿Recojo sin ítems?}
   E --> F
-  F --> G[En ruta / En curso]
-  G --> H[Verificar LLEGADA]
-  H --> I{Cierre}
-  I -->|OK| J[REALIZADA]
-  I -->|No procede| K[CANCELADA]
-  J --> L[Ranking / reportes]
-  K --> L
+  F -->|Sí| IV[iniciar-verificacion]
+  F -->|No / ya materializado| G[Verificar SALIDA]
+  IV --> G
+  G --> H[En ruta / En curso]
+  H --> I[Verificar LLEGADA]
+  I --> J{Cierre}
+  J -->|OK| K[REALIZADA]
+  J -->|No procede| L[CANCELADA]
+  K --> M[Ranking / reportes]
+  L --> M
 ```
 
 ---
 
 ## 7. Inconsistencias y deuda técnica
 
-### 7.1 Prefijos API mixtos en el frontend (bug)
+### 7.1 Prefijos API mixtos — **resuelto**
 
-El controller Nest expone **todo** bajo `/operativa/actividades`, pero el servicio frontend llama Fase 6 **sin** ese prefijo:
+El servicio frontend llama **todo** bajo `/operativa/actividades` (verificar, recojo, generar, ranking, vencidos, iniciar-verificación). El bug del 2026-09-08 ya no aplica.
 
-| Acción | Frontend actual | Backend real |
-|--------|-----------------|--------------|
-| Verificar | `POST /actividades/:id/verificar` | `POST /operativa/actividades/:id/verificar` |
-| Recojo préstamo | `POST /actividades/recojo-prestamo` | `POST /operativa/actividades/recojo-prestamo` |
-| Generar recojos | `POST /actividades/generar-recojos` | `POST /operativa/actividades/generar-recojos` |
-| Ranking | `GET /actividades/ranking` | `GET /operativa/actividades/ranking` |
+### 7.2 Deep-link desde inventario — **sigue roto**
 
-CRUD clásico sí usa `/operativa/actividades`.
+`documentoOrigenRoute.ts` usa route name `admin-actividades`; la ruta real es `admin-operativa-actividades`. Además `ActividadesView` **no lee** `?id=` para abrir el detalle (y no hay ruta de ficha `/:id`).
 
-### 7.2 Deep-link desde inventario roto
+### 7.3 Drift de esquema SQL — **parcial**
 
-`documentoOrigenRoute.ts` usa route name `admin-actividades`; la ruta real es `admin-operativa-actividades`. Además `ActividadesView` **no lee** `?id=` para abrir el detalle.
-
-### 7.3 Drift de esquema SQL
-
-- Sync `age_actividad.sql` aún documenta `id_guia_remision` → `gre_guia_remision`.
-- Funciones actuales de crear/listar/obtener usan **`id_doc_salida`**.
-- `age_actualizar_actividad.sql` puede seguir actualizando `id_guia_remision` → riesgo de inconsistencia.
-- Tabla `age_actividad_verificacion` y columnas F6 **no** están reflejadas en los archivos sync de `tablas/actividades/`.
+- Funciones de crear / listar / obtener / **actualizar** usan **`id_doc_salida`** (ya no escriben `id_guia_remision`).
+- Sync `tablas/actividades/age_actividad.sql` sigue documentando `id_guia_remision` → `gre_guia_remision` (congelado ~2026-09-02).
+- Tabla `age_actividad_verificacion`, columnas F6 (`id_prestamo`, `id_alquiler`, verificación, producto recogido) **no** están en los archivos sync de `tablas/actividades/`.
 
 ### 7.4 Otros
 
-- Filtro `sinResponsable`: el `COUNT` filtra por `id_trabajador_responsable`, el `SELECT` por usuario/chofer.
-- `age_cambiar_estado_actividad_realizada` busca `realizada` sin acotar lista `EstadoActividad` (más frágil que cancelar).
-- Seed `gen_permisos_banderas.sql`: posible `;` mal puesto tras `actividades.eliminar` que rompe el `VALUES`.
-- Ranking: columna `canceladas` en tipo API no se renderiza en UI.
-- Tab Colaboradores: dos rankings (API vs agrupación local) pueden confundir.
-- `estado_producto_recogido` en interface de ítem: no se muestra en detalle ni verificación.
-- `useCrearRecojoPrestamoMutation` + API listos, **sin UI** que los invoque.
-- Tipo `ActividadRepartoPrefill` definido; callers pasan props sueltas.
+| Ítem | Estado |
+|------|--------|
+| Filtro `sinResponsable` COUNT≠SELECT | **Arreglado** — ambos usan `id_trabajador_responsable` |
+| `estaAsignada` en UI ignoraba trabajador | **Arreglado** — ahora mira trabajador / usuario / chofer |
+| Seed `gen_permisos_banderas.sql`: `;` tras `actividades.eliminar` | **Sigue** (rompe el `VALUES`; `verificar`/`ranking` van en migración F6) |
+| `age_cambiar_estado_actividad_realizada` busca `realizada` sin acotar lista `EstadoActividad` | **Sigue** |
+| Ranking: columna `canceladas` en tipo API no se renderiza | **Sigue** |
+| Tab Colaboradores: dos rankings (API vs agrupación local) | **Sigue** |
+| `estado_producto_recogido` en interface de ítem | **Sigue** sin UI ni write SQL |
+| `useCrearRecojoPrestamoMutation` | Legacy; UI usa `crearRecojo` unificado |
+| Alquileres “Programar recojo” | Sigue en `balones/recojos`, no en actividades |
+| Job auto-recojo | **Sigue** solo botón/API |
 
 ---
 
@@ -361,55 +413,66 @@ CRUD clásico sí usa `/operativa/actividades`.
 - [x] Alertas de próximas / en curso
 - [x] Asignar / liberar responsable
 - [x] Marcar realizada / cancelar / eliminar (baja lógica)
-- [x] Reparto desde orden de salida (UI + SQL)
-- [x] Catálogos F6 (verificación, origen, producto recogido)
+- [x] Reparto desde orden de salida (UI página + SQL)
+- [x] Formulario en páginas `/nueva` y `/:id/editar` (ya no modal)
+- [x] Catálogos F6 (verificación, origen incl. ALQUILER, producto recogido)
 - [x] Tabla bitácora `age_actividad_verificacion`
 - [x] API + UI de verificación por escaneo SALIDA/LLEGADA
-- [x] API crear recojo desde préstamo (idempotente)
-- [x] API + botón generar recojos por vencer
+- [x] Prefijos Fase 6 del servicio frontend (`/operativa/...`)
+- [x] API + UI crear recojo desde vencidos (PRESTAMO / ALQUILER)
+- [x] Navegación “Programar recojo” desde préstamos / antigüedad
+- [x] `iniciar-verificacion` (materializa ítems lazy)
+- [x] API + botón generar recojos por vencer (hora 08:00)
+- [x] Hora de inicio obligatoria en recojo; hora fin opcional
+- [x] Calendario: colores por tipo/estado, layout al mostrar tab
 - [x] API + panel ranking
 - [x] Permisos `actividades.verificar` y `actividades.ranking`
 
 ### Pendiente / parcial
 
-- [ ] Corregir prefijos Fase 6 en `actividades.service.ts` (`/operativa/...`)
-- [ ] UI que invoque `crearRecojoPrestamo`
+- [ ] Job automático de recojos (hoy solo manual; el cron de notificaciones no lo llama)
 - [ ] Mostrar / escribir `id_estado_producto_recogido`
-- [ ] Job automático de recojos (hoy solo manual)
-- [ ] Deep-link inventario → actividad (`admin-operativa-actividades` + `?id=`)
-- [ ] Alinear sync SQL / `age_actualizar_actividad` con `id_doc_salida`
-- [ ] Decisión: ¿`operativa/actividades` absorbe `balones/recojos`?
+- [ ] Deep-link inventario → actividad (`admin-operativa-actividades` + abrir detalle)
+- [ ] Alinear sync SQL (`tablas/actividades/`) con `id_doc_salida` + F6 + `id_alquiler`
+- [ ] Decisión: ¿`operativa/actividades` absorbe `balones/recojos`? (alquileres aún en el módulo viejo)
+- [ ] Enlazar “Programar recojo” de alquileres al form de actividades (como préstamos)
 - [ ] Decisiones abiertas del plan: días antes (default provisional 3), responsable por defecto
 - [ ] Unificar o clarificar los dos rankings del tab Colaboradores
 - [ ] Mostrar estados de verificación por ítem también en el modal de detalle
+- [ ] Corregir `;` en seed `gen_permisos_banderas.sql`
 
 ---
 
 ## 9. Punto de partida sugerido para retomar
 
-1. **Arreglar** las URLs Fase 6 del servicio frontend (prefijo `operativa/`).
-2. **Probar** verificación + generar recojos + ranking end-to-end.
-3. **Definir** si recojos de balones se absorben en actividades o se enlazan.
-4. **Completar** producto recogido (SQL write + UI) y deep-link inventario.
-5. **Enganchar** el job de auto-recojo al planificador de notificaciones cuando se cierre la decisión de días/responsable.
+1. **Probar** el circuito recojo: vencidos → crear con hora inicio → iniciar verificación → escaneo.
+2. **Definir** si recojos de alquiler (y el módulo `balones/recojos`) se absorben en actividades o se enlazan.
+3. **Completar** producto recogido (SQL write + UI) y deep-link inventario.
+4. **Enganchar** el job de auto-recojo al planificador de notificaciones cuando se cierre la decisión de días/responsable.
+5. **Sincronizar** archivos `database_sql/tablas/actividades/` con el esquema real.
 
 ---
 
 ## 10. Referencias rápidas
 
 ### Frontend
-- Vista: `src/modules/operativa/actividades/views/ActividadesView.vue`
+- Vista listado: `src/modules/operativa/actividades/views/ActividadesView.vue`
+- Vista form: `src/modules/operativa/actividades/views/ActividadFormView.vue`
+- Form: `src/modules/operativa/actividades/components/ActividadForm.vue`
 - Servicio: `src/modules/operativa/actividades/services/actividades.service.ts`
 - Interfaces: `src/modules/operativa/actividades/interfaces/actividad.interface.ts`
+- Router: `src/modules/operativa/actividades/router/index.ts`
 - Permisos: `src/shared/constants/permissions.ts`
 - Menú: `src/modules/admin/config/menu.ts`
 - Origen orden: `src/modules/documentos-salida/views/DocumentoSalidaFormView.vue`
+- Origen préstamo: `src/modules/balones/prestamos/views/PrestamosListView.vue`
 
 ### Backend
 - Controller: `api-sistema-sarita/src/modules/actividades/controllers/actividades.controller.ts`
 - Logic: `api-sistema-sarita/src/modules/actividades/logic/actividades.logic.ts`
 - SQL funciones: `api-sistema-sarita/database_sql/funciones/actividades/`
-- Migraciones F6: `api-sistema-sarita/database_sql/migraciones/20260908_f6_*.sql`
+- Migraciones F6: `api-sistema-sarita/database_sql/migraciones/20260908_f6_*.sql` y `20260908_age_recojo_vencidos_fk.sql`
+- Migraciones hora: `api-sistema-sarita/database_sql/migraciones/20260909_age_*.sql`
 
 ### Plan
-- `docs/plan-reestructuracion-oxigeno-sarita.md` — sección **Fase 6**
+- `docs/plan-reestructuracion-oxigeno-sarita.md` — sección **Fase 6** (el bullet “selector de recojo no está” ya no es cierto)

@@ -156,7 +156,12 @@
             <AppTimePicker
               v-model="horaFinEstimada"
               label="Hora de fin"
-              required
+              :required="!esTipoRecojo"
+              :hint="
+                esTipoRecojo
+                  ? 'Opcional en recojo; puedes definirla al culminar la actividad.'
+                  : undefined
+              "
               v-bind="horaFinEstimadaAttrs"
               :disabled="isSubmitting"
               :error="errors.horaFinEstimada"
@@ -839,14 +844,25 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, validateFiel
           }),
         fechaProgramada: requiredString('La fecha programada'),
         horaInicioEstimada: requiredString('La hora de inicio'),
-        horaFinEstimada: requiredString('La hora de fin').test(
-          'hora-fin-mayor-hora-inicio',
-          'La hora de fin debe ser posterior a la hora de inicio',
-          function (value) {
-            const horaInicio = (this.parent as { horaInicioEstimada?: string }).horaInicioEstimada
-            return horaFinEsPosterior(horaInicio, value)
-          },
-        ),
+        horaFinEstimada: optionalString()
+          .test(
+            'hora-fin-si-no-recojo',
+            'La hora de fin es obligatoria',
+            function (value) {
+              const idTipo = (this.parent as { idTipoActividad?: number }).idTipoActividad
+              if (esRecojoSeleccionado(idTipo)) return true
+              return Boolean(value?.trim())
+            },
+          )
+          .test(
+            'hora-fin-mayor-hora-inicio',
+            'La hora de fin debe ser posterior a la hora de inicio',
+            function (value) {
+              if (!value?.trim()) return true
+              const horaInicio = (this.parent as { horaInicioEstimada?: string }).horaInicioEstimada
+              return horaFinEsPosterior(horaInicio, value)
+            },
+          ),
         fechaHoraCierre: optionalString(),
         observaciones: optionalString(),
       }),
@@ -904,6 +920,7 @@ watch(horaInicioEstimada, () => {
 watch(idTipoActividad, (nuevo, anterior) => {
   void validateField('idCliente')
   void validateField('idTrabajadorResponsable')
+  void validateField('horaFinEstimada')
 
   if (props.lockTipoReparto || props.lockTipoRecojo || props.mode === 'edit') return
   const eraReparto = esRepartoSeleccionado(anterior)
@@ -1006,6 +1023,7 @@ const onSubmit = handleSubmit(async (values) => {
         tipoOrigen: parsed.tipoOrigen,
         idOrigen: parsed.idOrigen,
         fechaProgramada: values.fechaProgramada || undefined,
+        horaInicioEstimada: values.horaInicioEstimada,
         idTrabajadorResponsable: values.idTrabajadorResponsable
           ? Number(values.idTrabajadorResponsable)
           : undefined,

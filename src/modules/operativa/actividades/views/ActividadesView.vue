@@ -201,6 +201,7 @@
       <ActividadesCalendar
         :actividades="calendarRows"
         :loading="isLoadingCalendar"
+        :visible="activeTab === 'calendario'"
         @select-date="onSelectDate"
         @select-actividad="openDetailModal"
         @range-change="onCalendarRangeChange"
@@ -731,6 +732,53 @@ const openDetailModal = (actividad: Actividad) => {
   actividadToView.value = actividad
   detailModalOpen.value = true
 }
+
+// ---- Deep-link ?id= (p. ej. inventario → documento origen ACTIVIDAD) ----
+// La fila no viene en el listado: se pide el detalle y se abre el modal.
+const idActividadDeepLink = ref<number | null>(null)
+const deepLinkQueryHabilitada = computed(() => idActividadDeepLink.value != null)
+const actividadDeepLinkQuery = useActividadDetailQuery(
+  computed(() => idActividadDeepLink.value ?? undefined),
+  deepLinkQueryHabilitada,
+)
+
+// El id se consume una sola vez: se quita del query para no reabrir el modal
+// al cambiar de tab ni dejar la URL pegada.
+const limpiarIdDeQuery = () => {
+  const query = { ...route.query }
+  delete query.id
+  void router.replace({ query })
+}
+
+const abrirDetallePorId = async (id: number) => {
+  idActividadDeepLink.value = id
+  try {
+    const { data } = await actividadDeepLinkQuery.refetch()
+    if (!data) {
+      toastInfo(`No se encontró la actividad #${id}`)
+      return
+    }
+    actividadToView.value = data
+    detailModalOpen.value = true
+  } catch (error) {
+    toastApiError(error, 'No se pudo cargar la actividad')
+  } finally {
+    idActividadDeepLink.value = null
+    limpiarIdDeQuery()
+  }
+}
+
+watch(
+  () => route.query.id,
+  (raw) => {
+    if (!canView.value) return
+    const value = Array.isArray(raw) ? raw[0] : raw
+    const id = Number(value)
+    if (!value || !Number.isInteger(id) || id <= 0) return
+    void abrirDetallePorId(id)
+  },
+  { immediate: true },
+)
 
 // ---- Verificación por escaneo (Fase 6) ----
 // La fila del listado no trae los ítems: se pide el detalle al abrir.
