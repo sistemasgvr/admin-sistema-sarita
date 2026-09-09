@@ -22,7 +22,24 @@
           :icon="ICONS.boxes"
           :full-width="true"
         >
-          <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id" />
+          <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id">
+            <template #cell-rol="{ row }">
+              <AppBadge :color="row.rol === 'GARANTIA' ? 'warning' : 'primary'">
+                {{ row.rol === 'GARANTIA' ? 'Garantía' : 'Entregado' }}
+              </AppBadge>
+            </template>
+            <template #actions="{ row }">
+              <button
+                v-if="row.id_balon"
+                type="button"
+                title="Ver detalle del cilindro"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+                @click="verCilindro(row)"
+              >
+                <AppIcon :name="ICONS.eye" :size="15" />
+              </button>
+            </template>
+          </AppTable>
         </DetailSectionCard>
 
         <DetailSectionCard
@@ -50,6 +67,7 @@
 
 <script setup lang="ts">
 import { computed, ref, toRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
@@ -62,13 +80,19 @@ import {
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
-import type { PrestamoDetalleListFilters } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
+import type {
+  PrestamoDetalle,
+  PrestamoDetalleListFilters,
+} from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { AppBadge, AppModal, AppTable, ListaOpcionBadge } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 const props = defineProps<{ prestamoId?: number | null }>()
 const open = defineModel<boolean>({ default: false })
+
+const router = useRouter()
 
 const prestamoIdRef = toRef(() => props.prestamoId)
 const prestamoQuery = usePrestamoQuery(prestamoIdRef)
@@ -82,11 +106,26 @@ const detalleRows = computed(() => detallesQuery.data.value?.data ?? [])
 
 const detalleColumns: TableColumn[] = [
   { key: 'codigo_balon', label: 'Cilindro' },
+  { key: 'rol', label: 'Rol' },
   { key: 'nombre_producto', label: 'Gas' },
   { key: 'fecha_prestamo', label: 'Préstamo' },
   { key: 'fecha_vencimiento', label: 'Vencimiento' },
   { key: 'nombre_estado', label: 'Estado' },
 ]
+
+/**
+ * El detalle del cilindro vive en su propia pantalla (libro del cilindro), así
+ * que el modal se cierra al navegar: dejarlo abierto encima de la ruta nueva
+ * bloquea el scroll de la página que se acaba de abrir.
+ */
+function verCilindro(row: PrestamoDetalle) {
+  if (!row.id_balon) return
+  open.value = false
+  void router.push({
+    name: 'admin-balones-cilindros-detalle',
+    params: { id: String(row.id_balon) },
+  })
+}
 
 watch(
   () => [open.value, props.prestamoId] as const,

@@ -98,6 +98,8 @@ export interface DeletePrestamoResponse {
 
 export interface RenovarPrestamoPayload {
   idBalonNuevo?: number
+  /** Si se omite, el préstamo nuevo hereda la fecha del que se renueva. */
+  fechaRetornoPactada?: string
   idUsuarioAuditoria?: number
 }
 

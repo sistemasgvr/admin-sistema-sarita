@@ -21,6 +21,10 @@ export interface Garantia {
   id_prestamo?: number | null
   numero_prestamo?: string | null
   titulo_prestamo?: string | null
+  /** Detalle del cilindro que respalda (bal_prestamo_detalle). */
+  id_prestamo_detalle?: number | null
+  /** Garantía de la que viene, cuando el préstamo se renovó. */
+  id_garantia_origen?: number | null
   id_alquiler?: number | null
   numero_alquiler?: string | null
   ubicacion?: string | null
@@ -34,6 +38,8 @@ export interface Garantia {
   fecha_registro: string
   monto_cobrado: number
   monto_devuelto: number
+  /** Saldo que pasó a la garantía del préstamo que renovó a este. */
+  monto_transferido?: number | null
   monto_saldo: number
   id_estado?: number | null
   nombre_estado?: string | null

@@ -98,6 +98,10 @@ const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   CANCELADA: 'error',
   RETORNADO: 'success',
 
+  // EstadoGarantia / TipoMovimientoGarantia
+  TRANSFERIDA: 'neutral',
+  TRANSFERENCIA: 'neutral',
+
   // Estados genéricos de operaciones
   ACTIVO: 'success',
   CERRADO: 'neutral',

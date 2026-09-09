@@ -1110,6 +1110,14 @@ async function guardarComprobante() {
       return
     }
 
+    // Sin fecha de retorno el préstamo nace sin vencimiento y el backend no
+    // programa el recojo automático. Se valida también aquí porque el carrito
+    // puede traer líneas armadas antes de que el campo fuera obligatorio.
+    if (esEntregarPrestamo(linea) && !linea.fechaFinAlquiler) {
+      toastWarning(`${linea.nombre}: indica la fecha de retorno pactada del préstamo`)
+      return
+    }
+
     if (
       Number(linea.montoGarantia || 0) > 0 &&
       !linea.idMedioPagoGarantia &&

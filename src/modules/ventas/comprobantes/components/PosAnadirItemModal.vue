@@ -3,7 +3,7 @@
     v-model="open"
     :title="titulo"
     :subtitle="subtitulo"
-    :size="paso === 'catalogo' ? 'xl' : 'lg'"
+    :size="paso === 'catalogo' || esConfigPrestamo ? 'xl' : 'lg'"
   >
     <!-- Paso 1: tipo -->
     <div v-if="paso === 'tipo'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -86,11 +86,17 @@
       </div>
 
       <template v-if="tipo === 'gas'">
-        <div>
-          <p class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+        <!--
+          En una renovación el escenario ya está decidido (se entrega un cilindro
+          de la empresa) y solo queda esa opción visible, así que el selector
+          sobra. Si por permisos o falta de almacén no llegó a fijarse, vuelve a
+          mostrarse para no dejar el modal sin salida.
+        -->
+        <div v-if="!(renovarPrestamo && escenarioGas === 'entregar_prestamo')">
+          <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
             {{
               continuarConPrestamoGas
-                ? 'Préstamo del cilindro'
+                ? '1. Préstamo del cilindro'
                 : '1. ¿Qué hace el cliente?'
             }}
           </p>
@@ -133,7 +139,7 @@
         </div>
 
         <template v-if="escenarioGas === 'balon_cliente'">
-          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
             2. Elige el cilindro que trae
           </p>
           <p
@@ -199,205 +205,259 @@
         </template>
 
         <template v-else-if="escenarioGas === 'balon_cliente_no_registrado'">
-          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
             2. Cantidad y precio del gas
           </p>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-xs text-gray-500 dark:text-gray-400">
             El cilindro del cliente no se registra en el sistema — solo se cobra el gas.
           </p>
         </template>
 
         <template v-else-if="escenarioGas === 'entregar_prestamo'">
-          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
-            2. Elige el cilindro que le entregamos
-          </p>
-          <p
+          <!--
+            Renovación: antes de decidir nada el cajero necesita ver qué tiene
+            hoy el préstamo (cilindro entregado y garantía). Sin esto decidía a
+            ciegas si volver a cobrar garantía o reutilizar la que ya dejó. El
+            préstamo anterior se cierra y se crea uno nuevo encadenado, así que
+            lo que se ve aquí es lo que pasa al nuevo.
+          -->
+          <!--
+            Una sola tarjeta de contexto en vez de tres bloques: qué préstamo se
+            está renovando, qué tiene hoy y qué va a pasar al confirmar. Es
+            estado, no un paso del formulario, así que no lleva número.
+          -->
+          <section
             v-if="renovarPrestamo"
-            class="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+            class="flex flex-col gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 p-3.5 dark:border-brand-500/25 dark:bg-brand-500/10 sm:flex-row sm:items-start"
           >
-            Renovando préstamo
-            <span class="font-semibold">{{ renovarPrestamo.numeroPrestamo || `#${renovarPrestamo.id}` }}</span>.
-            Si no eliges cilindro, se usa uno disponible de las mismas características o se
-            extiende con el que ya tiene el cliente.
-          </p>
+            <span
+              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-brand-500 shadow-theme-xs dark:bg-white/10 dark:text-brand-400"
+            >
+              <AppIcon :name="ICONS.refreshCw" :size="18" />
+            </span>
+            <div class="min-w-0 flex-1 space-y-2">
+              <p
+                class="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-600 dark:text-brand-400"
+              >
+                Préstamo vigente {{ etiquetaPrestamoRenovar }}
+              </p>
+
+              <div v-if="datosPrestamoRenovar.length" class="flex flex-wrap items-center gap-1.5">
+                <span
+                  v-for="dato in datosPrestamoRenovar"
+                  :key="dato.clave"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-brand-100 bg-white/80 px-2 py-1 text-[11px] text-gray-600 dark:border-white/10 dark:bg-white/10 dark:text-gray-300"
+                >
+                  {{ dato.etiqueta }}
+                  <span class="font-semibold text-gray-800 dark:text-white/90">
+                    {{ dato.valor }}
+                  </span>
+                </span>
+              </div>
+              <p v-else-if="cargandoPrestamoRenovar" class="text-xs text-gray-500 dark:text-gray-400">
+                Cargando el préstamo vigente...
+              </p>
+
+              <p class="text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                Al confirmar, este préstamo se cierra y se abre uno nuevo con el cilindro que
+                entregues.
+              </p>
+            </div>
+          </section>
 
           <!--
-            Qué tiene hoy el préstamo que se renueva. Sin esto el cajero decidía
-            a ciegas: no había forma de saber si el cliente había dejado un
-            cilindro suyo o dinero. El préstamo anterior se cierra y se crea uno
-            nuevo encadenado, así que lo que se vea aquí es lo que pasa al nuevo.
+            Arriba, dos columnas de altura pareja: lo que sale (cilindro y fechas)
+            y la modalidad de garantía. El detalle de esa modalidad va debajo, a
+            ancho completo: es lo único que crece mucho según lo elegido, y
+            dentro de una columna dejaba la otra medio vacía.
           -->
-          <div
-            v-if="renovarPrestamo && (balonEntregadoAnterior || balonGarantiaAnterior || garantiaDineroAnterior)"
-            class="space-y-2 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-sm dark:border-gray-700 dark:bg-white/5"
-          >
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              El préstamo actual tiene
-            </p>
-            <div v-if="balonEntregadoAnterior" class="flex items-start justify-between gap-3">
-              <span class="text-gray-700 dark:text-gray-300">
-                <span class="mr-1.5 rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
-                  Prestado
-                </span>
-                {{ balonEntregadoAnterior.codigo_balon }}
-              </span>
-              <span class="shrink-0 text-xs text-gray-500 dark:text-gray-400">
-                se canjea o se extiende
-              </span>
-            </div>
-            <div v-if="balonGarantiaAnterior" class="flex items-start justify-between gap-3">
-              <span class="text-gray-700 dark:text-gray-300">
-                <span class="mr-1.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                  Garantía cilindro
-                </span>
-                {{ balonGarantiaAnterior.codigo_balon }}
-                <span class="text-xs text-gray-500 dark:text-gray-400">(del cliente)</span>
-              </span>
-            </div>
-            <div v-if="garantiaDineroAnterior" class="flex items-start justify-between gap-3">
-              <span class="text-gray-700 dark:text-gray-300">
-                <span class="mr-1.5 rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                  Garantía dinero
-                </span>
-                Saldo {{ formatMoney(Number(garantiaDineroAnterior.monto_saldo ?? 0)) }}
-              </span>
-            </div>
-          </div>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            Cobras el gas. El cilindro es de la empresa y el cliente lo devuelve después.
-          </p>
-          <p
-            v-if="esClientesVarios"
-            class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
-          >
-            Primero elige un cliente con nombre (no “Clientes varios”).
-          </p>
-          <PosBalonSelectField
-            v-model="idBalon"
-            v-model:etiqueta="etiquetaBalon"
-            mode="alquiler"
-            :id-almacen="idAlmacen"
-            :extra-filters="extraFiltersProductoGas"
-            label="Cilindros de la empresa"
-            placeholder="Buscar en almacén"
-            incluir-custodia-cliente
-            empty-text="No hay cilindros de este gas disponibles en el almacén."
-            :required="!renovarPrestamo"
-            @selected="onBalonEmpresaSelected"
-          />
-          <p
-            v-if="capacidadBalonSeleccionado"
-            class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
-          >
-            Capacidad máxima de este cilindro:
-            <span class="font-semibold">{{ capacidadBalonSeleccionado }} m³</span>.
-            Indica la cantidad de gas que se cobra (hasta ese máximo).
-          </p>
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput v-model="fechaInicio" label="Fecha de entrega" type="date" required />
-            <AppInput
-              v-model="fechaFin"
-              :label="exigeFechaRetorno ? 'Fecha de retorno pactada' : 'Fecha de devolución'"
-              type="date"
-              :required="exigeFechaRetorno"
-              :min="fechaInicio || undefined"
-              :error="errorFechaRetorno || undefined"
-              :hint="
-                exigeFechaRetorno
-                  ? 'Fin del préstamo: cuándo se compromete a volver por su cilindro.'
-                  : undefined
-              "
-            />
-          </div>
-          <div
-            v-if="renovarPrestamo && tipoGarantiaPrestamo === 'heredada'"
-            class="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-2.5 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
-          >
-            <span>
-              <template v-if="etiquetaGarantiaHeredada">
-                Se mantiene {{ etiquetaGarantiaHeredada }}: pasa al préstamo nuevo sin
-                devolverse ni volver a cobrarse.
-              </template>
-              <template v-else>
-                Se mantiene la garantía del préstamo anterior (dinero o cilindro, la que tenga).
-              </template>
-            </span>
-            <button
-              type="button"
-              class="shrink-0 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
-              @click="tipoGarantiaPrestamo = 'ninguna'"
-            >
-              Registrar una nueva
-            </button>
-          </div>
-          <div v-else>
-            <p class="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Garantía</p>
-            <div class="flex flex-wrap gap-4">
-              <label class="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
-                <input v-model="tipoGarantiaPrestamo" type="radio" value="ninguna" class="border-gray-300" />
-                Ninguna
-              </label>
-              <label class="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
-                <input v-model="tipoGarantiaPrestamo" type="radio" value="dinero" class="border-gray-300" />
-                Dinero
-              </label>
-              <label class="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
-                <input v-model="tipoGarantiaPrestamo" type="radio" value="balon" class="border-gray-300" />
-                Cliente deja su cilindro
-              </label>
-              <label
-                v-if="renovarPrestamo"
-                class="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300"
+          <div class="grid grid-cols-1 gap-5 lg:grid-cols-5 lg:items-start">
+            <section class="space-y-2 lg:col-span-3">
+              <p
+                class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
               >
-                <input v-model="tipoGarantiaPrestamo" type="radio" value="heredada" class="border-gray-300" />
-                Mantener {{ etiquetaGarantiaHeredada || 'la anterior' }}
-              </label>
+                {{ offsetPaso + 1 }}. Elige el cilindro que le entregamos
+              </p>
+              <p
+                v-if="esClientesVarios"
+                class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
+              >
+                Primero elige un cliente con nombre (no “Clientes varios”).
+              </p>
+              <PosBalonSelectField
+                v-model="idBalon"
+                v-model:etiqueta="etiquetaBalon"
+                mode="alquiler"
+                :id-almacen="idAlmacen"
+                :extra-filters="extraFiltersProductoGas"
+                label="Disponible en almacén"
+                placeholder="Buscar en almacén o seleccionar cilindro disponible..."
+                incluir-custodia-cliente
+                empty-text="No hay cilindros de este gas disponibles en el almacén."
+                :required="!renovarPrestamo"
+                @selected="onBalonEmpresaSelected"
+              />
+              <p v-if="renovarPrestamo" class="text-xs text-gray-500 dark:text-gray-400">
+                Si no eliges cilindro, se usa uno disponible de las mismas características o se
+                extiende el que ya tiene el cliente.
+              </p>
+              <p
+                v-if="capacidadBalonSeleccionado"
+                class="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:bg-white/5 dark:text-gray-300"
+              >
+                Capacidad máxima de este cilindro:
+                <span class="font-semibold">{{ capacidadBalonSeleccionado }} m³</span>.
+                Indica la cantidad de gas que se cobra (hasta ese máximo).
+              </p>
+              <p v-if="!renovarPrestamo" class="text-xs text-gray-500 dark:text-gray-400">
+                Cobras el gas. El cilindro es de la empresa y el cliente lo devuelve después.
+              </p>
+
+              <div class="grid grid-cols-1 gap-4 pt-1 sm:grid-cols-2">
+                <AppInput v-model="fechaInicio" label="Fecha de entrega" type="date" required />
+                <AppInput
+                  v-model="fechaFin"
+                  :label="exigeFechaRetorno ? 'Fecha de retorno pactada' : 'Fecha de devolución'"
+                  type="date"
+                  :required="exigeFechaRetorno"
+                  :min="fechaInicio || undefined"
+                  :error="errorFechaRetorno || undefined"
+                  :hint="
+                    exigeFechaRetorno
+                      ? 'Fin del préstamo: cuándo se compromete a devolver o recambiar.'
+                      : undefined
+                  "
+                />
+              </div>
+            </section>
+
+            <section
+              class="space-y-2.5 lg:col-span-2 lg:border-l lg:border-gray-200 lg:pl-6 dark:lg:border-gray-700"
+            >
+              <p
+                class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
+              >
+                {{ offsetPaso + 2 }}. Modalidad de garantía
+              </p>
+
+              <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <label
+                  v-for="opcion in opcionesGarantiaPrestamo"
+                  :key="opcion.key"
+                  class="flex cursor-pointer flex-col rounded-xl border p-3 transition duration-150 ease-out focus-within:ring-2 focus-within:ring-brand-500/60 focus-within:ring-offset-2 active:scale-[0.98] dark:focus-within:ring-offset-gray-900"
+                  :class="
+                    tipoGarantiaPrestamo === opcion.key
+                      ? 'border-brand-500 bg-brand-50/60 ring-1 ring-brand-500 dark:border-brand-500 dark:bg-brand-500/10'
+                      : 'border-gray-200 hover:border-brand-300 dark:border-gray-700 dark:hover:border-brand-500'
+                  "
+                >
+                  <span class="mb-1.5 flex items-center justify-between gap-2">
+                    <span class="text-xs font-semibold text-gray-800 dark:text-white/90">
+                      {{ opcion.label }}
+                    </span>
+                    <input
+                      v-model="tipoGarantiaPrestamo"
+                      type="radio"
+                      name="pos-garantia-prestamo"
+                      :value="opcion.key"
+                      class="h-3.5 w-3.5 shrink-0 border-gray-300 text-brand-500 focus:ring-brand-500"
+                    />
+                  </span>
+                  <span class="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                    {{ opcion.help }}
+                  </span>
+                </label>
+              </div>
+
+              <p
+                v-if="tipoGarantiaPrestamo === 'heredada'"
+                class="flex items-start gap-2 rounded-xl border border-success-500/30 bg-success-50 px-3 py-2.5 text-xs leading-relaxed text-gray-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-gray-300"
+              >
+                <AppIcon
+                  :name="ICONS.check"
+                  :size="16"
+                  class="mt-0.5 shrink-0 text-success-600 dark:text-success-500"
+                />
+                <span>
+                  No se cobra garantía:
+                  <span class="font-semibold text-gray-800 dark:text-white/90">
+                    {{ etiquetaGarantiaHeredada || 'la garantía anterior' }}
+                  </span>
+                  pasa al préstamo nuevo.
+                </span>
+              </p>
+            </section>
+          </div>
+
+          <div
+            v-if="tipoGarantiaPrestamo === 'dinero'"
+            class="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3.5 dark:border-amber-500/30 dark:bg-amber-500/10"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p
+                class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:text-amber-200"
+              >
+                <AppIcon :name="ICONS.handCoins" :size="16" />
+                Recepción de la garantía dineraria
+              </p>
+              <span
+                class="rounded bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200"
+              >
+                Se devuelve cuando traiga el cilindro en buen estado
+              </span>
+            </div>
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <AppFormField
+                label="Monto de garantía"
+                required
+                :error="errorMontoGarantia"
+                :hint="origenMontoGarantia || undefined"
+              >
+                <MoneyInput
+                  v-model="montoGarantia"
+                  placeholder="0.00"
+                  :state="errorMontoGarantia ? 'error' : 'default'"
+                  @blur="onBlurMontoGarantia"
+                />
+              </AppFormField>
+              <div class="lg:col-span-2">
+                <GarantiaRecepcionFields
+                  v-model:id-medio-pago="idMedioPagoGarantia"
+                  v-model:id-cuenta-bancaria="idCuentaBancariaGarantia"
+                  v-model:numero-operacion="numeroOperacionGarantia"
+                  v-model:observacion="observacionGarantia"
+                  v-model:valido="garantiaRecepcionValida"
+                  bare
+                />
+              </div>
             </div>
           </div>
 
-          <template v-if="tipoGarantiaPrestamo === 'dinero'">
-            <AppFormField
-              label="Garantía (dinero que deja)"
-              hint="Se puede devolver cuando traiga el cilindro."
-              :error="errorMontoGarantia"
-            >
-              <MoneyInput
-                v-model="montoGarantia"
-                placeholder="0.00"
-                :state="errorMontoGarantia ? 'error' : 'default'"
-                @blur="onBlurMontoGarantia"
-              />
-            </AppFormField>
-            <p
-              v-if="origenMontoGarantia"
-              class="text-xs text-gray-500 dark:text-gray-400"
-            >
-              {{ origenMontoGarantia }}
-            </p>
-            <GarantiaRecepcionFields
-              v-model:id-medio-pago="idMedioPagoGarantia"
-              v-model:id-cuenta-bancaria="idCuentaBancariaGarantia"
-              v-model:numero-operacion="numeroOperacionGarantia"
-              v-model:observacion="observacionGarantia"
-              v-model:valido="garantiaRecepcionValida"
-            />
-          </template>
-
-          <template v-if="tipoGarantiaPrestamo === 'balon'">
-            <p
-              v-if="nombreCliente"
-              class="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-300"
-            >
-              El cilindro se registrará a nombre de
-              <span class="font-semibold">{{ nombreCliente }}</span
-              >, el cliente de esta venta, y en el almacén de la venta.
-            </p>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div
+            v-else-if="tipoGarantiaPrestamo === 'balon'"
+            class="space-y-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3.5 dark:border-gray-700 dark:bg-white/5"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p
+                class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-600 dark:text-gray-300"
+              >
+                <AppIcon :name="ICONS.shield" :size="16" class="text-brand-500 dark:text-brand-400" />
+                Cilindro que deja en custodia
+              </p>
+              <span
+                v-if="nombreCliente"
+                class="text-[11px] text-gray-500 dark:text-gray-400"
+              >
+                Se registrará a nombre de
+                <span class="font-semibold text-gray-700 dark:text-gray-300">{{ nombreCliente }}</span>
+              </span>
+            </div>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div class="flex items-end gap-2">
                 <div class="min-w-0 flex-1">
                   <AppInput
                     v-model="garantiaBalonCodigo"
-                    label="Código del cilindro que deja"
+                    label="Código del cilindro"
                     placeholder="Código o etiqueta"
                     required
                   />
@@ -407,7 +467,7 @@
               <AppInput
                 v-model="garantiaBalonNumeroSerie"
                 label="N° de serie"
-                placeholder="Opcional"
+                placeholder="Opcional (ojiva)"
               />
               <TipoBalonSelectField
                 v-model="garantiaBalonIdTipoBalon"
@@ -420,30 +480,54 @@
                 type="date"
               />
             </div>
+            <AppInput
+              v-model="garantiaBalonObservacion"
+              label="Observación del cilindro"
+              placeholder="Ej.: tulipa metálica presente, válvula con protector, detalles de pintura..."
+            />
             <p
               v-if="garantiaBalonPhVencida"
-              class="rounded-lg bg-warning-50 px-3 py-2 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-400"
+              class="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
             >
               La prueba hidrostática de este cilindro está vencida — se registrará como observación.
             </p>
-            <AppInput
-              v-model="garantiaBalonObservacion"
-              label="Observación del cilindro de garantía"
-              placeholder="Opcional"
-            />
-            <p class="text-xs font-medium text-error-500">
-              Estos son los datos mínimos para dejarlo en garantía. Cualquier otro dato del
-              cilindro (fabricación, marca, órgano inspector, etc.) se completa después desde su
-              libro del cilindro, en el registro completo del balón.
+            <p class="text-[11px] text-gray-500 dark:text-gray-400">
+              Son los datos mínimos para dejarlo en garantía; el resto se completa después en el
+              libro del cilindro.
             </p>
-          </template>
+          </div>
+
+          <section class="space-y-2">
+            <p
+              class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
+            >
+              {{ offsetPaso + 3 }}. Gas que se cobra
+            </p>
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
+              <PosGasCobroFields
+                v-model:cantidad="cantidad"
+                v-model:precio="precioUnitario"
+                class="lg:col-span-3"
+                :nombre-unidad="producto.nombre_unidad_medida"
+                :cantidad-bloqueada="cantidadBloqueadaPorBalon"
+                :error-cantidad="errorCantidadGas"
+                :hint-cantidad="hintCantidadBalon"
+                :error-precio="errorPrecioUnitario"
+                @blur-precio="onBlurPrecioUnitario"
+              />
+              <!-- Es la nota de esta línea (el gas): aquí queda junto a lo que describe. -->
+              <div class="lg:col-span-2">
+                <AppInput v-model="observacion" label="Nota del ítem" placeholder="Opcional" />
+              </div>
+            </div>
+          </section>
         </template>
 
         <template v-else-if="escenarioGas === 'comprar_balon'">
-          <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
             2. Elige el cilindro que se vende
           </p>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
+          <p class="text-xs text-gray-500 dark:text-gray-400">
             El cliente se lleva el cilindro. Se cobra el gas y el envase por separado.
           </p>
           <PosBalonSelectField
@@ -498,32 +582,21 @@
           </div>
         </template>
 
-        <div v-if="escenarioGas" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <CantidadUnidadInput
-            v-if="!cantidadBloqueadaPorBalon"
-            v-model="cantidad"
-            name="pos-anadir-cantidad"
-            :nombre-unidad="producto.nombre_unidad_medida ?? 'UNID'"
-            es-gas
-            label="Cantidad de gas (m³)"
-            :error="errorCantidadGas || undefined"
-            :hint="hintCantidadBalon"
-          />
-          <div :class="cantidadBloqueadaPorBalon ? 'sm:col-span-2' : ''">
-            <AppFormField label="Precio por m³" required :error="errorPrecioUnitario">
-              <MoneyInput
-                v-model="precioUnitario"
-                placeholder="0.00"
-                :state="errorPrecioUnitario ? 'error' : 'default'"
-                @blur="onBlurPrecioUnitario"
-              />
-            </AppFormField>
-          </div>
-        </div>
+        <PosGasCobroFields
+          v-if="escenarioGas && !esConfigPrestamo"
+          v-model:cantidad="cantidad"
+          v-model:precio="precioUnitario"
+          :nombre-unidad="producto.nombre_unidad_medida"
+          :cantidad-bloqueada="cantidadBloqueadaPorBalon"
+          :error-cantidad="errorCantidadGas"
+          :hint-cantidad="hintCantidadBalon"
+          :error-precio="errorPrecioUnitario"
+          @blur-precio="onBlurPrecioUnitario"
+        />
       </template>
 
       <template v-else-if="tipo === 'alquiler'">
-        <p class="text-sm font-semibold text-gray-800 dark:text-white/90">
+        <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
           1. Alquiler del accesorio
         </p>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -573,7 +646,7 @@
         />
 
         <div v-if="!modoEdicion">
-          <p class="mb-2 text-sm font-semibold text-gray-800 dark:text-white/90">
+          <p class="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400">
             2. ¿También le das un cilindro?
           </p>
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -676,7 +749,13 @@
         />
       </template>
 
-      <AppInput v-model="observacion" label="Nota del ítem" placeholder="Opcional" />
+      <!-- En el préstamo la nota viaja junto a los campos del gas, dentro de su sección. -->
+      <AppInput
+        v-if="!esConfigPrestamo"
+        v-model="observacion"
+        label="Nota del ítem"
+        placeholder="Opcional"
+      />
 
       <!--
         Resumen de la operación completa antes de confirmar. Un préstamo con
@@ -718,13 +797,12 @@
           </span>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-          Solo el gas va al comprobante. El préstamo y la garantía se registran
-          aparte y se muestran en el detalle de la venta.
+          Solo el gas va al comprobante; el préstamo y la garantía se registran aparte.
         </p>
       </div>
 
       <p
-        v-if="!(tipo === 'gas' && escenarioGas === 'comprar_balon')"
+        v-if="!esConfigPrestamo && !(tipo === 'gas' && escenarioGas === 'comprar_balon')"
         class="text-right text-sm font-medium tabular-nums text-gray-700 dark:text-gray-300"
       >
         Importe: {{ formatMoney(importe) }}
@@ -732,9 +810,22 @@
     </div>
 
     <template #footer>
+      <!--
+        En el préstamo el modal es largo y el total quedaba enterrado al final
+        del scroll: aquí viaja con los botones, que es donde se decide cobrar.
+      -->
+      <div
+        v-if="esConfigPrestamo"
+        class="mr-auto flex items-baseline gap-2 whitespace-nowrap"
+      >
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Importe a cobrar:</span>
+        <span class="text-lg font-bold tabular-nums text-gray-800 dark:text-white/90">
+          {{ formatMoney(importe) }}
+        </span>
+      </div>
       <button
         type="button"
-        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 transition duration-100 ease-out hover:bg-gray-50 active:scale-[0.98] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
         @click="onSecundario"
       >
         {{ textoSecundario }}
@@ -742,7 +833,7 @@
       <button
         v-if="paso === 'config'"
         type="button"
-        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-medium text-white transition duration-100 ease-out hover:bg-brand-600 active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
         :disabled="!puedeConfirmar"
         @click="confirmar"
       >
@@ -782,6 +873,7 @@ import TipoBalonSelectField from '@/modules/balones/tipos-balon/components/TipoB
 import BalonBarcodeScanButton from '@/modules/balones/cilindros/components/BalonBarcodeScanButton.vue'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
+import PosGasCobroFields from '@/modules/ventas/comprobantes/components/PosGasCobroFields.vue'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import {
@@ -1005,6 +1097,23 @@ const garantiaDineroAnterior = computed(() => {
   )
 })
 
+const montoGarantiaDineroAnterior = computed(() =>
+  Number(garantiaDineroAnterior.value?.monto_saldo ?? 0),
+)
+
+const etiquetaPrestamoRenovar = computed(() =>
+  props.renovarPrestamo
+    ? props.renovarPrestamo.numeroPrestamo || `#${props.renovarPrestamo.id}`
+    : '',
+)
+
+const cargandoPrestamoRenovar = computed(
+  () =>
+    Boolean(props.renovarPrestamo) &&
+    (detallesPrestamoRenovarQuery.isFetching.value ||
+      garantiasPrestamoRenovarQuery.isFetching.value),
+)
+
 /** Texto concreto de lo que se hereda, para no ofrecer "la anterior" a ciegas. */
 const etiquetaGarantiaHeredada = computed(() => {
   const partes: string[] = []
@@ -1018,6 +1127,73 @@ const etiquetaGarantiaHeredada = computed(() => {
   }
   return partes.join(' y ')
 })
+
+/**
+ * Lo que hoy respalda el préstamo, en chips: se lee de un vistazo antes de
+ * decidir la garantía del préstamo nuevo.
+ */
+const datosPrestamoRenovar = computed(() => {
+  const datos: { clave: string; etiqueta: string; valor: string }[] = []
+  if (balonEntregadoAnterior.value?.codigo_balon) {
+    datos.push({
+      clave: 'prestado',
+      etiqueta: 'Tiene',
+      valor: balonEntregadoAnterior.value.codigo_balon,
+    })
+  }
+  if (montoGarantiaDineroAnterior.value > 0) {
+    datos.push({
+      clave: 'garantia-dinero',
+      etiqueta: 'Garantía',
+      valor: formatMoney(montoGarantiaDineroAnterior.value),
+    })
+  }
+  if (balonGarantiaAnterior.value?.codigo_balon) {
+    datos.push({
+      clave: 'garantia-balon',
+      etiqueta: 'Garantía en cilindro',
+      valor: balonGarantiaAnterior.value.codigo_balon,
+    })
+  }
+  return datos
+})
+
+/** El contexto del préstamo no es un paso: en renovación se numera desde el cilindro. */
+const offsetPaso = computed(() => (props.renovarPrestamo ? 0 : 1))
+
+/**
+ * Modalidades de garantía del préstamo, como tarjetas. "Mantener" solo existe
+ * en una renovación y dice en el propio botón qué se está reutilizando: sin el
+ * monto o el código a la vista, elegir "la anterior" era elegir a ciegas.
+ */
+const opcionesGarantiaPrestamo = computed(() => {
+  const opciones: { key: 'ninguna' | 'dinero' | 'balon' | 'heredada'; label: string; help: string }[] =
+    [
+      { key: 'ninguna', label: 'Ninguna', help: 'Sin respaldo: solo se presta el cilindro.' },
+      { key: 'dinero', label: 'Dinero', help: 'Depósito en cuenta o efectivo.' },
+      { key: 'balon', label: 'Deja cilindro', help: 'El cliente deja un balón en custodia.' },
+    ]
+
+  if (props.renovarPrestamo) {
+    const tieneDinero = montoGarantiaDineroAnterior.value > 0
+    const tieneBalon = Boolean(balonGarantiaAnterior.value)
+    opciones.push({
+      key: 'heredada',
+      label:
+        tieneDinero && !tieneBalon
+          ? `Mantener ${formatMoney(montoGarantiaDineroAnterior.value)}`
+          : !tieneDinero && tieneBalon
+            ? 'Mantener el cilindro'
+            : 'Mantener la anterior',
+      help: etiquetaGarantiaHeredada.value
+        ? `Reutiliza ${etiquetaGarantiaHeredada.value}.`
+        : 'Reutiliza el respaldo del préstamo anterior.',
+    })
+  }
+
+  return opciones
+})
+
 const garantiaBalonCodigo = ref('')
 const garantiaBalonNumeroSerie = ref('')
 const garantiaBalonIdTipoBalon = ref<number | ''>('')
@@ -1025,15 +1201,12 @@ const garantiaBalonFechaUltimaPh = ref('')
 const garantiaBalonObservacion = ref('')
 
 /**
- * Cuando el cliente deja su cilindro en garantía hay que pactar cuándo vuelve
- * por él: si no, el préstamo queda abierto sin fecha y nadie sabe cuándo
- * reclamarlo. En un préstamo normal (sin envase de por medio) sigue siendo
- * opcional, como estaba.
+ * Todo préstamo de cilindro pacta cuándo vuelve. Sin fecha el préstamo queda
+ * abierto sin vencimiento, no entra en los reportes de antigüedad y el backend
+ * no programa el recojo automático (ven_aplicar_efectos_pos solo lo crea
+ * cuando hay fecha de retorno).
  */
-const exigeFechaRetorno = computed(
-  () =>
-    escenarioGas.value === 'entregar_prestamo' && tipoGarantiaPrestamo.value === 'balon',
-)
+const exigeFechaRetorno = computed(() => escenarioGas.value === 'entregar_prestamo')
 
 const errorFechaRetorno = computed(() => {
   if (!exigeFechaRetorno.value) return ''
@@ -1054,6 +1227,9 @@ const garantiaBalonPhVencida = computed(() => {
 })
 
 watch(tipoGarantiaPrestamo, (value) => {
+  if (value === 'dinero' && montoNumerico(montoGarantia.value) <= 0) {
+    void prefillMontoGarantia(producto.value)
+  }
   if (value !== 'dinero') {
     montoGarantia.value = '0.00'
     origenMontoGarantia.value = ''
@@ -1284,6 +1460,18 @@ const importe = computed(() => {
 })
 
 /**
+ * El préstamo es el paso más cargado del modal (cilindro, fechas, garantía y
+ * cobro a la vez): se muestra ancho, en dos columnas, y con el total al pie
+ * junto al botón que lo cobra.
+ */
+const esConfigPrestamo = computed(
+  () =>
+    paso.value === 'config' &&
+    tipo.value === 'gas' &&
+    escenarioGas.value === 'entregar_prestamo',
+)
+
+/**
  * Desglose de lo que registra la línea: gas vendido, cilindro prestado y
  * garantía (dinero o cilindro). Son tres hechos distintos que la venta dispara
  * a la vez y que viven en tablas separadas — solo el gas es venta; el préstamo
@@ -1411,12 +1599,12 @@ const escenariosGas = computed(() => {
     help: string
     icon: string
   }[] = [
-    {
+/*     {
       key: 'balon_cliente',
       label: 'Trae su cilindro',
       help: 'Lo recargamos y se lo lleva.',
       icon: ICONS.users,
-    },
+    }, */
     {
       key: 'balon_cliente_no_registrado',
       label: 'Cilindro no registrado',
@@ -1512,8 +1700,11 @@ function setEscenarioGas(key: EscenarioGas) {
   idProductoAlquiler.value = ''
   nombreProductoAlquiler.value = ''
   if (key === 'entregar_prestamo') {
+    // La fecha de retorno es obligatoria en el préstamo: se propone a 14 días
+    // (el plazo que usa el resto del sistema) para que el cajero la ajuste, en
+    // vez de abrir el formulario ya en error.
     fechaInicio.value = hoyIsoLima()
-    fechaFin.value = ''
+    fechaFin.value = addDaysIso(fechaInicio.value, 14)
     if (props.renovarPrestamo) {
       tipoGarantiaPrestamo.value = 'heredada'
     } else {
@@ -1808,6 +1999,9 @@ onMounted(() => {
 })
 
 const titulo = computed(() => {
+  if (props.renovarPrestamo && paso.value !== 'tipo') {
+    return `Renovar préstamo ${etiquetaPrestamoRenovar.value}`
+  }
   if (modoEdicion.value) return 'Editar ítem'
   if (paso.value === 'tipo') return '¿Qué deseas añadir?'
   if (paso.value === 'catalogo') {
@@ -1823,6 +2017,9 @@ const titulo = computed(() => {
 const subtitulo = computed(() => {
   if (paso.value === 'config' && producto.value) {
     if (tipo.value === 'gas') {
+      if (props.renovarPrestamo) {
+        return [producto.value.nombre, props.nombreCliente].filter(Boolean).join(' · ')
+      }
       return continuarConPrestamoGas.value
         ? 'El accesorio ya está en el carrito. Ahora el cilindro con gas.'
         : 'Elige qué hace el cliente con el cilindro'
@@ -2007,7 +2204,7 @@ function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | n
               : null
         : null)
     if (escenarioGas.value === 'entregar_prestamo' && !fromLinea.fechaFinAlquiler) {
-      fechaFin.value = ''
+      fechaFin.value = addDaysIso(fechaInicio.value, 14)
     }
     precioBalon.value = montoAString(fromLinea.precioBalon)
     idProductoEnvase.value = fromLinea.idProductoEnvase ?? ''

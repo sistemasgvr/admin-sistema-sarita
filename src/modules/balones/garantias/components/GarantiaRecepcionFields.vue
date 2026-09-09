@@ -1,6 +1,13 @@
 <template>
-  <div class="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
-    <p class="text-xs font-medium text-amber-800 dark:text-amber-200">
+  <div
+    class="space-y-3"
+    :class="
+      bare
+        ? ''
+        : 'rounded-xl border border-amber-200 bg-amber-50/40 p-3 dark:border-amber-500/30 dark:bg-amber-500/10'
+    "
+  >
+    <p v-if="!bare" class="text-xs font-medium text-amber-800 dark:text-amber-200">
       Recepción de la garantía
     </p>
     <MedioPagoCuentaField
@@ -39,7 +46,11 @@ import { computed } from 'vue'
 import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import { AppInput } from '@/shared/components'
 
-defineProps<{ disabled?: boolean }>()
+defineProps<{
+  disabled?: boolean
+  /** Sin marco ni título: el contenedor ya aporta los suyos. */
+  bare?: boolean
+}>()
 
 const idMedioPago = defineModel<string | number>('idMedioPago', { default: '' })
 const idCuentaBancaria = defineModel<number | null>('idCuentaBancaria', { default: null })
