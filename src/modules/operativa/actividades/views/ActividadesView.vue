@@ -218,7 +218,6 @@
       />
     </div>
 
-    <ActividadDetailModal v-model="detailModalOpen" :actividad="actividadToView" />
 
     <ActividadVerificacionModal
       v-model="verificacionModalOpen"
@@ -267,7 +266,6 @@ import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
-import ActividadDetailModal from '@/modules/operativa/actividades/components/ActividadDetailModal.vue'
 import ActividadVerificacionModal from '@/modules/operativa/actividades/components/ActividadVerificacionModal.vue'
 import ActividadesCalendar from '@/modules/operativa/actividades/components/ActividadesCalendar.vue'
 import ActividadesColaboradoresPanel from '@/modules/operativa/actividades/components/ActividadesColaboradoresPanel.vue'
@@ -289,6 +287,7 @@ import { actividadesService } from '@/modules/operativa/actividades/services/act
 import {
   esActividadCancelada,
   esActividadRealizada,
+  esTipoRepartoNombre,
   idOpcionPorNombre,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import {
@@ -650,8 +649,6 @@ const cancelarMutation = useCancelarActividadMutation()
 const proximasQuery = useActividadesProximasQuery(60, computed(() => canView.value || canCreate.value))
 const alertasProximas = computed(() => proximasQuery.data.value ?? [])
 
-const detailModalOpen = ref(false)
-const actividadToView = ref<Actividad | null>(null)
 
 const deleteModalOpen = ref(false)
 const actividadToDelete = ref<Actividad | null>(null)
@@ -666,6 +663,10 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
   const cerrada =
     esActividadRealizada(row.nombre_estado_actividad) ||
     esActividadCancelada(row.nombre_estado_actividad)
+  // El reparto se cierra por el flujo de entrega (verificar salida -> en ruta ->
+  // verificar llegada -> culminar). Ofrecer aquí "marcar realizada" dejaría
+  // saltarse la verificación de llegada y vaciaría de sentido el gate.
+  const esReparto = esTipoRepartoNombre(row.nombre_tipo_actividad)
   return [
     {
       key: 'edit',
@@ -679,7 +680,7 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
       label: 'Marcar realizada',
       icon: ICONS.check,
       disabled: busy,
-      hidden: !canEdit.value || cerrada,
+      hidden: !canEdit.value || cerrada || esReparto,
     },
     {
       key: 'cancelar',
@@ -690,10 +691,10 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
     },
     {
       key: 'verificar',
-      label: 'Verificar por escaneo',
+      label: esReparto ? 'Verificar y entregar' : 'Verificar por escaneo',
       icon: ICONS.scanBarcode,
       disabled: busy,
-      hidden: !canVerificar.value,
+      hidden: !canVerificar.value || cerrada,
     },
     {
       key: 'delete',
@@ -728,57 +729,15 @@ const goToEdit = (actividad: Actividad) => {
   })
 }
 
+// El detalle dejó de ser un modal: ahora es una vista con su propia URL, así
+// que el enlace profundo desde inventario entra directo por la ruta y ya no
+// hace falta consumir un ?id= aquí.
 const openDetailModal = (actividad: Actividad) => {
-  actividadToView.value = actividad
-  detailModalOpen.value = true
+  void router.push({
+    name: 'admin-operativa-actividades-detalle',
+    params: { id: actividad.id },
+  })
 }
-
-// ---- Deep-link ?id= (p. ej. inventario → documento origen ACTIVIDAD) ----
-// La fila no viene en el listado: se pide el detalle y se abre el modal.
-const idActividadDeepLink = ref<number | null>(null)
-const deepLinkQueryHabilitada = computed(() => idActividadDeepLink.value != null)
-const actividadDeepLinkQuery = useActividadDetailQuery(
-  computed(() => idActividadDeepLink.value ?? undefined),
-  deepLinkQueryHabilitada,
-)
-
-// El id se consume una sola vez: se quita del query para no reabrir el modal
-// al cambiar de tab ni dejar la URL pegada.
-const limpiarIdDeQuery = () => {
-  const query = { ...route.query }
-  delete query.id
-  void router.replace({ query })
-}
-
-const abrirDetallePorId = async (id: number) => {
-  idActividadDeepLink.value = id
-  try {
-    const { data } = await actividadDeepLinkQuery.refetch()
-    if (!data) {
-      toastInfo(`No se encontró la actividad #${id}`)
-      return
-    }
-    actividadToView.value = data
-    detailModalOpen.value = true
-  } catch (error) {
-    toastApiError(error, 'No se pudo cargar la actividad')
-  } finally {
-    idActividadDeepLink.value = null
-    limpiarIdDeQuery()
-  }
-}
-
-watch(
-  () => route.query.id,
-  (raw) => {
-    if (!canView.value) return
-    const value = Array.isArray(raw) ? raw[0] : raw
-    const id = Number(value)
-    if (!value || !Number.isInteger(id) || id <= 0) return
-    void abrirDetallePorId(id)
-  },
-  { immediate: true },
-)
 
 // ---- Verificación por escaneo (Fase 6) ----
 // La fila del listado no trae los ítems: se pide el detalle al abrir.

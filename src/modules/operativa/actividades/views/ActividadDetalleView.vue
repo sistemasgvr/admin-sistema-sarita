@@ -1,11 +1,48 @@
 <template>
-  <AppModal
-    v-model="open"
-    title="Detalle de la actividad"
-    :subtitle="actividad?.titulo"
-    size="lg"
-    :z-index="100000"
-  >
+  <div>
+    <PageBreadcrumb page-title="Detalle de la actividad" :items="breadcrumbItems" />
+
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+        @click="volver"
+      >
+        <AppIcon :name="ICONS.chevronLeft" :size="15" />
+        Volver
+      </button>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          v-if="puedeTomarAct"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="asignarMutation.isPending.value"
+          @click="tomarActividad"
+        >
+          {{ asignarMutation.isPending.value ? 'Asignando...' : 'Tomar actividad' }}
+        </button>
+        <button
+          v-if="puedeLiberarAct"
+          type="button"
+          class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          :disabled="asignarMutation.isPending.value"
+          @click="liberarActividad"
+        >
+          {{ asignarMutation.isPending.value ? 'Liberando...' : 'Liberar' }}
+        </button>
+        <button
+          v-if="canFinalizar"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="marcarMutation.isPending.value"
+          @click="marcarRealizada"
+        >
+          {{ marcarMutation.isPending.value ? 'Guardando...' : 'Marcar realizada' }}
+        </button>
+      </div>
+    </div>
+
     <div v-if="isLoading && !actividad" class="flex items-center justify-center gap-2 py-8 text-sm text-gray-500 dark:text-gray-400">
       <AppIcon :name="ICONS.loader" :size="16" class="animate-spin" />
       Cargando detalle...
@@ -278,57 +315,69 @@
         </div>
       </section>
     </div>
+    <section
+      v-if="canCancelar"
+      class="mt-6 rounded-xl border border-error-200 bg-error-50/40 p-4 dark:border-error-500/30 dark:bg-error-500/5"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h5 class="text-sm font-semibold text-error-700 dark:text-error-400">
+            Cancelar la actividad
+          </h5>
+          <p class="mt-0.5 text-xs text-error-600/80 dark:text-error-400/80">
+            La entrega deja de estar programada y no se puede deshacer.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="shrink-0 rounded-lg border border-error-300 bg-white px-4 py-2 text-sm font-medium text-error-600 hover:bg-error-50 disabled:opacity-70 dark:border-error-500/40 dark:bg-gray-800 dark:text-error-400"
+          :disabled="cancelarMutation.isPending.value"
+          @click="confirmarCancelacion = true"
+        >
+          {{ cancelarMutation.isPending.value ? 'Cancelando...' : 'Cancelar actividad' }}
+        </button>
+      </div>
+    </section>
 
-    <template #footer>
-      <button
-        type="button"
-        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
-        @click="open = false"
-      >
-        Cerrar
-      </button>
-      <button
-        v-if="puedeTomarAct"
-        type="button"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="asignarMutation.isPending.value"
-        @click="tomarActividad"
-      >
-        {{ asignarMutation.isPending.value ? 'Asignando...' : 'Tomar actividad' }}
-      </button>
-      <button
-        v-if="puedeLiberarAct"
-        type="button"
-        class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
-        :disabled="asignarMutation.isPending.value"
-        @click="liberarActividad"
-      >
-        {{ asignarMutation.isPending.value ? 'Liberando...' : 'Liberar' }}
-      </button>
-      <button
-        v-if="canCancelar"
-        type="button"
-        class="flex w-full justify-center rounded-lg border border-error-300 bg-white px-4 py-2.5 text-sm font-medium text-error-600 hover:bg-error-50 disabled:opacity-70 dark:border-error-500/40 dark:bg-gray-800 dark:text-error-400 sm:w-auto"
-        :disabled="cancelarMutation.isPending.value"
-        @click="cancelarActividad"
-      >
-        {{ cancelarMutation.isPending.value ? 'Cancelando...' : 'Cancelar' }}
-      </button>
-      <button
-        v-if="canFinalizar"
-        type="button"
-        class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-        :disabled="marcarMutation.isPending.value"
-        @click="marcarRealizada"
-      >
-        {{ marcarMutation.isPending.value ? 'Guardando...' : 'Marcar realizada' }}
-      </button>
-    </template>
-  </AppModal>
+    <AppModal
+      v-model="confirmarCancelacion"
+      title="Cancelar la actividad"
+      subtitle="Esta acción no se puede deshacer."
+      size="sm"
+    >
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        ¿Confirmas que deseas cancelar la actividad
+        <span class="font-medium text-gray-800 dark:text-white/90">
+          {{ actividad?.titulo ?? '' }}
+        </span>
+        ?
+      </p>
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
+          @click="confirmarCancelacion = false"
+        >
+          No, volver
+        </button>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-70 sm:w-auto"
+          :disabled="cancelarMutation.isPending.value"
+          @click="cancelarConfirmado"
+        >
+          {{ cancelarMutation.isPending.value ? 'Cancelando...' : 'Sí, cancelar' }}
+        </button>
+      </template>
+    </AppModal>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 import type {
   Actividad,
   ActividadItem,
@@ -342,7 +391,9 @@ import {
 import {
   esActividadCancelada,
   esActividadRealizada,
+  esTipoRepartoNombre,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
+import { toastInfo } from '@/shared/composables/useToast'
 import {
   esEnCurso,
   esSinAsignar,
@@ -361,25 +412,40 @@ import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListDate } from '@/shared/utils/date'
 
-interface ActividadDetailModalProps {
-  actividad?: Actividad | null
-}
 
-const props = defineProps<ActividadDetailModalProps>()
-
-const open = defineModel<boolean>({ default: false })
+const breadcrumbItems: BreadcrumbItem[] = [
+  { label: 'Operativa' },
+  { label: 'Actividades', to: '/admin/operativa/actividades' },
+  { label: 'Detalle' },
+]
 
 const authStore = useAuthStore()
 const marcarMutation = useMarcarActividadRealizadaMutation()
 const cancelarMutation = useCancelarActividadMutation()
 const asignarMutation = useAsignarResponsableActividadMutation()
 
-const idReferencia = computed(() => props.actividad?.id)
-const actividadDetailQuery = useActividadDetailQuery(idReferencia, open)
+const route = useRoute()
+const router = useRouter()
+
+const idActividad = computed(() => {
+  const valor = Number(route.params.id)
+  return Number.isInteger(valor) && valor > 0 ? valor : undefined
+})
+const consultaHabilitada = computed(() => idActividad.value !== undefined)
+
+const actividadDetailQuery = useActividadDetailQuery(idActividad, consultaHabilitada)
 const isLoading = computed(() => actividadDetailQuery.isFetching.value)
-const actividad = computed<Actividad | null>(
-  () => actividadDetailQuery.data.value ?? props.actividad ?? null,
-)
+const actividad = computed<Actividad | null>(() => actividadDetailQuery.data.value ?? null)
+
+const volver = () => {
+  // Si se llegó desde el listado se respeta su tab y sus filtros; si se entró
+  // por enlace directo no hay historial al que volver.
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  void router.push({ name: 'admin-operativa-actividades' })
+}
 
 const ahora = ref(new Date())
 const isAdmin = computed(() => authStore.hasPermission(PermisoBanderas.AUTH_TODO))
@@ -403,6 +469,9 @@ const puedeLiberarAct = computed(
 const canFinalizar = computed(
   () =>
     estaAsignada(actividad.value) &&
+    // El reparto no se cierra a mano: lo cierra "Culminar entrega" tras la
+    // verificación de llegada. Ofrecerlo aquí saltaría ese gate.
+    !esTipoRepartoNombre(actividad.value?.nombre_tipo_actividad) &&
     puedeLiberarOFinalizar(actividad.value, {
       userId: authStore.user?.id,
       isAdmin: isAdmin.value,
@@ -478,8 +547,8 @@ const canCancelar = computed(
     !esActividadCancelada(actividad.value?.nombre_estado_actividad),
 )
 
-watch(open, (value) => {
-  if (value) ahora.value = new Date()
+watch(idActividad, () => {
+  ahora.value = new Date()
 })
 
 const formatHora = (value?: string | null) => (value ? value.slice(0, 5) : undefined)
@@ -526,6 +595,16 @@ async function tomarActividad() {
   const userId = authStore.user?.id
   const idTrabajador = authStore.userTrabajadorId
   if (!id || !userId) return
+
+  // Sin ficha de trabajador no hay a quién asignar. Antes esto mandaba null y
+  // la actividad se quedaba sin asignar mostrando un toast de éxito.
+  if (!idTrabajador) {
+    toastInfo(
+      'Tu usuario no tiene una ficha de trabajador vinculada, así que no puede figurar como responsable de la entrega.',
+    )
+    return
+  }
+
   try {
     await asignarMutation.mutateAsync({
       id,
@@ -545,10 +624,18 @@ async function liberarActividad() {
     await asignarMutation.mutateAsync({
       id,
       idUsuarioAuditoria: userId,
-      idTrabajadorResponsable: null,
+      // Liberar es explícito: mandar el responsable en null ya no desasigna.
+      liberar: true,
     })
   } catch {
     // toast en mutation
   }
+}
+
+const confirmarCancelacion = ref(false)
+
+async function cancelarConfirmado() {
+  await cancelarActividad()
+  confirmarCancelacion.value = false
 }
 </script>

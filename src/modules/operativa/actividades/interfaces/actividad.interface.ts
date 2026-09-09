@@ -20,6 +20,9 @@ export interface ActividadItem {
   observacion_llegada?: string | null
   id_estado_producto_recogido?: number | null
   estado_producto_recogido?: string | null
+  /** Cantidad ya confirmada; solo la usan los ítems de accesorio. */
+  cantidad_verificada_salida?: number | null
+  cantidad_verificada_llegada?: number | null
   /** Detalle de origen: la entrega se carga por FK, no se re-teclea. */
   id_doc_salida_detalle?: number | null
   id_venta_detalle?: number | null
@@ -100,6 +103,9 @@ export interface Actividad {
   nombre_chofer_responsable?: string | null
   id_trabajador_responsable?: number | null
   nombre_trabajador_responsable?: string | null
+  /** Segunda persona de la entrega: acompaña al responsable a subir los balones. */
+  id_trabajador_apoyo?: number | null
+  nombre_trabajador_apoyo?: string | null
   id_comprobante?: number | null
   serie_comprobante?: string | null
   numero_comprobante?: string | null
@@ -199,10 +205,27 @@ export interface ActividadRepartoPrefill {
 /** Fase 6: verificación por escaneo, recojos y ranking. */
 export type MomentoVerificacion = 'SALIDA' | 'LLEGADA'
 
+/**
+ * Clase del ítem dentro de una entrega. Se deriva en SQL
+ * (age_clasificar_items_actividad), no viaja como columna.
+ */
+export type ClaseItemActividad = 'CILINDRO' | 'GAS' | 'ACCESORIO'
+
+/**
+ * Una lectura es un escaneo (`codigo`) o una confirmación de cantidad de un
+ * accesorio (`idItem` + `cantidad`). Cada una lleva su propia conformidad.
+ */
+export interface LecturaVerificacion {
+  codigo?: string
+  idItem?: number
+  cantidad?: number
+  conforme?: boolean
+  observacion?: string
+}
+
 export interface VerificarActividadPayload {
   momento: MomentoVerificacion
-  codigos: string[]
-  observacion?: string
+  lecturas: LecturaVerificacion[]
   idUsuarioAuditoria?: number
 }
 
@@ -211,6 +234,8 @@ export interface VerificarActividadResult {
   coincidencias: number
   noPertenecen: number
   pendientes: number
+  observados: number
+  /** El gate es estricto: solo es true sin pendientes NI observados. */
   completo: boolean
 }
 

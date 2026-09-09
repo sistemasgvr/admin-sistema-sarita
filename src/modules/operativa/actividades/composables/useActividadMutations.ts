@@ -109,14 +109,20 @@ export function useAsignarResponsableActividadMutation() {
       id,
       idUsuarioAuditoria,
       idTrabajadorResponsable,
+      idTrabajadorApoyo,
+      liberar,
     }: {
       id: number
       idUsuarioAuditoria: number
       idTrabajadorResponsable?: number | null
+      idTrabajadorApoyo?: number | null
+      liberar?: boolean
     }) =>
       actividadesService.asignarResponsable(id, {
         idUsuarioAuditoria,
         idTrabajadorResponsable,
+        idTrabajadorApoyo,
+        liberar,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
@@ -220,6 +226,51 @@ export function useCrearRecojoPrestamoMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo programar el recojo')
+    },
+  })
+}
+
+export function useIniciarEntregaMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idUsuarioAuditoria,
+    }: {
+      id: number
+      idUsuarioAuditoria?: number
+    }) => actividadesService.iniciarEntrega(id, idUsuarioAuditoria),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
+      toastSuccess('Entrega iniciada: la actividad quedó en ruta')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo iniciar la entrega')
+    },
+  })
+}
+
+export function useCulminarEntregaMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idUsuarioAuditoria,
+    }: {
+      id: number
+      idUsuarioAuditoria?: number
+    }) => actividadesService.culminarEntrega(id, idUsuarioAuditoria),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
+      toastSuccess('Entrega culminada')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo culminar la entrega')
     },
   })
 }

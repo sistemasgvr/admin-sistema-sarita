@@ -97,11 +97,26 @@ export const actividadesService = {
     })
   },
 
+  iniciarEntrega(id: number, idUsuarioAuditoria?: number): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}/iniciar-entrega`, {
+      idUsuarioAuditoria,
+    })
+  },
+
+  culminarEntrega(id: number, idUsuarioAuditoria?: number): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}/culminar-entrega`, {
+      idUsuarioAuditoria,
+    })
+  },
+
   asignarResponsable(
     id: number,
     payload: {
       idUsuarioAuditoria: number
       idTrabajadorResponsable?: number | null
+      idTrabajadorApoyo?: number | null
+      /** Liberar es explícito: mandar el responsable en null ya no desasigna. */
+      liberar?: boolean
     },
   ): Promise<Actividad> {
     return apiPatch<Actividad>(`/operativa/actividades/${id}/responsable`, payload)
