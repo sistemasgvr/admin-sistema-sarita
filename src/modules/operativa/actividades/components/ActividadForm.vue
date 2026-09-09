@@ -92,7 +92,7 @@
             :placeholder="tipoActividadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
             required
             v-bind="idTipoActividadAttrs"
-            :disabled="isSubmitting || tipoActividadQuery.isLoading.value || lockTipoReparto"
+            :disabled="isSubmitting || tipoActividadQuery.isLoading.value || lockTipoReparto || lockTipoRecojo"
             :error="errors.idTipoActividad"
             :options="tipoActividadOptions"
           />
@@ -206,7 +206,59 @@
       </section>
 
       <section
-        v-if="itemsPreview.length || defaultIdComprobante || idDocSalidaEfectivo"
+        v-if="mode === 'create' && esTipoRecojo"
+        class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]"
+      >
+        <header class="mb-3 flex items-center gap-2.5">
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.package" :size="16" />
+          </span>
+          <div>
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Origen del recojo</h4>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Préstamo o alquiler vencido con cilindros pendientes de devolver
+            </p>
+          </div>
+        </header>
+
+        <OrigenRecojoSelectField
+          v-model="origenRecojoKey"
+          label="Préstamo / alquiler vencido"
+          placeholder="Selecciona un origen vencido..."
+          search-placeholder="Número o cliente..."
+          :required="true"
+          :disabled="isSubmitting || lockOrigenRecojo"
+          :error="errorOrigenRecojo"
+          :prefill-label="prefillOrigenRecojoLabel"
+        />
+
+        <dl
+          v-if="origenRecojoSeleccionado"
+          class="mt-3 grid gap-2 rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm dark:border-gray-800 dark:bg-white/[0.03] sm:grid-cols-3"
+        >
+          <div>
+            <dt class="text-xs text-gray-500 dark:text-gray-400">Cilindros pendientes</dt>
+            <dd class="font-medium text-gray-800 dark:text-white/90">
+              {{ origenRecojoSeleccionado.cilindros_pendientes ?? 0 }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-gray-500 dark:text-gray-400">Garantías activas</dt>
+            <dd class="font-medium text-gray-800 dark:text-white/90">
+              {{ origenRecojoSeleccionado.garantias_activas ?? 0 }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs text-gray-500 dark:text-gray-400">Regulador</dt>
+            <dd class="font-medium text-gray-800 dark:text-white/90">
+              {{ origenRecojoSeleccionado.regulador_pendiente ? 'Pendiente' : '—' }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        v-if="itemsPreview.length || defaultIdComprobante || idDocSalidaEfectivo || detalleOrigenPreview.length"
         class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]"
       >
         <header class="mb-3 flex items-center gap-2.5">
@@ -215,12 +267,18 @@
           </span>
           <div>
             <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">
-              Ítems del reparto
+              {{ esTipoRecojo ? 'Detalle a recojer' : 'Ítems del reparto' }}
               <span v-if="comprobanteLabel" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
                 ({{ comprobanteLabel }})
               </span>
               <span v-if="docSalidaLabel" class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400">
                 ({{ docSalidaLabel }})
+              </span>
+              <span
+                v-if="origenRecojoLabel"
+                class="ml-1 text-xs font-normal text-gray-500 dark:text-gray-400"
+              >
+                ({{ origenRecojoLabel }})
               </span>
             </h4>
           </div>
@@ -229,10 +287,19 @@
         <p v-if="docSalidaQuery.isFetching.value" class="text-xs text-gray-500 dark:text-gray-400">
           Cargando detalle de la orden...
         </p>
-        <p v-else-if="!itemsPreview.length" class="text-xs text-gray-500 dark:text-gray-400">
+        <p
+          v-else-if="esTipoRecojo && !itemsPreview.length && !detalleOrigenPreview.length"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
+          El detalle se leerá del origen al guardar; los ítems se materializan al iniciar la verificación.
+        </p>
+        <p v-else-if="!itemsPreview.length && !detalleOrigenPreview.length" class="text-xs text-gray-500 dark:text-gray-400">
           Se copiarán los ítems de la orden de salida al guardar.
         </p>
-        <div v-else class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
+        <div
+          v-else
+          class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800"
+        >
           <table class="min-w-full text-sm">
             <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-white/[0.03] dark:text-gray-400">
               <tr>
@@ -244,7 +311,7 @@
             </thead>
             <tbody class="bg-white dark:bg-gray-900/20">
               <tr
-                v-for="(item, idx) in itemsPreview"
+                v-for="(item, idx) in itemsTablaPreview"
                 :key="item.id ?? `${item.id_producto}-${item.id_balon}-${idx}`"
                 class="border-t border-gray-100 dark:border-gray-800"
               >
@@ -361,16 +428,20 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { choferesService } from '@/modules/choferes/services/choferes.service'
 import {
   useCreateActividadMutation,
+  useCrearRecojoMutation,
   useUpdateActividadMutation,
 } from '@/modules/operativa/actividades/composables/useActividadMutations'
 import { useActividadDetailQuery } from '@/modules/operativa/actividades/composables/useActividadDetailQuery'
+import { useVencidosRecojoQuery } from '@/modules/operativa/actividades/composables/useVencidosRecojoQuery'
 import type {
   Actividad,
   ActividadFormMode,
   ActividadItem,
+  OrigenVencidoRecojo,
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { horaFinEsPosterior } from '@/modules/operativa/actividades/utils/actividadHorario'
 import {
+  esTipoRecojoNombre,
   esTipoRepartoNombre,
   idOpcionPorNombre,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
@@ -379,6 +450,11 @@ import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
 import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.interface'
 import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
+import OrigenRecojoSelectField from '@/modules/operativa/actividades/components/OrigenRecojoSelectField.vue'
+import {
+  origenRecojoKey as buildOrigenRecojoKey,
+  parseOrigenRecojoKey,
+} from '@/modules/operativa/actividades/utils/origenRecojoKey'
 import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
 import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -407,12 +483,22 @@ interface ActividadFormProps {
   defaultDocSalidaLabel?: string | null
   defaultDescripcion?: string | null
   defaultItems?: ActividadItem[]
+  defaultTipoOrigenRecojo?: 'PRESTAMO' | 'ALQUILER' | null
+  defaultIdOrigenRecojo?: number | null
+  /** Label del origen cuando viene prefill y aún no está en el listado de vencidos. */
+  defaultOrigenRecojoLabel?: string | null
+  /** Fija tipo RECOJO y bloquea el origen (p. ej. desde listado de préstamos). */
+  lockTipoRecojo?: boolean
 }
 
 const props = withDefaults(defineProps<ActividadFormProps>(), {
   lockTipoReparto: false,
+  lockTipoRecojo: false,
   defaultItems: () => [],
   actividadId: null,
+  defaultTipoOrigenRecojo: null,
+  defaultIdOrigenRecojo: null,
+  defaultOrigenRecojoLabel: null,
 })
 
 const emit = defineEmits<{
@@ -423,6 +509,7 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 
 const createMutation = useCreateActividadMutation()
+const crearRecojoMutation = useCrearRecojoMutation()
 const updateMutation = useUpdateActividadMutation()
 const formActive = computed(() => true)
 const idReferencia = computed(() => props.actividadId ?? undefined)
@@ -431,7 +518,11 @@ const actividadActual = computed<Actividad | null>(
   () => actividadDetailQuery.data.value ?? null,
 )
 
-const lockCliente = computed(() => Boolean(props.lockTipoReparto && props.defaultClienteId))
+const lockCliente = computed(
+  () =>
+    Boolean(props.lockTipoReparto && props.defaultClienteId) ||
+    Boolean(props.lockTipoRecojo && props.defaultClienteId),
+)
 const getClienteNombre = (cliente: Cliente) => {
   const esJuridica = cliente.nombre_tipo_persona?.toLowerCase().includes('jurí')
 
@@ -495,6 +586,12 @@ const tipoRepartoId = computed(
     idOpcionPorNombre(tipoActividadQuery.data.value, ['REPARTO']),
 )
 
+const tipoRecojoId = computed(
+  () =>
+    tipoActividadQuery.data.value?.find((o) => esTipoRecojoNombre(o.nombre))?.id ??
+    idOpcionPorNombre(tipoActividadQuery.data.value, ['RECOJO']),
+)
+
 const defaultPrioridadId = computed(
   () =>
     idOpcionPorNombre(prioridadQuery.data.value, ['MEDIA', 'NORMAL', 'MEDIA_PRIORIDAD']) ??
@@ -546,9 +643,26 @@ const comprobanteLabel = computed(() => {
 
 const idDocSalidaSeleccionado = ref<number | ''>('')
 const errorDocSalida = ref<string | undefined>()
+const origenRecojoKey = ref<string | ''>('')
+const errorOrigenRecojo = ref<string | undefined>()
 
 const lockDocSalida = computed(
   () => Boolean(props.lockTipoReparto && props.defaultIdDocSalida) || props.mode === 'edit',
+)
+
+const lockOrigenRecojo = computed(
+  () =>
+    props.mode === 'edit' ||
+    Boolean(props.lockTipoRecojo) ||
+    Boolean(props.defaultTipoOrigenRecojo && props.defaultIdOrigenRecojo),
+)
+
+const prefillOrigenRecojoLabel = computed(() => props.defaultOrigenRecojoLabel ?? null)
+
+const vencidosFilters = ref({ buscar: '', pagina: 1, limite: 30 })
+const vencidosQuery = useVencidosRecojoQuery(
+  vencidosFilters,
+  computed(() => props.mode === 'create'),
 )
 
 const idDocSalidaEfectivo = computed(() => {
@@ -605,6 +719,57 @@ const itemsPreview = computed<ActividadItem[]>(() => {
   return props.defaultItems ?? []
 })
 
+const detalleOrigenPreview = computed<ActividadItem[]>(() => {
+  const detalle = actividadActual.value?.detalle_origen
+  if (!detalle?.cilindros?.length && !detalle?.regulador) return []
+  const rows: ActividadItem[] = (detalle.cilindros ?? []).map((c, idx) => ({
+    item: idx + 1,
+    id: c.id,
+    id_producto: c.id_producto,
+    nombre_producto: c.nombre_producto,
+    cantidad: Number(c.cantidad) || 1,
+    id_balon: c.id_balon,
+    codigo_balon: c.codigo_balon,
+    numero_serie_balon: c.numero_serie_balon,
+    nombre_tipo_balon: c.nombre_tipo_balon,
+    nombre_producto_gas: c.nombre_producto_gas,
+  }))
+  if (detalle.regulador?.pendiente) {
+    rows.push({
+      item: rows.length + 1,
+      id_producto: detalle.regulador.id_producto,
+      nombre_producto: detalle.regulador.nombre_producto || 'Regulador / accesorio',
+      descripcion: detalle.regulador.codigo_producto || undefined,
+      cantidad: 1,
+    })
+  }
+  return rows
+})
+
+const itemsTablaPreview = computed(() =>
+  itemsPreview.value.length ? itemsPreview.value : detalleOrigenPreview.value,
+)
+
+const origenRecojoSeleccionado = computed<OrigenVencidoRecojo | null>(() => {
+  const parsed = parseOrigenRecojoKey(origenRecojoKey.value)
+  if (!parsed) return null
+  return (
+    (vencidosQuery.data.value?.data ?? []).find(
+      (row) =>
+        row.origen === parsed.tipoOrigen && row.id_origen === parsed.idOrigen,
+    ) ?? null
+  )
+})
+
+const origenRecojoLabel = computed(() => {
+  const a = actividadActual.value
+  if (a?.numero_prestamo) return `Préstamo ${a.numero_prestamo}`
+  if (a?.numero_alquiler) return `Alquiler ${a.numero_alquiler}`
+  const sel = origenRecojoSeleccionado.value
+  if (sel) return `${sel.origen === 'ALQUILER' ? 'Alquiler' : 'Préstamo'} ${sel.numero}`
+  return null
+})
+
 function formatCantidadItem(valor: number | string | null | undefined) {
   const n = Number(valor)
   if (!Number.isFinite(n)) return '0'
@@ -620,6 +785,15 @@ function esRepartoSeleccionado(idTipo?: number | null) {
   if (!idTipo) return false
   if (tipoRepartoId.value && Number(idTipo) === tipoRepartoId.value) return true
   return esTipoRepartoNombre(
+    tipoActividadQuery.data.value?.find((o) => o.id === Number(idTipo))?.nombre,
+  )
+}
+
+function esRecojoSeleccionado(idTipo?: number | null) {
+  if (props.lockTipoRecojo) return true
+  if (!idTipo) return false
+  if (tipoRecojoId.value && Number(idTipo) === tipoRecojoId.value) return true
+  return esTipoRecojoNombre(
     tipoActividadQuery.data.value?.find((o) => o.id === Number(idTipo))?.nombre,
   )
 }
@@ -715,6 +889,12 @@ const esTipoReparto = computed(() => {
   )
 })
 
+const esTipoRecojo = computed(() => {
+  const id = Number(idTipoActividad.value)
+  if (!id) return Boolean(props.lockTipoRecojo)
+  return esRecojoSeleccionado(id)
+})
+
 watch(horaInicioEstimada, () => {
   if (horaFinEstimada.value) {
     validateField('horaFinEstimada')
@@ -725,11 +905,16 @@ watch(idTipoActividad, (nuevo, anterior) => {
   void validateField('idCliente')
   void validateField('idTrabajadorResponsable')
 
-  if (props.lockTipoReparto || props.mode === 'edit') return
+  if (props.lockTipoReparto || props.lockTipoRecojo || props.mode === 'edit') return
   const eraReparto = esRepartoSeleccionado(anterior)
   const sigueReparto = esRepartoSeleccionado(nuevo)
   if (eraReparto && !sigueReparto) {
     limpiarVinculoOrdenSalida()
+  }
+  const eraRecojo = esRecojoSeleccionado(anterior)
+  const sigueRecojo = esRecojoSeleccionado(nuevo)
+  if (eraRecojo && !sigueRecojo) {
+    limpiarVinculoOrigenRecojo()
   }
 })
 
@@ -740,6 +925,12 @@ function limpiarVinculoOrdenSalida() {
   if (!lockCliente.value) {
     setFieldValue('idCliente', undefined)
   }
+}
+
+function limpiarVinculoOrigenRecojo() {
+  if (lockOrigenRecojo.value) return
+  origenRecojoKey.value = ''
+  errorOrigenRecojo.value = undefined
 }
 
 const syncFormValues = () => {
@@ -756,10 +947,17 @@ const syncFormValues = () => {
         undefined,
       idTipoActividad:
         a?.id_tipo_actividad ??
-        (props.lockTipoReparto ? tipoRepartoId.value : undefined),
-      idPrioridad: a?.id_prioridad ?? (props.lockTipoReparto ? defaultPrioridadId.value : undefined),
+        (props.lockTipoReparto
+          ? tipoRepartoId.value
+          : props.lockTipoRecojo
+            ? tipoRecojoId.value
+            : undefined),
+      idPrioridad:
+        a?.id_prioridad ??
+        (props.lockTipoReparto || props.lockTipoRecojo ? defaultPrioridadId.value : undefined),
       idEstadoActividad:
-        a?.id_estado_actividad ?? (props.lockTipoReparto ? defaultEstadoId.value : undefined),
+        a?.id_estado_actividad ??
+        (props.lockTipoReparto || props.lockTipoRecojo ? defaultEstadoId.value : undefined),
       fechaProgramada: a?.fecha_programada?.slice(0, 10) ?? props.defaultFecha ?? '',
       horaInicioEstimada: a?.hora_inicio_estimada?.slice(0, 5) ?? '',
       horaFinEstimada: a?.hora_fin_estimada?.slice(0, 5) ?? '',
@@ -793,6 +991,32 @@ const onSubmit = handleSubmit(async (values) => {
       return
     }
     errorDocSalida.value = undefined
+  }
+
+  if (props.mode === 'create' && esRecojoSeleccionado(values.idTipoActividad)) {
+    const parsed = parseOrigenRecojoKey(origenRecojoKey.value)
+    if (!parsed) {
+      errorOrigenRecojo.value = 'Selecciona un préstamo o alquiler vencido'
+      return
+    }
+    errorOrigenRecojo.value = undefined
+
+    try {
+      await crearRecojoMutation.mutateAsync({
+        tipoOrigen: parsed.tipoOrigen,
+        idOrigen: parsed.idOrigen,
+        fechaProgramada: values.fechaProgramada || undefined,
+        idTrabajadorResponsable: values.idTrabajadorResponsable
+          ? Number(values.idTrabajadorResponsable)
+          : undefined,
+        observaciones: values.observaciones || undefined,
+        idUsuarioAuditoria: currentUserId,
+      })
+      emit('saved')
+    } catch {
+      // toast en mutation
+    }
+    return
   }
 
   try {
@@ -841,8 +1065,17 @@ watch(
   () => {
     idDocSalidaSeleccionado.value = props.defaultIdDocSalida ?? ''
     errorDocSalida.value = undefined
+    if (props.defaultTipoOrigenRecojo && props.defaultIdOrigenRecojo) {
+      origenRecojoKey.value = buildOrigenRecojoKey(
+        props.defaultTipoOrigenRecojo,
+        props.defaultIdOrigenRecojo,
+      )
+    } else {
+      origenRecojoKey.value = ''
+    }
+    errorOrigenRecojo.value = undefined
     syncFormValues()
-    if (props.lockTipoReparto) {
+    if (props.lockTipoReparto || props.lockTipoRecojo) {
       void tipoActividadQuery.refetch()
       void prioridadQuery.refetch()
       void estadoActividadQuery.refetch()
@@ -862,8 +1095,26 @@ watch(docSalidaSeleccionada, (doc) => {
   }
 })
 
+watch(origenRecojoSeleccionado, (origen) => {
+  if (props.mode !== 'create' || !origen || !esTipoRecojo.value) return
+  const prefijo = origen.origen === 'ALQUILER' ? 'Recojo alquiler' : 'Recojo préstamo'
+  if (!titulo.value?.trim() || titulo.value.startsWith('Recojo ')) {
+    setFieldValue('titulo', `${prefijo} ${origen.numero}`)
+  }
+  if (origen.id_cliente && !idCliente.value) {
+    setFieldValue('idCliente', origen.id_cliente)
+  }
+  if (origen.fecha_pactada && !fechaProgramada.value) {
+    setFieldValue('fechaProgramada', String(origen.fecha_pactada).slice(0, 10))
+  }
+})
+
 watch(idDocSalidaSeleccionado, () => {
   errorDocSalida.value = undefined
+})
+
+watch(origenRecojoKey, () => {
+  errorOrigenRecojo.value = undefined
 })
 
 watch(
@@ -880,11 +1131,20 @@ watch(
       props.defaultTitulo,
       props.defaultClienteId,
       props.lockTipoReparto,
+      props.lockTipoRecojo,
       props.defaultIdDocSalida,
+      props.defaultTipoOrigenRecojo,
+      props.defaultIdOrigenRecojo,
     ] as const,
   () => {
     if (props.mode === 'create') {
       idDocSalidaSeleccionado.value = props.defaultIdDocSalida ?? ''
+      if (props.defaultTipoOrigenRecojo && props.defaultIdOrigenRecojo) {
+        origenRecojoKey.value = buildOrigenRecojoKey(
+          props.defaultTipoOrigenRecojo,
+          props.defaultIdOrigenRecojo,
+        )
+      }
       syncFormValues()
     }
   },
@@ -904,8 +1164,30 @@ function aplicarDefaultsReparto() {
   }
 }
 
+function aplicarDefaultsRecojo() {
+  if (props.mode !== 'create' || !props.lockTipoRecojo) return
+
+  if (!idTipoActividad.value && tipoRecojoId.value) {
+    setFieldValue('idTipoActividad', tipoRecojoId.value)
+  }
+  if (!idPrioridad.value && defaultPrioridadId.value) {
+    // Recojos suelen ir en ALTA; fallback al default del form.
+    const alta =
+      idOpcionPorNombre(prioridadQuery.data.value, ['ALTA']) ?? defaultPrioridadId.value
+    if (alta) setFieldValue('idPrioridad', alta)
+  }
+  if (!idEstadoActividad.value && defaultEstadoId.value) {
+    setFieldValue('idEstadoActividad', defaultEstadoId.value)
+  }
+}
+
 watch(
   [tipoRepartoId, defaultPrioridadId, defaultEstadoId, () => props.lockTipoReparto],
   () => aplicarDefaultsReparto(),
+)
+
+watch(
+  [tipoRecojoId, defaultPrioridadId, defaultEstadoId, () => props.lockTipoRecojo],
+  () => aplicarDefaultsRecojo(),
 )
 </script>

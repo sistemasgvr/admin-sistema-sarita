@@ -2,6 +2,10 @@ export function esTipoRepartoNombre(nombre?: string | null) {
   return (nombre ?? '').trim().toUpperCase() === 'REPARTO'
 }
 
+export function esTipoRecojoNombre(nombre?: string | null) {
+  return (nombre ?? '').trim().toUpperCase() === 'RECOJO'
+}
+
 export function idOpcionPorNombre(
   opciones: Array<{ id: number; nombre: string }> | undefined,
   candidatos: string[],

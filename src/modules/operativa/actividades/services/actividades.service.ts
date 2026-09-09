@@ -1,9 +1,13 @@
 import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type { PaginatedResult } from '@/shared/api/interfaces/api.interface'
 import type {
+  CrearRecojoOrigenPayload,
   CrearRecojoPrestamoPayload,
+  CrearRecojoResult,
   GenerarRecojosPayload,
   GenerarRecojosResult,
+  OrigenVencidoRecojo,
+  OrigenVencidoRecojoFilters,
   RankingActividadFila,
   RankingActividadesFilters,
   VerificarActividadPayload,
@@ -16,23 +20,41 @@ import type {
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 
 export const actividadesService = {
-  verificar(id: number, payload: VerificarActividadPayload) {
-    return apiPost<VerificarActividadResult>(`/actividades/${id}/verificar`, payload)
+  listarVencidosRecojo(
+    filters: OrigenVencidoRecojoFilters = {},
+  ): Promise<PaginatedResult<OrigenVencidoRecojo[]>> {
+    return apiGetPaginated<OrigenVencidoRecojo>('/operativa/actividades/vencidos-recojo', {
+      params: filters,
+    })
   },
 
-  crearRecojoPrestamo(payload: CrearRecojoPrestamoPayload) {
-    return apiPost<{ id: number; creada: boolean; items: number }>(
-      '/actividades/recojo-prestamo',
+  verificar(id: number, payload: VerificarActividadPayload) {
+    return apiPost<VerificarActividadResult>(
+      `/operativa/actividades/${id}/verificar`,
       payload,
     )
   },
 
+  iniciarVerificacion(id: number, idUsuarioAuditoria?: number) {
+    return apiPost<Actividad>(`/operativa/actividades/${id}/iniciar-verificacion`, {
+      idUsuarioAuditoria,
+    })
+  },
+
+  crearRecojo(payload: CrearRecojoOrigenPayload) {
+    return apiPost<CrearRecojoResult>('/operativa/actividades/recojo', payload)
+  },
+
+  crearRecojoPrestamo(payload: CrearRecojoPrestamoPayload) {
+    return apiPost<CrearRecojoResult>('/operativa/actividades/recojo-prestamo', payload)
+  },
+
   generarRecojos(payload: GenerarRecojosPayload) {
-    return apiPost<GenerarRecojosResult>('/actividades/generar-recojos', payload)
+    return apiPost<GenerarRecojosResult>('/operativa/actividades/generar-recojos', payload)
   },
 
   ranking(filters: RankingActividadesFilters = {}) {
-    return apiGetPaginated<RankingActividadFila>('/actividades/ranking', { params: filters })
+    return apiGetPaginated<RankingActividadFila>('/operativa/actividades/ranking', { params: filters })
   },
 
   listar(filters: ActividadListFilters = {}): Promise<PaginatedResult<Actividad[]>> {

@@ -24,6 +24,58 @@ export interface ActividadItem {
   id_doc_salida_detalle?: number | null
   id_venta_detalle?: number | null
   id_prestamo_detalle?: number | null
+  id_alquiler_detalle?: number | null
+}
+
+export type TipoOrigenRecojo = 'PRESTAMO' | 'ALQUILER'
+
+export interface DetalleOrigenCilindro {
+  id: number
+  id_balon?: number | null
+  codigo_balon?: string | null
+  numero_serie_balon?: string | null
+  nombre_tipo_balon?: string | null
+  id_producto?: number | null
+  nombre_producto?: string | null
+  nombre_producto_gas?: string | null
+  cantidad?: number | null
+}
+
+export interface DetalleOrigenGarantia {
+  id: number
+  monto_saldo?: number | null
+  monto_cobrado?: number | null
+  monto_devuelto?: number | null
+  nombre_estado?: string | null
+  nombre_producto?: string | null
+}
+
+export interface DetalleOrigenActividad {
+  origen: TipoOrigenRecojo
+  id_origen: number
+  numero?: string | null
+  fecha_pactada?: string | null
+  cilindros?: DetalleOrigenCilindro[]
+  garantias?: DetalleOrigenGarantia[]
+  regulador?: {
+    id_producto?: number | null
+    nombre_producto?: string | null
+    codigo_producto?: string | null
+    pendiente?: boolean
+  } | null
+}
+
+export interface OrigenVencidoRecojo {
+  origen: TipoOrigenRecojo
+  id_origen: number
+  numero: string
+  id_cliente?: number | null
+  nombre_cliente?: string | null
+  fecha_pactada?: string | null
+  dias_vencido: number
+  cilindros_pendientes?: number | null
+  garantias_activas?: number | null
+  regulador_pendiente?: boolean | null
 }
 
 export interface Actividad {
@@ -55,6 +107,14 @@ export interface Actividad {
   serie_doc_salida?: string | null
   numero_sunat_doc_salida?: string | null
   numero_doc_salida?: string | null
+  id_prestamo?: number | null
+  numero_prestamo?: string | null
+  fecha_retorno_pactada_prestamo?: string | null
+  id_alquiler?: number | null
+  numero_alquiler?: string | null
+  fecha_fin_pactada_alquiler?: string | null
+  id_tipo_origen?: number | null
+  nombre_tipo_origen?: string | null
   id_estado_actividad: number
   nombre_estado_actividad?: string | null
   observaciones?: string | null
@@ -66,6 +126,8 @@ export interface Actividad {
   id_usuario_modificacion?: number | null
   nombre_usuario_modificacion?: string | null
   items?: ActividadItem[]
+  /** Detalle en vivo del préstamo/alquiler mientras no hay ítems materializados. */
+  detalle_origen?: DetalleOrigenActividad | null
   en_curso?: boolean
 }
 
@@ -152,12 +214,33 @@ export interface VerificarActividadResult {
   completo: boolean
 }
 
+export interface CrearRecojoOrigenPayload {
+  tipoOrigen: TipoOrigenRecojo
+  idOrigen: number
+  fechaProgramada?: string
+  idTrabajadorResponsable?: number
+  observaciones?: string
+  idUsuarioAuditoria?: number
+}
+
 export interface CrearRecojoPrestamoPayload {
   idPrestamo: number
   fechaProgramada?: string
   idTrabajadorResponsable?: number
   observaciones?: string
   idUsuarioAuditoria?: number
+}
+
+export interface CrearRecojoResult {
+  id: number
+  creada: boolean
+  items: number
+}
+
+export interface OrigenVencidoRecojoFilters {
+  buscar?: string
+  pagina?: number
+  limite?: number
 }
 
 export interface GenerarRecojosPayload {

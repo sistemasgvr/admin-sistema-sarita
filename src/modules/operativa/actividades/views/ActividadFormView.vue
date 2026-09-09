@@ -21,10 +21,14 @@
       :actividad-id="actividadId"
       :default-fecha="defaultFecha"
       :lock-tipo-reparto="lockTipoReparto"
+      :lock-tipo-recojo="lockTipoRecojo"
       :default-titulo="defaultTitulo"
       :default-cliente-id="defaultClienteId"
       :default-cliente-label="defaultClienteLabel"
       :default-id-doc-salida="defaultIdDocSalida"
+      :default-tipo-origen-recojo="defaultTipoOrigenRecojo"
+      :default-id-origen-recojo="defaultIdOrigenRecojo"
+      :default-origen-recojo-label="defaultOrigenRecojoLabel"
       @saved="goToList"
       @cancel="goToList"
     />
@@ -36,7 +40,10 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ActividadForm from '@/modules/operativa/actividades/components/ActividadForm.vue'
-import type { ActividadFormMode } from '@/modules/operativa/actividades/interfaces/actividad.interface'
+import type {
+  ActividadFormMode,
+  TipoOrigenRecojo,
+} from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
@@ -78,6 +85,22 @@ const defaultIdDocSalida = computed(() => {
   return Number.isFinite(raw) && raw > 0 ? raw : null
 })
 
+const defaultTipoOrigenRecojo = computed<TipoOrigenRecojo | null>(() => {
+  const v = route.query.tipoOrigenRecojo
+  if (v === 'PRESTAMO' || v === 'ALQUILER') return v
+  return null
+})
+
+const defaultIdOrigenRecojo = computed(() => {
+  const raw = Number(route.query.idOrigenRecojo)
+  return Number.isFinite(raw) && raw > 0 ? raw : null
+})
+
+const defaultOrigenRecojoLabel = computed(() => {
+  const v = route.query.origenRecojoLabel
+  return typeof v === 'string' && v ? v : null
+})
+
 const lockTipoReparto = computed(
   () =>
     route.query.lockTipoReparto === '1' ||
@@ -85,15 +108,27 @@ const lockTipoReparto = computed(
     Boolean(defaultIdDocSalida.value),
 )
 
+const lockTipoRecojo = computed(
+  () =>
+    route.query.lockTipoRecojo === '1' ||
+    route.query.lockTipoRecojo === 'true' ||
+    Boolean(defaultTipoOrigenRecojo.value && defaultIdOrigenRecojo.value),
+)
+
 const pageTitle = computed(() => {
   if (mode.value === 'edit') return 'Editar actividad'
-  return lockTipoReparto.value ? 'Nuevo reparto' : 'Nueva actividad'
+  if (lockTipoReparto.value) return 'Nuevo reparto'
+  if (lockTipoRecojo.value) return 'Nuevo recojo'
+  return 'Nueva actividad'
 })
 
 const pageSubtitle = computed(() => {
   if (mode.value === 'edit') return 'Actualiza los datos de la actividad seleccionada.'
   if (lockTipoReparto.value) return 'Programa la entrega a partir de la orden de salida.'
-  return 'Programa una actividad de la agenda operativa. Si eliges tipo REPARTO, selecciona una orden de salida disponible.'
+  if (lockTipoRecojo.value) {
+    return 'Programa el recojo a partir del préstamo o alquiler seleccionado.'
+  }
+  return 'Programa una actividad de la agenda operativa. Si eliges tipo RECOJO, selecciona un préstamo o alquiler vencido.'
 })
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => [

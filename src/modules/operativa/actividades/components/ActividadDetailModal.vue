@@ -181,14 +181,24 @@
       </div>
 
       <section
-        v-if="items.length"
+        v-if="items.length || detalleOrigenItems.length"
         class="rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
         <div class="flex items-center gap-2.5 border-b border-gray-100 p-4 pb-3 dark:border-gray-800">
           <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
             <AppIcon :name="ICONS.boxes" :size="16" />
           </span>
-          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Ítems</h5>
+          <div>
+            <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
+              {{ items.length ? 'Ítems' : 'Detalle del origen' }}
+            </h5>
+            <p
+              v-if="!items.length && origenRecojoLabel"
+              class="text-xs text-gray-500 dark:text-gray-400"
+            >
+              {{ origenRecojoLabel }} · se materializa al iniciar verificación
+            </p>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -203,7 +213,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="(item, idx) in items"
+                v-for="(item, idx) in itemsVisibles"
                 :key="item.id ?? `${item.id_producto}-${item.id_balon}-${idx}`"
                 class="border-t border-gray-100 dark:border-gray-800"
               >
@@ -319,7 +329,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { Actividad } from '@/modules/operativa/actividades/interfaces/actividad.interface'
+import type {
+  Actividad,
+  ActividadItem,
+} from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { useActividadDetailQuery } from '@/modules/operativa/actividades/composables/useActividadDetailQuery'
 import {
   useAsignarResponsableActividadMutation,
@@ -399,6 +412,47 @@ const canFinalizar = computed(
 )
 
 const items = computed(() => actividad.value?.items ?? [])
+
+const detalleOrigenItems = computed<ActividadItem[]>(() => {
+  const detalle = actividad.value?.detalle_origen
+  if (!detalle) return []
+  const rows: ActividadItem[] = (detalle.cilindros ?? []).map((c, idx) => ({
+    item: idx + 1,
+    id: c.id,
+    id_producto: c.id_producto,
+    nombre_producto: c.nombre_producto,
+    cantidad: Number(c.cantidad) || 1,
+    id_balon: c.id_balon,
+    codigo_balon: c.codigo_balon,
+    numero_serie_balon: c.numero_serie_balon,
+    nombre_tipo_balon: c.nombre_tipo_balon,
+    nombre_producto_gas: c.nombre_producto_gas,
+  }))
+  if (detalle.regulador?.pendiente) {
+    rows.push({
+      item: rows.length + 1,
+      id_producto: detalle.regulador.id_producto,
+      nombre_producto: detalle.regulador.nombre_producto || 'Regulador / accesorio',
+      descripcion: detalle.regulador.codigo_producto || undefined,
+      cantidad: 1,
+    })
+  }
+  return rows
+})
+
+const itemsVisibles = computed(() =>
+  items.value.length ? items.value : detalleOrigenItems.value,
+)
+
+const origenRecojoLabel = computed(() => {
+  const a = actividad.value
+  if (!a) return null
+  if (a.numero_prestamo) return `Préstamo ${a.numero_prestamo}`
+  if (a.numero_alquiler) return `Alquiler ${a.numero_alquiler}`
+  return a.detalle_origen?.numero
+    ? `${a.detalle_origen.origen === 'ALQUILER' ? 'Alquiler' : 'Préstamo'} ${a.detalle_origen.numero}`
+    : null
+})
 
 function formatCantidadItem(valor: number | string | null | undefined) {
   const n = Number(valor)

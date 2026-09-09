@@ -6,6 +6,13 @@
     size="xl"
   >
     <div class="space-y-5">
+      <p
+        v-if="preparando"
+        class="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 text-sm text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300"
+      >
+        Preparando ítems del origen para verificación...
+      </p>
+
       <!-- Momento: salida y llegada se verifican por separado -->
       <div class="flex flex-wrap items-center gap-2">
         <button
@@ -41,18 +48,18 @@
             label="Código del cilindro o producto"
             placeholder="Escanea o escribe y pulsa Enter"
             class="min-w-0 flex-1"
-            :disabled="guardando"
+            :disabled="guardando || preparando"
             @keyup.enter="agregarCodigo"
           />
           <BalonBarcodeScanButton
-            :disabled="guardando"
+            :disabled="guardando || preparando"
             modal-title="Escanear ítem"
             @captured="onEscaneado"
           />
           <button
             type="button"
             class="rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            :disabled="guardando || !codigo.trim()"
+            :disabled="guardando || preparando || !codigo.trim()"
             @click="agregarCodigo"
           >
             Agregar
@@ -77,13 +84,13 @@
           label="Observación (opcional)"
           placeholder="Si la escribes, los ítems de esta tanda quedan con observación"
           class="mt-3"
-          :disabled="guardando"
+          :disabled="guardando || preparando"
         />
 
         <button
           type="button"
           class="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-          :disabled="guardando || cola.length === 0"
+          :disabled="guardando || preparando || cola.length === 0"
           @click="registrar"
         >
           <AppIcon :name="ICONS.scanBarcode" :size="15" />
@@ -125,7 +132,11 @@
             </tr>
             <tr v-if="items.length === 0">
               <td colspan="5" class="px-3 py-6 text-center text-gray-400">
-                Esta actividad no tiene ítems que verificar.
+                {{
+                  preparando
+                    ? 'Materializando ítems...'
+                    : 'Esta actividad no tiene ítems que verificar.'
+                }}
               </td>
             </tr>
           </tbody>
@@ -146,9 +157,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import BalonBarcodeScanButton from '@/modules/balones/cilindros/components/BalonBarcodeScanButton.vue'
-import { useVerificarActividadMutation } from '@/modules/operativa/actividades/composables/useActividadMutations'
+import {
+  useIniciarVerificacionMutation,
+  useVerificarActividadMutation,
+} from '@/modules/operativa/actividades/composables/useActividadMutations'
 import type {
   Actividad,
   ActividadItem,
@@ -166,6 +180,7 @@ const open = defineModel<boolean>({ default: false })
 
 const authStore = useAuthStore()
 const mutation = useVerificarActividadMutation()
+const iniciarMutation = useIniciarVerificacionMutation()
 
 const momentos: { valor: MomentoVerificacion; label: string }[] = [
   { valor: 'SALIDA', label: 'Salida del almacén' },
@@ -175,11 +190,13 @@ const momentos: { valor: MomentoVerificacion; label: string }[] = [
 const momento = ref<MomentoVerificacion>('SALIDA')
 const codigo = ref('')
 const observacion = ref('')
-// Las lecturas se acumulan y se mandan juntas: escanear diez cilindros no
-// deberían ser diez viajes al servidor.
 const cola = ref<string[]>([])
+const iniciandoLocal = ref(false)
 
 const guardando = computed(() => mutation.isPending.value)
+const preparando = computed(
+  () => iniciandoLocal.value || iniciarMutation.isPending.value,
+)
 const items = computed(() => props.actividad?.items ?? [])
 
 const estadoDe = (item: ActividadItem) =>
@@ -218,9 +235,37 @@ function onEscaneado(valor: string) {
   agregarCodigo()
 }
 
+async function asegurarItemsMaterializados() {
+  const act = props.actividad
+  if (!act?.id) return
+  const tieneItems = (act.items?.length ?? 0) > 0
+  const esRecojoOrigen = Boolean(act.id_prestamo || act.id_alquiler || act.detalle_origen)
+  if (tieneItems || !esRecojoOrigen) return
+
+  iniciandoLocal.value = true
+  try {
+    await iniciarMutation.mutateAsync({
+      id: act.id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+  } finally {
+    iniciandoLocal.value = false
+  }
+}
+
+watch(
+  () => [open.value, props.actividad?.id, props.actividad?.items?.length] as const,
+  ([isOpen]) => {
+    if (!isOpen) return
+    void asegurarItemsMaterializados()
+  },
+  { immediate: true },
+)
+
 async function registrar() {
   if (!props.actividad || cola.value.length === 0) return
   try {
+    await asegurarItemsMaterializados()
     await mutation.mutateAsync({
       id: props.actividad.id,
       payload: {

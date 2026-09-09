@@ -3,6 +3,7 @@ import { actividadesQueryKeys } from '@/modules/operativa/actividades/constants/
 import { comprobantesQueryKeys } from '@/modules/ventas/comprobantes/constants/comprobantesQueryKeys'
 import { actividadesService } from '@/modules/operativa/actividades/services/actividades.service'
 import type {
+  CrearRecojoOrigenPayload,
   CrearRecojoPrestamoPayload,
   GenerarRecojosPayload,
   VerificarActividadPayload,
@@ -183,6 +184,26 @@ export function useGenerarRecojosMutation() {
   })
 }
 
+export function useCrearRecojoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CrearRecojoOrigenPayload) =>
+      actividadesService.crearRecojo(payload),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      toastSuccess(
+        data.creada
+          ? 'Recojo programado correctamente'
+          : 'Este origen ya tenía un recojo pendiente',
+      )
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo programar el recojo')
+    },
+  })
+}
+
 export function useCrearRecojoPrestamoMutation() {
   const queryClient = useQueryClient()
 
@@ -193,12 +214,33 @@ export function useCrearRecojoPrestamoMutation() {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
       toastSuccess(
         data.creada
-          ? `Recojo programado con ${data.items} cilindro(s)`
+          ? 'Recojo programado correctamente'
           : 'Este préstamo ya tenía un recojo pendiente',
       )
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo programar el recojo')
+    },
+  })
+}
+
+export function useIniciarVerificacionMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idUsuarioAuditoria,
+    }: {
+      id: number
+      idUsuarioAuditoria?: number
+    }) => actividadesService.iniciarVerificacion(id, idUsuarioAuditoria),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo iniciar la verificación')
     },
   })
 }
