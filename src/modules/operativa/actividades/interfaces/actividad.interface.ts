@@ -174,7 +174,8 @@ export interface ActividadPayload {
   idComprobante?: number
   idDocSalida?: number
   items?: ActividadItemPayload[]
-  idEstadoActividad: number
+  /** En edit puede omitirse si el estado es operativo (EN_RUTA / REALIZADA / CANCELADA). */
+  idEstadoActividad?: number
   observaciones?: string
 }
 
@@ -235,7 +236,7 @@ export interface VerificarActividadResult {
   noPertenecen: number
   pendientes: number
   observados: number
-  /** El gate es estricto: solo es true sin pendientes NI observados. */
+  /** True si no quedan pendientes (las observaciones leves no bloquean). */
   completo: boolean
 }
 

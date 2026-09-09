@@ -11,6 +11,7 @@
 | 08/09 ~18:50 | Formulario de modal → páginas `/nueva` y `/:id/editar` |
 | 08/09 ~19:23 | Recojo desde vencidos (préstamo/alquiler), prefijos F6 `/operativa/...`, `iniciar-verificacion` |
 | 09/09 (código actual, staged) | Hora de inicio obligatoria en recojo; hora fin opcional en recojo; calendario por tipo; `estaAsignada` mira trabajador |
+| 09/09 | Flujo RECOJO: `iniciar-recojo` → verificar LLEGADA → `culminar-recojo` + almacén → `bal_devolver_*` |
 
 ---
 
@@ -24,7 +25,7 @@ Actividades es un módulo de **agenda operativa** maduro (CRUD, calendario, filt
 | Verificación escaneo | Alta | API + modal + `iniciar-verificacion` (materializa ítems de recojo) |
 | Recojos desde origen | Alta | UI + `POST /recojo` (PRESTAMO / ALQUILER); préstamo también desde listados |
 | Auto-recojo / job | Baja | Solo botón/API manual; cron de notificaciones **no** crea actividades |
-| Producto recogido | Baja | Columna/catálogo/lectura existen; no se escribe ni se muestra |
+| Producto recogido | Media | Al culminar recojo los cilindros vuelven al almacén elegido (`bal_devolver_*`) |
 | Unificación con `balones/recojos` | Abierta | Alquileres siguen usando `RecojoProgramarModal`; préstamos ya van a actividades |
 
 ---
@@ -62,11 +63,18 @@ Prefijos:
 CREAR (PENDIENTE / PROGRAMADA)
    │
    ├─ Asignar / liberar responsable (no cambia estado)
-   ├─ Recojo: cabecera sin ítems  → iniciar-verificacion materializa detalle
-   ├─ Verificar SALIDA (ítems)  ──┐
-   ├─ Verificar LLEGADA (ítems) ─┤ no fuerzan cierre
    │
-   ├─► Marcar REALIZADA  → fecha_hora_cierre = NOW()
+   ├─ REPARTO:
+   │     Verificar SALIDA → Iniciar entrega (EN_RUTA)
+   │     → Verificar LLEGADA → Culminar entrega (REALIZADA)
+   │
+   ├─ RECOJO:
+   │     Iniciar recojo (EN_RUTA + materializa ítems)
+   │     → Verificar LLEGADA (escaneo de recogido)
+   │     → Culminar recojo + almacén destino
+   │        (bal_devolver_* → cilindro DISPONIBLE en ese almacén)
+   │
+   ├─ Otros tipos: Marcar REALIZADA (REPARTO/RECOJO no permiten marcar a mano)
    ├─► Cancelar          → CANCELADA + cierre
    └─► Eliminar          → baja lógica (estado=0)
 ```

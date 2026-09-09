@@ -275,6 +275,56 @@ export function useCulminarEntregaMutation() {
   })
 }
 
+export function useIniciarRecojoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idUsuarioAuditoria,
+    }: {
+      id: number
+      idUsuarioAuditoria?: number
+    }) => actividadesService.iniciarRecojo(id, idUsuarioAuditoria),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
+      toastSuccess('Recojo iniciado: la actividad quedó en ruta')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo iniciar el recojo')
+    },
+  })
+}
+
+export function useCulminarRecojoMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      idAlmacenDestino,
+      idUsuarioAuditoria,
+    }: {
+      id: number
+      idAlmacenDestino: number
+      idUsuarioAuditoria?: number
+    }) =>
+      actividadesService.culminarRecojo(id, {
+        idAlmacenDestino,
+        idUsuarioAuditoria,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
+      toastSuccess('Recojo culminado: los cilindros ingresaron al almacén')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo culminar el recojo')
+    },
+  })
+}
+
 export function useIniciarVerificacionMutation() {
   const queryClient = useQueryClient()
 

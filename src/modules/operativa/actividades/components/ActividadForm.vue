@@ -114,8 +114,17 @@
             :placeholder="estadoActividadQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
             required
             v-bind="idEstadoActividadAttrs"
-            :disabled="isSubmitting || estadoActividadQuery.isLoading.value"
+            :disabled="
+              isSubmitting ||
+              estadoActividadQuery.isLoading.value ||
+              estadoActividadBloqueado
+            "
             :error="errors.idEstadoActividad"
+            :hint="
+              estadoActividadBloqueado
+                ? 'EN_RUTA, REALIZADA y CANCELADA solo cambian con las acciones de entrega.'
+                : 'Solo pendiente/programada. El flujo operativo usa las acciones de entrega.'
+            "
             :options="estadoActividadOptions"
           />
         </div>
@@ -446,6 +455,8 @@ import type {
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { horaFinEsPosterior } from '@/modules/operativa/actividades/utils/actividadHorario'
 import {
+  esEstadoActividadEditableEnFormulario,
+  esEstadoActividadOperativo,
   esTipoRecojoNombre,
   esTipoRepartoNombre,
   idOpcionPorNombre,
@@ -619,7 +630,22 @@ const prioridadOptions = computed(() => toSelectOptions(prioridadQuery.data.valu
 
 const listaEstadoActividadId = computed(() => ListaIds.ESTADO_ACTIVIDAD)
 const estadoActividadQuery = useListaOpcionesQuery(listaEstadoActividadId)
-const estadoActividadOptions = computed(() => toSelectOptions(estadoActividadQuery.data.value))
+
+/** Estados operativos no se editan a mano: evitan romper custodia EN_TRANSITO. */
+const estadoActividadBloqueado = computed(() =>
+  props.mode === 'edit' &&
+  esEstadoActividadOperativo(actividadActual.value?.nombre_estado_actividad),
+)
+
+const estadoActividadOptions = computed(() => {
+  const items = estadoActividadQuery.data.value ?? []
+  // En create/edit editable: solo pendiente/programada. Si ya es operativo,
+  // se muestra el actual (campo bloqueado) para no perder el label.
+  const filtrados = estadoActividadBloqueado.value
+    ? items
+    : items.filter((o) => esEstadoActividadEditableEnFormulario(o.nombre))
+  return toSelectOptions(filtrados.length ? filtrados : items)
+})
 
 const clienteLabelActual = computed(
   () =>
@@ -1053,7 +1079,11 @@ const onSubmit = handleSubmit(async (values) => {
       idDocSalida,
       idTipoActividad: Number(values.idTipoActividad),
       idPrioridad: Number(values.idPrioridad),
-      idEstadoActividad: Number(values.idEstadoActividad),
+      // No mandar estado operativo desde el form: el SQL lo rechaza y además
+      // dejaría cilindros EN_TRANSITO si se bajara EN_RUTA a PENDIENTE.
+      idEstadoActividad: estadoActividadBloqueado.value
+        ? undefined
+        : Number(values.idEstadoActividad),
       fechaProgramada: values.fechaProgramada,
       horaInicioEstimada: values.horaInicioEstimada,
       horaFinEstimada: values.horaFinEstimada,

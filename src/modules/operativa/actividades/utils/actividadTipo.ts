@@ -32,6 +32,27 @@ export function esActividadEnRuta(nombreEstado?: string | null) {
 }
 
 /**
+ * Estados del flujo de entrega: solo cambian por acciones dedicadas
+ * (iniciar / culminar / cancelar / marcar realizada), no por el formulario.
+ */
+export function esEstadoActividadOperativo(nombreEstado?: string | null) {
+  const n = (nombreEstado ?? '').trim().toUpperCase()
+  return (
+    n === 'EN_RUTA' ||
+    n === 'EN RUTA' ||
+    n === 'REALIZADA' ||
+    n === 'CANCELADA' ||
+    n === 'CANCELADO'
+  )
+}
+
+/** Estados que el formulario sí puede asignar (pendiente / programada). */
+export function esEstadoActividadEditableEnFormulario(nombreEstado?: string | null) {
+  const n = (nombreEstado ?? '').trim().toUpperCase()
+  return n === 'PENDIENTE' || n === 'PROGRAMADA' || n === 'PENDIENTE_REALIZAR'
+}
+
+/**
  * Clase del ítem dentro de una entrega, en el mismo orden de precedencia que
  * age_clasificar_items_actividad: el cilindro manda, el gas se reconoce por ser
  * el producto de algún cilindro de la misma actividad, y el resto es accesorio.

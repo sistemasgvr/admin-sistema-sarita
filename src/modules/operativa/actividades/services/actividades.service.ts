@@ -109,6 +109,19 @@ export const actividadesService = {
     })
   },
 
+  iniciarRecojo(id: number, idUsuarioAuditoria?: number): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}/iniciar-recojo`, {
+      idUsuarioAuditoria,
+    })
+  },
+
+  culminarRecojo(
+    id: number,
+    payload: { idAlmacenDestino: number; idUsuarioAuditoria?: number },
+  ): Promise<Actividad> {
+    return apiPatch<Actividad>(`/operativa/actividades/${id}/culminar-recojo`, payload)
+  },
+
   asignarResponsable(
     id: number,
     payload: {

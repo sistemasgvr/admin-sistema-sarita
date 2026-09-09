@@ -33,7 +33,11 @@ export interface LoginResponse {
 
 export interface AuthMeResponse {
   id: number
+  nombre?: string
   correo: string
+  estado?: boolean
+  id_trabajador?: number | null
+  roles?: AuthRole[]
   permisos: string[]
   sesion: AuthSession
 }

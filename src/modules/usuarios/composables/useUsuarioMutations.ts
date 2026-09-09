@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { authQueryKeys } from '@/modules/auth/constants/authQueryKeys'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { usuariosQueryKeys } from '@/modules/usuarios/constants/usuariosQueryKeys'
 import { usuariosService } from '@/modules/usuarios/services/usuarios.service'
 import type {
@@ -6,6 +8,14 @@ import type {
   UpdateUsuarioPayload,
 } from '@/modules/usuarios/interfaces/usuario.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+
+function invalidateAuthMeIfCurrentUser(queryClient: ReturnType<typeof useQueryClient>, idUsuario: number) {
+  const authStore = useAuthStore()
+  if (authStore.user?.id !== idUsuario) return
+  void authStore.refreshProfile().catch(() => {
+    void queryClient.invalidateQueries({ queryKey: authQueryKeys.me() })
+  })
+}
 
 export function useCreateUsuarioMutation() {
   const queryClient = useQueryClient()
@@ -28,8 +38,9 @@ export function useUpdateUsuarioMutation() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: UpdateUsuarioPayload }) =>
       usuariosService.actualizar(id, payload),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.all })
+      invalidateAuthMeIfCurrentUser(queryClient, variables.id)
       toastSuccess('Usuario actualizado correctamente')
     },
     onError: (error) => {

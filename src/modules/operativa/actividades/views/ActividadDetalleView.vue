@@ -13,6 +13,68 @@
       </button>
 
       <div class="flex flex-wrap items-center gap-2">
+        <!--
+          Flujo de entrega del reparto, aquí mismo: verificar la salida, salir a
+          ruta, verificar la llegada y cerrar, sin pasar por el listado.
+        -->
+        <button
+          v-if="mostrarVerificacion"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+          @click="verificacionOpen = true"
+        >
+          <AppIcon :name="ICONS.scanBarcode" :size="15" />
+          {{ etiquetaVerificar }}
+        </button>
+
+        <button
+          v-if="mostrarIniciarEntrega"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!salidaConforme || iniciarEntregaMutation.isPending.value"
+          :title="salidaConforme ? undefined : motivoSalidaBloqueada"
+          @click="iniciarEntrega"
+        >
+          {{ iniciarEntregaMutation.isPending.value ? 'Iniciando...' : 'Iniciar entrega' }}
+        </button>
+
+        <button
+          v-if="mostrarCulminarEntrega"
+          type="button"
+          class="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!llegadaConforme || culminarEntregaMutation.isPending.value"
+          :title="llegadaConforme ? undefined : motivoLlegadaBloqueada"
+          @click="culminarEntrega"
+        >
+          {{ culminarEntregaMutation.isPending.value ? 'Cerrando...' : 'Culminar entrega' }}
+        </button>
+
+        <button
+          v-if="mostrarIniciarRecojo"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="iniciarRecojoMutation.isPending.value || !estaAsignada(actividad)"
+          :title="
+            estaAsignada(actividad)
+              ? undefined
+              : 'Asigna un responsable antes de iniciar el recojo'
+          "
+          @click="iniciarRecojo"
+        >
+          {{ iniciarRecojoMutation.isPending.value ? 'Iniciando...' : 'Iniciar recojo' }}
+        </button>
+
+        <button
+          v-if="mostrarCulminarRecojo"
+          type="button"
+          class="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!llegadaConforme"
+          :title="llegadaConforme ? undefined : motivoLlegadaBloqueada"
+          @click="abrirCulminarRecojo"
+        >
+          Culminar recojo
+        </button>
+
         <button
           v-if="puedeTomarAct"
           type="button"
@@ -42,6 +104,17 @@
         </button>
       </div>
     </div>
+
+    <!--
+      El botón de avanzar se deshabilita si el gate no está satisfecho, así que
+      aquí se dice por qué y qué hacer, en vez de dejar un botón muerto.
+    -->
+    <p
+      v-if="avisoFlujo"
+      class="mb-4 rounded-lg border border-warning-200 bg-warning-50/60 px-3 py-2 text-sm text-warning-700 dark:border-warning-500/20 dark:bg-warning-500/10 dark:text-warning-400"
+    >
+      {{ avisoFlujo }}
+    </p>
 
     <div v-if="isLoading && !actividad" class="flex items-center justify-center gap-2 py-8 text-sm text-gray-500 dark:text-gray-400">
       <AppIcon :name="ICONS.loader" :size="16" class="animate-spin" />
@@ -339,6 +412,47 @@
       </div>
     </section>
 
+    <ActividadVerificacionModal v-model="verificacionOpen" :actividad="actividad" />
+
+    <AppModal
+      v-model="culminarRecojoOpen"
+      title="Culminar recojo"
+      subtitle="Elige el almacén donde ingresan los cilindros recogidos."
+      size="sm"
+    >
+      <AlmacenSelectField
+        v-model="idAlmacenDestinoRecojo"
+        label="Almacén destino"
+        required
+        :disabled="culminarRecojoMutation.isPending.value"
+      />
+      <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Al confirmar, cada cilindro verificado vuelve a ese almacén como disponible.
+      </p>
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
+          :disabled="culminarRecojoMutation.isPending.value"
+          @click="culminarRecojoOpen = false"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg bg-success-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-success-600 disabled:opacity-70 sm:w-auto"
+          :disabled="!idAlmacenDestinoRecojo || culminarRecojoMutation.isPending.value"
+          @click="confirmarCulminarRecojo"
+        >
+          {{
+            culminarRecojoMutation.isPending.value
+              ? 'Ingresando...'
+              : 'Confirmar e ingresar al almacén'
+          }}
+        </button>
+      </template>
+    </AppModal>
+
     <AppModal
       v-model="confirmarCancelacion"
       title="Cancelar la actividad"
@@ -386,11 +500,18 @@ import { useActividadDetailQuery } from '@/modules/operativa/actividades/composa
 import {
   useAsignarResponsableActividadMutation,
   useCancelarActividadMutation,
+  useCulminarEntregaMutation,
+  useCulminarRecojoMutation,
+  useIniciarEntregaMutation,
+  useIniciarRecojoMutation,
   useMarcarActividadRealizadaMutation,
 } from '@/modules/operativa/actividades/composables/useActividadMutations'
+import ActividadVerificacionModal from '@/modules/operativa/actividades/components/ActividadVerificacionModal.vue'
 import {
   esActividadCancelada,
+  esActividadEnRuta,
   esActividadRealizada,
+  esTipoRecojoNombre,
   esTipoRepartoNombre,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import { toastInfo } from '@/shared/composables/useToast'
@@ -402,6 +523,7 @@ import {
   puedeTomar,
 } from '@/modules/operativa/actividades/utils/actividadEstado'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
@@ -469,9 +591,9 @@ const puedeLiberarAct = computed(
 const canFinalizar = computed(
   () =>
     estaAsignada(actividad.value) &&
-    // El reparto no se cierra a mano: lo cierra "Culminar entrega" tras la
-    // verificación de llegada. Ofrecerlo aquí saltaría ese gate.
+    // Reparto y recojo se cierran con Culminar (entrega/recojo), no a mano.
     !esTipoRepartoNombre(actividad.value?.nombre_tipo_actividad) &&
+    !esTipoRecojoNombre(actividad.value?.nombre_tipo_actividad) &&
     puedeLiberarOFinalizar(actividad.value, {
       userId: authStore.user?.id,
       isAdmin: isAdmin.value,
@@ -593,11 +715,20 @@ async function cancelarActividad() {
 async function tomarActividad() {
   const id = actividad.value?.id
   const userId = authStore.user?.id
-  const idTrabajador = authStore.userTrabajadorId
   if (!id || !userId) return
 
-  // Sin ficha de trabajador no hay a quién asignar. Antes esto mandaba null y
-  // la actividad se quedaba sin asignar mostrando un toast de éxito.
+  // La ficha puede haberse vinculado después del login; relee /auth/me antes
+  // de bloquear, para no obligar a cerrar sesión.
+  let idTrabajador = authStore.userTrabajadorId
+  if (!idTrabajador) {
+    try {
+      await authStore.refreshProfile()
+      idTrabajador = authStore.userTrabajadorId
+    } catch {
+      // Si falla el refresh, seguimos con el mensaje de abajo.
+    }
+  }
+
   if (!idTrabajador) {
     toastInfo(
       'Tu usuario no tiene una ficha de trabajador vinculada, así que no puede figurar como responsable de la entrega.',
@@ -637,5 +768,173 @@ const confirmarCancelacion = ref(false)
 async function cancelarConfirmado() {
   await cancelarActividad()
   confirmarCancelacion.value = false
+}
+
+// ---- Flujo de entrega / recojo, disponible sin volver al listado -----------
+
+const verificacionOpen = ref(false)
+const iniciarEntregaMutation = useIniciarEntregaMutation()
+const culminarEntregaMutation = useCulminarEntregaMutation()
+const iniciarRecojoMutation = useIniciarRecojoMutation()
+const culminarRecojoMutation = useCulminarRecojoMutation()
+const culminarRecojoOpen = ref(false)
+const idAlmacenDestinoRecojo = ref<number | undefined>()
+
+const canVerificar = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VERIFICAR),
+)
+
+const esReparto = computed(() =>
+  esTipoRepartoNombre(actividad.value?.nombre_tipo_actividad),
+)
+const esRecojo = computed(() =>
+  esTipoRecojoNombre(actividad.value?.nombre_tipo_actividad),
+)
+const enRuta = computed(() => esActividadEnRuta(actividad.value?.nombre_estado_actividad))
+const cerrada = computed(
+  () =>
+    esActividadRealizada(actividad.value?.nombre_estado_actividad) ||
+    esActividadCancelada(actividad.value?.nombre_estado_actividad),
+)
+
+const itemsActividad = computed<ActividadItem[]>(() => actividad.value?.items ?? [])
+
+/** Cuenta los ítems que aún no están OK en el momento indicado. */
+const contarNoConformes = (momento: 'SALIDA' | 'LLEGADA') => {
+  let pendientes = 0
+  let observados = 0
+  for (const item of itemsActividad.value) {
+    const estado =
+      (momento === 'SALIDA'
+        ? item.estado_verificacion_salida
+        : item.estado_verificacion_llegada) ?? 'PENDIENTE'
+    if (estado === 'CON_OBSERVACION') observados += 1
+    else if (estado !== 'OK') pendientes += 1
+  }
+  return { pendientes, observados }
+}
+
+// Solo bloquean ítems sin verificar. CON_OBSERVACION no detiene el flujo.
+const salidaConforme = computed(() => {
+  if (itemsActividad.value.length === 0) return false
+  return contarNoConformes('SALIDA').pendientes === 0
+})
+const llegadaConforme = computed(() => {
+  if (itemsActividad.value.length === 0) return false
+  return contarNoConformes('LLEGADA').pendientes === 0
+})
+
+const motivoBloqueo = (momento: 'SALIDA' | 'LLEGADA') => {
+  if (itemsActividad.value.length === 0) return 'La actividad no tiene ítems que verificar.'
+  const { pendientes } = contarNoConformes(momento)
+  if (pendientes) return `${pendientes} ítem(s) sin verificar`
+  return ''
+}
+
+const motivoSalidaBloqueada = computed(() => motivoBloqueo('SALIDA'))
+const motivoLlegadaBloqueada = computed(() => motivoBloqueo('LLEGADA'))
+
+const etiquetaVerificar = computed(() => {
+  if (esRecojo.value) return 'Verificar recojo'
+  return enRuta.value ? 'Verificar llegada' : 'Verificar salida'
+})
+
+const mostrarVerificacion = computed(
+  () => (esReparto.value || esRecojo.value) && canVerificar.value && !cerrada.value,
+)
+const mostrarIniciarEntrega = computed(
+  () => esReparto.value && canEdit.value && !cerrada.value && !enRuta.value,
+)
+const mostrarCulminarEntrega = computed(
+  () => esReparto.value && canEdit.value && !cerrada.value && enRuta.value,
+)
+const mostrarIniciarRecojo = computed(
+  () => esRecojo.value && canEdit.value && !cerrada.value && !enRuta.value,
+)
+const mostrarCulminarRecojo = computed(
+  () => esRecojo.value && canEdit.value && !cerrada.value && enRuta.value,
+)
+
+const avisoFlujo = computed(() => {
+  if (cerrada.value) return ''
+  if (esRecojo.value) {
+    if (enRuta.value) {
+      if (llegadaConforme.value) {
+        return 'Recojo en ruta. Verificación lista: culmina eligiendo el almacén destino.'
+      }
+      return `Recojo en ruta. Escanea lo recogido antes de culminar: ${motivoLlegadaBloqueada.value}.`
+    }
+    if (!estaAsignada(actividad.value)) {
+      return 'Toma o asigna un responsable para iniciar el recojo.'
+    }
+    return 'Inicia el recojo y luego verifica los cilindros al recogerlos.'
+  }
+  if (!esReparto.value) return ''
+  if (enRuta.value) {
+    if (llegadaConforme.value) return ''
+    return `En ruta. Para cerrar la entrega falta verificar la llegada: ${motivoLlegadaBloqueada.value}.`
+  }
+  if (salidaConforme.value) return ''
+  return `Para iniciar la entrega falta verificar la salida: ${motivoSalidaBloqueada.value}.`
+})
+
+async function iniciarEntrega() {
+  const id = actividad.value?.id
+  if (!id) return
+  try {
+    await iniciarEntregaMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function culminarEntrega() {
+  const id = actividad.value?.id
+  if (!id) return
+  try {
+    await culminarEntregaMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function iniciarRecojo() {
+  const id = actividad.value?.id
+  if (!id) return
+  try {
+    await iniciarRecojoMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+function abrirCulminarRecojo() {
+  idAlmacenDestinoRecojo.value = undefined
+  culminarRecojoOpen.value = true
+}
+
+async function confirmarCulminarRecojo() {
+  const id = actividad.value?.id
+  const idAlmacen = idAlmacenDestinoRecojo.value
+  if (!id || !idAlmacen) return
+  try {
+    await culminarRecojoMutation.mutateAsync({
+      id,
+      idAlmacenDestino: idAlmacen,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+    culminarRecojoOpen.value = false
+  } catch {
+    // toast en mutation
+  }
 }
 </script>

@@ -1,7 +1,7 @@
 <template>
   <AppModal
     v-model="open"
-    title="Verificación de la entrega"
+    :title="esRecojo ? 'Verificación del recojo' : 'Verificación de la entrega'"
     :subtitle="actividad?.titulo"
     size="xl"
   >
@@ -11,6 +11,13 @@
         class="rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 text-sm text-brand-700 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-300"
       >
         Preparando ítems del origen para verificación...
+      </p>
+
+      <p
+        v-else-if="esRecojo && !enRuta"
+        class="rounded-lg border border-warning-200 bg-warning-50/60 px-3 py-2 text-sm text-warning-700 dark:border-warning-500/20 dark:bg-warning-500/10 dark:text-warning-400"
+      >
+        Primero inicia el recojo. Luego, al recoger, escanea cada cilindro aquí.
       </p>
 
       <!-- Momento: salida y llegada se verifican por separado -->
@@ -25,6 +32,7 @@
               ? 'bg-brand-50 font-medium text-brand-600 dark:bg-brand-500/10'
               : 'text-gray-500 hover:text-gray-700'
           "
+          :disabled="esRecojo && !enRuta"
           @click="momento = opcion.valor"
         >
           {{ opcion.label }}
@@ -48,18 +56,18 @@
             label="Código del cilindro o producto"
             placeholder="Escanea o escribe y pulsa Enter"
             class="min-w-0 flex-1"
-            :disabled="guardando || preparando"
+            :disabled="guardando || preparando || (esRecojo && !enRuta)"
             @keyup.enter="agregarCodigo"
           />
           <BalonBarcodeScanButton
-            :disabled="guardando || preparando"
+            :disabled="guardando || preparando || (esRecojo && !enRuta)"
             modal-title="Escanear ítem"
             @captured="onEscaneado"
           />
           <button
             type="button"
             class="rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-            :disabled="guardando || preparando || !codigo.trim()"
+            :disabled="guardando || preparando || (esRecojo && !enRuta) || !codigo.trim()"
             @click="agregarCodigo"
           >
             Agregar
@@ -119,7 +127,7 @@
         <button
           type="button"
           class="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-          :disabled="guardando || preparando || cola.length === 0"
+          :disabled="guardando || preparando || (esRecojo && !enRuta) || cola.length === 0"
           @click="registrar"
         >
           <AppIcon :name="ICONS.scanBarcode" :size="15" />
@@ -225,7 +233,7 @@
         </button>
 
         <button
-          v-if="momento === 'SALIDA' && !enRuta"
+          v-if="!esRecojo && momento === 'SALIDA' && !enRuta"
           type="button"
           class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
           :disabled="!puedeIniciar || iniciarEntregaMutation.isPending.value"
@@ -235,7 +243,7 @@
         </button>
 
         <button
-          v-if="momento === 'LLEGADA' && enRuta"
+          v-if="!esRecojo && momento === 'LLEGADA' && enRuta"
           type="button"
           class="rounded-lg bg-success-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70"
           :disabled="!puedeCulminar || culminarEntregaMutation.isPending.value"
@@ -243,6 +251,23 @@
         >
           {{ culminarEntregaMutation.isPending.value ? 'Cerrando...' : 'Culminar entrega' }}
         </button>
+
+        <button
+          v-if="esRecojo && !enRuta"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="iniciarRecojoMutation.isPending.value"
+          @click="iniciarRecojo"
+        >
+          {{ iniciarRecojoMutation.isPending.value ? 'Iniciando...' : 'Iniciar recojo' }}
+        </button>
+
+        <p
+          v-if="esRecojo && enRuta && completo"
+          class="w-full text-right text-xs text-gray-500 dark:text-gray-400 sm:w-auto sm:self-center"
+        >
+          Verificación lista. Culmina el recojo en el detalle eligiendo el almacén.
+        </p>
       </div>
     </template>
   </AppModal>
@@ -254,6 +279,7 @@ import BalonBarcodeScanButton from '@/modules/balones/cilindros/components/Balon
 import {
   useCulminarEntregaMutation,
   useIniciarEntregaMutation,
+  useIniciarRecojoMutation,
   useIniciarVerificacionMutation,
   useVerificarActividadMutation,
 } from '@/modules/operativa/actividades/composables/useActividadMutations'
@@ -267,6 +293,7 @@ import type {
 import {
   claseItemActividad,
   esActividadEnRuta,
+  esTipoRecojoNombre,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppBadge, AppInput, AppModal } from '@/shared/components'
@@ -283,11 +310,20 @@ const mutation = useVerificarActividadMutation()
 const iniciarMutation = useIniciarVerificacionMutation()
 const iniciarEntregaMutation = useIniciarEntregaMutation()
 const culminarEntregaMutation = useCulminarEntregaMutation()
+const iniciarRecojoMutation = useIniciarRecojoMutation()
 
-const momentos: { valor: MomentoVerificacion; label: string }[] = [
-  { valor: 'SALIDA', label: 'Salida del almacén' },
-  { valor: 'LLEGADA', label: 'Llegada al cliente' },
-]
+const esRecojo = computed(() =>
+  esTipoRecojoNombre(props.actividad?.nombre_tipo_actividad),
+)
+
+const momentos = computed(() =>
+  esRecojo.value
+    ? [{ valor: 'LLEGADA' as const, label: 'Confirmación de recogido' }]
+    : [
+        { valor: 'SALIDA' as const, label: 'Salida del almacén' },
+        { valor: 'LLEGADA' as const, label: 'Llegada al cliente' },
+      ],
+)
 
 const conformidades: { valor: boolean; label: string }[] = [
   { valor: true, label: 'Conforme' },
@@ -362,22 +398,28 @@ const pendientes = computed(
 const observados = computed(
   () => items.value.filter((item) => estadoDe(item) === 'CON_OBSERVACION').length,
 )
-// El gate es estricto: un ítem observado tampoco deja avanzar.
+// Solo bloquean los pendientes. CON_OBSERVACION es un aviso leve (raya, etc.)
+// que queda registrado pero no detiene iniciar/culminar.
 const completo = computed(
-  () => items.value.length > 0 && pendientes.value === 0 && observados.value === 0,
+  () => items.value.length > 0 && pendientes.value === 0,
 )
 
 const resumenTexto = computed(() => {
-  if (completo.value) return 'Todo conforme'
-  const partes: string[] = []
-  if (pendientes.value) partes.push(`${pendientes.value} pendiente(s)`)
-  if (observados.value) partes.push(`${observados.value} con observación`)
-  return partes.join(' · ') || 'Sin ítems'
+  if (items.value.length === 0) return 'Sin ítems'
+  if (pendientes.value > 0) {
+    const partes: string[] = [`${pendientes.value} pendiente(s)`]
+    if (observados.value) partes.push(`${observados.value} con observación`)
+    return partes.join(' · ')
+  }
+  if (observados.value > 0) return `Listo · ${observados.value} con observación`
+  return 'Todo conforme'
 })
 
 const resumenColor = computed<BadgeColor>(() => {
+  if (pendientes.value > 0) return 'neutral'
+  if (observados.value > 0) return 'warning'
   if (completo.value) return 'success'
-  return observados.value > 0 ? 'warning' : 'neutral'
+  return 'neutral'
 })
 
 const puedeIniciar = computed(
@@ -388,9 +430,9 @@ const puedeCulminar = computed(
 )
 
 const mensajeGate = computed(() => {
-  if (completo.value || items.value.length === 0) return ''
+  if (items.value.length === 0 || pendientes.value > 0) return ''
   if (observados.value > 0) {
-    return 'Los ítems con observación bloquean el avance: vuelve a verificarlos como conformes cuando se resuelvan.'
+    return 'Las observaciones leves quedan registradas y no bloquean el avance.'
   }
   return ''
 })
@@ -463,12 +505,13 @@ async function asegurarItemsMaterializados() {
   }
 }
 
-// El momento por defecto sigue al estado: en ruta ya solo queda la llegada.
+// El momento por defecto: recojo siempre confirma recogido (LLEGADA);
+// en reparto, en ruta solo queda la llegada.
 watch(
-  () => [open.value, enRuta.value] as const,
-  ([isOpen, ruta]) => {
+  () => [open.value, enRuta.value, esRecojo.value] as const,
+  ([isOpen, ruta, recojo]) => {
     if (!isOpen) return
-    momento.value = ruta ? 'LLEGADA' : 'SALIDA'
+    momento.value = recojo || ruta ? 'LLEGADA' : 'SALIDA'
   },
   { immediate: true },
 )
@@ -506,6 +549,19 @@ async function iniciarEntrega() {
   if (!props.actividad) return
   try {
     await iniciarEntregaMutation.mutateAsync({
+      id: props.actividad.id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+    momento.value = 'LLEGADA'
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function iniciarRecojo() {
+  if (!props.actividad) return
+  try {
+    await iniciarRecojoMutation.mutateAsync({
       id: props.actividad.id,
       idUsuarioAuditoria: authStore.user?.id,
     })
