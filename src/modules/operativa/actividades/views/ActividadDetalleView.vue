@@ -1,0 +1,940 @@
+<template>
+  <div>
+    <PageBreadcrumb page-title="Detalle de la actividad" :items="breadcrumbItems" />
+
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+        @click="volver"
+      >
+        <AppIcon :name="ICONS.chevronLeft" :size="15" />
+        Volver
+      </button>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <!--
+          Flujo de entrega del reparto, aquí mismo: verificar la salida, salir a
+          ruta, verificar la llegada y cerrar, sin pasar por el listado.
+        -->
+        <button
+          v-if="mostrarVerificacion"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+          @click="verificacionOpen = true"
+        >
+          <AppIcon :name="ICONS.scanBarcode" :size="15" />
+          {{ etiquetaVerificar }}
+        </button>
+
+        <button
+          v-if="mostrarIniciarEntrega"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!salidaConforme || iniciarEntregaMutation.isPending.value"
+          :title="salidaConforme ? undefined : motivoSalidaBloqueada"
+          @click="iniciarEntrega"
+        >
+          {{ iniciarEntregaMutation.isPending.value ? 'Iniciando...' : 'Iniciar entrega' }}
+        </button>
+
+        <button
+          v-if="mostrarCulminarEntrega"
+          type="button"
+          class="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!llegadaConforme || culminarEntregaMutation.isPending.value"
+          :title="llegadaConforme ? undefined : motivoLlegadaBloqueada"
+          @click="culminarEntrega"
+        >
+          {{ culminarEntregaMutation.isPending.value ? 'Cerrando...' : 'Culminar entrega' }}
+        </button>
+
+        <button
+          v-if="mostrarIniciarRecojo"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="iniciarRecojoMutation.isPending.value || !estaAsignada(actividad)"
+          :title="
+            estaAsignada(actividad)
+              ? undefined
+              : 'Asigna un responsable antes de iniciar el recojo'
+          "
+          @click="iniciarRecojo"
+        >
+          {{ iniciarRecojoMutation.isPending.value ? 'Iniciando...' : 'Iniciar recojo' }}
+        </button>
+
+        <button
+          v-if="mostrarCulminarRecojo"
+          type="button"
+          class="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="!llegadaConforme"
+          :title="llegadaConforme ? undefined : motivoLlegadaBloqueada"
+          @click="abrirCulminarRecojo"
+        >
+          Culminar recojo
+        </button>
+
+        <button
+          v-if="puedeTomarAct"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="asignarMutation.isPending.value"
+          @click="tomarActividad"
+        >
+          {{ asignarMutation.isPending.value ? 'Asignando...' : 'Tomar actividad' }}
+        </button>
+        <button
+          v-if="puedeLiberarAct"
+          type="button"
+          class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          :disabled="asignarMutation.isPending.value"
+          @click="liberarActividad"
+        >
+          {{ asignarMutation.isPending.value ? 'Liberando...' : 'Liberar' }}
+        </button>
+        <button
+          v-if="canFinalizar"
+          type="button"
+          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          :disabled="marcarMutation.isPending.value"
+          @click="marcarRealizada"
+        >
+          {{ marcarMutation.isPending.value ? 'Guardando...' : 'Marcar realizada' }}
+        </button>
+      </div>
+    </div>
+
+    <!--
+      El botón de avanzar se deshabilita si el gate no está satisfecho, así que
+      aquí se dice por qué y qué hacer, en vez de dejar un botón muerto.
+    -->
+    <p
+      v-if="avisoFlujo"
+      class="mb-4 rounded-lg border border-warning-200 bg-warning-50/60 px-3 py-2 text-sm text-warning-700 dark:border-warning-500/20 dark:bg-warning-500/10 dark:text-warning-400"
+    >
+      {{ avisoFlujo }}
+    </p>
+
+    <div v-if="isLoading && !actividad" class="flex items-center justify-center gap-2 py-8 text-sm text-gray-500 dark:text-gray-400">
+      <AppIcon :name="ICONS.loader" :size="16" class="animate-spin" />
+      Cargando detalle...
+    </div>
+
+    <div v-if="actividad" class="space-y-4">
+      <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+        <div class="flex items-start gap-2.5">
+          <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.clipboardList" :size="16" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold text-gray-800 dark:text-white/90">{{ actividad.titulo }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ actividad.razon_social_cliente ?? 'Sin cliente asignado' }}
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <ListaOpcionBadge
+            v-if="actividad.nombre_estado_actividad"
+            :value="actividad.nombre_estado_actividad"
+          />
+          <ListaOpcionBadge v-if="esSinAsignarAct" value="Sin asignar" />
+          <ListaOpcionBadge v-else-if="esEnCursoAct" value="En curso" />
+          <ListaOpcionBadge v-if="actividad.nombre_prioridad" :value="actividad.nombre_prioridad" />
+          <ListaOpcionBadge v-if="actividad.nombre_tipo_actividad" :value="actividad.nombre_tipo_actividad" />
+        </div>
+      </div>
+
+      <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
+        <div class="mb-3 flex items-center gap-2.5">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.userCheck" :size="16" />
+          </span>
+          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Datos generales</h5>
+        </div>
+        <dl class="grid gap-x-5 gap-y-4 sm:grid-cols-3">
+          <div>
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Usuario responsable</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ actividad.nombre_usuario_responsable ?? 'Sin asignar' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Chofer / repartidor</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ actividad.nombre_chofer_responsable ?? 'Sin asignar' }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Comprobante</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ comprobanteLabel(actividad) ?? '—' }}
+            </dd>
+          </div>
+          <div v-if="docSalidaLabel(actividad)">
+            <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Orden de salida</dt>
+            <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ docSalidaLabel(actividad) }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        v-if="descripcionTexto || actividad.observaciones"
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <div class="mb-2 flex items-center gap-2.5">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.fileText" :size="16" />
+          </span>
+          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Descripción</h5>
+        </div>
+
+        <p v-if="descripcionTexto" class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+          {{ descripcionTexto }}
+        </p>
+        <a
+          v-if="mapsUrl"
+          :href="mapsUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
+        >
+          <AppIcon :name="ICONS.mapPin" :size="14" />
+          Ver ubicación en el mapa
+        </a>
+
+        <div v-if="actividad.observaciones" :class="descripcionTexto ? 'mt-4 border-t border-gray-100 pt-3 dark:border-gray-800' : ''">
+          <dt class="mb-1 flex items-center gap-1.5 text-theme-xs text-gray-500 dark:text-gray-400">
+            <AppIcon :name="ICONS.messageSquare" :size="12" class="shrink-0" />
+            Observaciones
+          </dt>
+          <dd class="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">
+            {{ actividad.observaciones }}
+          </dd>
+        </div>
+      </section>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
+          <div class="mb-3 flex items-center gap-2.5">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+              <AppIcon :name="ICONS.calendar" :size="16" />
+            </span>
+            <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Programación</h5>
+          </div>
+          <dl class="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha programada</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ formatListDate(actividad.fecha_programada) }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Hora de inicio</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ formatHora(actividad.hora_inicio_estimada) ?? '—' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Hora de fin</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ formatHora(actividad.hora_fin_estimada) ?? '—' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha y hora de cierre</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ formatDetailDateTime(actividad.fecha_hora_cierre) ?? '—' }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40">
+          <div class="mb-3 flex items-center gap-2.5">
+            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+              <AppIcon :name="ICONS.history" :size="16" />
+            </span>
+            <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">Auditoría</h5>
+          </div>
+          <dl class="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Creado por</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ actividad.nombre_usuario_creacion ?? '—' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Fecha de creación</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ formatDetailDateTime(actividad.fecha_creacion) ?? '—' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Modificado por</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ actividad.nombre_usuario_modificacion ?? '—' }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-theme-xs text-gray-500 dark:text-gray-400">Última modificación</dt>
+              <dd class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ formatDetailDateTime(actividad.fecha_modificacion) ?? '—' }}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+
+      <section
+        v-if="items.length || detalleOrigenItems.length"
+        class="rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
+      >
+        <div class="flex items-center gap-2.5 border-b border-gray-100 p-4 pb-3 dark:border-gray-800">
+          <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
+            <AppIcon :name="ICONS.boxes" :size="16" />
+          </span>
+          <div>
+            <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
+              {{ items.length ? 'Ítems' : 'Detalle del origen' }}
+            </h5>
+            <p
+              v-if="!items.length && origenRecojoLabel"
+              class="text-xs text-gray-500 dark:text-gray-400"
+            >
+              {{ origenRecojoLabel }} · se materializa al iniciar verificación
+            </p>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-white/5">
+              <tr>
+                <th class="px-3 py-2 font-medium">Producto</th>
+                <th class="px-3 py-2 font-medium">Tipo / gas</th>
+                <th class="px-3 py-2 text-right font-medium">Cant.</th>
+                <th class="px-3 py-2 font-medium">Balón</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(item, idx) in itemsVisibles"
+                :key="item.id ?? `${item.id_producto}-${item.id_balon}-${idx}`"
+                class="border-t border-gray-100 dark:border-gray-800"
+              >
+                <td class="px-3 py-2.5 align-top">
+                  <p class="font-medium text-gray-800 dark:text-white/90">
+                    {{ item.nombre_producto || item.descripcion || '—' }}
+                  </p>
+                  <p
+                    v-if="item.descripcion && item.nombre_producto && item.descripcion !== item.nombre_producto"
+                    class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    {{ item.descripcion }}
+                  </p>
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <div class="flex flex-col gap-1">
+                    <AppBadge
+                      v-if="item.nombre_tipo_balon"
+                      size="sm"
+                      variant="light"
+                      :color="tipoBalonBadgeColor(item.nombre_tipo_balon)"
+                    >
+                      {{ item.nombre_tipo_balon }}
+                    </AppBadge>
+                    <span
+                      v-if="item.nombre_producto_gas"
+                      class="text-xs text-gray-600 dark:text-gray-300"
+                    >
+                      {{ item.nombre_producto_gas }}
+                    </span>
+                    <span
+                      v-if="!item.nombre_tipo_balon && !item.nombre_producto_gas"
+                      class="text-xs text-gray-400"
+                    >
+                      —
+                    </span>
+                  </div>
+                </td>
+                <td class="px-3 py-2.5 text-right align-top tabular-nums text-gray-800 dark:text-white/90">
+                  <span class="font-medium">{{ formatCantidadItem(item.cantidad) }}</span>
+                  <span
+                    v-if="item.nombre_unidad_medida"
+                    class="ml-1 text-xs font-normal uppercase text-gray-500"
+                  >
+                    {{ item.nombre_unidad_medida }}
+                  </span>
+                </td>
+                <td class="px-3 py-2.5 align-top">
+                  <p class="font-medium text-gray-800 dark:text-white/90">
+                    {{ item.codigo_balon || '—' }}
+                  </p>
+                  <p
+                    v-if="item.numero_serie_balon"
+                    class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    S/N {{ item.numero_serie_balon }}
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    <section
+      v-if="canCancelar"
+      class="mt-6 rounded-xl border border-error-200 bg-error-50/40 p-4 dark:border-error-500/30 dark:bg-error-500/5"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h5 class="text-sm font-semibold text-error-700 dark:text-error-400">
+            Cancelar la actividad
+          </h5>
+          <p class="mt-0.5 text-xs text-error-600/80 dark:text-error-400/80">
+            La entrega deja de estar programada y no se puede deshacer.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="shrink-0 rounded-lg border border-error-300 bg-white px-4 py-2 text-sm font-medium text-error-600 hover:bg-error-50 disabled:opacity-70 dark:border-error-500/40 dark:bg-gray-800 dark:text-error-400"
+          :disabled="cancelarMutation.isPending.value"
+          @click="confirmarCancelacion = true"
+        >
+          {{ cancelarMutation.isPending.value ? 'Cancelando...' : 'Cancelar actividad' }}
+        </button>
+      </div>
+    </section>
+
+    <ActividadVerificacionModal v-model="verificacionOpen" :actividad="actividad" />
+
+    <AppModal
+      v-model="culminarRecojoOpen"
+      title="Culminar recojo"
+      subtitle="Elige el almacén donde ingresan los cilindros recogidos."
+      size="sm"
+    >
+      <AlmacenSelectField
+        v-model="idAlmacenDestinoRecojo"
+        label="Almacén destino"
+        required
+        :disabled="culminarRecojoMutation.isPending.value"
+      />
+      <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Al confirmar, cada cilindro verificado vuelve a ese almacén como disponible.
+      </p>
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
+          :disabled="culminarRecojoMutation.isPending.value"
+          @click="culminarRecojoOpen = false"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg bg-success-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-success-600 disabled:opacity-70 sm:w-auto"
+          :disabled="!idAlmacenDestinoRecojo || culminarRecojoMutation.isPending.value"
+          @click="confirmarCulminarRecojo"
+        >
+          {{
+            culminarRecojoMutation.isPending.value
+              ? 'Ingresando...'
+              : 'Confirmar e ingresar al almacén'
+          }}
+        </button>
+      </template>
+    </AppModal>
+
+    <AppModal
+      v-model="confirmarCancelacion"
+      title="Cancelar la actividad"
+      subtitle="Esta acción no se puede deshacer."
+      size="sm"
+    >
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        ¿Confirmas que deseas cancelar la actividad
+        <span class="font-medium text-gray-800 dark:text-white/90">
+          {{ actividad?.titulo ?? '' }}
+        </span>
+        ?
+      </p>
+      <template #footer>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:w-auto"
+          @click="confirmarCancelacion = false"
+        >
+          No, volver
+        </button>
+        <button
+          type="button"
+          class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-70 sm:w-auto"
+          :disabled="cancelarMutation.isPending.value"
+          @click="cancelarConfirmado"
+        >
+          {{ cancelarMutation.isPending.value ? 'Cancelando...' : 'Sí, cancelar' }}
+        </button>
+      </template>
+    </AppModal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
+import type {
+  Actividad,
+  ActividadItem,
+} from '@/modules/operativa/actividades/interfaces/actividad.interface'
+import { useActividadDetailQuery } from '@/modules/operativa/actividades/composables/useActividadDetailQuery'
+import {
+  useAsignarResponsableActividadMutation,
+  useCancelarActividadMutation,
+  useCulminarEntregaMutation,
+  useCulminarRecojoMutation,
+  useIniciarEntregaMutation,
+  useIniciarRecojoMutation,
+  useMarcarActividadRealizadaMutation,
+} from '@/modules/operativa/actividades/composables/useActividadMutations'
+import ActividadVerificacionModal from '@/modules/operativa/actividades/components/ActividadVerificacionModal.vue'
+import {
+  esActividadCancelada,
+  esActividadEnRuta,
+  esActividadRealizada,
+  esTipoRecojoNombre,
+  esTipoRepartoNombre,
+} from '@/modules/operativa/actividades/utils/actividadTipo'
+import { toastInfo } from '@/shared/composables/useToast'
+import {
+  esEnCurso,
+  esSinAsignar,
+  estaAsignada,
+  puedeLiberarOFinalizar,
+  puedeTomar,
+} from '@/modules/operativa/actividades/utils/actividadEstado'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
+import {
+  formatDetailDateTime,
+} from '@/shared/components/detail/detailFormatters'
+import { ICONS } from '@/shared/constants/icons'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import { formatListDate } from '@/shared/utils/date'
+
+
+const breadcrumbItems: BreadcrumbItem[] = [
+  { label: 'Operativa' },
+  { label: 'Actividades', to: '/admin/operativa/actividades' },
+  { label: 'Detalle' },
+]
+
+const authStore = useAuthStore()
+const marcarMutation = useMarcarActividadRealizadaMutation()
+const cancelarMutation = useCancelarActividadMutation()
+const asignarMutation = useAsignarResponsableActividadMutation()
+
+const route = useRoute()
+const router = useRouter()
+
+const idActividad = computed(() => {
+  const valor = Number(route.params.id)
+  return Number.isInteger(valor) && valor > 0 ? valor : undefined
+})
+const consultaHabilitada = computed(() => idActividad.value !== undefined)
+
+const actividadDetailQuery = useActividadDetailQuery(idActividad, consultaHabilitada)
+const isLoading = computed(() => actividadDetailQuery.isFetching.value)
+const actividad = computed<Actividad | null>(() => actividadDetailQuery.data.value ?? null)
+
+const volver = () => {
+  // Si se llegó desde el listado se respeta su tab y sus filtros; si se entró
+  // por enlace directo no hay historial al que volver.
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  void router.push({ name: 'admin-operativa-actividades' })
+}
+
+const ahora = ref(new Date())
+const isAdmin = computed(() => authStore.hasPermission(PermisoBanderas.AUTH_TODO))
+const canEdit = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR),
+)
+
+const esSinAsignarAct = computed(() => esSinAsignar(actividad.value))
+const esEnCursoAct = computed(() => esEnCurso(actividad.value))
+const puedeTomarAct = computed(() => puedeTomar(actividad.value, canEdit.value))
+const puedeLiberarAct = computed(
+  () =>
+    estaAsignada(actividad.value) &&
+    puedeLiberarOFinalizar(actividad.value, {
+      userId: authStore.user?.id,
+      isAdmin: isAdmin.value,
+      now: ahora.value,
+    }) &&
+    (canEdit.value || isAdmin.value),
+)
+const canFinalizar = computed(
+  () =>
+    estaAsignada(actividad.value) &&
+    // Reparto y recojo se cierran con Culminar (entrega/recojo), no a mano.
+    !esTipoRepartoNombre(actividad.value?.nombre_tipo_actividad) &&
+    !esTipoRecojoNombre(actividad.value?.nombre_tipo_actividad) &&
+    puedeLiberarOFinalizar(actividad.value, {
+      userId: authStore.user?.id,
+      isAdmin: isAdmin.value,
+      now: ahora.value,
+    }) &&
+    (canEdit.value || isAdmin.value),
+)
+
+const items = computed(() => actividad.value?.items ?? [])
+
+const detalleOrigenItems = computed<ActividadItem[]>(() => {
+  const detalle = actividad.value?.detalle_origen
+  if (!detalle) return []
+  const rows: ActividadItem[] = (detalle.cilindros ?? []).map((c, idx) => ({
+    item: idx + 1,
+    id: c.id,
+    id_producto: c.id_producto,
+    nombre_producto: c.nombre_producto,
+    cantidad: Number(c.cantidad) || 1,
+    id_balon: c.id_balon,
+    codigo_balon: c.codigo_balon,
+    numero_serie_balon: c.numero_serie_balon,
+    nombre_tipo_balon: c.nombre_tipo_balon,
+    nombre_producto_gas: c.nombre_producto_gas,
+  }))
+  if (detalle.regulador?.pendiente) {
+    rows.push({
+      item: rows.length + 1,
+      id_producto: detalle.regulador.id_producto,
+      nombre_producto: detalle.regulador.nombre_producto || 'Regulador / accesorio',
+      descripcion: detalle.regulador.codigo_producto || undefined,
+      cantidad: 1,
+    })
+  }
+  return rows
+})
+
+const itemsVisibles = computed(() =>
+  items.value.length ? items.value : detalleOrigenItems.value,
+)
+
+const origenRecojoLabel = computed(() => {
+  const a = actividad.value
+  if (!a) return null
+  if (a.numero_prestamo) return `Préstamo ${a.numero_prestamo}`
+  if (a.numero_alquiler) return `Alquiler ${a.numero_alquiler}`
+  return a.detalle_origen?.numero
+    ? `${a.detalle_origen.origen === 'ALQUILER' ? 'Alquiler' : 'Préstamo'} ${a.detalle_origen.numero}`
+    : null
+})
+
+function formatCantidadItem(valor: number | string | null | undefined) {
+  const n = Number(valor)
+  if (!Number.isFinite(n)) return '0'
+  return String(Number(n.toFixed(4)))
+}
+
+const mapsUrl = computed(() => {
+  const match = actividad.value?.descripcion?.match(/ver en mapa:\s*(\S+)/i)
+  return match ? match[1] : null
+})
+
+const descripcionTexto = computed(() => {
+  const raw = actividad.value?.descripcion ?? ''
+  return raw.replace(/ver en mapa:\s*\S+/i, '').trim() || null
+})
+
+const canCancelar = computed(
+  () =>
+    Boolean(actividad.value) &&
+    authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR) &&
+    !esActividadRealizada(actividad.value?.nombre_estado_actividad) &&
+    !esActividadCancelada(actividad.value?.nombre_estado_actividad),
+)
+
+watch(idActividad, () => {
+  ahora.value = new Date()
+})
+
+const formatHora = (value?: string | null) => (value ? value.slice(0, 5) : undefined)
+
+const comprobanteLabel = (a: Actividad) => {
+  if (a.serie_comprobante && a.numero_comprobante) {
+    return `${a.serie_comprobante}-${a.numero_comprobante}`
+  }
+  return null
+}
+
+const docSalidaLabel = (a: Actividad) => {
+  if (a.serie_doc_salida && a.numero_sunat_doc_salida) {
+    return `${a.serie_doc_salida}-${a.numero_sunat_doc_salida}`
+  }
+  if (a.numero_doc_salida) return a.numero_doc_salida
+  return a.id_doc_salida ? `Orden #${a.id_doc_salida}` : null
+}
+
+async function marcarRealizada() {
+  const id = actividad.value?.id
+  const userId = authStore.user?.id
+  if (!id || !userId) return
+  try {
+    await marcarMutation.mutateAsync({ id, idUsuarioAuditoria: userId })
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function cancelarActividad() {
+  const id = actividad.value?.id
+  const userId = authStore.user?.id
+  if (!id || !userId) return
+  try {
+    await cancelarMutation.mutateAsync({ id, idUsuarioAuditoria: userId })
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function tomarActividad() {
+  const id = actividad.value?.id
+  const userId = authStore.user?.id
+  if (!id || !userId) return
+
+  // La ficha puede haberse vinculado después del login; relee /auth/me antes
+  // de bloquear, para no obligar a cerrar sesión.
+  let idTrabajador = authStore.userTrabajadorId
+  if (!idTrabajador) {
+    try {
+      await authStore.refreshProfile()
+      idTrabajador = authStore.userTrabajadorId
+    } catch {
+      // Si falla el refresh, seguimos con el mensaje de abajo.
+    }
+  }
+
+  if (!idTrabajador) {
+    toastInfo(
+      'Tu usuario no tiene una ficha de trabajador vinculada, así que no puede figurar como responsable de la entrega.',
+    )
+    return
+  }
+
+  try {
+    await asignarMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: userId,
+      idTrabajadorResponsable: idTrabajador,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function liberarActividad() {
+  const id = actividad.value?.id
+  const userId = authStore.user?.id
+  if (!id || !userId) return
+  try {
+    await asignarMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: userId,
+      // Liberar es explícito: mandar el responsable en null ya no desasigna.
+      liberar: true,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+const confirmarCancelacion = ref(false)
+
+async function cancelarConfirmado() {
+  await cancelarActividad()
+  confirmarCancelacion.value = false
+}
+
+// ---- Flujo de entrega / recojo, disponible sin volver al listado -----------
+
+const verificacionOpen = ref(false)
+const iniciarEntregaMutation = useIniciarEntregaMutation()
+const culminarEntregaMutation = useCulminarEntregaMutation()
+const iniciarRecojoMutation = useIniciarRecojoMutation()
+const culminarRecojoMutation = useCulminarRecojoMutation()
+const culminarRecojoOpen = ref(false)
+const idAlmacenDestinoRecojo = ref<number | undefined>()
+
+const canVerificar = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VERIFICAR),
+)
+
+const esReparto = computed(() =>
+  esTipoRepartoNombre(actividad.value?.nombre_tipo_actividad),
+)
+const esRecojo = computed(() =>
+  esTipoRecojoNombre(actividad.value?.nombre_tipo_actividad),
+)
+const enRuta = computed(() => esActividadEnRuta(actividad.value?.nombre_estado_actividad))
+const cerrada = computed(
+  () =>
+    esActividadRealizada(actividad.value?.nombre_estado_actividad) ||
+    esActividadCancelada(actividad.value?.nombre_estado_actividad),
+)
+
+const itemsActividad = computed<ActividadItem[]>(() => actividad.value?.items ?? [])
+
+/** Cuenta los ítems que aún no están OK en el momento indicado. */
+const contarNoConformes = (momento: 'SALIDA' | 'LLEGADA') => {
+  let pendientes = 0
+  let observados = 0
+  for (const item of itemsActividad.value) {
+    const estado =
+      (momento === 'SALIDA'
+        ? item.estado_verificacion_salida
+        : item.estado_verificacion_llegada) ?? 'PENDIENTE'
+    if (estado === 'CON_OBSERVACION') observados += 1
+    else if (estado !== 'OK') pendientes += 1
+  }
+  return { pendientes, observados }
+}
+
+// Solo bloquean ítems sin verificar. CON_OBSERVACION no detiene el flujo.
+const salidaConforme = computed(() => {
+  if (itemsActividad.value.length === 0) return false
+  return contarNoConformes('SALIDA').pendientes === 0
+})
+const llegadaConforme = computed(() => {
+  if (itemsActividad.value.length === 0) return false
+  return contarNoConformes('LLEGADA').pendientes === 0
+})
+
+const motivoBloqueo = (momento: 'SALIDA' | 'LLEGADA') => {
+  if (itemsActividad.value.length === 0) return 'La actividad no tiene ítems que verificar.'
+  const { pendientes } = contarNoConformes(momento)
+  if (pendientes) return `${pendientes} ítem(s) sin verificar`
+  return ''
+}
+
+const motivoSalidaBloqueada = computed(() => motivoBloqueo('SALIDA'))
+const motivoLlegadaBloqueada = computed(() => motivoBloqueo('LLEGADA'))
+
+const etiquetaVerificar = computed(() => {
+  if (esRecojo.value) return 'Verificar recojo'
+  return enRuta.value ? 'Verificar llegada' : 'Verificar salida'
+})
+
+const mostrarVerificacion = computed(
+  () => (esReparto.value || esRecojo.value) && canVerificar.value && !cerrada.value,
+)
+const mostrarIniciarEntrega = computed(
+  () => esReparto.value && canEdit.value && !cerrada.value && !enRuta.value,
+)
+const mostrarCulminarEntrega = computed(
+  () => esReparto.value && canEdit.value && !cerrada.value && enRuta.value,
+)
+const mostrarIniciarRecojo = computed(
+  () => esRecojo.value && canEdit.value && !cerrada.value && !enRuta.value,
+)
+const mostrarCulminarRecojo = computed(
+  () => esRecojo.value && canEdit.value && !cerrada.value && enRuta.value,
+)
+
+const avisoFlujo = computed(() => {
+  if (cerrada.value) return ''
+  if (esRecojo.value) {
+    if (enRuta.value) {
+      if (llegadaConforme.value) {
+        return 'Recojo en ruta. Verificación lista: culmina eligiendo el almacén destino.'
+      }
+      return `Recojo en ruta. Escanea lo recogido antes de culminar: ${motivoLlegadaBloqueada.value}.`
+    }
+    if (!estaAsignada(actividad.value)) {
+      return 'Toma o asigna un responsable para iniciar el recojo.'
+    }
+    return 'Inicia el recojo y luego verifica los cilindros al recogerlos.'
+  }
+  if (!esReparto.value) return ''
+  if (enRuta.value) {
+    if (llegadaConforme.value) return ''
+    return `En ruta. Para cerrar la entrega falta verificar la llegada: ${motivoLlegadaBloqueada.value}.`
+  }
+  if (salidaConforme.value) return ''
+  return `Para iniciar la entrega falta verificar la salida: ${motivoSalidaBloqueada.value}.`
+})
+
+async function iniciarEntrega() {
+  const id = actividad.value?.id
+  if (!id) return
+  try {
+    await iniciarEntregaMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function culminarEntrega() {
+  const id = actividad.value?.id
+  if (!id) return
+  try {
+    await culminarEntregaMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+async function iniciarRecojo() {
+  const id = actividad.value?.id
+  if (!id) return
+  try {
+    await iniciarRecojoMutation.mutateAsync({
+      id,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+  } catch {
+    // toast en mutation
+  }
+}
+
+function abrirCulminarRecojo() {
+  idAlmacenDestinoRecojo.value = undefined
+  culminarRecojoOpen.value = true
+}
+
+async function confirmarCulminarRecojo() {
+  const id = actividad.value?.id
+  const idAlmacen = idAlmacenDestinoRecojo.value
+  if (!id || !idAlmacen) return
+  try {
+    await culminarRecojoMutation.mutateAsync({
+      id,
+      idAlmacenDestino: idAlmacen,
+      idUsuarioAuditoria: authStore.user?.id,
+    })
+    culminarRecojoOpen.value = false
+  } catch {
+    // toast en mutation
+  }
+}
+</script>

@@ -831,18 +831,6 @@
       :id-cliente="documento.id_cliente"
     />
 
-    <ActividadFormModal
-      v-model="repartoModalOpen"
-      mode="create"
-      lock-tipo-reparto
-      :default-fecha="repartoFechaHoy"
-      :default-titulo="repartoPrefill.titulo"
-      :default-cliente-id="repartoPrefill.clienteId"
-      :default-cliente-label="repartoPrefill.clienteLabel"
-      :default-id-guia-remision="repartoPrefill.idDocSalida"
-      :default-items="repartoPrefill.items"
-    />
-
     <!-- Modal: Convertir a GRE -->
     <ConvertirGreModal v-if="documento" v-model="greModalOpen" :documento="documento" />
 
@@ -888,8 +876,6 @@ import DatosTrasladoSection from '../components/DatosTrasladoSection.vue'
 import FinalizarRecargaModal from '../components/FinalizarRecargaModal.vue'
 import DireccionEntregaModal from '../components/DireccionEntregaModal.vue'
 import ConvertirGreModal from '../components/ConvertirGreModal.vue'
-import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
-import type { ActividadItem } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import DocSalidaDetalleEditor from '@/modules/documentos-salida/components/DocSalidaDetalleEditor.vue'
@@ -1415,12 +1401,6 @@ async function onAnular() {
 }
 
 // ---- Reparto (actividad) ----
-// La actividad se crea con `defaultIdGuiaRemision`, que en el backend es
-// `p_id_guia_remision` y apunta a doc_salida: age_crear_actividad guarda ahi el
-// id_doc_salida y copia los items desde doc_salida_detalle.
-const repartoModalOpen = ref(false)
-const repartoFechaHoy = hoyISO()
-
 const puedeAgregarReparto = computed(
   () =>
     Boolean(documento.value) &&
@@ -1428,27 +1408,24 @@ const puedeAgregarReparto = computed(
     Boolean(documento.value?.id_cliente ?? documento.value?.id_destinatario),
 )
 
-const repartoPrefill = computed(() => {
-  const doc = documento.value
-  return {
-    titulo: doc ? `Reparto ${doc.numero}` : '',
-    clienteId: doc?.id_destinatario ?? doc?.id_cliente ?? null,
-    clienteLabel: doc?.nombre_destinatario ?? doc?.nombre_cliente ?? null,
-    idDocSalida: doc?.id ?? null,
-    items: (doc?.detalle ?? []).map<ActividadItem>((linea, idx) => ({
-      item: linea.item ?? idx + 1,
-      id_producto: linea.id_producto,
-      nombre_producto: linea.nombre_producto,
-      descripcion: linea.descripcion || linea.nombre_producto || undefined,
-      cantidad: Number(linea.cantidad) || 1,
-      id_balon: linea.id_balon,
-      codigo_balon: linea.codigo_balon,
-    })),
-  }
-})
-
 function abrirReparto() {
-  repartoModalOpen.value = true
+  const doc = documento.value
+  if (!doc) return
+  void router.push({
+    name: 'admin-operativa-actividades-nueva',
+    query: {
+      lockTipoReparto: '1',
+      fecha: hoyISO(),
+      idDocSalida: String(doc.id),
+      titulo: `Reparto ${doc.numero}`,
+      ...(doc.id_destinatario ?? doc.id_cliente
+        ? { clienteId: String(doc.id_destinatario ?? doc.id_cliente) }
+        : {}),
+      ...((doc.nombre_destinatario ?? doc.nombre_cliente)
+        ? { clienteLabel: doc.nombre_destinatario ?? doc.nombre_cliente ?? undefined }
+        : {}),
+    },
+  })
 }
 
 // ---- Convertir a GRE (modal propio, ver ConvertirGreModal.vue) ----

@@ -402,7 +402,16 @@
         Cerrar
       </button>
       <button
-        v-if="puedeGenerarGuia"
+        v-if="puedeVerOrdenSalida"
+        type="button"
+        class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-500 bg-white px-4 py-2.5 text-sm font-medium text-brand-600 hover:bg-brand-500/10 dark:bg-gray-800 dark:text-brand-400"
+        @click="verOrdenSalida"
+      >
+        <AppIcon :name="ICONS.eye" :size="16" />
+        Ver orden de salida
+      </button>
+      <button
+        v-else-if="puedeGenerarGuia"
         type="button"
         class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-brand-500 bg-white px-4 py-2.5 text-sm font-medium text-brand-600 hover:bg-brand-500/10 dark:bg-gray-800 dark:text-brand-400"
         @click="generarGuiaRemision"
@@ -481,6 +490,12 @@ const canEditarActividad = computed(() =>
 )
 const canCrearGre = computed(() =>
   authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR),
+)
+const canVerGre = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_VER) ||
+    authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_EDITAR) ||
+    canCrearGre.value,
 )
 const crearDesdeVentaMutation = useCrearDesdeVentaMutation()
 
@@ -647,7 +662,14 @@ const puedeCancelarReparto = computed(
 )
 
 const puedeGenerarGuia = computed(
-  () => canCrearGre.value && Boolean(comprobante.value?.id_cliente),
+  () =>
+    canCrearGre.value &&
+    Boolean(comprobante.value?.id_cliente) &&
+    !comprobante.value?.id_doc_salida,
+)
+
+const puedeVerOrdenSalida = computed(
+  () => canVerGre.value && Boolean(comprobante.value?.id_doc_salida),
 )
 
 const puedePdf = computed(() => {
@@ -729,6 +751,13 @@ async function generarGuiaRemision() {
   })
   open.value = false
   void router.push({ name: 'admin-documentos-salida-editar', params: { id: doc.id }, query: { direccion: '1' } })
+}
+
+function verOrdenSalida() {
+  const id = comprobante.value?.id_doc_salida
+  if (!id) return
+  open.value = false
+  void router.push({ name: 'admin-documentos-salida-editar', params: { id } })
 }
 
 function handleClose() {

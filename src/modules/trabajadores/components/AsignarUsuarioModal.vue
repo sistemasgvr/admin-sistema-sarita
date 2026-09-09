@@ -81,6 +81,10 @@ const confirmar = async () => {
   error.value = ''
   try {
     await trabajadoresService.asignarUsuario(t.id, idUsuario.value, usuarioAuditoria)
+    // Si te vinculaste a ti mismo, refresca la sesión sin re-login.
+    if (idUsuario.value === authStore.user?.id) {
+      await authStore.refreshProfile().catch(() => undefined)
+    }
     emit('assigned')
     open.value = false
   } catch (e: unknown) {

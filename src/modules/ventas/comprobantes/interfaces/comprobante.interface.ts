@@ -33,6 +33,9 @@ export interface ComprobanteListItem {
   nombre_estado_actividad?: string | null
   nombre_chofer_responsable?: string | null
   tiene_actividad?: boolean | null
+  /** Orden de salida vigente ligada a esta venta (`doc_salida.id_venta`). */
+  id_doc_salida?: number | null
+  numero_doc_salida?: string | null
 }
 
 export interface ComprobanteDetalle {

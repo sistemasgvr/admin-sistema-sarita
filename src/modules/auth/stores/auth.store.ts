@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { defineStore } from 'pinia'
 import { hasPermissionFlag } from '@/shared/constants/permissions'
 import { setAuthPersistMode } from '@/shared/plugins/pinia'
+import { authService } from '@/modules/auth/services/auth.service'
 import type { AuthUser } from '@/modules/auth/interfaces/auth.interface'
 
 interface AuthState {
@@ -44,6 +45,24 @@ export const useAuthStore = defineStore('auth', {
     updateUser(user: Partial<AuthUser>) {
       if (!this.user) return
       this.user = { ...this.user, ...user }
+    },
+
+    /**
+     * Relee el perfil desde /auth/me (ficha de trabajador, permisos, etc.)
+     * sin forzar cerrar sesión.
+     */
+    async refreshProfile() {
+      if (!this.token || !this.user) return null
+      const data = await authService.me()
+      this.updateUser({
+        nombre: data.nombre ?? this.user.nombre,
+        correo: data.correo,
+        estado: data.estado ?? this.user.estado,
+        id_trabajador: data.id_trabajador ?? null,
+        roles: data.roles ?? this.user.roles,
+        permisos: data.permisos,
+      })
+      return data
     },
 
     clearSession() {

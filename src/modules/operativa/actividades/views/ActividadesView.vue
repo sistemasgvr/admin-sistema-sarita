@@ -30,7 +30,7 @@
             v-if="canCreate"
             type="button"
             class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
-            @click="openCreateModal()"
+            @click="goToCreate()"
           >
             <AppIcon :name="ICONS.plus" :size="18" />
             Nueva actividad
@@ -201,6 +201,7 @@
       <ActividadesCalendar
         :actividades="calendarRows"
         :loading="isLoadingCalendar"
+        :visible="activeTab === 'calendario'"
         @select-date="onSelectDate"
         @select-actividad="openDetailModal"
         @range-change="onCalendarRangeChange"
@@ -217,15 +218,6 @@
       />
     </div>
 
-    <ActividadFormModal
-      v-model="formModalOpen"
-      :mode="formMode"
-      :actividad="selectedActividad"
-      :default-fecha="defaultFecha"
-      @saved="onActividadSaved"
-    />
-
-    <ActividadDetailModal v-model="detailModalOpen" :actividad="actividadToView" />
 
     <ActividadVerificacionModal
       v-model="verificacionModalOpen"
@@ -274,9 +266,7 @@ import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
-import ActividadDetailModal from '@/modules/operativa/actividades/components/ActividadDetailModal.vue'
 import ActividadVerificacionModal from '@/modules/operativa/actividades/components/ActividadVerificacionModal.vue'
-import ActividadFormModal from '@/modules/operativa/actividades/components/ActividadFormModal.vue'
 import ActividadesCalendar from '@/modules/operativa/actividades/components/ActividadesCalendar.vue'
 import ActividadesColaboradoresPanel from '@/modules/operativa/actividades/components/ActividadesColaboradoresPanel.vue'
 import ActividadesRankingPanel from '@/modules/operativa/actividades/components/ActividadesRankingPanel.vue'
@@ -291,13 +281,13 @@ import { useActividadesProximasQuery } from '@/modules/operativa/actividades/com
 import { useActividadesQuery } from '@/modules/operativa/actividades/composables/useActividadesQuery'
 import type {
   Actividad,
-  ActividadFormMode,
   ActividadListFilters,
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { actividadesService } from '@/modules/operativa/actividades/services/actividades.service'
 import {
   esActividadCancelada,
   esActividadRealizada,
+  esTipoRepartoNombre,
   idOpcionPorNombre,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import {
@@ -659,13 +649,6 @@ const cancelarMutation = useCancelarActividadMutation()
 const proximasQuery = useActividadesProximasQuery(60, computed(() => canView.value || canCreate.value))
 const alertasProximas = computed(() => proximasQuery.data.value ?? [])
 
-const formModalOpen = ref(false)
-const formMode = ref<ActividadFormMode>('create')
-const selectedActividad = ref<Actividad | null>(null)
-const defaultFecha = ref<string | null>(null)
-
-const detailModalOpen = ref(false)
-const actividadToView = ref<Actividad | null>(null)
 
 const deleteModalOpen = ref(false)
 const actividadToDelete = ref<Actividad | null>(null)
@@ -680,6 +663,10 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
   const cerrada =
     esActividadRealizada(row.nombre_estado_actividad) ||
     esActividadCancelada(row.nombre_estado_actividad)
+  // El reparto se cierra por el flujo de entrega (verificar salida -> en ruta ->
+  // verificar llegada -> culminar). Ofrecer aquí "marcar realizada" dejaría
+  // saltarse la verificación de llegada y vaciaría de sentido el gate.
+  const esReparto = esTipoRepartoNombre(row.nombre_tipo_actividad)
   return [
     {
       key: 'edit',
@@ -693,7 +680,7 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
       label: 'Marcar realizada',
       icon: ICONS.check,
       disabled: busy,
-      hidden: !canEdit.value || cerrada,
+      hidden: !canEdit.value || cerrada || esReparto,
     },
     {
       key: 'cancelar',
@@ -704,10 +691,10 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
     },
     {
       key: 'verificar',
-      label: 'Verificar por escaneo',
+      label: esReparto ? 'Verificar y entregar' : 'Verificar por escaneo',
       icon: ICONS.scanBarcode,
       disabled: busy,
-      hidden: !canVerificar.value,
+      hidden: !canVerificar.value || cerrada,
     },
     {
       key: 'delete',
@@ -721,30 +708,35 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Actividad) {
-  if (key === 'edit') openEditModal(row)
+  if (key === 'edit') goToEdit(row)
   if (key === 'realizada') void marcarRealizada(row)
   if (key === 'cancelar') void cancelarActividad(row)
   if (key === 'verificar') void abrirVerificacion(row)
   if (key === 'delete') openDeleteModal(row)
 }
 
-const openCreateModal = (fecha?: string) => {
-  formMode.value = 'create'
-  selectedActividad.value = null
-  defaultFecha.value = fecha ?? null
-  formModalOpen.value = true
+const goToCreate = (fecha?: string) => {
+  void router.push({
+    name: 'admin-operativa-actividades-nueva',
+    query: fecha ? { fecha } : undefined,
+  })
 }
 
-const openEditModal = (actividad: Actividad) => {
-  formMode.value = 'edit'
-  selectedActividad.value = actividad
-  defaultFecha.value = null
-  formModalOpen.value = true
+const goToEdit = (actividad: Actividad) => {
+  void router.push({
+    name: 'admin-operativa-actividades-editar',
+    params: { id: actividad.id },
+  })
 }
 
+// El detalle dejó de ser un modal: ahora es una vista con su propia URL, así
+// que el enlace profundo desde inventario entra directo por la ruta y ya no
+// hace falta consumir un ?id= aquí.
 const openDetailModal = (actividad: Actividad) => {
-  actividadToView.value = actividad
-  detailModalOpen.value = true
+  void router.push({
+    name: 'admin-operativa-actividades-detalle',
+    params: { id: actividad.id },
+  })
 }
 
 // ---- Verificación por escaneo (Fase 6) ----
@@ -780,7 +772,7 @@ const openDeleteModal = (actividad: Actividad) => {
 
 const onSelectDate = (fecha: string) => {
   if (!canCreate.value) return
-  openCreateModal(fecha)
+  goToCreate(fecha)
 }
 
 const marcarRealizada = async (actividad: Actividad) => {
@@ -820,9 +812,5 @@ const confirmDelete = async () => {
   } catch {
     // toast en mutation
   }
-}
-
-const onActividadSaved = () => {
-  selectedActividad.value = null
 }
 </script>

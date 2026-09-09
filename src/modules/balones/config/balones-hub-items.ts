@@ -46,7 +46,8 @@ export const balonesHubItems: BalonesHubItem[] = [
     path: '/admin/balones/recojos',
     icon: ICONS.truck,
     permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
-    implemented: true,
+    // Absorbido por operativa/actividades; no mostrar en hub.
+    implemented: false,
   },
   {
     key: 'rutas-pueblos',

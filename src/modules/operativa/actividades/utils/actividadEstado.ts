@@ -4,7 +4,9 @@ import { esActividadCancelada, esActividadRealizada } from './actividadTipo'
 /** ¿La actividad tiene al menos un responsable asignado? */
 export function estaAsignada(a?: Actividad | null): boolean {
   if (!a) return false
-  return Boolean(a.id_usuario_responsable ?? a.id_chofer_responsable)
+  return Boolean(
+    a.id_trabajador_responsable ?? a.id_usuario_responsable ?? a.id_chofer_responsable,
+  )
 }
 
 /** ¿Sin responsable asignado (para mostrar "Sin asignar")? */

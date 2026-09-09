@@ -236,6 +236,8 @@ export interface DocumentoSalidaListFilters {
   emitidoSunat?: boolean
   fechaDesde?: string
   fechaHasta?: string
+  /** Solo órdenes sin actividad vigente (excluye BORRADOR/ANULADA). */
+  sinActividadVigente?: boolean
 }
 
 export interface ListaOpcionBasica {

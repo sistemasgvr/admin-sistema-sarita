@@ -308,6 +308,12 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 const canCrearGre = computed(() =>
   authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR),
 )
+const canVerGre = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_VER) ||
+    authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_EDITAR) ||
+    canCrearGre.value,
+)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EDITAR))
 const canEmit = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_EMITIR))
@@ -551,11 +557,18 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !(canEmit.value && puedeEmitir(row)),
     },
     {
+      key: 'ver-orden-salida',
+      label: 'Ver orden de salida',
+      icon: ICONS.eye,
+      disabled: busy,
+      hidden: !(canVerGre.value && Boolean(row.id_doc_salida)),
+    },
+    {
       key: 'guia-remision',
       label: 'Generar orden de salida',
       icon: ICONS.fileText,
       disabled: busy,
-      hidden: !(canCrearGre.value && Boolean(row.id_cliente)),
+      hidden: !(canCrearGre.value && Boolean(row.id_cliente) && !row.id_doc_salida),
     },
     {
       key: 'nota-credito',
@@ -626,6 +639,14 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
       return emitirComprobante(row)
     case 'guia-remision':
       openGuiaDesdeComprobante(row)
+      return
+    case 'ver-orden-salida':
+      if (row.id_doc_salida) {
+        void router.push({
+          name: 'admin-documentos-salida-editar',
+          params: { id: row.id_doc_salida },
+        })
+      }
       return
     case 'nota-credito':
       openNotaCreditoModal(row)

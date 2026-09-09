@@ -100,15 +100,6 @@
       @saved="onDevolucionDesdeLista"
     />
 
-    <RecojoProgramarModal
-      v-model="programarRecojoOpen"
-      :id-cliente="prestamoToRecojo?.id_cliente"
-      :id-prestamo="prestamoToRecojo?.id"
-      :numero-origen="prestamoToRecojo?.numero_prestamo"
-      tipo-origen="PRESTAMO"
-      @saved="onDevolucionDesdeLista"
-    />
-
     <AppModal
       v-model="deleteModalOpen"
       title="Eliminar préstamo"
@@ -151,7 +142,6 @@ import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
 import PrestamoDevolverCilindrosModal from '@/modules/balones/prestamos/components/PrestamoDevolverCilindrosModal.vue'
-import RecojoProgramarModal from '@/modules/balones/recojos/components/RecojoProgramarModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeletePrestamoMutation } from '@/modules/balones/prestamos/composables/usePrestamoMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
@@ -210,8 +200,6 @@ const prestamoToViewId = ref<number | null>(null)
 
 const devolverCilindrosModalOpen = ref(false)
 const prestamoToDevolver = ref<Prestamo | null>(null)
-const programarRecojoOpen = ref(false)
-const prestamoToRecojo = ref<Prestamo | null>(null)
 
 const deleteModalOpen = ref(false)
 const prestamoToDelete = ref<Prestamo | null>(null)
@@ -237,8 +225,10 @@ const canDevolver = computed(
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
 )
-const canProgramarRecojo = computed(() =>
-  authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR),
+const canProgramarRecojo = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR) ||
+    authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR),
 )
 
 const isLoading = computed(
@@ -351,8 +341,23 @@ const openDevolverCilindros = (row: Prestamo) => {
 }
 
 const openProgramarRecojo = (row: Prestamo) => {
-  prestamoToRecojo.value = row
-  programarRecojoOpen.value = true
+  const numero = row.numero_prestamo || `#${row.id}`
+  const cliente = row.nombre_cliente || ''
+  void router.push({
+    name: 'admin-operativa-actividades-nueva',
+    query: {
+      lockTipoRecojo: '1',
+      tipoOrigenRecojo: 'PRESTAMO',
+      idOrigenRecojo: String(row.id),
+      titulo: `Recojo préstamo ${numero}`,
+      ...(row.id_cliente ? { clienteId: String(row.id_cliente) } : {}),
+      ...(cliente ? { clienteLabel: cliente } : {}),
+      ...(row.fecha_retorno_pactada
+        ? { fecha: String(row.fecha_retorno_pactada).slice(0, 10) }
+        : {}),
+      origenRecojoLabel: cliente ? `${numero} · ${cliente}` : numero,
+    },
+  })
 }
 
 function isPrestamoActivo(row: Prestamo): boolean {
