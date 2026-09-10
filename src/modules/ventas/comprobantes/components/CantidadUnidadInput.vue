@@ -5,6 +5,7 @@
     :label="label"
     :name="name"
     :min="minCantidadPorUnidad(nombreUnidad, esGas)"
+    :max="max ?? undefined"
     :step="stepInputCantidadPorUnidad(nombreUnidad, esGas)"
     :disabled="disabled"
     :error="resolvedError"
@@ -33,6 +34,7 @@ const props = withDefaults(
     esGas?: boolean | null
     label?: string
     hint?: string
+    max?: number | null
     /** Error externo (ej. cantidad > capacidad del cilindro). Tiene prioridad. */
     error?: string
     disabled?: boolean
@@ -42,6 +44,7 @@ const props = withDefaults(
     nombreUnidad: null,
     esGas: null,
     hint: undefined,
+    max: null,
     error: undefined,
     disabled: false,
   },
@@ -57,6 +60,11 @@ const rules = computed(() =>
     test: async (value, ctx) => {
       try {
         await cantidadPorUnidadMedidaSchema(props.nombreUnidad, props.esGas).validate(value)
+        if (props.max != null && Number(value) > Number(props.max)) {
+          return ctx.createError({
+            message: `La cantidad no puede superar ${props.max}`,
+          })
+        }
         return true
       } catch (err) {
         if (err instanceof yup.ValidationError) {
@@ -101,7 +109,10 @@ watch(
 
 function onInput(raw: string | number | null) {
   const n = raw === '' || raw == null ? 0 : Number(raw)
-  const next = Number.isFinite(n) ? n : 0
+  let next = Number.isFinite(n) ? n : 0
+  if (props.max != null && next > Number(props.max)) {
+    next = Number(props.max)
+  }
   setValue(next)
   emit('update:modelValue', next)
   void validate()

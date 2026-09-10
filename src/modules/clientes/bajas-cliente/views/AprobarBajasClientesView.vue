@@ -273,7 +273,6 @@
 </template>
 
 <script setup lang="ts">
-import { useQueryClient } from '@tanstack/vue-query'
 import { computed, ref, watch } from 'vue'
 import {
   useAprobarBajaClienteMutation,
@@ -289,14 +288,10 @@ import type {
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { bajasClienteQueryKeys } from '@/modules/clientes/bajas-cliente/constants/bajasClienteQueryKeys'
-import { clientesQueryKeys } from '@/modules/clientes/constants/clientesQueryKeys'
-import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { AppBadge, AppHelpTip, AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
-import { toastSuccess } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
@@ -315,7 +310,6 @@ withDefaults(
   },
 )
 
-const queryClient = useQueryClient()
 const authStore = useAuthStore()
 
 const buscar = ref('')
@@ -553,29 +547,11 @@ const confirmarAprobacion = async () => {
         idUsuarioAuditoria: userId,
       },
     })
-
-    if (esReactivacion.value) {
-      await clientesService.restaurar(solicitud.id_cliente, userId)
-    } else {
-      await clientesService.eliminar(solicitud.id_cliente, userId)
-    }
-
-    // eliminar/restaurar van por service directo (no mutation), hay que refrescar todo
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.all }),
-      queryClient.invalidateQueries({ queryKey: bajasClienteQueryKeys.all }),
-    ])
-
-    if (esReactivacion.value) {
-      toastSuccess('Cliente reactivado correctamente')
-    } else {
-      toastSuccess('Cliente desactivado correctamente')
-    }
-
+    // SQL de aprobar ya cambia estado del cliente (+ cascada). Solo cerrar modales.
     aprobarModalOpen.value = false
     detailModalOpen.value = false
   } catch {
-    // toast en mutation
+    // toast en mutation onError
   }
 }
 

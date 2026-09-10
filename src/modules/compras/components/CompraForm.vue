@@ -1479,7 +1479,7 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
   lineas.push(...grupos.values())
   if (grupos.size > 0) {
     toastSuccess(
-      `${grupos.size} línea${grupos.size === 1 ? '' : 's'} de gas agregada${grupos.size === 1 ? '' : 's'} (sin stock de producto). Completa el precio unitario.`,
+      `${grupos.size} línea${grupos.size === 1 ? '' : 's'} de costo de recarga (sin ingreso de stock). El gas entra al marcar el retorno de planta.`,
     )
   }
 }
@@ -2093,6 +2093,8 @@ const onSubmit = handleSubmit(async (values) => {
       precioUnitario:
         precioParsed != null && precioParsed > 0 ? roundMoney(precioParsed) : undefined,
       idUnidadMedida: l.idUnidadMedida ?? undefined,
+      // Costo de recarga planta: no INGRESO; el gas lo ingresa bal_finalizar_recarga_planta.
+      ...(l.afectaStock === false ? { afectaStock: false } : {}),
     }
   })
 

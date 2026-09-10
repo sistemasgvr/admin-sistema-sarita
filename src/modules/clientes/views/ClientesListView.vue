@@ -108,7 +108,7 @@
         </button>
 
         <button
-          v-if="canEdit && row.estado === 1 && !esClientesVarios(row)"
+          v-if="canSolicitarBaja && row.estado === 1 && !esClientesVarios(row)"
           type="button"
           title="Solicitar baja"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"

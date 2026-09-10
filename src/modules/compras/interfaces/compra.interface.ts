@@ -133,6 +133,8 @@ export interface CreateCompraDetallePayload {
   cantidad: number
   precioUnitario?: number
   idAlmacen?: number
+  /** false = línea de costo (p.ej. recarga planta); no genera INGRESO. */
+  afectaStock?: boolean
 }
 
 export interface CreateCompraPayload {

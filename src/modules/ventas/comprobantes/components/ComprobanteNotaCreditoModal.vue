@@ -84,6 +84,8 @@
                     v-model="linea.cantidad"
                     :name="`nc-cantidad-${linea.key}`"
                     :nombre-unidad="linea.nombreUnidadMedida"
+                    :max="linea.cantidadMax"
+                    :hint="`Máx. ${linea.cantidadMax}`"
                     :disabled="saving"
                   />
                 </td>
@@ -163,6 +165,7 @@ interface LineaNc {
   descripcion: string
   nombreUnidadMedida?: string | null
   cantidad: number
+  cantidadMax: number
   precioUnitario: number
   descuento: number
   porcentajeIgv: number
@@ -257,7 +260,7 @@ const canSave = computed(
     Boolean(fecha.value) &&
     Boolean(idTipoNotaCredito.value) &&
     lineas.value.length > 0 &&
-    lineas.value.every((l) => l.cantidad > 0),
+    lineas.value.every((l) => l.cantidad > 0 && l.cantidad <= l.cantidadMax),
 )
 
 watch(
@@ -275,18 +278,54 @@ watch(
   () => origenQuery.data.value,
   (data) => {
     if (!data) return
-    lineas.value = (data.detalles ?? []).map((detalle, index) => ({
-      key: `${detalle.id ?? detalle.id_producto}-${index}`,
-      idProducto: detalle.id_producto,
-      descripcion:
-        detalle.descripcion || detalle.nombre_producto || `Producto ${detalle.id_producto}`,
-      nombreUnidadMedida: detalle.nombre_unidad_medida ?? null,
-      cantidad: Number(detalle.cantidad),
-      precioUnitario: Number(detalle.precio_unitario),
-      descuento: Number(detalle.descuento ?? 0),
-      porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
-      idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
-    }))
+
+    // Restante devolvible por producto: vendido − NCs previas (misma regla que SQL).
+    const vendidoPorProducto = new Map<number, number>()
+    const ncPreviasPorProducto = new Map<number, number>()
+    for (const detalle of data.detalles ?? []) {
+      const idProducto = detalle.id_producto
+      vendidoPorProducto.set(
+        idProducto,
+        (vendidoPorProducto.get(idProducto) ?? 0) + Number(detalle.cantidad),
+      )
+      const ncPrev = Number(detalle.cantidad_nc_previa ?? 0)
+      if (!ncPreviasPorProducto.has(idProducto) || ncPrev > 0) {
+        ncPreviasPorProducto.set(idProducto, ncPrev)
+      }
+    }
+
+    const restantePorProducto = new Map<number, number>()
+    for (const [idProducto, vendido] of vendidoPorProducto) {
+      const restante = Math.max(0, vendido - (ncPreviasPorProducto.get(idProducto) ?? 0))
+      restantePorProducto.set(idProducto, restante)
+    }
+
+    lineas.value = (data.detalles ?? [])
+      .map((detalle, index) => {
+        const restanteProducto = restantePorProducto.get(detalle.id_producto) ?? 0
+        const cantidadOrigen = Number(detalle.cantidad)
+        const cantidadMax = Math.min(cantidadOrigen, restanteProducto)
+        // Asignación greedy por línea del mismo producto.
+        const asignada = Math.min(cantidadOrigen, restantePorProducto.get(detalle.id_producto) ?? 0)
+        restantePorProducto.set(
+          detalle.id_producto,
+          Math.max(0, (restantePorProducto.get(detalle.id_producto) ?? 0) - asignada),
+        )
+        return {
+          key: `${detalle.id ?? detalle.id_producto}-${index}`,
+          idProducto: detalle.id_producto,
+          descripcion:
+            detalle.descripcion || detalle.nombre_producto || `Producto ${detalle.id_producto}`,
+          nombreUnidadMedida: detalle.nombre_unidad_medida ?? null,
+          cantidad: asignada,
+          cantidadMax,
+          precioUnitario: Number(detalle.precio_unitario),
+          descuento: Number(detalle.descuento ?? 0),
+          porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
+          idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
+        }
+      })
+      .filter((linea) => linea.cantidadMax > 0)
   },
 )
 
@@ -309,6 +348,12 @@ async function confirm() {
   }
 
   for (const linea of lineas.value) {
+    if (Number(linea.cantidad) > Number(linea.cantidadMax)) {
+      toastWarning(
+        `La cantidad de ${linea.descripcion} no puede superar ${linea.cantidadMax}`,
+      )
+      return
+    }
     const errorCantidad = validarCantidadSegunUnidad(
       Number(linea.cantidad),
       linea.nombreUnidadMedida,

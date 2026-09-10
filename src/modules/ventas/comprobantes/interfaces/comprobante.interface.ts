@@ -50,6 +50,8 @@ export interface ComprobanteDetalle {
   descripcion?: string | null
   nombre_unidad_medida?: string | null
   cantidad: number
+  cantidad_nc_previa?: number | null
+  cantidad_disponible_nc?: number | null
   precio_unitario: number
   descuento?: number | null
   porcentaje_igv?: number | null

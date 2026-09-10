@@ -1465,7 +1465,6 @@ try {
       idUsuarioAuditoria: userId,
       idTipoComprobante: Number(idTipoComprobante.value),
       serie: serie.value.trim(),
-      numero: numero.value || undefined,
       fecha: fecha.value,
       idCliente: Number(idCliente.value),
       idSucursal: idSucursalCaja.value ?? undefined,

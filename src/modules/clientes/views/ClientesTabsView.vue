@@ -38,7 +38,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const canVerAprobaciones = computed(() =>
-  authStore.hasPermission(PermisoBanderas.CLIENTES_EDITAR),
+  authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_LISTAR) ||
+  authStore.hasPermission(PermisoBanderas.BAJAS_CLIENTE_APROBAR),
 )
 
 // El endpoint de bajas-cliente no permite filtrar por estado de aprobación,

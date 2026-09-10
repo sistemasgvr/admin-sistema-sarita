@@ -13,7 +13,7 @@
 
       <div v-if="cliente && !esVarios" class="flex flex-wrap items-center gap-2">
         <button
-          v-if="canEdit && cliente.estado === 1 && !cliente.estado_baja_aprobacion"
+          v-if="canSolicitarBaja && cliente.estado === 1 && !cliente.estado_baja_aprobacion"
           type="button"
           class="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-50 dark:border-amber-500/40 dark:bg-gray-900 dark:text-amber-300 dark:hover:bg-amber-500/10"
           @click="bajaModalOpen = true"

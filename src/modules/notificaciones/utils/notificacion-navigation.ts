@@ -42,14 +42,23 @@ export function resolveNotificacionTarget(
     }
 
     case 'BALON': {
-      const idBalon = payloadNumber(payload, 'idBalon')
+      const idBalon = payloadNumber(payload, 'idBalon') ?? idRef
+      // PH por vencer y resoluciones de baja van al detalle del cilindro.
       if (
-        (codigo.includes('APROBADA') || codigo.includes('RECHAZADA')) &&
-        idBalon
+        codigo.includes('PH_CILINDRO') ||
+        codigo.includes('PH_BALON') ||
+        codigo.includes('APROBADA') ||
+        codigo.includes('RECHAZADA')
       ) {
+        if (idBalon) {
+          return {
+            name: 'admin-balones-cilindros-detalle',
+            params: { id: String(idBalon) },
+          }
+        }
         return {
-          name: 'admin-balones-cilindros-detalle',
-          params: { id: String(idBalon) },
+          name: 'admin-balones-cilindros',
+          query: idRef ? { id: String(idRef) } : {},
         }
       }
       return {
