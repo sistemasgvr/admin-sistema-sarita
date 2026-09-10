@@ -37,7 +37,7 @@
         </dd>
       </div>
       <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
-        <dt class="text-gray-500 dark:text-gray-400">GRE retorno</dt>
+        <dt class="text-gray-500 dark:text-gray-400">GRE proveedor</dt>
         <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
           {{ formatDocumento(recarga.serie_guia_ingreso, recarga.numero_guia_ingreso) }}
         </dd>
@@ -95,10 +95,12 @@
           <thead class="bg-gray-50 dark:bg-white/5">
             <tr>
               <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Balón</th>
-              <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Producto</th>
-              <th class="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">Capacidad</th>
-              <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Custodia</th>
-              <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Lote / P.H.</th>
+              <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
+                Producto (gas)
+              </th>
+              <th class="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">
+                Capacidad
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -109,31 +111,21 @@
             >
               <td class="px-3 py-2 font-medium text-gray-800 dark:text-white/90">
                 {{ balon.codigo_balon ?? '—' }}
+                <p
+                  v-if="balon.nombre_tipo_balon"
+                  class="mt-0.5 text-xs font-normal text-gray-400"
+                >
+                  {{ balon.nombre_tipo_balon }}
+                </p>
               </td>
               <td class="px-3 py-2 text-gray-600 dark:text-gray-400">
-                <p>
-                  {{
-                    balon.codigo_producto
-                      ? `${balon.codigo_producto} — ${balon.nombre_producto ?? ''}`
-                      : (balon.nombre_producto ?? '—')
-                  }}
-                </p>
+                <p>{{ etiquetaProductoGas(balon) }}</p>
                 <p v-if="balon.observacion" class="mt-0.5 text-xs text-gray-400">
                   {{ balon.observacion }}
                 </p>
               </td>
               <td class="px-3 py-2 text-right tabular-nums text-gray-800 dark:text-white/90">
                 {{ formatCapacidad(balon) }}
-              </td>
-              <td class="px-3 py-2">
-                <BalonEstadoBadge :balon="balon" />
-              </td>
-              <td class="px-3 py-2 text-xs text-gray-600 dark:text-gray-400">
-                <p>{{ loteDe(balon) || '—' }}</p>
-                <p class="mt-0.5">
-                  vence {{ formatListDate(vencimientoDe(balon)) || '—' }} · P.H.
-                  {{ formatListDate(phDe(balon)) || '—' }}
-                </p>
               </td>
             </tr>
           </tbody>
@@ -149,7 +141,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import type {
   RecargaPlanta,
   RecargaPlantaDetalle,
@@ -168,7 +159,7 @@ const props = withDefaults(
     loading: false,
     showHint: true,
     hint:
-      'La cantidad de cada gas en el detalle de productos es la suma de la capacidad de estos balones agrupada por producto — no es una línea por balón.',
+      'Cada gas en el detalle de productos usa solo cantidad (suma de capacidades). El stock de gas entra al marcar el retorno de cilindros — no al registrar la factura.',
   },
 )
 
@@ -205,21 +196,27 @@ function formatDocumento(serie?: string | null, numero?: string | null) {
   return serie || numero || '—'
 }
 
+function etiquetaProductoGas(balon: RecargaPlantaDetalle) {
+  const nombre =
+    balon.nombre_producto_gas_balon?.trim() ||
+    balon.nombre_producto?.trim() ||
+    null
+  if (!nombre) {
+    if (balon.id_producto_gas_balon != null) return `Gas #${balon.id_producto_gas_balon}`
+    if (balon.id_producto != null) return `Producto #${balon.id_producto}`
+    return '—'
+  }
+  if (balon.codigo_producto) return `${balon.codigo_producto} — ${nombre}`
+  return nombre
+}
+
 function formatCapacidad(balon: RecargaPlantaDetalle) {
-  if (balon.capacidad == null || !Number.isFinite(Number(balon.capacidad))) return '—'
-  const um = balon.nombre_unidad_medida ? ` ${balon.nombre_unidad_medida}` : ''
-  return `${balon.capacidad}${um}`
-}
-
-function loteDe(balon: RecargaPlantaDetalle) {
-  return balon.lote?.trim() || props.recarga?.lote?.trim() || ''
-}
-
-function vencimientoDe(balon: RecargaPlantaDetalle) {
-  return balon.fecha_vencimiento_lote || props.recarga?.fecha_vencimiento_lote || null
-}
-
-function phDe(balon: RecargaPlantaDetalle) {
-  return balon.fecha_prueba_hidrostatica || props.recarga?.fecha_prueba_hidrostatica || null
+  const cap = balon.capacidad_balon ?? balon.capacidad
+  if (cap == null || !Number.isFinite(Number(cap))) return '—'
+  const um =
+    balon.unidad_capacidad_balon?.trim() ||
+    balon.nombre_unidad_medida?.trim() ||
+    ''
+  return um ? `${cap} ${um}` : String(cap)
 }
 </script>

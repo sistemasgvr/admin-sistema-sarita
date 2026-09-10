@@ -29,16 +29,30 @@ function estadoRecargaDe(d: {
 }
 
 function mapDetalle(d: DocumentoSalida['detalle'][number]): RecargaPlantaDetalle {
+  // En líneas de balón el producto de costo/stock es el gas del cilindro, no
+  // id_producto de la fila OS (suele venir vacío o ser el envase).
+  const idGas = d.id_producto_gas_balon ?? d.id_producto ?? null
+  const nombreGas =
+    d.nombre_producto_gas_balon?.trim() || d.nombre_producto?.trim() || null
+  const capacidadBalon =
+    d.capacidad_balon != null && Number.isFinite(Number(d.capacidad_balon))
+      ? Number(d.capacidad_balon)
+      : null
+
   return {
     id: d.id,
     id_balon: d.id_balon as number,
     codigo_balon: d.codigo_balon,
-    id_producto: d.id_producto,
-    nombre_producto: d.nombre_producto,
+    id_producto: idGas,
+    nombre_producto: nombreGas,
     codigo_producto: d.codigo_producto,
-    capacidad: d.cantidad,
+    // Capacidad real del cilindro (antes se mapeaba erróneamente d.cantidad).
+    capacidad: capacidadBalon,
+    capacidad_balon: capacidadBalon,
+    cantidad: d.cantidad,
     id_unidad_medida: d.id_unidad_medida,
-    nombre_unidad_medida: d.nombre_unidad_medida,
+    nombre_unidad_medida: d.unidad_capacidad_balon ?? d.nombre_unidad_medida,
+    unidad_capacidad_balon: d.unidad_capacidad_balon ?? null,
     lote: null,
     fecha_vencimiento_lote: null,
     fecha_prueba_hidrostatica: null,
@@ -130,9 +144,12 @@ function mapListItem(d: DocumentoSalidaListItem): RecargaPlanta {
 
 export function useRecargasPlantaQuery(filters: Ref<RecargaPlantaListFilters>) {
   return useQuery({
-    queryKey: computed(() =>
-      documentosSalidaQueryKeys.list({ ...filters.value, codigoTipoOrden: 'RECARGA_PLANTA_EXTERNA' }),
-    ),
+    // Misma razón que en useRecargaPlantaQuery: los ítems van mapeados, así que
+    // no pueden compartir entrada con el listado crudo de documentos de salida.
+    queryKey: computed(() => [
+      ...documentosSalidaQueryKeys.list({ ...filters.value, codigoTipoOrden: 'RECARGA_PLANTA_EXTERNA' }),
+      'recarga',
+    ] as const),
     queryFn: async () => {
       const res = await documentosSalidaService.listar({
         buscar: filters.value.buscar,
@@ -151,7 +168,13 @@ export function useRecargasPlantaQuery(filters: Ref<RecargaPlantaListFilters>) {
 
 export function useRecargaPlantaQuery(id: Ref<number | null>) {
   return useQuery({
-    queryKey: computed(() => documentosSalidaQueryKeys.detail(id.value ?? 0)),
+    // Se anida bajo detail(id) y no se reutiliza tal cual: esta query guarda
+    // la forma mapeada (con `detalles`), y el formulario de documento de
+    // salida lee la misma clave esperando el documento crudo (con `detalle`).
+    // Compartir entrada hacía que, tras abrir una recarga, entrar al documento
+    // reventara en el primer render con `documento.detalle` undefined.
+    // Al colgar de detail(id), las invalidaciones por prefijo siguen llegando.
+    queryKey: computed(() => [...documentosSalidaQueryKeys.detail(id.value ?? 0), 'recarga'] as const),
     queryFn: async () => mapCompleto(await documentosSalidaService.obtenerPorId(id.value!)),
     enabled: computed(() => id.value != null && id.value > 0),
   })

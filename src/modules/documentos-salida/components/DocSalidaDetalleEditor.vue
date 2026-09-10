@@ -13,22 +13,30 @@
       </header>
 
       <div v-if="!readonly" class="border-b border-gray-100 p-3.5 dark:border-gray-700">
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <AppSelectSearch
-            v-model="idBalon"
-            v-model:search="balonSearch"
-            remote
-            :placeholder="
-              idAlmacen ? 'Buscar balón disponible por código...' : 'Elige un almacén primero'
-            "
-            :options="balonOptions"
-            :loading="balonesQuery.isFetching.value"
-            :disabled="disabled || !idAlmacen"
-            class="sm:col-span-2"
-          />
+        <!--
+          El buscador va dentro de un div porque AppSelectSearch descarta la
+          clase que se le pasa (inheritAttrs: false y no la reaplica): el
+          antiguo sm:col-span-2 nunca llegó a aplicarse y dejaba un tercio de
+          la fila vacío. Con flex, el buscador toma todo el ancho sobrante y el
+          botón queda a su tamaño natural.
+        -->
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div class="min-w-0 flex-1">
+            <AppSelectSearch
+              v-model="idBalon"
+              v-model:search="balonSearch"
+              remote
+              :placeholder="
+                idAlmacen ? 'Buscar balón disponible por código...' : 'Elige un almacén primero'
+              "
+              :options="balonOptions"
+              :loading="balonesQuery.isFetching.value"
+              :disabled="disabled || !idAlmacen"
+            />
+          </div>
           <button
             type="button"
-            class="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+            class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
             :disabled="!idBalon || disabled"
             @click="onAgregarBalon"
           >
@@ -547,10 +555,21 @@ const stockPorProducto = computed(() => {
   return mapa
 })
 
-/** null = el producto no tiene registro de stock en este almacén. */
+/**
+ * Stock del producto en el almacén de la orden.
+ *
+ * Que el producto no tenga fila significa lo mismo que tenerla en 0: no hay
+ * nada que sacar de aquí. Antes se devolvía null en ese caso y la fila se
+ * quedaba sin pista de stock, mientras la de al lado (con fila en 0) decía
+ * "Sin stock aquí": dos mensajes distintos para la misma situación.
+ *
+ * null solo mientras la consulta no ha respondido: afirmar "sin stock" antes
+ * de saberlo sería adivinar.
+ */
 function stockDe(idProducto: number) {
   const fila = stockPorProducto.value.get(idProducto)
-  return fila ? fila.stock : null
+  if (fila) return fila.stock
+  return stockQuery.data.value ? 0 : null
 }
 
 /**

@@ -3,12 +3,21 @@ export interface RecargaPlantaDetalle {
   id_recarga_planta?: number
   id_balon: number
   codigo_balon?: string | null
+  /** Preferir gas del cilindro (id_producto_gas_balon); fallback id_producto de la línea OS. */
   id_producto?: number | null
   nombre_producto?: string | null
   codigo_producto?: string | null
+  /**
+   * Capacidad real del cilindro (capacidad_balon del OS). No confundir con
+   * `cantidad`, que es la cantidad de gas declarada en la línea del documento.
+   */
   capacidad?: number | null
+  capacidad_balon?: number | null
+  /** Cantidad de gas declarada en la línea del documento de salida (si aplica). */
+  cantidad?: number | null
   id_unidad_medida?: number | null
   nombre_unidad_medida?: string | null
+  unidad_capacidad_balon?: string | null
   lote?: string | null
   fecha_vencimiento_lote?: string | null
   fecha_prueba_hidrostatica?: string | null

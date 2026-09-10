@@ -218,6 +218,8 @@ export interface CompraLineaForm {
   afectaStock?: boolean
   /** Cilindros de la orden de recarga que alimentan esta línea de gas. */
   cilindrosRecarga?: number
+  /** Tipos de balón que cargan este gas (badge estilo DocSalida). */
+  tiposRecarga?: { nombre: string; cantidad: number }[]
 }
 
 /** Cilindro comprado que entra al libro con la compra (Fase 7, apunte 4.b.iv). */

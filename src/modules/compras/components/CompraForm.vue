@@ -244,13 +244,6 @@
                 v-if="guardarBalonesAlmacen"
                 class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
               >
-                <DocumentoSalidaSelectField
-                  v-model="idGuiaRetorno"
-                  label="GRE ingreso / retorno"
-                  placeholder="Opcional"
-                  :disabled="saving"
-                />
-
                 <AppInput
                   v-model="fechaLlegadaAlmacen"
                   label="Fecha llegada almacén"
@@ -262,16 +255,17 @@
 
                 <AppInput
                   v-model="serieGuiaIngreso"
-                  label="Serie GRE ingreso"
+                  label="Serie GRE proveedor (referencial)"
                   placeholder="T001"
-                  :disabled="saving || Boolean(idGuiaRetorno)"
+                  :disabled="saving"
                 />
 
                 <AppInput
                   v-model="numeroGuiaIngreso"
-                  label="Número GRE ingreso"
+                  label="Número GRE proveedor (referencial)"
                   placeholder="00000002"
-                  :disabled="saving || Boolean(idGuiaRetorno)"
+                  help="Número de la guía que envía el proveedor; es referencial."
+                  :disabled="saving"
                 />
 
                 <!--
@@ -325,10 +319,10 @@
           </DetailSectionCard>  
 
           <DetailSectionCard
-            title="Detalle de productos (opcional)"
+            :title="tituloDetalleProductos"
             :icon="ICONS.clipboardList"
             :full-width="true"
-            help="Opcional: puedes registrar la compra sin líneas y agregarlas después. Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros)."
+            :help="helpDetalleProductos"
           >
             <template #actions>
               <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -336,12 +330,27 @@
               </span>
             </template>
 
+            <p
+              v-if="desdeRecargaExterna && idRecargaPlantaNum"
+              class="mb-3 text-xs text-gray-500 dark:text-gray-400"
+            >
+              Cantidad = lo que factura la planta; el stock entra solo al marcar retorno.
+            </p>
+
             <div class="mb-3">
               <CompraProductoField
                 v-model="lineaIdProducto"
                 v-model:search="lineaProductoBuscar"
-                label="Agregar producto"
-                placeholder="Buscar y agregar al detalle"
+                :label="
+                  desdeRecargaExterna && idRecargaPlantaNum
+                    ? 'Agregar otro producto (extras)'
+                    : 'Agregar producto'
+                "
+                :placeholder="
+                  desdeRecargaExterna && idRecargaPlantaNum
+                    ? 'Buscar extras que no vienen de la orden'
+                    : 'Buscar y agregar al detalle'
+                "
                 :options="productoOptions"
                 :loading="productosQuery.isFetching.value"
                 :disabled="saving"
@@ -351,7 +360,20 @@
             </div>
 
             <div
-              v-if="lineas.length === 0"
+              v-if="lineas.length === 0 && desdeRecargaExterna && idRecargaPlantaNum"
+              class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+            >
+              <template v-if="recargaPlantaDetalleQuery.isFetching.value">
+                Cargando gases de la orden...
+              </template>
+              <template v-else>
+                Los balones de la orden no tienen gas asociado o capacidad. Asigna el gas en la
+                ficha del cilindro, o agrega un producto manualmente arriba.
+              </template>
+            </div>
+
+            <div
+              v-else-if="lineas.length === 0"
               class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
             >
               Busca un producto arriba para agregarlo al detalle.
@@ -371,10 +393,16 @@
                       <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         Cant.
                       </th>
-                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th
+                        v-if="mostrarColumnasPrecio"
+                        class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300"
+                      >
                         P. unit. (IGV)
                       </th>
-                      <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th
+                        v-if="mostrarColumnasPrecio"
+                        class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300"
+                      >
                         Importe
                       </th>
                       <th class="w-12 px-2 py-2.5" />
@@ -449,21 +477,32 @@
                             variant="light"
                             color="warning"
                           >
-                            {{ lin.cilindrosRecarga }} cilindro{{
-                              lin.cilindrosRecarga === 1 ? '' : 's'
+                            {{ lin.cilindrosRecarga }} balón{{
+                              lin.cilindrosRecarga === 1 ? '' : 'es'
                             }}
                           </AppBadge>
                           <AppBadge
-                            v-if="lin.afectaStock"
+                            v-for="tipo in lin.tiposRecarga ?? []"
+                            :key="`${lin.key}-${tipo.nombre}`"
                             size="sm"
                             variant="light"
-                            color="primary"
+                            color="neutral"
                           >
-                            Ingresa stock
+                            {{ tipo.nombre }} ×{{ tipo.cantidad }}
                           </AppBadge>
-                          <AppBadge v-else size="sm" variant="light" color="neutral">
-                            Sin stock
-                          </AppBadge>
+                          <template v-if="!esLineaRecargaPlanta(lin.key)">
+                            <AppBadge
+                              v-if="lin.afectaStock"
+                              size="sm"
+                              variant="light"
+                              color="primary"
+                            >
+                              Ingresa stock
+                            </AppBadge>
+                            <AppBadge v-else size="sm" variant="light" color="neutral">
+                              Sin stock
+                            </AppBadge>
+                          </template>
                         </div>
                       </td>
                       <td class="px-3 py-2.5">
@@ -476,24 +515,37 @@
                           :disabled="saving"
                         />
                       </td>
-                      <td class="px-3 py-2.5">
-                        <MoneyInput
-                          v-model="precioNuevoInputs[lin.key]"
-                          placeholder="0.00"
-                          :disabled="saving"
-                          :state="precioNuevoError(lin.key) ? 'error' : 'default'"
-                          @blur="onBlurPrecioNuevo(lin.key)"
-                        />
-                      </td>
-                      <td
-                        class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
-                      >
-                        {{
-                          formatMoney(
-                            (parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0) * Number(lin.cantidad),
-                          )
-                        }}
-                      </td>
+                      <template v-if="mostrarColumnasPrecio">
+                        <td class="px-3 py-2.5">
+                          <MoneyInput
+                            v-if="!esLineaRecargaPlanta(lin.key)"
+                            v-model="precioNuevoInputs[lin.key]"
+                            placeholder="0.00"
+                            :disabled="saving"
+                            :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                            @blur="onBlurPrecioNuevo(lin.key)"
+                          />
+                          <span
+                            v-else
+                            class="block text-right text-gray-400 dark:text-gray-500"
+                          >
+                            —
+                          </span>
+                        </td>
+                        <td
+                          class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
+                        >
+                          <template v-if="!esLineaRecargaPlanta(lin.key)">
+                            {{
+                              formatMoney(
+                                (parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0) *
+                                  Number(lin.cantidad),
+                              )
+                            }}
+                          </template>
+                          <span v-else class="text-gray-400 dark:text-gray-500">—</span>
+                        </td>
+                      </template>
                       <td class="px-2 py-2.5 text-center">
                         <button
                           type="button"
@@ -511,6 +563,7 @@
               </div>
 
               <div
+                v-if="mostrarColumnasPrecio"
                 class="grid grid-cols-3 gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
               >
                 <div>
@@ -826,9 +879,7 @@ import CompraPagoPreview from '@/modules/compras/components/CompraPagoPreview.vu
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
 import CompraRecargaPlantaDetalle from '@/modules/compras/components/CompraRecargaPlantaDetalle.vue'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
-import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
 import LoteProtocoloFormModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloFormModal.vue'
-import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
@@ -1064,7 +1115,6 @@ const [fechaPruebaHidrostatica] = defineField('fechaPruebaHidrostatica')
 const [serieGuiaIngreso] = defineField('serieGuiaIngreso')
 const [numeroGuiaIngreso] = defineField('numeroGuiaIngreso')
 const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
-const idGuiaRetorno = ref<number | ''>('')
 const [idTipoComprobante, idTipoComprobanteAttrs] = defineField('idTipoComprobante')
 const [idTipoRegistro, idTipoRegistroAttrs] = defineField('idTipoRegistro')
 const [idCategoriaGasto, idCategoriaGastoAttrs] = defineField('idCategoriaGasto')
@@ -1135,6 +1185,7 @@ function quitarLineaNueva(index: number, key: string) {
 
 function validarPreciosLineas(mostrarToast = true): boolean {
   for (const lin of lineas) {
+    if (esLineaRecargaPlanta(lin.key)) continue
     if (!esPrecioLineaValido(precioNuevoInputs[lin.key])) {
       if (mostrarToast) {
         toastWarning(
@@ -1275,6 +1326,17 @@ const idRecargaPlantaNum = computed(() =>
 )
 const recargaPlantaDetalleQuery = useRecargaPlantaQuery(idRecargaPlantaNum)
 
+const tituloDetalleProductos = computed(() =>
+  desdeRecargaExterna.value && idRecargaPlantaNum.value
+    ? 'Detalle de productos (gases de la orden)'
+    : 'Detalle de productos (opcional)',
+)
+const helpDetalleProductos = computed(() =>
+  desdeRecargaExterna.value && idRecargaPlantaNum.value
+    ? 'Gases de la orden: solo cantidad (suma de capacidades, editable). Sin precio en estas líneas; el stock entra al marcar retorno. Puedes agregar extras con precio abajo.'
+    : 'Opcional: puedes registrar la compra sin líneas y agregarlas después. Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros).',
+)
+
 // ---- Ficha ICP de la orden ----
 const fichaModalOpen = ref(false)
 
@@ -1316,11 +1378,6 @@ function onFichaRegistrada() {
 
 const toDateInput = (value?: string | null) => (value ? String(value).slice(0, 10) : '')
 
-const guiaRetornoIdRef = computed(() =>
-  idGuiaRetorno.value !== '' ? Number(idGuiaRetorno.value) : null,
-)
-const guiaRetornoDetalleQuery = useDocumentoSalidaQuery(guiaRetornoIdRef)
-
 const suppressRecargaPlantaReset = ref(false)
 
 function queryParam(key: string): string {
@@ -1342,7 +1399,6 @@ function resetRetornoFields() {
   fechaPruebaHidrostatica.value = ''
   serieGuiaIngreso.value = ''
   numeroGuiaIngreso.value = ''
-  idGuiaRetorno.value = ''
 }
 
 watch(idProveedor, (id) => {
@@ -1372,8 +1428,9 @@ async function prefillDesdeQuery() {
     if (numeroFactura) numero.value = numeroFactura
   }
 
+  // idGuiaRetorno en query solo indica que el retorno ya aplica; la GRE es
+  // referencial (serie/número tipados), no se vincula un DocumentoSalida.
   if (idGuia) {
-    idGuiaRetorno.value = idGuia
     guardarBalonesAlmacen.value = true
   }
 
@@ -1395,15 +1452,6 @@ watch(desdeRecargaExterna, (on) => {
   quitarLineasDeRecargaPlanta()
 })
 
-watch(
-  () => guiaRetornoDetalleQuery.data.value,
-  (guia) => {
-    if (!guia || !idGuiaRetorno.value) return
-    serieGuiaIngreso.value = guia.serie ?? ''
-    numeroGuiaIngreso.value = guia.numero_sunat ?? ''
-  },
-)
-
 watch(guardarBalonesAlmacen, (on) => {
   if (!on) return
   if (!fechaLlegadaAlmacen.value) {
@@ -1414,6 +1462,14 @@ watch(guardarBalonesAlmacen, (on) => {
 const RECARGA_LINEA_PREFIX = 'recarga-planta-'
 const recargaPlantaLineasSyncedFor = ref<number | null>(null)
 const recargaRetornoPrefillFor = ref<number | null>(null)
+
+function esLineaRecargaPlanta(key: string) {
+  return key.startsWith(RECARGA_LINEA_PREFIX)
+}
+
+const mostrarColumnasPrecio = computed(
+  () => lineas.length === 0 || lineas.some((lin) => !esLineaRecargaPlanta(lin.key)),
+)
 
 /** Al llegar por deep-link no hay proveedor todavía: se toma el de la orden. */
 async function prefillProveedorAlmacenDesdeRecarga(recarga: {
@@ -1444,31 +1500,50 @@ function quitarLineasDeRecargaPlanta() {
 function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
   quitarLineasDeRecargaPlanta()
 
+  // Una fila por gas (como DocSalida "Productos según los balones"): cantidad =
+  // suma de capacidades reales de los cilindros; precio de compra editable.
   const grupos = new Map<number, CompraLineaForm>()
   for (const balon of detalles) {
-    if (balon.id_producto == null) continue
-    const cantidadBalon = Number(balon.capacidad) || 0
-    if (cantidadBalon <= 0) continue
+    const idGas = balon.id_producto_gas_balon ?? balon.id_producto
+    if (idGas == null) continue
 
-    const existente = grupos.get(balon.id_producto)
+    const capacidad =
+      Number(balon.capacidad_balon ?? balon.capacidad) || 0
+    if (capacidad <= 0) continue
+
+    const nombreGas =
+      balon.nombre_producto_gas_balon?.trim() ||
+      balon.nombre_producto?.trim() ||
+      `Gas ${idGas}`
+    const nombreTipo = balon.nombre_tipo_balon?.trim() || 'Sin tipo'
+
+    const existente = grupos.get(idGas)
     if (existente) {
-      existente.cantidad += cantidadBalon
+      existente.cantidad += capacidad
       existente.cilindrosRecarga = (existente.cilindrosRecarga ?? 0) + 1
+      const tipos = existente.tiposRecarga ?? []
+      const tipo = tipos.find((t) => t.nombre === nombreTipo)
+      if (tipo) tipo.cantidad += 1
+      else tipos.push({ nombre: nombreTipo, cantidad: 1 })
+      existente.tiposRecarga = tipos
       continue
     }
 
-    grupos.set(balon.id_producto, {
-      key: `${RECARGA_LINEA_PREFIX}${balon.id_producto}`,
-      idProducto: balon.id_producto,
+    grupos.set(idGas, {
+      key: `${RECARGA_LINEA_PREFIX}${idGas}`,
+      idProducto: idGas,
       productoLabel: balon.codigo_producto
-        ? `${balon.codigo_producto} - ${balon.nombre_producto ?? ''}`
-        : (balon.nombre_producto ?? `Producto ${balon.id_producto}`),
-      cantidad: cantidadBalon,
+        ? `${balon.codigo_producto} - ${nombreGas}`
+        : nombreGas,
+      cantidad: capacidad,
       precioUnitario: 0,
       idUnidadMedida: balon.id_unidad_medida ?? null,
-      nombreUnidadMedida: balon.nombre_unidad_medida ?? null,
+      nombreUnidadMedida:
+        balon.unidad_capacidad_balon ?? balon.nombre_unidad_medida ?? null,
+      esGas: true,
       afectaStock: false,
       cilindrosRecarga: 1,
+      tiposRecarga: [{ nombre: nombreTipo, cantidad: 1 }],
     })
   }
 
@@ -1508,7 +1583,6 @@ watch(
       fechaLlegadaAlmacen.value = toDateInput(data.fecha_llegada_almacen)
       serieGuiaIngreso.value = data.serie_guia_ingreso ?? ''
       numeroGuiaIngreso.value = data.numero_guia_ingreso ?? ''
-      idGuiaRetorno.value = data.id_guia_retorno ?? ''
       if (data.fecha_llegada_almacen) {
         guardarBalonesAlmacen.value = true
       }
@@ -1567,6 +1641,7 @@ const fechaParaCuotas = computed(() =>
 )
 const totalLineas = computed(() =>
   lineas.reduce((acc, lin) => {
+    if (esLineaRecargaPlanta(lin.key)) return acc
     const precio = parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0
     return acc + precio * Number(lin.cantidad)
   }, 0),
@@ -1875,7 +1950,6 @@ function resetCreateForm() {
       declararSunat: false,
     },
   })
-  idGuiaRetorno.value = ''
   recargaRetornoPrefillFor.value = null
   recargaPlantaFilters.value = { pagina: 1, limite: 50 }
   recargaPlantaLineasSyncedFor.value = null
@@ -2086,7 +2160,8 @@ const onSubmit = handleSubmit(async (values) => {
   }
 
   const detalles = lineas.map((l) => {
-    const precioParsed = parsePrecioLinea(precioNuevoInputs[l.key])
+    const esRecarga = esLineaRecargaPlanta(l.key)
+    const precioParsed = esRecarga ? null : parsePrecioLinea(precioNuevoInputs[l.key])
     return {
       idProducto: l.idProducto,
       cantidad: Number(l.cantidad),
@@ -2120,8 +2195,6 @@ const onSubmit = handleSubmit(async (values) => {
     fechaPruebaHidrostatica: registrarRetorno
       ? String(values.fechaPruebaHidrostatica || '').trim() || undefined
       : undefined,
-    idGuiaRetorno:
-      conRecarga && idGuiaRetorno.value !== '' ? Number(idGuiaRetorno.value) : undefined,
     serieGuiaIngreso: conRecarga
       ? String(values.serieGuiaIngreso ?? '').trim() || undefined
       : undefined,
