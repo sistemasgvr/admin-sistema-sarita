@@ -18,9 +18,15 @@
         los envases aprobados. Duplicarlos en dos sitios los dejaba desalineados.
       -->
       <AppDatePicker v-model="form.fechaPruebaHidrostatica" label="Prueba hidrostática" />
-      <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input v-model="form.guardarBalonesAlmacen" type="checkbox" class="h-4 w-4" />
-        Actualizar custodia de los balones (DISPONIBLE) y registrar entrada de gas
+      <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <input v-model="form.guardarBalonesAlmacen" type="checkbox" class="mt-0.5 h-4 w-4" />
+        <span>
+          Dejar los cilindros disponibles en el almacén y registrar la entrada de gas
+          <span class="block text-xs text-gray-500 dark:text-gray-400">
+            El gas entra con las cantidades de la compra vinculada; si aún no hay compra, con las
+            cantidades que salieron en la orden.
+          </span>
+        </span>
       </label>
     </div>
 

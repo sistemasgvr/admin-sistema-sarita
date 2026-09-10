@@ -216,6 +216,8 @@ export interface CompraLineaForm {
   presentacion?: string | null
   /** Snapshot UI: si el producto genera ingreso al registrar la compra */
   afectaStock?: boolean
+  /** Suma de capacidades de los cilindros de la orden que cargan este gas (tope de lo que ingresa). */
+  capacidadRecarga?: number
   /** Cilindros de la orden de recarga que alimentan esta línea de gas. */
   cilindrosRecarga?: number
   /** Tipos de balón que cargan este gas (badge estilo DocSalida). */

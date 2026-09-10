@@ -64,10 +64,10 @@
         </AppBadge>
       </template>
 
-      <template #cell-tiene_movimientos_inventario="{ value }">
+      <!-- <template #cell-tiene_movimientos_inventario="{ value }">
         <AppBadge v-if="value" color="warning">Con mov.</AppBadge>
         <span v-else class="text-xs text-gray-400">—</span>
-      </template>
+      </template> -->
 
       <template #actions="{ row }">
         <div class="inline-flex items-center justify-end gap-1.5">
@@ -282,7 +282,7 @@ const columns: TableColumn[] = [
   { key: 'categoria_gasto', label: 'Categoría' },
   { key: 'total_importe', label: 'Total', align: 'right' },
   { key: 'estado', label: 'Estado' },
-  { key: 'tiene_movimientos_inventario', label: 'Inventario' },
+  // { key: 'tiene_movimientos_inventario', label: 'Inventario' },
 ]
 
 function syncFilters() {

@@ -23,35 +23,11 @@
       </AppBadge>
     </div>
 
-    <dl class="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
+    <dl class="grid gap-2 text-xs sm:grid-cols-3">
       <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
         <dt class="text-gray-500 dark:text-gray-400">Fecha salida</dt>
         <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
           {{ formatListDate(recarga.fecha_salida) || '—' }}
-        </dd>
-      </div>
-      <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
-        <dt class="text-gray-500 dark:text-gray-400">GRE salida</dt>
-        <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
-          {{ formatDocumento(recarga.serie_guia_salida, recarga.numero_guia_salida) }}
-        </dd>
-      </div>
-      <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
-        <dt class="text-gray-500 dark:text-gray-400">GRE proveedor</dt>
-        <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
-          {{ formatDocumento(recarga.serie_guia_ingreso, recarga.numero_guia_ingreso) }}
-        </dd>
-      </div>
-      <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
-        <dt class="text-gray-500 dark:text-gray-400">Factura planta</dt>
-        <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
-          {{ formatDocumento(recarga.serie_factura, recarga.numero_factura) }}
-        </dd>
-      </div>
-      <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
-        <dt class="text-gray-500 dark:text-gray-400">Llegada almacén</dt>
-        <dd class="mt-0.5 font-medium text-gray-800 dark:text-white/90">
-          {{ formatListDate(recarga.fecha_llegada_almacen) || 'Pendiente' }}
         </dd>
       </div>
       <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
@@ -60,30 +36,13 @@
           {{ balones.length }}
         </dd>
       </div>
+      <div class="rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-800">
+        <dt class="text-gray-500 dark:text-gray-400">Capacidad total</dt>
+        <dd class="mt-0.5 font-medium tabular-nums text-gray-800 dark:text-white/90">
+          {{ capacidadTotalLabel }}
+        </dd>
+      </div>
     </dl>
-
-    <div
-      class="rounded-lg border px-3 py-2 text-xs"
-      :class="
-        protocoloCompleto
-          ? 'border-success-200 bg-success-50 text-success-800 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-300'
-          : 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300'
-      "
-    >
-      <p class="font-medium">Protocolo (lote / vencimiento / P.H.)</p>
-      <p class="mt-1">
-        Lote: <span class="font-medium">{{ recarga.lote || '—' }}</span>
-        · Vence:
-        <span class="font-medium">{{ formatListDate(recarga.fecha_vencimiento_lote) || '—' }}</span>
-        · P.H.:
-        <span class="font-medium">{{
-          formatListDate(recarga.fecha_prueba_hidrostatica) || '—'
-        }}</span>
-      </p>
-      <p v-if="!protocoloCompleto" class="mt-1">
-        Incompleto: completa lote / vencimiento / P.H. aquí en Compras (retorno) o en Recargas → Planta externa.
-      </p>
-    </div>
 
     <p v-if="recarga.observacion" class="text-xs text-gray-500 dark:text-gray-400">
       Obs.: {{ recarga.observacion }}
@@ -94,9 +53,9 @@
         <table class="min-w-full text-sm">
           <thead class="bg-gray-50 dark:bg-white/5">
             <tr>
-              <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Balón</th>
+              <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Cilindro</th>
               <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">
-                Producto (gas)
+                Gas que carga
               </th>
               <th class="px-3 py-2 text-right font-medium text-gray-600 dark:text-gray-300">
                 Capacidad
@@ -159,16 +118,29 @@ const props = withDefaults(
     loading: false,
     showHint: true,
     hint:
-      'Cada gas en el detalle de productos usa solo cantidad (suma de capacidades). El stock de gas entra al marcar el retorno de cilindros — no al registrar la factura.',
+      'La capacidad es la referencia de lo que puede volver cargado. Lo que realmente ingresa de cada gas se indica en el detalle de productos y entra al stock con el retorno.',
   },
 )
 
 const balones = computed(() => props.recarga?.detalles ?? [])
 
-const protocoloCompleto = computed(() => {
-  const r = props.recarga
-  if (!r) return false
-  return Boolean(r.lote?.trim() && r.fecha_vencimiento_lote && r.fecha_prueba_hidrostatica)
+/** Suma de capacidades por unidad (los cilindros de una orden suelen compartirla). */
+const capacidadTotalLabel = computed(() => {
+  const porUnidad = new Map<string, number>()
+  for (const balon of balones.value) {
+    const cap = Number(balon.capacidad_balon ?? balon.capacidad)
+    if (!Number.isFinite(cap) || cap <= 0) continue
+    const um =
+      balon.unidad_capacidad_balon?.trim() || balon.nombre_unidad_medida?.trim() || ''
+    porUnidad.set(um, (porUnidad.get(um) ?? 0) + cap)
+  }
+  if (porUnidad.size === 0) return '—'
+  return [...porUnidad.entries()]
+    .map(([um, total]) => {
+      const texto = total.toLocaleString('es-PE', { maximumFractionDigits: 2 })
+      return um ? `${texto} ${um}` : texto
+    })
+    .join(' · ')
 })
 
 const estadoColor = computed(() => {
@@ -189,12 +161,6 @@ const etiquetaEstado = computed(() => {
   }
   return map[e] ?? e
 })
-
-function formatDocumento(serie?: string | null, numero?: string | null) {
-  if (!serie && !numero) return '—'
-  if (serie && numero) return `${serie}-${numero}`
-  return serie || numero || '—'
-}
 
 function etiquetaProductoGas(balon: RecargaPlantaDetalle) {
   const nombre =

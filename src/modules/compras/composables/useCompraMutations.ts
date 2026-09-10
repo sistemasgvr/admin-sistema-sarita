@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { documentosSalidaQueryKeys } from '@/modules/documentos-salida/constants/documentosSalidaQueryKeys'
 import type { RegistrarBalonesCompraPayload } from '@/modules/compras/interfaces/compra.interface'
 import { comprasService } from '@/modules/compras/services/compras.service'
 import type {
@@ -19,6 +20,9 @@ export function useCreateCompraMutation() {
     mutationFn: (payload: CreateCompraPayload) => comprasService.crear(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
+      // La compra puede vincularse a una orden de recarga (y registrar su
+      // retorno): el documento de salida cambia y su caché quedaba vieja.
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante de compra registrado')
     },

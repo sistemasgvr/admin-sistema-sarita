@@ -138,6 +138,7 @@
                 label="Almacén"
                 placeholder="Seleccionar"
                 required
+                help="El stock de los productos que ingresan (y de los cilindros al retornar de planta) se registra en este almacén."
                 v-bind="idAlmacenAttrs"
                 :options="almacenOptions"
                 :loading="almacenesQuery.isFetching.value"
@@ -148,6 +149,7 @@
                 v-model="idSucursal"
                 label="Sucursal"
                 placeholder="Seleccionar"
+                help="Sucursal a la que se atribuye la compra: sus pagos entran en la caja de esta sucursal y sus ingresos de stock se reportan aquí."
                 :options="sucursalOptions"
                 :loading="sucursalesQuery.isFetching.value"
                 :disabled="saving"
@@ -212,111 +214,97 @@
             </div>
 
             <template v-if="idRecargaPlantaNum">
-              <div class="mt-3 flex items-start gap-1.5">
-                <AppCheckbox
-                  v-model="guardarBalonesAlmacen"
-                  label="Registrar retorno de cilindros"
-                  :disabled="saving"
-                />
-                <AppHelpTip
-                  text="Márcalo si los cilindros ya llegaron: ingresan al almacén (En almacén / Lleno). Si aún están en planta, déjalo apagado: la factura queda vinculada y el retorno se completa después."
-                />
-              </div>
-
               <!--
-                Sin retorno marcado el gas sigue en la planta: sumarlo al stock
-                acá lo inflaría. El backend además lo rechaza.
+                Retorno ya registrado desde el documento de salida: los cilindros
+                y el gas ya ingresaron. Volver a marcarlo aquí duplicaba el
+                ingreso; ahora la factura solo se vincula a la orden.
               -->
               <div
-                v-if="!guardarBalonesAlmacen"
-                class="mt-3 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-3 py-2.5 text-xs text-warning-800 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300"
+                v-if="ordenYaRetorno"
+                class="mt-3 flex items-start gap-2 rounded-lg border border-success-500/30 bg-success-50 px-3 py-2.5 text-xs text-gray-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-gray-300"
               >
-                <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
+                <AppIcon
+                  :name="ICONS.check"
+                  :size="14"
+                  class="mt-0.5 shrink-0 text-success-600 dark:text-success-500"
+                />
                 <span>
-                  Mientras no marques el retorno, el gas de esta orden
-                  <strong class="font-semibold">no entra al stock</strong>. La factura queda
-                  vinculada; marca el retorno acá o desde el documento de salida cuando lleguen
-                  los cilindros.
+                  Retorno registrado el
+                  <strong class="font-semibold">{{ fechaRetornoOrdenLabel }}</strong> desde el
+                  documento de salida: los cilindros y el gas ya ingresaron. Esta factura solo
+                  queda vinculada a la orden.
                 </span>
               </div>
 
-              <div
-                v-if="guardarBalonesAlmacen"
-                class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2"
-              >
-                <AppInput
-                  v-model="fechaLlegadaAlmacen"
-                  label="Fecha llegada almacén"
-                  type="date"
-                  required
-                  :disabled="saving"
-                  :error="errors.fechaLlegadaAlmacen"
-                />
-
-                <AppInput
-                  v-model="serieGuiaIngreso"
-                  label="Serie GRE proveedor (referencial)"
-                  placeholder="T001"
-                  :disabled="saving"
-                />
-
-                <AppInput
-                  v-model="numeroGuiaIngreso"
-                  label="Número GRE proveedor (referencial)"
-                  placeholder="00000002"
-                  help="Número de la guía que envía el proveedor; es referencial."
-                  :disabled="saving"
-                />
-
-                <!--
-                  El lote no se tipea: sale de la ficha ICP de la planta, que
-                  además trae análisis y envases aprobados. Solo aplica cuando
-                  todos los cilindros de la orden son del mismo gas.
-                -->
-                <div v-if="admiteFichaIcp" class="sm:col-span-2">
-                  <span class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Lote y protocolo
-                  </span>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <AppBadge v-if="lote" size="sm" variant="light" color="success">
-                      Lote {{ lote }}
-                    </AppBadge>
-                    <span v-else class="text-xs text-gray-400">Sin ficha registrada</span>
-                    <button
-                      type="button"
-                      class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-                      :disabled="saving"
-                      @click="fichaModalOpen = true"
-                    >
-                      <AppIcon :name="ICONS.clipboardCheck" :size="13" />
-                      {{ lote ? 'Cambiar ficha' : 'Registrar lote y protocolo' }}
-                    </button>
-                  </div>
+              <template v-else>
+                <div class="mt-3 flex items-start gap-1.5">
+                  <AppCheckbox
+                    v-model="guardarBalonesAlmacen"
+                    label="Registrar retorno de cilindros"
+                    :disabled="saving"
+                  />
+                  <AppHelpTip
+                    text="Márcalo si los cilindros ya llegaron: quedan disponibles en el almacén y el gas ingresa con las cantidades que indiques en el detalle. Si aún están en planta, déjalo apagado: la factura queda vinculada y el retorno se registra después desde el documento de salida."
+                  />
                 </div>
 
-                <AppInput
-                  v-model="fechaPruebaHidrostatica"
-                  label="Prueba hidrostática (P.H.)"
-                  type="date"
-                  required
-                  :disabled="saving"
-                  :error="errors.fechaPruebaHidrostatica"
+                <div
+                  v-if="!guardarBalonesAlmacen"
+                  class="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                >
+                  <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
+                  <span>
+                    Mientras no marques el retorno, el gas de esta orden
+                    <strong class="font-semibold">no entra al stock</strong>. La factura queda
+                    vinculada; el retorno se registra acá o desde el documento de salida cuando
+                    lleguen los cilindros, con las cantidades de esta compra.
+                  </span>
+                </div>
+
+                <div
+                  v-if="guardarBalonesAlmacen"
+                  class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3"
+                >
+                  <AppInput
+                    v-model="fechaLlegadaAlmacen"
+                    label="Fecha llegada almacén"
+                    type="date"
+                    required
+                    :disabled="saving"
+                    :error="errors.fechaLlegadaAlmacen"
+                  />
+
+                  <AppInput
+                    v-model="serieGuiaIngreso"
+                    label="Serie GRE proveedor"
+                    placeholder="T001"
+                    help="Guía con la que el proveedor devuelve los cilindros; es referencial."
+                    :disabled="saving"
+                  />
+
+                  <AppInput
+                    v-model="numeroGuiaIngreso"
+                    label="Número GRE proveedor"
+                    placeholder="00000002"
+                    :disabled="saving"
+                  />
+                </div>
+              </template>
+
+              <div class="mt-4">
+                <p
+                  class="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
+                >
+                  Cilindros de la orden
+                </p>
+                <CompraRecargaPlantaDetalle
+                  :recarga="recargaPlantaDetalleQuery.data.value ?? null"
+                  :loading="recargaPlantaDetalleQuery.isFetching.value"
                 />
               </div>
-
             </template>
-
-            <div v-if="idRecargaPlantaNum" class="mt-4">
-              <p class="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                Detalle de la orden
-              </p>
-              <CompraRecargaPlantaDetalle
-                :recarga="recargaPlantaDetalleQuery.data.value ?? null"
-                :loading="recargaPlantaDetalleQuery.isFetching.value"
-              />
-            </div>
             </template>
-          </DetailSectionCard>  
+          </DetailSectionCard>
 
           <DetailSectionCard
             :title="tituloDetalleProductos"
@@ -329,13 +317,6 @@
                 {{ lineas.length }} {{ lineas.length === 1 ? 'ítem' : 'ítems' }}
               </span>
             </template>
-
-            <p
-              v-if="desdeRecargaExterna && idRecargaPlantaNum"
-              class="mb-3 text-xs text-gray-500 dark:text-gray-400"
-            >
-              Cantidad = lo que factura la planta; el stock entra solo al marcar retorno.
-            </p>
 
             <div class="mb-3">
               <CompraProductoField
@@ -359,28 +340,159 @@
               />
             </div>
 
-            <div
-              v-if="lineas.length === 0 && desdeRecargaExterna && idRecargaPlantaNum"
-              class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
-            >
-              <template v-if="recargaPlantaDetalleQuery.isFetching.value">
-                Cargando gases de la orden...
-              </template>
-              <template v-else>
-                Los balones de la orden no tienen gas asociado o capacidad. Asigna el gas en la
-                ficha del cilindro, o agrega un producto manualmente arriba.
-              </template>
+            <!--
+              Gas de la orden, en el mismo formato que "Productos según los balones"
+              del documento de salida: un producto por gas derivado de los
+              cilindros, con la capacidad total como referencia y un campo para
+              lo que la planta realmente cargó. Esa cantidad es la que entra al
+              stock al registrar el retorno; la capacidad solo pone el tope.
+            -->
+            <div v-if="desdeRecargaExterna && idRecargaPlantaNum" class="mb-4">
+              <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p
+                  class="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
+                >
+                  Gas que ingresa según los cilindros
+                </p>
+                <span class="text-[11px] text-gray-500 dark:text-gray-400">
+                  Lo que cargó la planta por cada gas; entra al stock con el retorno.
+                </span>
+              </div>
+
+              <div
+                v-if="lineasRecarga.length === 0"
+                class="rounded-xl border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+              >
+                <template v-if="recargaPlantaDetalleQuery.isFetching.value">
+                  Cargando gases de la orden...
+                </template>
+                <template v-else>
+                  Los cilindros de la orden no tienen gas asociado o capacidad. Asigna el gas en
+                  la ficha del cilindro, o agrega el producto manualmente arriba.
+                </template>
+              </div>
+
+              <div
+                v-else
+                class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
+              >
+                <div class="overflow-x-auto">
+                  <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 dark:bg-white/5">
+                      <tr>
+                        <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                          Producto
+                        </th>
+                        <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                          Tipos que lo cargan
+                        </th>
+                        <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                          Capacidad
+                        </th>
+                        <th class="w-36 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                          Ingresa
+                        </th>
+                        <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                          P. unit. (IGV)
+                        </th>
+                        <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                          Importe
+                        </th>
+                        <th class="w-12 px-2 py-2.5" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="lin in lineasRecarga"
+                        :key="lin.key"
+                        class="border-t border-gray-100 align-top dark:border-gray-800"
+                      >
+                        <td class="px-3 py-2.5">
+                          <p class="font-medium text-gray-800 dark:text-white/90">
+                            {{ lin.productoLabel }}
+                          </p>
+                          <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            {{ lin.cilindrosRecarga ?? 0 }}
+                            {{ lin.cilindrosRecarga === 1 ? 'cilindro' : 'cilindros' }}
+                          </p>
+                        </td>
+                        <td class="px-3 py-2.5">
+                          <div class="flex flex-wrap gap-1">
+                            <AppBadge
+                              v-for="tipo in lin.tiposRecarga ?? []"
+                              :key="`${lin.key}-${tipo.nombre}`"
+                              size="sm"
+                              variant="light"
+                              color="neutral"
+                            >
+                              {{ tipo.nombre }} ×{{ tipo.cantidad }}
+                            </AppBadge>
+                          </div>
+                        </td>
+                        <td
+                          class="px-3 py-2.5 text-right tabular-nums text-gray-700 dark:text-gray-300"
+                        >
+                          {{ formatCapacidadRecarga(lin) }}
+                        </td>
+                        <td class="px-3 py-2.5">
+                          <CantidadUnidadInput
+                            :ref="(el) => setCantidadRef(lin.key, el)"
+                            v-model="lin.cantidad"
+                            :name="`compra-cantidad-${lin.key}`"
+                            :nombre-unidad="lin.nombreUnidadMedida"
+                            es-gas
+                            :disabled="saving"
+                            :error="errorCantidadRecarga(lin)"
+                          />
+                        </td>
+                        <td class="px-3 py-2.5">
+                          <MoneyInput
+                            v-model="precioNuevoInputs[lin.key]"
+                            placeholder="0.00"
+                            :disabled="saving"
+                            :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                            @blur="onBlurPrecioNuevo(lin.key)"
+                          />
+                        </td>
+                        <td
+                          class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
+                        >
+                          {{ formatMoney(importeLinea(lin)) }}
+                        </td>
+                        <td class="px-2 py-2.5 text-center">
+                          <button
+                            type="button"
+                            title="Quitar gas"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-error-50 hover:text-error-500 disabled:opacity-40 dark:hover:bg-error-500/10"
+                            :disabled="saving"
+                            @click="quitarLineaNuevaPorKey(lin.key)"
+                          >
+                            <AppIcon :name="ICONS.trash" :size="15" />
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
+            <p
+              v-if="desdeRecargaExterna && idRecargaPlantaNum && lineasManuales.length"
+              class="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
+            >
+              Otros productos
+            </p>
+
             <div
-              v-else-if="lineas.length === 0"
+              v-if="lineas.length === 0 && !(desdeRecargaExterna && idRecargaPlantaNum)"
               class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
             >
               Busca un producto arriba para agregarlo al detalle.
             </div>
 
             <div
-              v-else
+              v-if="lineasManuales.length"
               class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
             >
               <div class="overflow-x-auto">
@@ -393,16 +505,10 @@
                       <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         Cant.
                       </th>
-                      <th
-                        v-if="mostrarColumnasPrecio"
-                        class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300"
-                      >
+                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         P. unit. (IGV)
                       </th>
-                      <th
-                        v-if="mostrarColumnasPrecio"
-                        class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300"
-                      >
+                      <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         Importe
                       </th>
                       <th class="w-12 px-2 py-2.5" />
@@ -410,7 +516,7 @@
                   </thead>
                   <tbody>
                     <tr
-                      v-for="(lin, index) in lineas"
+                      v-for="lin in lineasManuales"
                       :key="lin.key"
                       class="border-t border-gray-100 dark:border-gray-800"
                     >
@@ -423,86 +529,30 @@
                           >
                             {{ lin.nombreUnidadMedida }}
                           </span>
-                          <AppBadge
-                            v-if="lin.esGas"
-                            size="sm"
-                            variant="light"
-                            color="primary"
-                          >
+                          <AppBadge v-if="lin.esGas" size="sm" variant="light" color="primary">
                             Gas
                           </AppBadge>
-                          <AppBadge
-                            v-if="lin.esServicio"
-                            size="sm"
-                            variant="light"
-                            color="neutral"
-                          >
+                          <AppBadge v-if="lin.esServicio" size="sm" variant="light" color="neutral">
                             Servicio
                           </AppBadge>
-                          <AppBadge
-                            v-if="lin.esAlquilable"
-                            size="sm"
-                            variant="light"
-                            color="warning"
-                          >
+                          <AppBadge v-if="lin.esAlquilable" size="sm" variant="light" color="warning">
                             Alquilable
                           </AppBadge>
-                          <AppBadge
-                            v-if="lin.nombreCategoria"
-                            size="sm"
-                            variant="light"
-                            color="neutral"
-                          >
+                          <AppBadge v-if="lin.nombreCategoria" size="sm" variant="light" color="neutral">
                             {{ lin.nombreCategoria }}
                           </AppBadge>
-                          <AppBadge
-                            v-if="lin.presentacion"
-                            size="sm"
-                            variant="light"
-                            color="neutral"
-                          >
+                          <AppBadge v-if="lin.presentacion" size="sm" variant="light" color="neutral">
                             {{ lin.presentacion }}
                           </AppBadge>
-                          <AppBadge
-                            v-if="lin.marca"
-                            size="sm"
-                            variant="light"
-                            color="neutral"
-                          >
+                          <AppBadge v-if="lin.marca" size="sm" variant="light" color="neutral">
                             {{ lin.marca }}
                           </AppBadge>
-                          <AppBadge
-                            v-if="lin.cilindrosRecarga"
-                            size="sm"
-                            variant="light"
-                            color="warning"
-                          >
-                            {{ lin.cilindrosRecarga }} balón{{
-                              lin.cilindrosRecarga === 1 ? '' : 'es'
-                            }}
+                          <AppBadge v-if="lin.afectaStock" size="sm" variant="light" color="primary">
+                            Ingresa stock
                           </AppBadge>
-                          <AppBadge
-                            v-for="tipo in lin.tiposRecarga ?? []"
-                            :key="`${lin.key}-${tipo.nombre}`"
-                            size="sm"
-                            variant="light"
-                            color="neutral"
-                          >
-                            {{ tipo.nombre }} ×{{ tipo.cantidad }}
+                          <AppBadge v-else size="sm" variant="light" color="neutral">
+                            Sin stock
                           </AppBadge>
-                          <template v-if="!esLineaRecargaPlanta(lin.key)">
-                            <AppBadge
-                              v-if="lin.afectaStock"
-                              size="sm"
-                              variant="light"
-                              color="primary"
-                            >
-                              Ingresa stock
-                            </AppBadge>
-                            <AppBadge v-else size="sm" variant="light" color="neutral">
-                              Sin stock
-                            </AppBadge>
-                          </template>
                         </div>
                       </td>
                       <td class="px-3 py-2.5">
@@ -515,44 +565,27 @@
                           :disabled="saving"
                         />
                       </td>
-                      <template v-if="mostrarColumnasPrecio">
-                        <td class="px-3 py-2.5">
-                          <MoneyInput
-                            v-if="!esLineaRecargaPlanta(lin.key)"
-                            v-model="precioNuevoInputs[lin.key]"
-                            placeholder="0.00"
-                            :disabled="saving"
-                            :state="precioNuevoError(lin.key) ? 'error' : 'default'"
-                            @blur="onBlurPrecioNuevo(lin.key)"
-                          />
-                          <span
-                            v-else
-                            class="block text-right text-gray-400 dark:text-gray-500"
-                          >
-                            —
-                          </span>
-                        </td>
-                        <td
-                          class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
-                        >
-                          <template v-if="!esLineaRecargaPlanta(lin.key)">
-                            {{
-                              formatMoney(
-                                (parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0) *
-                                  Number(lin.cantidad),
-                              )
-                            }}
-                          </template>
-                          <span v-else class="text-gray-400 dark:text-gray-500">—</span>
-                        </td>
-                      </template>
+                      <td class="px-3 py-2.5">
+                        <MoneyInput
+                          v-model="precioNuevoInputs[lin.key]"
+                          placeholder="0.00"
+                          :disabled="saving"
+                          :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                          @blur="onBlurPrecioNuevo(lin.key)"
+                        />
+                      </td>
+                      <td
+                        class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
+                      >
+                        {{ formatMoney(importeLinea(lin)) }}
+                      </td>
                       <td class="px-2 py-2.5 text-center">
                         <button
                           type="button"
                           title="Quitar producto"
                           class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-error-50 hover:text-error-500 disabled:opacity-40 dark:hover:bg-error-500/10"
                           :disabled="saving"
-                          @click="quitarLineaNueva(index, lin.key)"
+                          @click="quitarLineaNuevaPorKey(lin.key)"
                         >
                           <AppIcon :name="ICONS.trash" :size="15" />
                         </button>
@@ -561,29 +594,29 @@
                   </tbody>
                 </table>
               </div>
+            </div>
 
-              <div
-                v-if="mostrarColumnasPrecio"
-                class="grid grid-cols-3 gap-3 border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
-              >
-                <div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Sub total</p>
-                  <p class="font-semibold text-gray-800 dark:text-white/90">
-                    {{ formatMoney(totalesDetalle.valorVenta) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">IGV (18%)</p>
-                  <p class="font-semibold text-gray-800 dark:text-white/90">
-                    {{ formatMoney(totalesDetalle.igv) }}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
-                  <p class="font-semibold text-gray-800 dark:text-white/90">
-                    {{ formatMoney(totalesDetalle.total) }}
-                  </p>
-                </div>
+            <div
+              v-if="lineas.length"
+              class="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
+            >
+              <div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Sub total</p>
+                <p class="font-semibold text-gray-800 dark:text-white/90">
+                  {{ formatMoney(totalesDetalle.valorVenta) }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">IGV (18%)</p>
+                <p class="font-semibold text-gray-800 dark:text-white/90">
+                  {{ formatMoney(totalesDetalle.igv) }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
+                <p class="font-semibold text-gray-800 dark:text-white/90">
+                  {{ formatMoney(totalesDetalle.total) }}
+                </p>
               </div>
             </div>
           </DetailSectionCard>
@@ -807,13 +840,6 @@
             </div>
           </DetailSectionCard>
         
-  <LoteProtocoloFormModal
-    v-model="fichaModalOpen"
-    mode="create"
-    :balones-preset="balonesPresetOrden"
-    :id-producto-gas-preset="gasUnicoOrden"
-    @guardada="onFichaRegistrada"
-  />
 </template>
       </FormCardsLayout>
 
@@ -879,7 +905,6 @@ import CompraPagoPreview from '@/modules/compras/components/CompraPagoPreview.vu
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
 import CompraRecargaPlantaDetalle from '@/modules/compras/components/CompraRecargaPlantaDetalle.vue'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
-import LoteProtocoloFormModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloFormModal.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import type { ListaOpcion } from '@/modules/catalogos/interfaces/lista-opcion.interface'
@@ -914,7 +939,7 @@ import {
   type CuotaPreviewItem,
 } from '@/modules/compras/utils/previewCuotasCompra'
 import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { formatListaOpcionLabel, formatListaOpcionNombre } from '@/shared/utils/formatListaOpcion'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ListaIds, TipoClienteIds } from '@/shared/constants/lista-ids'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -1039,30 +1064,6 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
           return Boolean(value)
         },
       ),
-      lote: optionalString().test(
-        'retorno-lote',
-        'El lote es obligatorio al registrar el retorno',
-        function (value) {
-          if (!this.parent.guardarBalonesAlmacen) return true
-          return Boolean(value?.trim())
-        },
-      ),
-      fechaVencimientoLote: optionalString().test(
-        'retorno-venc',
-        'El vencimiento del lote es obligatorio al registrar el retorno',
-        function (value) {
-          if (!this.parent.guardarBalonesAlmacen) return true
-          return Boolean(value)
-        },
-      ),
-      fechaPruebaHidrostatica: optionalString().test(
-        'retorno-ph',
-        'La P.H. es obligatoria al registrar el retorno',
-        function (value) {
-          if (!this.parent.guardarBalonesAlmacen) return true
-          return Boolean(value)
-        },
-      ),
       serieGuiaIngreso: optionalString(),
       numeroGuiaIngreso: optionalString(),
       idAlmacen: requiredOnCreate('El almacén'),
@@ -1084,9 +1085,6 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
     idRecargaPlanta: '' as string | number,
     guardarBalonesAlmacen: false,
     fechaLlegadaAlmacen: '',
-    lote: '',
-    fechaVencimientoLote: '',
-    fechaPruebaHidrostatica: '',
     serieGuiaIngreso: '',
     numeroGuiaIngreso: '',
     idAlmacen: '' as string | number,
@@ -1109,9 +1107,6 @@ const [idRecargaPlanta] = defineField('idRecargaPlanta')
 const desdeRecargaExterna = ref(false)
 const [guardarBalonesAlmacen] = defineField('guardarBalonesAlmacen')
 const [fechaLlegadaAlmacen] = defineField('fechaLlegadaAlmacen')
-const [lote] = defineField('lote')
-const [fechaVencimientoLote] = defineField('fechaVencimientoLote')
-const [fechaPruebaHidrostatica] = defineField('fechaPruebaHidrostatica')
 const [serieGuiaIngreso] = defineField('serieGuiaIngreso')
 const [numeroGuiaIngreso] = defineField('numeroGuiaIngreso')
 const [idAlmacen, idAlmacenAttrs] = defineField('idAlmacen')
@@ -1178,14 +1173,18 @@ function onBlurPrecioEdit(id: number) {
   if (n != null) draft.precio = roundMoney(n).toFixed(2)
 }
 
-function quitarLineaNueva(index: number, key: string) {
-  lineas.splice(index, 1)
+function quitarLineaNuevaPorKey(key: string) {
+  const index = lineas.findIndex((lin) => lin.key === key)
+  if (index >= 0) lineas.splice(index, 1)
   delete precioNuevoInputs[key]
+}
+
+function importeLinea(lin: CompraLineaForm) {
+  return (parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0) * Number(lin.cantidad)
 }
 
 function validarPreciosLineas(mostrarToast = true): boolean {
   for (const lin of lineas) {
-    if (esLineaRecargaPlanta(lin.key)) continue
     if (!esPrecioLineaValido(precioNuevoInputs[lin.key])) {
       if (mostrarToast) {
         toastWarning(
@@ -1258,7 +1257,14 @@ const tipoComprobanteOptions = computed(() => {
   return toSelectOptions(sorted)
 })
 const tipoRegistroOptions = computed(() => toSelectOptions(tipoRegistroQuery.data.value))
-const categoriaGastoOptions = computed(() => toSelectOptions(categoriaGastoQuery.data.value))
+// La descripción de estas opciones es una aclaración larga, no una etiqueta:
+// el select muestra el nombre (toSelectOptions prefiere la descripción).
+const categoriaGastoOptions = computed(() =>
+  (categoriaGastoQuery.data.value ?? []).map((opcion) => ({
+    value: opcion.id,
+    label: formatListaOpcionNombre(opcion.nombre),
+  })),
+)
 const monedaOptions = computed(() => toSelectOptions(monedaQuery.data.value))
 
 const proveedorBuscar = ref('')
@@ -1307,11 +1313,18 @@ const recargaPlantaOptions = computed(() =>
     .filter((rp) => !rp.id_comprobante_compra)
     .map((rp) => {
       const numero = rp.numero || `RP-${rp.id}`
-      const cilindros = rp.total_cilindros ?? 0
       const yaRetorno = Boolean(rp.fecha_llegada_almacen) || rp.nombre_estado === 'RETORNADO'
+      const partes = [numero, formatListDate(rp.fecha_salida)]
+      // total_items mezclaba cilindros y líneas de gas; el listado ya los separa.
+      if (rp.total_cilindros != null) {
+        partes.push(`${rp.total_cilindros} cilindro${rp.total_cilindros === 1 ? '' : 's'}`)
+      }
+      if (rp.total_productos != null) {
+        partes.push(`${rp.total_productos} producto${rp.total_productos === 1 ? '' : 's'}`)
+      }
       return {
         value: rp.id,
-        label: `${numero} · ${formatListDate(rp.fecha_salida)} · ${cilindros} cilindro${cilindros === 1 ? '' : 's'}`,
+        label: partes.join(' · '),
         // El badge avisa que el retorno ya está hecho; la orden sigue siendo
         // elegible porque lo que falta es justamente vincular su factura.
         badges: yaRetorno
@@ -1333,50 +1346,9 @@ const tituloDetalleProductos = computed(() =>
 )
 const helpDetalleProductos = computed(() =>
   desdeRecargaExterna.value && idRecargaPlantaNum.value
-    ? 'Gases de la orden: solo cantidad (suma de capacidades, editable). Sin precio en estas líneas; el stock entra al marcar retorno. Puedes agregar extras con precio abajo.'
+    ? 'Gases de la orden: indica cuánto ingresó de cada uno (tope: la capacidad de los cilindros) y su precio. El stock entra al registrar el retorno, con estas cantidades. Puedes agregar extras abajo.'
     : 'Opcional: puedes registrar la compra sin líneas y agregarlas después. Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros).',
 )
-
-// ---- Ficha ICP de la orden ----
-const fichaModalOpen = ref(false)
-
-const balonesDeLaOrden = computed(
-  () => recargaPlantaDetalleQuery.data.value?.detalles ?? [],
-)
-
-/**
- * Una ficha ICP cubre un solo lote de un solo gas: solo se pide cuando todos
- * los cilindros de la orden coinciden. Si vienen mezclados, no hay ficha que
- * los describa a todos y no tiene sentido pedirla.
- */
-const gasUnicoOrden = computed(() => {
-  const balones = balonesDeLaOrden.value
-  if (!balones.length) return null
-  const primero = balones[0].id_producto_gas_balon
-  if (primero == null) return null
-  return balones.every((b) => b.id_producto_gas_balon === primero) ? primero : null
-})
-
-const admiteFichaIcp = computed(() => gasUnicoOrden.value != null)
-
-const balonesPresetOrden = computed(() =>
-  balonesDeLaOrden.value
-    .filter((balon) => balon.id_balon != null)
-    .map((balon) => ({
-      idBalon: balon.id_balon,
-      codigoBalon: balon.codigo_balon ?? '',
-      nombreTipoBalon: balon.nombre_tipo_balon,
-      numeroSerie: balon.numero_serie_balon,
-    })),
-)
-
-// La ficha ya quedó aplicada a los cilindros; acá solo se refleja su número.
-function onFichaRegistrada() {
-  fichaModalOpen.value = false
-  void recargaPlantaDetalleQuery.refetch()
-}
-
-const toDateInput = (value?: string | null) => (value ? String(value).slice(0, 10) : '')
 
 const suppressRecargaPlantaReset = ref(false)
 
@@ -1394,9 +1366,6 @@ function queryId(key: string): number | null {
 function resetRetornoFields() {
   guardarBalonesAlmacen.value = false
   fechaLlegadaAlmacen.value = ''
-  lote.value = ''
-  fechaVencimientoLote.value = ''
-  fechaPruebaHidrostatica.value = ''
   serieGuiaIngreso.value = ''
   numeroGuiaIngreso.value = ''
 }
@@ -1467,9 +1436,49 @@ function esLineaRecargaPlanta(key: string) {
   return key.startsWith(RECARGA_LINEA_PREFIX)
 }
 
-const mostrarColumnasPrecio = computed(
-  () => lineas.length === 0 || lineas.some((lin) => !esLineaRecargaPlanta(lin.key)),
+const lineasRecarga = computed(() => lineas.filter((lin) => esLineaRecargaPlanta(lin.key)))
+const lineasManuales = computed(() => lineas.filter((lin) => !esLineaRecargaPlanta(lin.key)))
+
+/** La orden ya retornó desde el documento de salida: el gas y los cilindros ya ingresaron. */
+const ordenYaRetorno = computed(() =>
+  Boolean(recargaPlantaDetalleQuery.data.value?.fecha_llegada_almacen),
 )
+const fechaRetornoOrdenLabel = computed(
+  () => formatListDate(recargaPlantaDetalleQuery.data.value?.fecha_llegada_almacen) || '—',
+)
+
+function formatCapacidadRecarga(lin: CompraLineaForm) {
+  const cap = Number(lin.capacidadRecarga ?? 0)
+  if (!(cap > 0)) return '—'
+  const um = lin.nombreUnidadMedida?.trim()
+  const texto = cap.toLocaleString('es-PE', { maximumFractionDigits: 2 })
+  return um ? `${texto} ${um}` : texto
+}
+
+/**
+ * Lo que ingresa por gas lo pone el cajero, pero la planta no puede cargar más
+ * de lo que cabe en los cilindros que salieron: la capacidad total es el tope.
+ */
+function errorCantidadRecarga(lin: CompraLineaForm): string | undefined {
+  const cantidad = Number(lin.cantidad)
+  if (!(cantidad > 0)) return 'Indica cuánto ingresa'
+  const cap = Number(lin.capacidadRecarga ?? 0)
+  if (cap > 0 && cantidad > cap) {
+    return `Máximo ${cap.toLocaleString('es-PE', { maximumFractionDigits: 2 })} (capacidad de los cilindros)`
+  }
+  return undefined
+}
+
+function validarCantidadesRecarga(): boolean {
+  for (const lin of lineasRecarga.value) {
+    const error = errorCantidadRecarga(lin)
+    if (error) {
+      toastWarning(`${lin.productoLabel}: ${error.toLowerCase()}`)
+      return false
+    }
+  }
+  return true
+}
 
 /** Al llegar por deep-link no hay proveedor todavía: se toma el de la orden. */
 async function prefillProveedorAlmacenDesdeRecarga(recarga: {
@@ -1500,8 +1509,10 @@ function quitarLineasDeRecargaPlanta() {
 function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
   quitarLineasDeRecargaPlanta()
 
-  // Una fila por gas (como DocSalida "Productos según los balones"): cantidad =
-  // suma de capacidades reales de los cilindros; precio de compra editable.
+  // Una fila por gas (como DocSalida "Productos según los balones"): la
+  // capacidad total de los cilindros es la referencia y el tope; la cantidad
+  // que ingresa arranca igual a ella y el cajero la ajusta a lo que la planta
+  // cargó. Es esa cantidad la que entra al stock al registrar el retorno.
   const grupos = new Map<number, CompraLineaForm>()
   for (const balon of detalles) {
     const idGas = balon.id_producto_gas_balon ?? balon.id_producto
@@ -1520,6 +1531,7 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
     const existente = grupos.get(idGas)
     if (existente) {
       existente.cantidad += capacidad
+      existente.capacidadRecarga = (existente.capacidadRecarga ?? 0) + capacidad
       existente.cilindrosRecarga = (existente.cilindrosRecarga ?? 0) + 1
       const tipos = existente.tiposRecarga ?? []
       const tipo = tipos.find((t) => t.nombre === nombreTipo)
@@ -1542,6 +1554,7 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
         balon.unidad_capacidad_balon ?? balon.nombre_unidad_medida ?? null,
       esGas: true,
       afectaStock: false,
+      capacidadRecarga: capacidad,
       cilindrosRecarga: 1,
       tiposRecarga: [{ nombre: nombreTipo, cantidad: 1 }],
     })
@@ -1554,7 +1567,7 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
   lineas.push(...grupos.values())
   if (grupos.size > 0) {
     toastSuccess(
-      `${grupos.size} línea${grupos.size === 1 ? '' : 's'} de costo de recarga (sin ingreso de stock). El gas entra al marcar el retorno de planta.`,
+      `${grupos.size} gas${grupos.size === 1 ? '' : 'es'} de la orden cargado${grupos.size === 1 ? '' : 's'}. Indica cuánto ingresó de cada uno y su precio.`,
     )
   }
 }
@@ -1577,14 +1590,13 @@ watch(
     if (recargaRetornoPrefillFor.value !== id) {
       recargaRetornoPrefillFor.value = id
       void prefillProveedorAlmacenDesdeRecarga(data)
-      lote.value = data.lote?.trim() || ''
-      fechaVencimientoLote.value = toDateInput(data.fecha_vencimiento_lote)
-      fechaPruebaHidrostatica.value = toDateInput(data.fecha_prueba_hidrostatica)
-      fechaLlegadaAlmacen.value = toDateInput(data.fecha_llegada_almacen)
       serieGuiaIngreso.value = data.serie_guia_ingreso ?? ''
       numeroGuiaIngreso.value = data.numero_guia_ingreso ?? ''
+      // Retorno ya hecho desde el documento: no se vuelve a marcar aquí (antes
+      // se auto-marcaba y la compra repetía el ingreso de los cilindros).
       if (data.fecha_llegada_almacen) {
-        guardarBalonesAlmacen.value = true
+        guardarBalonesAlmacen.value = false
+        fechaLlegadaAlmacen.value = ''
       }
     }
 
@@ -1639,13 +1651,7 @@ const esCreditoPago = computed(
 const fechaParaCuotas = computed(() =>
   isEdit.value ? (cabecera.value?.fecha ?? '').slice(0, 10) : String(fecha.value || ''),
 )
-const totalLineas = computed(() =>
-  lineas.reduce((acc, lin) => {
-    if (esLineaRecargaPlanta(lin.key)) return acc
-    const precio = parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0
-    return acc + precio * Number(lin.cantidad)
-  }, 0),
-)
+const totalLineas = computed(() => lineas.reduce((acc, lin) => acc + importeLinea(lin), 0))
 const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value))
 const totalParaCuotas = computed(() => {
   if (!isEdit.value) return totalesDetalle.value.total
@@ -1934,9 +1940,6 @@ function resetCreateForm() {
       idRecargaPlanta: '',
       guardarBalonesAlmacen: false,
       fechaLlegadaAlmacen: '',
-      lote: '',
-      fechaVencimientoLote: '',
-      fechaPruebaHidrostatica: '',
       serieGuiaIngreso: '',
       numeroGuiaIngreso: '',
       idAlmacen: '',
@@ -1978,9 +1981,6 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
       idRecargaPlanta: c.id_recarga_planta ?? '',
       guardarBalonesAlmacen: false,
       fechaLlegadaAlmacen: '',
-      lote: '',
-      fechaVencimientoLote: '',
-      fechaPruebaHidrostatica: '',
       serieGuiaIngreso: '',
       numeroGuiaIngreso: '',
       idAlmacen: c.id_almacen ?? '',
@@ -2066,9 +2066,6 @@ watch(
         idRecargaPlanta: '',
         guardarBalonesAlmacen: false,
         fechaLlegadaAlmacen: '',
-        lote: '',
-        fechaVencimientoLote: '',
-        fechaPruebaHidrostatica: '',
         serieGuiaIngreso: '',
         numeroGuiaIngreso: '',
         idAlmacen: '',
@@ -2144,31 +2141,25 @@ const onSubmit = handleSubmit(async (values) => {
 
   if (
     toOptionalNumber(values.idRecargaPlanta) != null &&
-    Boolean(values.guardarBalonesAlmacen)
+    Boolean(values.guardarBalonesAlmacen) &&
+    !values.fechaLlegadaAlmacen
   ) {
-    if (
-      !values.fechaLlegadaAlmacen ||
-      !String(values.lote ?? '').trim() ||
-      !values.fechaVencimientoLote ||
-      !values.fechaPruebaHidrostatica
-    ) {
-      toastWarning(
-        'Para registrar el retorno complete fecha de llegada, lote, vencimiento y P.H.',
-      )
-      return
-    }
+    toastWarning('Para registrar el retorno indica la fecha de llegada al almacén')
+    return
   }
 
+  if (!validarCantidadesRecarga()) return
+
   const detalles = lineas.map((l) => {
-    const esRecarga = esLineaRecargaPlanta(l.key)
-    const precioParsed = esRecarga ? null : parsePrecioLinea(precioNuevoInputs[l.key])
+    const precioParsed = parsePrecioLinea(precioNuevoInputs[l.key])
     return {
       idProducto: l.idProducto,
       cantidad: Number(l.cantidad),
       precioUnitario:
         precioParsed != null && precioParsed > 0 ? roundMoney(precioParsed) : undefined,
       idUnidadMedida: l.idUnidadMedida ?? undefined,
-      // Costo de recarga planta: no INGRESO; el gas lo ingresa bal_finalizar_recarga_planta.
+      // Gas de la orden: la línea es costo, no INGRESO. La cantidad es la que
+      // bal_finalizar_recarga_planta lleva al stock al registrar el retorno.
       ...(l.afectaStock === false ? { afectaStock: false } : {}),
     }
   })
@@ -2187,13 +2178,6 @@ const onSubmit = handleSubmit(async (values) => {
     guardarBalonesAlmacen: registrarRetorno || undefined,
     fechaLlegadaAlmacen: registrarRetorno
       ? String(values.fechaLlegadaAlmacen || '').trim() || undefined
-      : undefined,
-    lote: registrarRetorno ? String(values.lote ?? '').trim() || undefined : undefined,
-    fechaVencimientoLote: registrarRetorno
-      ? String(values.fechaVencimientoLote || '').trim() || undefined
-      : undefined,
-    fechaPruebaHidrostatica: registrarRetorno
-      ? String(values.fechaPruebaHidrostatica || '').trim() || undefined
       : undefined,
     serieGuiaIngreso: conRecarga
       ? String(values.serieGuiaIngreso ?? '').trim() || undefined
