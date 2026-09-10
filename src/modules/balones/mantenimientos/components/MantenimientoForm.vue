@@ -333,7 +333,7 @@ import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composab
 import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import type { ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppSelect, AppSelectSearch, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
@@ -378,10 +378,9 @@ const tipoItemOptions = [
   { value: 'CILINDRO', label: 'Cilindro (balón)' },
   { value: 'PRODUCTO', label: 'Producto (regulador / accesorio)' },
 ]
-const idProducto = ref<number | ''>('')
 const productoBuscar = ref('')
-const productoFilters = ref({ pagina: 1, limite: 100 })
-const productosQuery = useProductosQuery(productoFilters, open)
+const productoFilters = ref<ProductoListFilters>({ pagina: 1, limite: 100 })
+const productosQuery = useProductosQuery(productoFilters)
 
 let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
 watch(productoBuscar, (term) => {
@@ -566,7 +565,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting, meta } = use
 })
 
 const [idBalon, idBalonAttrs] = defineField('idBalon')
-const [idProductoField] = defineField('idProducto')
+const [idProducto] = defineField('idProducto')
 const [idTipoMantenimiento, idTipoMantenimientoAttrs] = defineField('idTipoMantenimiento')
 const [idEstado, idEstadoAttrs] = defineField('idEstado')
 const [fechaIngreso, fechaIngresoAttrs] = defineField('fechaIngreso')
@@ -673,10 +672,14 @@ const syncFormValues = () => {
 
 const resetCreateForm = () => {
   balonBuscar.value = ''
+  productoBuscar.value = ''
+  tipoItem.value = 'CILINDRO'
   balonesFilters.value = { pagina: 1, limite: 50 }
+  productoFilters.value = { pagina: 1, limite: 100 }
   resetForm({
     values: {
       idBalon: '',
+      idProducto: '',
       idTipoMantenimiento: '',
       idEstado: '',
       fechaIngreso: today(),

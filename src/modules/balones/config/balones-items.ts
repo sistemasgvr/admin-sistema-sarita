@@ -43,11 +43,11 @@ export const balonesMenuItems: BalonesMenuItem[] = [
   {
     key: 'recojos',
     title: 'Recojos',
-    path: '/admin/balones/recojos',
+    // Redirige a operativa/actividades; no mostrar en menú.
+    path: '/admin/operativa/actividades',
     icon: ICONS.arrowDownToLine,
-    permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
+    permission: PermisoBanderas.ACTIVIDADES_LISTAR,
     phase: 5,
-    // Absorbido por operativa/actividades; no mostrar en menú.
     implemented: false,
   },
   {

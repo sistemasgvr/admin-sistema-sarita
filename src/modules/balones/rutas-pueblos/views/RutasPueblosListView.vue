@@ -336,11 +336,7 @@ function actionsFor(row: RutaPueblo): ActionMenuItem[] {
   if (canEdit.value && estado === 'ABIERTA') {
     items.push({ key: 'iniciar', label: 'Iniciar ruta', icon: ICONS.mapPin })
   }
-  if (
-    canEdit.value &&
-    canView.value &&
-    (estado === 'ABIERTA' || estado === 'EN_RUTA')
-  ) {
+  if (canEdit.value && canView.value && estado === 'EN_RUTA') {
     items.push({ key: 'retorno', label: 'Registrar retorno', icon: ICONS.truck })
   }
   if (

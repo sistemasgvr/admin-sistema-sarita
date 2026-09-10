@@ -43,10 +43,10 @@ export const balonesHubItems: BalonesHubItem[] = [
     key: 'recojos',
     title: 'Recojos',
     description: 'Visitas para recoger envases en préstamo y accesorios en alquiler.',
-    path: '/admin/balones/recojos',
+    // Redirige a operativa/actividades; no mostrar en hub.
+    path: '/admin/operativa/actividades',
     icon: ICONS.truck,
-    permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
-    // Absorbido por operativa/actividades; no mostrar en hub.
+    permission: PermisoBanderas.ACTIVIDADES_LISTAR,
     implemented: false,
   },
   {

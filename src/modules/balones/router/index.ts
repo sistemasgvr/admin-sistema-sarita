@@ -181,14 +181,10 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        // Absorbido por operativa/actividades (recojos dual path).
         path: 'recojos',
         name: 'admin-balones-recojos',
-        component: () => import('@/modules/balones/recojos/views/RecojosTabsView.vue'),
-        meta: {
-          title: 'Recojos',
-          module: 'balones',
-          permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
-        },
+        redirect: { name: 'admin-operativa-actividades' },
       },
       {
         path: 'alquileres/antiguedad',

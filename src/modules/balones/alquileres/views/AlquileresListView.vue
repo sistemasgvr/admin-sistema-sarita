@@ -234,10 +234,8 @@ const canDevolver = computed(
     authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_EDITAR) ||
     authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR),
 )
-const canProgramarRecojo = computed(
-  () =>
-    authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR) ||
-    authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR),
+const canProgramarRecojo = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
 )
 
 const isLoading = computed(

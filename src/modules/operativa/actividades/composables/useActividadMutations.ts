@@ -1,4 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { alquileresQueryKeys } from '@/modules/balones/alquileres/constants/alquileresQueryKeys'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { prestamosQueryKeys } from '@/modules/balones/prestamos/constants/prestamosQueryKeys'
 import { actividadesQueryKeys } from '@/modules/operativa/actividades/constants/actividadesQueryKeys'
 import { comprobantesQueryKeys } from '@/modules/ventas/comprobantes/constants/comprobantesQueryKeys'
 import { actividadesService } from '@/modules/operativa/actividades/services/actividades.service'
@@ -11,6 +14,13 @@ import type {
   UpdateActividadPayload,
 } from '@/modules/operativa/actividades/interfaces/actividad.interface'
 import { toastApiError, toastInfo, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+
+/** Tras mutaciones de recojo, refrescar también prestamos/alquileres/cilindros. */
+function invalidateRecojoRelacionados(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+}
 
 export function useCreateActividadMutation() {
   const queryClient = useQueryClient()
@@ -57,6 +67,7 @@ export function useCancelarActividadMutation() {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
+      invalidateRecojoRelacionados(queryClient)
       toastSuccess('Reparto cancelado. El comprobante quedó disponible.')
     },
     onError: (error) => {
@@ -172,6 +183,7 @@ export function useGenerarRecojosMutation() {
     mutationFn: (payload: GenerarRecojosPayload) => actividadesService.generarRecojos(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      invalidateRecojoRelacionados(queryClient)
       if (data.creadas === 0) {
         toastInfo(
           data.yaExistian > 0
@@ -200,6 +212,7 @@ export function useCrearRecojoMutation() {
       actividadesService.crearRecojo(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      invalidateRecojoRelacionados(queryClient)
       toastSuccess(
         data.creada
           ? 'Recojo programado correctamente'
@@ -220,6 +233,7 @@ export function useCrearRecojoPrestamoMutation() {
       actividadesService.crearRecojoPrestamo(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      invalidateRecojoRelacionados(queryClient)
       toastSuccess(
         data.creada
           ? 'Recojo programado correctamente'
@@ -291,6 +305,7 @@ export function useIniciarRecojoMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
+      invalidateRecojoRelacionados(queryClient)
       toastSuccess('Recojo iniciado: la actividad quedó en ruta')
     },
     onError: (error) => {
@@ -319,6 +334,7 @@ export function useCulminarRecojoMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
+      invalidateRecojoRelacionados(queryClient)
       toastSuccess('Recojo culminado: los cilindros ingresaron al almacén')
     },
     onError: (error) => {

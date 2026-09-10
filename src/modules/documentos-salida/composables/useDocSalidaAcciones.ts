@@ -67,9 +67,20 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
     () => documento.value != null && !esBorrador.value && !anulada.value && !emitido.value,
   )
 
-  const puedeEmitir = computed(() => Boolean(documento.value?.serie) && !emitido.value)
+  const puedeEmitir = computed(
+    () =>
+      Boolean(documento.value?.serie) &&
+      !emitido.value &&
+      authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_EMITIR),
+  )
 
-  const puedeAnular = computed(() => !anulada.value && !emitido.value && puedeEditar.value)
+  /** Anular en API usa DOCUMENTOS_SALIDA_ELIMINAR. */
+  const puedeAnular = computed(
+    () =>
+      !anulada.value &&
+      !emitido.value &&
+      authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_ELIMINAR),
+  )
 
   const puedeAsociarLote = computed(
     () =>

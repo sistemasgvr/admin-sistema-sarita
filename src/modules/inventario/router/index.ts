@@ -42,7 +42,11 @@ export const inventarioRoutes: RouteRecordRaw[] = [
     meta: {
       title: 'Documento de salida',
       module: 'inventario',
-      permission: PermisoBanderas.DOCUMENTOS_SALIDA_VER,
+      // Misma pantalla para ver y editar: basta con VER o EDITAR.
+      anyPermission: [
+        PermisoBanderas.DOCUMENTOS_SALIDA_VER,
+        PermisoBanderas.DOCUMENTOS_SALIDA_EDITAR,
+      ],
     },
   },
 ]

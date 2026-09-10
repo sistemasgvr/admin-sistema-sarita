@@ -163,7 +163,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
 import { hoyIsoLima } from '@/shared/utils/date'
 import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
-import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
+import type { ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 
 const open = defineModel<boolean>({ default: false })
 const emit = defineEmits<{ saved: [] }>()
@@ -191,8 +191,8 @@ const choferOptions = computed(() =>
 )
 
 // Productos
-const productosFilters = ref({ pagina: 1, limite: 200 })
-const productosQuery = useProductosQuery(productosFilters, open)
+const productosFilters = ref<ProductoListFilters>({ pagina: 1, limite: 200 })
+const productosQuery = useProductosQuery(productosFilters)
 
 const productoOptionsAll = computed(() =>
   (productosQuery.data.value?.data ?? [])

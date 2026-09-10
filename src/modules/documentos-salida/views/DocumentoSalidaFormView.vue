@@ -419,7 +419,7 @@
                 {{ documento.serie ? 'Editar datos GRE' : 'Convertir a guía de remisión' }}
               </button>
               <button
-                v-if="documento.serie && !documento.emitido_sunat"
+                v-if="puedeEmitir"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 :disabled="emitirMutation.isPending.value"
@@ -470,7 +470,7 @@
               </button>
             </div>
             <button
-              v-if="documento.nombre_estado_ciclo !== 'ANULADA' && !documento.emitido_sunat"
+              v-if="puedeAnular"
               type="button"
               class="inline-flex items-center gap-1.5 rounded-lg border border-error-200 bg-error-50/40 px-3.5 py-2 text-xs font-semibold text-error-600 shadow-theme-xs transition hover:bg-error-50 dark:border-error-700 dark:text-error-400"
               @click="anularModalOpen = true"
@@ -910,7 +910,7 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
@@ -1045,6 +1045,17 @@ const createMutation = useCreateDocumentoSalidaMutation()
 // Viven en memoria porque doc_salida_detalle necesita un id_doc_salida, y ese
 // id no existe hasta que se guarda la cabecera. Al crear se persisten en orden.
 const lineasBorrador = ref<DocSalidaLineaBorrador[]>([])
+
+// Al cambiar almacén en un documento nuevo, el stock y los cilindros disponibles
+// dejan de aplicar: se limpia el detalle en borrador para no mezclar orígenes.
+watch(
+  () => form.idAlmacen,
+  () => {
+    if (documentoId.value) return
+    if (!lineasBorrador.value.length) return
+    lineasBorrador.value = []
+  },
+)
 const guardandoLineas = ref(false)
 
 /** Las líneas en borrador, en la forma que consume el editor. */
@@ -1222,6 +1233,8 @@ const {
   puedeEditarDatos,
   puedeRegistrarRetorno,
   puedeConvertirGre,
+  puedeEmitir,
+  puedeAnular,
   puedeAsociarLote: puedeRegistrarLote,
 } = useDocSalidaAcciones(documento)
 
@@ -1233,7 +1246,9 @@ const isRecargaPlanta = computed(
 
 const puedeEditarDetalle = computed(
   () =>
-    documento.value?.nombre_estado_ciclo === 'BORRADOR' && !documento.value?.detalle_desde_venta,
+    authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_EDITAR) &&
+    documento.value?.nombre_estado_ciclo === 'BORRADOR' &&
+    !documento.value?.detalle_desde_venta,
 )
 
 
@@ -1376,8 +1391,36 @@ async function onGuardarObservaciones() {
 
 // ---- Generar / anular ----
 const generarMutation = useGenerarDocSalidaMutation()
+
+/** Hay cilindros con gas derivado pero ninguna línea de gas con cantidad > 0. */
+function gasSinCantidadEnDetalle(): boolean {
+  const detalle = documento.value?.detalle ?? []
+  const cilindros = detalle.filter((linea) => linea.id_balon != null)
+  if (!cilindros.length) return false
+
+  const idsGas = new Set(
+    cilindros
+      .map((linea) => linea.id_producto_gas_balon)
+      .filter((id): id is number => id != null),
+  )
+  if (!idsGas.size) return false
+
+  return [...idsGas].every((idGas) => {
+    const cantidad = detalle
+      .filter((linea) => linea.id_producto === idGas)
+      .reduce((sum, linea) => sum + Number(linea.cantidad ?? 0), 0)
+    return cantidad <= 0
+  })
+}
+
 async function onGenerar() {
   if (!documento.value) return
+  if (gasSinCantidadEnDetalle()) {
+    toastWarning(
+      'Hay cilindros en el detalle pero todas las líneas de gas tienen cantidad 0. Indica la cantidad de gas antes de generar.',
+    )
+    return
+  }
   await generarMutation.mutateAsync({
     id: documento.value.id,
     idUsuarioAuditoria: idUsuarioAuditoria.value,
@@ -1401,12 +1444,29 @@ async function onAnular() {
 }
 
 // ---- Reparto (actividad) ----
-const puedeAgregarReparto = computed(
-  () =>
-    Boolean(documento.value) &&
-    documento.value?.nombre_estado_ciclo !== 'ANULADA' &&
-    Boolean(documento.value?.id_cliente ?? documento.value?.id_destinatario),
-)
+const puedeAgregarReparto = computed(() => {
+  const doc = documento.value
+  if (!doc) return false
+
+  const estado = doc.nombre_estado_ciclo
+  // Solo órdenes ya generadas (o emitidas a SUNAT); no borrador ni anulada.
+  if (estado !== 'GENERADA' && estado !== 'EMITIDA_SUNAT') return false
+
+  const tieneClienteODestinatario = Boolean(doc.id_cliente ?? doc.id_destinatario)
+  if (!tieneClienteODestinatario) return false
+
+  // En venta conviene tener dirección de entrega antes de programar el reparto.
+  if (doc.nombre_tipo_orden === 'ORDEN_SALIDA_VENTA') {
+    const tieneDireccion = Boolean(
+      doc.id_direccion_cliente ||
+        doc.direccion_entrega?.trim() ||
+        doc.direccion_llegada?.trim(),
+    )
+    if (!tieneDireccion) return false
+  }
+
+  return true
+})
 
 function abrirReparto() {
   const doc = documento.value

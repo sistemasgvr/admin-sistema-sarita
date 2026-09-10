@@ -216,10 +216,8 @@ const canDevolver = computed(
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
     authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
 )
-const canProgramarRecojo = computed(
-  () =>
-    authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR) ||
-    authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR),
+const canProgramarRecojo = computed(() =>
+  authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
 )
 
 const breadcrumbItems = computed(() => [
