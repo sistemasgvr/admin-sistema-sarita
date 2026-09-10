@@ -52,23 +52,44 @@ export function esEstadoActividadEditableEnFormulario(nombreEstado?: string | nu
   return n === 'PENDIENTE' || n === 'PROGRAMADA' || n === 'PENDIENTE_REALIZAR'
 }
 
+type ItemClaseRef = {
+  id_balon?: number | null
+  id_producto?: number | null
+  /** Gas del balón (b.id_producto_gas), si el API lo expone. */
+  id_producto_gas?: number | null
+  nombre_producto?: string | null
+  /** Nombre del gas ligado al balón del cilindro. */
+  nombre_producto_gas?: string | null
+}
+
 /**
- * Clase del ítem dentro de una entrega, en el mismo orden de precedencia que
- * age_clasificar_items_actividad: el cilindro manda, el gas se reconoce por ser
- * el producto de algún cilindro de la misma actividad, y el resto es accesorio.
+ * Clase del ítem dentro de una entrega, alineada a age_clasificar_items_actividad:
+ * CILINDRO si tiene id_balon; GAS si su id_producto es el gas de algún cilindro
+ * (b.id_producto_gas); el resto es ACCESORIO.
  */
 export function claseItemActividad(
-  item: { id_balon?: number | null; id_producto?: number | null },
-  items: Array<{ id_balon?: number | null; id_producto?: number | null }>,
+  item: ItemClaseRef,
+  items: ItemClaseRef[],
 ): ClaseItemActividad {
   if (item.id_balon != null) return 'CILINDRO'
-  if (
-    item.id_producto != null &&
-    items.some((otro) => otro.id_balon != null && otro.id_producto === item.id_producto)
-  ) {
-    return 'GAS'
-  }
-  return 'ACCESORIO'
+  if (item.id_producto == null) return 'ACCESORIO'
+
+  const nombreItem = (item.nombre_producto ?? '').trim().toUpperCase()
+  const esGas = items.some((otro) => {
+    if (otro.id_balon == null) return false
+    // Igual que SQL: b.id_producto_gas = ai.id_producto
+    if (otro.id_producto_gas != null && otro.id_producto_gas === item.id_producto) {
+      return true
+    }
+    // Fallback por nombre cuando el listado solo trae nombre_producto_gas
+    const nombreGasCilindro = (otro.nombre_producto_gas ?? '').trim().toUpperCase()
+    if (nombreItem && nombreGasCilindro && nombreItem === nombreGasCilindro) {
+      return true
+    }
+    return false
+  })
+
+  return esGas ? 'GAS' : 'ACCESORIO'
 }
 
 export function tieneActividadVigente(row?: {

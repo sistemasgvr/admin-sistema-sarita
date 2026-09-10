@@ -39,9 +39,53 @@ export function esEnCurso(a?: Actividad | null): boolean {
 export function esResponsable(
   a: Actividad | null | undefined,
   userId?: number | null,
+  trabajadorId?: number | null,
 ): boolean {
-  if (!a || !userId) return false
-  return a.id_usuario_responsable === userId || a.id_chofer_responsable === userId
+  if (!a) return false
+  if (
+    trabajadorId != null &&
+    a.id_trabajador_responsable != null &&
+    a.id_trabajador_responsable === trabajadorId
+  ) {
+    return true
+  }
+  if (!userId) return false
+  // id_chofer_responsable es PK de chofer, no de usuario: no comparar con userId.
+  return a.id_usuario_responsable === userId
+}
+
+/**
+ * ¿Puede la sesión verificar esta actividad?
+ * Debe estar asignada al trabajador/usuario de la sesión (el responsable).
+ */
+export function puedeVerificarComoResponsable(
+  a: Actividad | null | undefined,
+  ctx: {
+    userId?: number | null
+    trabajadorId?: number | null
+    tienePermiso: boolean
+  },
+): boolean {
+  if (!a || !ctx.tienePermiso || estaCerrada(a)) return false
+  if (!estaAsignada(a)) return false
+  return esResponsable(a, ctx.userId, ctx.trabajadorId)
+}
+
+/**
+ * ¿Puede la sesión operar el flujo (iniciar/culminar entrega o recojo)?
+ * Mismo chequeo de responsable de sesión + permiso de editar.
+ */
+export function puedeOperarComoResponsable(
+  a: Actividad | null | undefined,
+  ctx: {
+    userId?: number | null
+    trabajadorId?: number | null
+    tienePermiso: boolean
+  },
+): boolean {
+  if (!a || !ctx.tienePermiso || estaCerrada(a)) return false
+  if (!estaAsignada(a)) return false
+  return esResponsable(a, ctx.userId, ctx.trabajadorId)
 }
 
 /** ¿Se puede reclamar (tomar) la actividad? Solo si está sin asignar y no está cerrada. */
@@ -52,15 +96,19 @@ export function puedeTomar(
   return Boolean(puedeEditar) && esSinAsignar(a) && !estaCerrada(a)
 }
 
-/**
- * ¿Se puede liberar (desasignar) o finalizar la actividad?
+/** ¿Se puede liberar (desasignar) o finalizar la actividad?
  * Requiere: asignada, no cerrada, (responsable o admin) y fuera de su horario.
  */
 export function puedeLiberarOFinalizar(
   a: Actividad | null | undefined,
-  ctx: { userId?: number | null; isAdmin: boolean; now?: Date },
+  ctx: {
+    userId?: number | null
+    trabajadorId?: number | null
+    isAdmin: boolean
+    now?: Date
+  },
 ): boolean {
   if (!estaAsignada(a) || estaCerrada(a)) return false
-  if (!ctx.isAdmin && !esResponsable(a, ctx.userId)) return false
+  if (!ctx.isAdmin && !esResponsable(a, ctx.userId, ctx.trabajadorId)) return false
   return estaFueraDeHorario(a, ctx.now)
 }

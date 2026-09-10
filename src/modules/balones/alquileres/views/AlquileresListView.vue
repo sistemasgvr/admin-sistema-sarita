@@ -106,15 +106,6 @@
       :alquiler="alquilerToDevolver"
       @saved="onDevolucionDesdeLista"
     />
-    <RecojoProgramarModal
-      v-model="programarRecojoOpen"
-      :id-cliente="alquilerToRecojo?.id_cliente"
-      :id-alquiler="alquilerToRecojo?.id"
-      :numero-origen="alquilerToRecojo?.numero_alquiler"
-      tipo-origen="ALQUILER"
-      tipo-item="REGULADOR"
-      @saved="onDevolucionDesdeLista"
-    />
 
     <AppModal
       v-model="deleteModalOpen"
@@ -158,7 +149,6 @@ import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
 import AlquilerDevolverCilindrosModal from '@/modules/balones/alquileres/components/AlquilerDevolverCilindrosModal.vue'
-import RecojoProgramarModal from '@/modules/balones/recojos/components/RecojoProgramarModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
 import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
@@ -228,8 +218,6 @@ const alquilerToViewId = ref<number | null>(null)
 
 const devolverCilindrosModalOpen = ref(false)
 const alquilerToDevolver = ref<Alquiler | null>(null)
-const programarRecojoOpen = ref(false)
-const alquilerToRecojo = ref<Alquiler | null>(null)
 
 const deleteModalOpen = ref(false)
 const alquilerToDelete = ref<Alquiler | null>(null)
@@ -245,6 +233,11 @@ const canDevolver = computed(
   () =>
     authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_EDITAR) ||
     authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR),
+)
+const canProgramarRecojo = computed(
+  () =>
+    authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR) ||
+    authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR),
 )
 
 const isLoading = computed(
@@ -364,6 +357,26 @@ const openDevolverCilindros = (row: Alquiler) => {
   devolverCilindrosModalOpen.value = true
 }
 
+const openProgramarRecojo = (row: Alquiler) => {
+  const numero = row.numero_alquiler || `#${row.id}`
+  const cliente = row.nombre_cliente || ''
+  void router.push({
+    name: 'admin-operativa-actividades-nueva',
+    query: {
+      lockTipoRecojo: '1',
+      tipoOrigenRecojo: 'ALQUILER',
+      idOrigenRecojo: String(row.id),
+      titulo: `Recojo alquiler ${numero}`,
+      ...(row.id_cliente ? { clienteId: String(row.id_cliente) } : {}),
+      ...(cliente ? { clienteLabel: cliente } : {}),
+      ...(row.fecha_fin_pactada
+        ? { fecha: String(row.fecha_fin_pactada).slice(0, 10) }
+        : {}),
+      origenRecojoLabel: cliente ? `${numero} · ${cliente}` : numero,
+    },
+  })
+}
+
 function isAlquilerActivo(row: Alquiler): boolean {
   return (row.nombre_estado ?? '').toUpperCase() === 'ACTIVO'
 }
@@ -395,9 +408,10 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
       icon: ICONS.truck,
       disabled: busy,
       hidden:
-        !authStore.hasPermission(PermisoBanderas.RECOJOS_BALON_CREAR) ||
+        !canProgramarRecojo.value ||
         !activo ||
-        !tieneAccesorio,
+        !(tieneCilindros || tieneAccesorio) ||
+        !row.id_cliente,
     },
     {
       key: 'edit',
@@ -419,10 +433,7 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: Alquiler) {
   if (key === 'devolver') openDevolverCilindros(row)
-  if (key === 'programar_recojo') {
-    alquilerToRecojo.value = row
-    programarRecojoOpen.value = true
-  }
+  if (key === 'programar_recojo') openProgramarRecojo(row)
   if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
 }

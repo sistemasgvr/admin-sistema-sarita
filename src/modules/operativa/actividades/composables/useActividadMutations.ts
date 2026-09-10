@@ -147,15 +147,17 @@ export function useVerificarActividadMutation() {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
 
       const momento = data.momento === 'SALIDA' ? 'salida' : 'llegada'
+      const soloDesmarcar = variables.payload.lecturas.every((l) => l.pendiente)
       if (data.noPertenecen > 0) {
         toastWarning(
           `${data.coincidencias} verificado(s) en ${momento}; ${data.noPertenecen} código(s) no pertenecen a esta actividad`,
         )
+      } else if (soloDesmarcar) {
+        // Silencioso: el badge de la fila ya refleja Pendiente.
       } else if (data.completo) {
         toastSuccess(`Verificación de ${momento} completa`)
-      } else {
-        toastSuccess(`${data.coincidencias} verificado(s); quedan ${data.pendientes}`)
       }
+      // Checks parciales: sin toast (el resumen del modal basta).
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar la verificación')

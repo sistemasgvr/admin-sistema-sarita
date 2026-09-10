@@ -10,6 +10,8 @@ export interface ActividadItem {
   codigo_balon?: string | null
   numero_serie_balon?: string | null
   nombre_tipo_balon?: string | null
+  /** Gas ligado al balón (b.id_producto_gas), si el API lo expone. */
+  id_producto_gas?: number | null
   nombre_producto_gas?: string | null
   /** Estado de verificación por momento (Fase 6). */
   id_estado_verificacion_salida?: number | null
@@ -221,6 +223,8 @@ export interface LecturaVerificacion {
   idItem?: number
   cantidad?: number
   conforme?: boolean
+  /** Revierte el ítem a Pendiente (desmarcar). */
+  pendiente?: boolean
   observacion?: string
 }
 

@@ -20,7 +20,9 @@
         <button
           v-if="mostrarVerificacion"
           type="button"
-          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+          :disabled="!puedeVerificarSesion"
+          :title="puedeVerificarSesion ? undefined : motivoBloqueoVerificacion"
           @click="verificacionOpen = true"
         >
           <AppIcon :name="ICONS.scanBarcode" :size="15" />
@@ -31,8 +33,8 @@
           v-if="mostrarIniciarEntrega"
           type="button"
           class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-          :disabled="!salidaConforme || iniciarEntregaMutation.isPending.value"
-          :title="salidaConforme ? undefined : motivoSalidaBloqueada"
+          :disabled="!puedeOperarSesion || !salidaConforme || iniciarEntregaMutation.isPending.value"
+          :title="tituloIniciarEntrega"
           @click="iniciarEntrega"
         >
           {{ iniciarEntregaMutation.isPending.value ? 'Iniciando...' : 'Iniciar entrega' }}
@@ -42,8 +44,8 @@
           v-if="mostrarCulminarEntrega"
           type="button"
           class="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70"
-          :disabled="!llegadaConforme || culminarEntregaMutation.isPending.value"
-          :title="llegadaConforme ? undefined : motivoLlegadaBloqueada"
+          :disabled="!puedeOperarSesion || !llegadaConforme || culminarEntregaMutation.isPending.value"
+          :title="tituloCulminarEntrega"
           @click="culminarEntrega"
         >
           {{ culminarEntregaMutation.isPending.value ? 'Cerrando...' : 'Culminar entrega' }}
@@ -53,12 +55,8 @@
           v-if="mostrarIniciarRecojo"
           type="button"
           class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-          :disabled="iniciarRecojoMutation.isPending.value || !estaAsignada(actividad)"
-          :title="
-            estaAsignada(actividad)
-              ? undefined
-              : 'Asigna un responsable antes de iniciar el recojo'
-          "
+          :disabled="!puedeOperarSesion || iniciarRecojoMutation.isPending.value"
+          :title="tituloIniciarRecojo"
           @click="iniciarRecojo"
         >
           {{ iniciarRecojoMutation.isPending.value ? 'Iniciando...' : 'Iniciar recojo' }}
@@ -68,8 +66,8 @@
           v-if="mostrarCulminarRecojo"
           type="button"
           class="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-600 disabled:cursor-not-allowed disabled:opacity-70"
-          :disabled="!llegadaConforme"
-          :title="llegadaConforme ? undefined : motivoLlegadaBloqueada"
+          :disabled="!puedeOperarSesion || !llegadaConforme"
+          :title="tituloCulminarRecojo"
           @click="abrirCulminarRecojo"
         >
           Culminar recojo
@@ -520,7 +518,9 @@ import {
   esSinAsignar,
   estaAsignada,
   puedeLiberarOFinalizar,
+  puedeOperarComoResponsable,
   puedeTomar,
+  puedeVerificarComoResponsable,
 } from '@/modules/operativa/actividades/utils/actividadEstado'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
@@ -583,6 +583,7 @@ const puedeLiberarAct = computed(
     estaAsignada(actividad.value) &&
     puedeLiberarOFinalizar(actividad.value, {
       userId: authStore.user?.id,
+      trabajadorId: authStore.userTrabajadorId,
       isAdmin: isAdmin.value,
       now: ahora.value,
     }) &&
@@ -596,6 +597,7 @@ const canFinalizar = computed(
     !esTipoRecojoNombre(actividad.value?.nombre_tipo_actividad) &&
     puedeLiberarOFinalizar(actividad.value, {
       userId: authStore.user?.id,
+      trabajadorId: authStore.userTrabajadorId,
       isAdmin: isAdmin.value,
       now: ahora.value,
     }) &&
@@ -784,6 +786,41 @@ const canVerificar = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VERIFICAR),
 )
 
+const puedeVerificarSesion = computed(() =>
+  puedeVerificarComoResponsable(actividad.value, {
+    userId: authStore.user?.id,
+    trabajadorId: authStore.userTrabajadorId,
+    tienePermiso: canVerificar.value,
+  }),
+)
+
+const puedeOperarSesion = computed(() =>
+  puedeOperarComoResponsable(actividad.value, {
+    userId: authStore.user?.id,
+    trabajadorId: authStore.userTrabajadorId,
+    tienePermiso: canEdit.value,
+  }),
+)
+
+const motivoBloqueoVerificacion = computed(() => {
+  if (!canVerificar.value) return 'No tienes permiso para verificar'
+  if (!estaAsignada(actividad.value)) {
+    return 'Toma la actividad con tu usuario antes de verificar'
+  }
+  if (!authStore.userTrabajadorId && !authStore.user?.id) {
+    return 'Tu sesión no tiene ficha de trabajador vinculada'
+  }
+  return 'Solo el responsable asignado (tu usuario de sesión) puede verificar'
+})
+
+const motivoBloqueoOperar = computed(() => {
+  if (!canEdit.value) return 'No tienes permiso para editar actividades'
+  if (!estaAsignada(actividad.value)) {
+    return 'Toma la actividad con tu usuario antes de avanzar el flujo'
+  }
+  return 'Solo el responsable asignado (tu usuario de sesión) puede avanzar el flujo'
+})
+
 const esReparto = computed(() =>
   esTipoRepartoNombre(actividad.value?.nombre_tipo_actividad),
 )
@@ -834,6 +871,26 @@ const motivoBloqueo = (momento: 'SALIDA' | 'LLEGADA') => {
 const motivoSalidaBloqueada = computed(() => motivoBloqueo('SALIDA'))
 const motivoLlegadaBloqueada = computed(() => motivoBloqueo('LLEGADA'))
 
+const tituloIniciarEntrega = computed(() => {
+  if (!puedeOperarSesion.value) return motivoBloqueoOperar.value
+  if (!salidaConforme.value) return motivoSalidaBloqueada.value
+  return undefined
+})
+const tituloCulminarEntrega = computed(() => {
+  if (!puedeOperarSesion.value) return motivoBloqueoOperar.value
+  if (!llegadaConforme.value) return motivoLlegadaBloqueada.value
+  return undefined
+})
+const tituloIniciarRecojo = computed(() => {
+  if (!puedeOperarSesion.value) return motivoBloqueoOperar.value
+  return undefined
+})
+const tituloCulminarRecojo = computed(() => {
+  if (!puedeOperarSesion.value) return motivoBloqueoOperar.value
+  if (!llegadaConforme.value) return motivoLlegadaBloqueada.value
+  return undefined
+})
+
 const etiquetaVerificar = computed(() => {
   if (esRecojo.value) return 'Verificar recojo'
   return enRuta.value ? 'Verificar llegada' : 'Verificar salida'
@@ -859,6 +916,9 @@ const avisoFlujo = computed(() => {
   if (cerrada.value) return ''
   if (esRecojo.value) {
     if (enRuta.value) {
+      if (!puedeOperarSesion.value) {
+        return motivoBloqueoOperar.value
+      }
       if (llegadaConforme.value) {
         return 'Recojo en ruta. Verificación lista: culmina eligiendo el almacén destino.'
       }
@@ -867,9 +927,15 @@ const avisoFlujo = computed(() => {
     if (!estaAsignada(actividad.value)) {
       return 'Toma o asigna un responsable para iniciar el recojo.'
     }
+    if (!puedeOperarSesion.value) {
+      return motivoBloqueoOperar.value
+    }
     return 'Inicia el recojo y luego verifica los cilindros al recogerlos.'
   }
   if (!esReparto.value) return ''
+  if (!puedeOperarSesion.value && estaAsignada(actividad.value)) {
+    return motivoBloqueoOperar.value
+  }
   if (enRuta.value) {
     if (llegadaConforme.value) return ''
     return `En ruta. Para cerrar la entrega falta verificar la llegada: ${motivoLlegadaBloqueada.value}.`
@@ -880,11 +946,12 @@ const avisoFlujo = computed(() => {
 
 async function iniciarEntrega() {
   const id = actividad.value?.id
-  if (!id) return
+  const idUsuarioAuditoria = authStore.user?.id
+  if (!id || !idUsuarioAuditoria || !puedeOperarSesion.value) return
   try {
     await iniciarEntregaMutation.mutateAsync({
       id,
-      idUsuarioAuditoria: authStore.user?.id,
+      idUsuarioAuditoria,
     })
   } catch {
     // toast en mutation
@@ -893,11 +960,12 @@ async function iniciarEntrega() {
 
 async function culminarEntrega() {
   const id = actividad.value?.id
-  if (!id) return
+  const idUsuarioAuditoria = authStore.user?.id
+  if (!id || !idUsuarioAuditoria || !puedeOperarSesion.value) return
   try {
     await culminarEntregaMutation.mutateAsync({
       id,
-      idUsuarioAuditoria: authStore.user?.id,
+      idUsuarioAuditoria,
     })
   } catch {
     // toast en mutation
@@ -906,11 +974,12 @@ async function culminarEntrega() {
 
 async function iniciarRecojo() {
   const id = actividad.value?.id
-  if (!id) return
+  const idUsuarioAuditoria = authStore.user?.id
+  if (!id || !idUsuarioAuditoria || !puedeOperarSesion.value) return
   try {
     await iniciarRecojoMutation.mutateAsync({
       id,
-      idUsuarioAuditoria: authStore.user?.id,
+      idUsuarioAuditoria,
     })
   } catch {
     // toast en mutation
@@ -918,6 +987,7 @@ async function iniciarRecojo() {
 }
 
 function abrirCulminarRecojo() {
+  if (!puedeOperarSesion.value) return
   idAlmacenDestinoRecojo.value = undefined
   culminarRecojoOpen.value = true
 }
@@ -925,12 +995,13 @@ function abrirCulminarRecojo() {
 async function confirmarCulminarRecojo() {
   const id = actividad.value?.id
   const idAlmacen = idAlmacenDestinoRecojo.value
-  if (!id || !idAlmacen) return
+  const idUsuarioAuditoria = authStore.user?.id
+  if (!id || !idAlmacen || !idUsuarioAuditoria || !puedeOperarSesion.value) return
   try {
     await culminarRecojoMutation.mutateAsync({
       id,
       idAlmacenDestino: idAlmacen,
-      idUsuarioAuditoria: authStore.user?.id,
+      idUsuarioAuditoria,
     })
     culminarRecojoOpen.value = false
   } catch {
