@@ -225,95 +225,8 @@
         </div>
       </form>
 
-      <DetailSectionCard
-        v-if="activeAlquilerId"
-        title="Cilindros"
-        :icon="ICONS.boxes"
-        :full-width="true"
-        help="El cilindro no se alquila. Si hay líneas aquí son registros antiguos: puedes devolverlas. Un envase nuevo se registra como préstamo."
-      >
-        <p
-          v-if="detalleRows.length === 0"
-          class="text-sm text-gray-500 dark:text-gray-400"
-        >
-          Sin cilindros en este contrato. El recojo del envase se agenda en Operativa / Actividades.
-        </p>
-        <template v-else>
-          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-            {{ detalleRows.length }} cilindro(s) de registros anteriores.
-          </p>
-
-          <AppTable
-            bare
-            :columns="detalleColumns"
-            :rows="detalleRows"
-            row-key="id"
-            :loading="isLoadingDetalles"
-          >
-            <template #cell-codigo_balon="{ value }">
-              <span class="font-medium text-gray-800 dark:text-white/90">{{ value }}</span>
-            </template>
-            <template #cell-fecha_devolucion="{ row }">
-              <span
-                v-if="row.fecha_devolucion"
-                class="whitespace-nowrap text-success-600 dark:text-success-400"
-              >
-                {{ String(row.fecha_devolucion).slice(0, 10) }}
-              </span>
-              <AppBadge v-else size="sm" color="warning">Pendiente</AppBadge>
-            </template>
-
-            <template #actions="{ row }">
-              <AppActionMenu
-                :items="detalleActionItemsForRow(row)"
-                title="Acciones del cilindro"
-                :execute="(key) => onDetalleActionSelect(key, row)"
-              />
-            </template>
-          </AppTable>
-        </template>
-      </DetailSectionCard>
     </div>
 
-    <AlquilerDevolverModal
-      v-model="devolverDetalleModalOpen"
-      :detalle="detalleToDevolver"
-      @saved="onDetalleSaved"
-    />
-
-    <AppModal
-      v-model="deleteDetalleModalOpen"
-      title="Eliminar cilindro"
-      subtitle="Se dará de baja este cilindro del alquiler."
-      size="sm"
-    >
-      <p class="text-sm text-gray-600 dark:text-gray-400">
-        ¿Confirmas que deseas eliminar el cilindro
-        <span class="font-medium text-gray-800 dark:text-white/90">
-          {{ detalleToDelete?.codigo_balon }}
-        </span>
-        del alquiler?
-      </p>
-
-      <template #footer>
-        <button
-          type="button"
-          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:w-auto"
-          :disabled="deleteDetalleMutation.isPending.value"
-          @click="deleteDetalleModalOpen = false"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="flex w-full justify-center rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-          :disabled="deleteDetalleMutation.isPending.value"
-          @click="confirmDeleteDetalle"
-        >
-          {{ deleteDetalleMutation.isPending.value ? 'Eliminando...' : 'Eliminar' }}
-        </button>
-      </template>
-    </AppModal>
   </div>
 </template>
 
@@ -333,38 +246,19 @@ import {
   useCreateAlquilerMutation,
   useUpdateAlquilerMutation,
 } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
-import { useDeleteAlquilerDetalleMutation } from '@/modules/balones/alquileres/composables/useAlquilerDetalleMutations'
 import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
-import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import GarantiaRecepcionFields from '@/modules/balones/garantias/components/GarantiaRecepcionFields.vue'
 import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
-import AlquilerDevolverModal from '@/modules/balones/alquileres/components/AlquilerDevolverModal.vue'
 import type { AlquilerFormMode } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
-import type {
-  AlquilerDetalle,
-  AlquilerDetalleListFilters,
-} from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import {
-  AppActionMenu,
-  AppBadge,
-  AppInput,
-  AppModal,
-  AppSelect,
-  AppTable,
-  AppTextarea,
-  MoneyInput,
-} from '@/shared/components'
+import { AppInput, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
-import { PermisoBanderas } from '@/shared/constants/permissions'
-import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
-import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { toastApiError, toastWarning } from '@/shared/composables/useToast'
 import { parseMoneyInput, roundMoney } from '@/shared/utils/currency'
 import { yupMontoMoneda } from '@/shared/utils/yupMoney'
@@ -398,7 +292,6 @@ const authStore = useAuthStore()
 const createMutation = useCreateAlquilerMutation()
 const cargandoNumero = ref(false)
 const updateMutation = useUpdateAlquilerMutation()
-const deleteDetalleMutation = useDeleteAlquilerDetalleMutation()
 
 const internalMode = ref<AlquilerFormMode>(props.mode)
 const activeAlquilerId = ref<number | null>(null)
@@ -411,16 +304,6 @@ const isLoadingAlquiler = computed(
   () => !isCreateMode.value && props.active && alquilerQuery.isFetching.value,
 )
 
-const detalleFilters = ref<AlquilerDetalleListFilters>({
-  idAlquiler: undefined,
-  pagina: 1,
-  limite: 100,
-})
-const detallesQuery = useAlquileresDetalleQuery(detalleFilters)
-const isLoadingDetalles = computed(
-  () => detallesQuery.isFetching.value || detallesQuery.isLoading.value,
-)
-const detalleRows = computed(() => detallesQuery.data.value?.data ?? [])
 
 const listaEstadoAlquilerId = ref(ListaIds.ESTADO_ALQUILER)
 const estadosAlquilerQuery = useListaOpcionesQuery(listaEstadoAlquilerId)
@@ -437,49 +320,6 @@ const idEstadoActivo = computed(
     )?.id ?? null,
 )
 
-const canEditDetalle = computed(
-  () =>
-    authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_EDITAR) ||
-    authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR),
-)
-const canDeleteDetalle = computed(() =>
-  authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_ELIMINAR),
-)
-
-const detalleColumns: TableColumn[] = [
-  { key: 'codigo_balon', label: 'Cilindro' },
-  { key: 'fecha_devolucion', label: 'Devolución' },
-]
-
-function detalleActionItemsForRow(row: AlquilerDetalle): ActionMenuItem[] {
-  const pendiente = !row.fecha_devolucion
-  return [
-    {
-      key: 'devolver',
-      label: 'Devolver cilindro',
-      icon: ICONS.clipboardCheck,
-      hidden: !canEditDetalle.value || !pendiente,
-    },
-    {
-      key: 'delete',
-      label: 'Quitar del alquiler',
-      icon: ICONS.trash,
-      danger: true,
-      hidden: !canDeleteDetalle.value,
-    },
-  ]
-}
-
-function onDetalleActionSelect(key: string, row: AlquilerDetalle) {
-  if (key === 'devolver') openDevolverDetalleModal(row)
-  if (key === 'delete') openDeleteDetalleModal(row)
-}
-
-const devolverDetalleModalOpen = ref(false)
-const detalleToDevolver = ref<AlquilerDetalle | null>(null)
-
-const deleteDetalleModalOpen = ref(false)
-const detalleToDelete = ref<AlquilerDetalle | null>(null)
 
 const toDateInput = (value?: string | null) => (value ? value.slice(0, 10) : '')
 
@@ -740,11 +580,6 @@ const resetCreateForm = () => {
 const resetFormState = () => {
   internalMode.value = props.mode
   activeAlquilerId.value = props.mode === 'edit' && props.alquilerId ? props.alquilerId : null
-  detalleFilters.value = {
-    idAlquiler: activeAlquilerId.value ?? undefined,
-    pagina: 1,
-    limite: 100,
-  }
 }
 
 const onSubmit = handleSubmit(async (values) => {
@@ -851,11 +686,6 @@ const onSubmit = handleSubmit(async (values) => {
 
       activeAlquilerId.value = created.id
       internalMode.value = 'edit'
-      detalleFilters.value = {
-        idAlquiler: created.id,
-        pagina: 1,
-        limite: 100,
-      }
       const payload: AlquilerFormSavedPayload = { id: created.id }
       emit('created', payload)
       emit('saved', payload)
@@ -876,64 +706,19 @@ const onSubmit = handleSubmit(async (values) => {
   }
 })
 
-const openDevolverDetalleModal = (row: AlquilerDetalle) => {
-  detalleToDevolver.value = {
-    ...row,
-    id_almacen: row.id_almacen ?? (idAlmacen.value ? Number(idAlmacen.value) : null),
-  }
-  devolverDetalleModalOpen.value = true
-}
-
-const openDeleteDetalleModal = (row: AlquilerDetalle) => {
-  detalleToDelete.value = row
-  deleteDetalleModalOpen.value = true
-}
-
-const onDetalleSaved = () => {
-  detallesQuery.refetch()
-  alquilerQuery.refetch()
-  if (activeAlquilerId.value) {
-    emit('saved', { id: activeAlquilerId.value })
-  } else {
-    emit('saved')
-  }
-}
-
-const confirmDeleteDetalle = async () => {
-  const detalle = detalleToDelete.value
-  const userId = authStore.user?.id
-  if (!detalle || !userId) return
-
-  try {
-    await deleteDetalleMutation.mutateAsync({
-      id: detalle.id,
-      idUsuarioAuditoria: userId,
-    })
-    deleteDetalleModalOpen.value = false
-    detalleToDelete.value = null
-    onDetalleSaved()
-  } catch {
-    // toast en mutation
-  }
-}
 
 watch(
   () => [props.active, props.mode, props.alquilerId] as const,
   ([isActive, mode, alquilerId]) => {
     if (!isActive) return
 
-    // After create→edit (FormView replace), keep current form/detalle state.
+    // After create→edit (FormView replace), keep current form state.
     if (
       mode === 'edit' &&
       alquilerId &&
       activeAlquilerId.value === alquilerId &&
       internalMode.value === 'edit'
     ) {
-      detalleFilters.value = {
-        idAlquiler: alquilerId,
-        pagina: 1,
-        limite: 100,
-      }
       return
     }
 

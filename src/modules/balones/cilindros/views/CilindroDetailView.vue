@@ -231,71 +231,6 @@
         </DetailSectionCard>
 
         <DetailSectionCard
-          v-if="alquilerHistorialRows.length"
-          title="Alquiler de regulador (legado)"
-          :icon="ICONS.receipt"
-          :full-width="true"
-        >
-          <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">
-            Vínculos antiguos donde el cilindro figuraba en un detalle de alquiler. Hoy el regulador
-            se alquila aparte y el envase va por préstamo.
-          </p>
-          <div class="custom-scrollbar max-h-72 overflow-auto">
-            <table class="min-w-full text-sm">
-              <thead class="sticky top-0 z-10 bg-white dark:bg-gray-900">
-                <tr
-                  class="border-b border-gray-100 text-left text-theme-xs uppercase text-gray-500 dark:border-gray-800"
-                >
-                  <th class="pb-2 pr-4">N° alquiler</th>
-                  <th class="pb-2 pr-4">Cliente</th>
-                  <th class="pb-2 pr-4">Inicio</th>
-                  <th class="pb-2 pr-4">Fin pactado</th>
-                  <th class="pb-2 pr-4">Fin real</th>
-                  <th class="pb-2 pr-4">Tarifa/día</th>
-                  <th class="pb-2">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="item in alquilerHistorialRows"
-                  :key="item.id"
-                  class="border-b border-gray-50 dark:border-gray-800/80"
-                >
-                  <td class="py-2 pr-4 whitespace-nowrap font-medium text-gray-800 dark:text-white/90">
-                    {{ item.numero_alquiler || `#${item.id_alquiler}` }}
-                  </td>
-                  <td
-                    class="py-2 pr-4 max-w-[10rem] truncate"
-                    :title="item.nombre_cliente || undefined"
-                  >
-                    {{ item.nombre_cliente || '—' }}
-                  </td>
-                  <td class="py-2 pr-4 whitespace-nowrap">
-                    {{ formatDetailDate(item.fecha_inicio) || '—' }}
-                  </td>
-                  <td class="py-2 pr-4 whitespace-nowrap">
-                    {{ formatDetailDate(item.fecha_fin_pactada) || '—' }}
-                  </td>
-                  <td class="py-2 pr-4 whitespace-nowrap">
-                    {{ formatDetailDate(item.fecha_fin_real) || '—' }}
-                  </td>
-                  <td class="py-2 pr-4 whitespace-nowrap">
-                    {{ formatDetailMoney(item.tarifa_diaria) || '—' }}
-                  </td>
-                  <td class="py-2 whitespace-nowrap">
-                    <ListaOpcionBadge
-                      v-if="item.nombre_estado"
-                      :value="item.nombre_estado"
-                    />
-                    <span v-else class="text-gray-400">—</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </DetailSectionCard>
-
-        <DetailSectionCard
           title="Historial de baja y activación"
           :icon="ICONS.refreshCw"
           :full-width="true"
@@ -450,7 +385,6 @@ import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import BalonEstadoBadge from '@/modules/balones/components/BalonEstadoBadge.vue'
 import BalonLoteProtocoloSection from '@/modules/balones/lotes-protocolo/components/BalonLoteProtocoloSection.vue'
 import { BALONES_HUB_PATH } from '@/modules/balones/config/balones-breadcrumb'
-import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
 import {
   useBalonQuery,
   useEstadoHistorialQuery,
@@ -467,7 +401,6 @@ import {
   formatDetailDate,
   formatDetailDateTime,
   formatDetailListaOpcion,
-  formatDetailMoney,
 } from '@/shared/components/detail/detailFormatters'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
 import { AppBadge, ListaOpcionBadge } from '@/shared/components'
@@ -500,14 +433,8 @@ const prestamosFilters = computed(() => ({
   pagina: 1,
   limite: 50,
 }))
-const alquileresFilters = computed(() => ({
-  idBalon: balonIdRef.value ?? undefined,
-  pagina: 1,
-  limite: 50,
-}))
 const movimientosHistorialQuery = useInventarioMovimientosQuery(movimientosFilters)
 const prestamosHistorialQuery = usePrestamosDetalleQuery(prestamosFilters)
-const alquileresHistorialQuery = useAlquileresDetalleQuery(alquileresFilters)
 
 const isLoading = computed(
   () =>
@@ -515,8 +442,7 @@ const isLoading = computed(
     phHistorialQuery.isFetching.value ||
     estadoHistorialQuery.isFetching.value ||
     movimientosHistorialQuery.isFetching.value ||
-    prestamosHistorialQuery.isFetching.value ||
-    alquileresHistorialQuery.isFetching.value,
+    prestamosHistorialQuery.isFetching.value,
 )
 
 const balon = computed(() => balonQuery.data.value ?? null)
@@ -537,7 +463,6 @@ const phHistorialRows = computed(() => phHistorialQuery.data.value?.data ?? [])
 const estadoHistorialRows = computed(() => estadoHistorialQuery.data.value?.data ?? [])
 const movimientoHistorialRows = computed(() => movimientosHistorialQuery.data.value?.data ?? [])
 const prestamoHistorialRows = computed(() => prestamosHistorialQuery.data.value?.data ?? [])
-const alquilerHistorialRows = computed(() => alquileresHistorialQuery.data.value?.data ?? [])
 
 const pageTitle = computed(() => balon.value?.codigo_balon || 'Ficha del cilindro')
 

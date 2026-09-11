@@ -8,7 +8,7 @@
     <DetailCardsLayout :loading="isLoading" :sections="sections">
       <template #badges>
         <ListaOpcionBadge v-if="alquiler?.nombre_estado" :value="alquiler.nombre_estado" />
-        <AppBadge color="neutral">{{ detalleRows.length }} cilindros (legado)</AppBadge>
+        <AppBadge v-if="alquiler?.fecha_devolucion_regulador" color="success">Accesorio devuelto</AppBadge>
         <AppBadge color="primary">{{ periodoRows.length }} periodos</AppBadge>
       </template>
 
@@ -57,25 +57,6 @@
         </DetailSectionCard>
 
         <DetailSectionCard
-          v-if="detalleRows.length"
-          title="Cilindros vinculados"
-          :icon="ICONS.boxes"
-          :full-width="true"
-        >
-          <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id">
-            <template #cell-fecha_devolucion="{ row }">
-              <span
-                v-if="row.fecha_devolucion"
-                class="whitespace-nowrap text-success-600 dark:text-success-400"
-              >
-                {{ String(row.fecha_devolucion).slice(0, 10) }}
-              </span>
-              <AppBadge v-else size="sm" color="warning">Pendiente</AppBadge>
-            </template>
-          </AppTable>
-        </DetailSectionCard>
-
-        <DetailSectionCard
           v-if="alquiler?.observacion"
           title="Observación"
           :icon="ICONS.messageSquare"
@@ -105,12 +86,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, toRef, watch } from 'vue'
+import { computed, ref, toRef } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import AlquilerRenovarModal from '@/modules/balones/alquileres/components/AlquilerRenovarModal.vue'
 import { useAlquilerQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
-import { useAlquileresDetalleQuery } from '@/modules/balones/alquileres/composables/useAlquileresDetalleQuery'
-import type { AlquilerDetalleListFilters } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
@@ -138,9 +117,6 @@ const renovarOpen = ref(false)
 const alquilerIdRef = toRef(() => props.alquilerId)
 const alquilerQuery = useAlquilerQuery(alquilerIdRef)
 
-const detalleFilters = ref<AlquilerDetalleListFilters>({ pagina: 1, limite: 100 })
-const detallesQuery = useAlquileresDetalleQuery(detalleFilters)
-
 const periodosQuery = useQuery({
   queryKey: computed(() => ['balones', 'alquileres', 'periodos', props.alquilerId]),
   enabled: computed(() => open.value && Boolean(props.alquilerId)),
@@ -152,7 +128,6 @@ const isLoading = computed(
   () => alquilerQuery.isFetching.value || periodosQuery.isFetching.value,
 )
 const alquiler = computed(() => alquilerQuery.data.value ?? null)
-const detalleRows = computed(() => detallesQuery.data.value?.data ?? [])
 const periodoRows = computed(() => periodosQuery.data.value?.data ?? [])
 
 const canRenovar = computed(
@@ -160,11 +135,6 @@ const canRenovar = computed(
     authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR) &&
     Boolean(alquiler.value?.id_producto_regulador),
 )
-
-const detalleColumns: TableColumn[] = [
-  { key: 'codigo_balon', label: 'Cilindro' },
-  { key: 'fecha_devolucion', label: 'Devolución' },
-]
 
 const periodoColumns: TableColumn[] = [
   { key: 'numero_periodo', label: '#' },
@@ -175,16 +145,6 @@ const periodoColumns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante' },
   { key: 'nombre_estado', label: 'Estado' },
 ]
-
-watch(
-  () => [open.value, props.alquilerId] as const,
-  ([isOpen, id]) => {
-    if (isOpen && id) {
-      detalleFilters.value = { idAlquiler: id, pagina: 1, limite: 100 }
-    }
-  },
-  { immediate: true },
-)
 
 async function onRenovado() {
   await Promise.all([alquilerQuery.refetch(), periodosQuery.refetch()])
@@ -217,6 +177,12 @@ const sections = computed<DetailSection[]>(() => {
         },
         { label: 'Tarifa periodo', value: formatDetailMoney(data.tarifa_diaria) },
         { label: 'Días periodo', value: String(data.dias_periodo ?? 14) },
+        {
+          label: 'Devolución accesorio',
+          value: data.fecha_devolucion_regulador
+            ? `${formatDetailDate(data.fecha_devolucion_regulador)}${data.nombre_condicion_regulador ? ` — ${data.nombre_condicion_regulador}` : ''}`
+            : 'Pendiente',
+        },
       ],
     },
     {

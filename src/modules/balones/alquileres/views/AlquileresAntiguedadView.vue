@@ -34,13 +34,13 @@
       </button>
     </div>
 
-    <AppTable :columns="columns" :rows="rows" row-key="id_detalle" :loading="isLoading">
+    <AppTable :columns="columns" :rows="rows" row-key="id_alquiler" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
-          search-placeholder="Cliente, código, gas..."
+          search-placeholder="Cliente, número, accesorio..."
           @filter-change="onFiltersChange"
         >
           <template #actions>
@@ -66,20 +66,13 @@
         </p>
       </template>
 
-      <template #cell-cilindro="{ row }">
+      <template #cell-accesorio="{ row }">
         <p class="font-medium text-gray-800 dark:text-white/90">
-          {{ row.codigo_balon || '—' }}
+          {{ row.nombre_producto || '—' }}
         </p>
-        <p class="text-theme-xs text-gray-500">
-          {{ row.nombre_producto_gas || '—' }}
-          <span v-if="row.capacidad != null">
-            · {{ row.capacidad }}{{ row.nombre_unidad_medida ? ` ${row.nombre_unidad_medida}` : '' }}
-          </span>
+        <p v-if="row.codigo_producto" class="text-theme-xs text-gray-500">
+          {{ row.codigo_producto }}
         </p>
-      </template>
-
-      <template #cell-ph="{ row }">
-        {{ formatMonthYear(row.fecha_proxima_prueba_hidrostatica) }}
       </template>
 
       <template #cell-fecha_inicio_alquiler="{ value }">
@@ -88,8 +81,24 @@
         </span>
       </template>
 
+      <template #cell-fecha_fin_pactada="{ value }">
+        <span class="whitespace-nowrap">
+          {{ typeof value === 'string' && value ? value.slice(0, 10) : '—' }}
+        </span>
+      </template>
+
       <template #cell-dias_en_alquiler="{ row }">
         <span class="font-medium">{{ row.dias_en_alquiler ?? '—' }}</span>
+      </template>
+
+      <template #cell-dias_atraso="{ row }">
+        <span
+          v-if="row.dias_atraso != null && row.dias_atraso > 0"
+          class="font-medium text-error-600 dark:text-error-400"
+        >
+          {{ row.dias_atraso }}
+        </span>
+        <span v-else class="text-gray-400">—</span>
       </template>
 
       <template #cell-rango_antiguedad="{ row }">
@@ -127,9 +136,9 @@
 
     <AlquilerDetailModal v-model="alquilerDetailOpen" :alquiler-id="alquilerToViewId" />
 
-    <AlquilerDevolverModal
+    <AlquilerDevolverReguladorModal
       v-model="devolverModalOpen"
-      :detalle="detalleToDevolver"
+      :alquiler="alquilerToDevolver"
       @saved="onDevolucionSaved"
     />
   </div>
@@ -140,7 +149,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
-import AlquilerDevolverModal from '@/modules/balones/alquileres/components/AlquilerDevolverModal.vue'
+import AlquilerDevolverReguladorModal from '@/modules/balones/alquileres/components/AlquilerDevolverReguladorModal.vue'
 import { useAlquileresAntiguedadQuery } from '@/modules/balones/alquileres/composables/useAlquileresAntiguedadQuery'
 import type {
   AlquilerAntiguedadFilters,
@@ -148,9 +157,8 @@ import type {
   AlquilerAntiguedadResumen,
   RangoAntiguedadAlquiler,
 } from '@/modules/balones/alquileres/interfaces/alquiler-antiguedad.interface'
-import type { AlquilerDetalle } from '@/modules/balones/alquileres/interfaces/alquiler-detalle.interface'
+import type { Alquiler } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
-import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
@@ -187,7 +195,6 @@ const authStore = useAuthStore()
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({
-  excluirBajas: true,
   soloPendientes: true,
 })
 const pagina = ref(1)
@@ -197,7 +204,6 @@ const filters = ref<AlquilerAntiguedadFilters>({
   buscar: '',
   pagina: 1,
   limite: 50,
-  excluirBajas: true,
   soloPendientes: true,
 })
 
@@ -209,13 +215,9 @@ const alquilerDetailOpen = ref(false)
 const alquilerToViewId = ref<number | null>(null)
 
 const devolverModalOpen = ref(false)
-const detalleToDevolver = ref<AlquilerDetalle | null>(null)
+const alquilerToDevolver = ref<Alquiler | null>(null)
 
-const canDevolver = computed(
-  () =>
-    authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_EDITAR) ||
-    authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR),
-)
+const canDevolver = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR))
 
 const breadcrumbItems = computed(() => [
   ...balonesBreadcrumbItems('Alquileres').slice(0, 1),
@@ -298,12 +300,6 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     })),
   },
   {
-    key: 'excluirBajas',
-    label: 'Excluir bajas',
-    type: 'checkbox',
-    placeholder: 'Excluir dados de baja / robados',
-  },
-  {
     key: 'soloPendientes',
     label: 'Solo pendientes',
     type: 'checkbox',
@@ -313,12 +309,12 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 
 const columns = computed<TableColumn<AlquilerAntiguedadItem>[]>(() => [
   { key: 'cliente', label: 'Cliente' },
-  { key: 'cilindro', label: 'Cilindro / gas' },
-  { key: 'nombre_marca_cilindro', label: 'Marca' },
-  { key: 'nombre_planta', label: 'Planta' },
-  { key: 'ph', label: 'Próx. P.H.' },
+  { key: 'accesorio', label: 'Regulador / accesorio' },
+  { key: 'nombre_almacen', label: 'Almacén' },
   { key: 'fecha_inicio_alquiler', label: 'Desde', cellClass: 'whitespace-nowrap' },
-  { key: 'dias_en_alquiler', label: 'Días de atraso', cellClass: 'whitespace-nowrap' },
+  { key: 'fecha_fin_pactada', label: 'Fin pactado', cellClass: 'whitespace-nowrap' },
+  { key: 'dias_en_alquiler', label: 'Días fuera', cellClass: 'whitespace-nowrap' },
+  { key: 'dias_atraso', label: 'Días de atraso', cellClass: 'whitespace-nowrap' },
   { key: 'rango_antiguedad', label: 'Alerta', cellClass: 'whitespace-nowrap' },
 ])
 
@@ -343,7 +339,7 @@ function actionItemsForRow(row: AlquilerAntiguedadItem): ActionMenuItem[] {
   return [
     {
       key: 'devolver',
-      label: 'Devolver cilindro',
+      label: 'Devolver regulador',
       icon: ICONS.clipboardCheck,
       hidden: !canDevolver.value || !pendiente,
     },
@@ -351,12 +347,6 @@ function actionItemsForRow(row: AlquilerAntiguedadItem): ActionMenuItem[] {
       key: 'detalle-alquiler',
       label: 'Ver detalle del alquiler',
       icon: ICONS.eye,
-    },
-    {
-      key: 'detalle-cilindro',
-      label: 'Ver ficha del cilindro',
-      icon: ICONS.cylinder,
-      disabled: !row.id_balon,
     },
     {
       key: 'mapa-cliente',
@@ -373,27 +363,18 @@ function openAlquilerDetail(row: AlquilerAntiguedadItem) {
 }
 
 function openDevolver(row: AlquilerAntiguedadItem) {
-  detalleToDevolver.value = {
-    id: row.id_detalle,
-    id_alquiler: row.id_alquiler,
-    id_balon: row.id_balon ?? 0,
-    codigo_balon: row.codigo_balon,
-    numero_alquiler: row.numero_alquiler,
-    id_cliente: row.id_cliente,
-    id_almacen: row.id_almacen ?? null,
-    fecha_devolucion: row.fecha_devolucion,
+  // El modal solo necesita id, número y nombre del accesorio.
+  alquilerToDevolver.value = {
+    id: row.id_alquiler,
+    numero_alquiler: row.numero_alquiler ?? '',
+    id_cliente: row.id_cliente ?? 0,
+    id_almacen: row.id_almacen ?? 0,
+    fecha_inicio: row.fecha_inicio_alquiler ?? '',
+    nombre_producto_regulador: row.nombre_producto,
     estado: 1,
     fecha_creacion: '',
   }
   devolverModalOpen.value = true
-}
-
-function openBalonDetail(row: AlquilerAntiguedadItem) {
-  if (!row.id_balon) return
-  router.push({
-    name: 'admin-balones-cilindros-detalle',
-    params: { id: String(row.id_balon) },
-  })
 }
 
 function openClienteMapa(row: AlquilerAntiguedadItem) {
@@ -415,9 +396,6 @@ function onActionSelect(key: string, row: AlquilerAntiguedadItem) {
     case 'detalle-alquiler':
       openAlquilerDetail(row)
       return
-    case 'detalle-cilindro':
-      openBalonDetail(row)
-      return
     case 'mapa-cliente':
       openClienteMapa(row)
       return
@@ -438,7 +416,6 @@ const syncFilters = () => {
     limite: limite.value,
     idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
     rangoDias: (active.rangoDias as string | undefined) || undefined,
-    excluirBajas: active.excluirBajas !== false,
     soloPendientes: active.soloPendientes !== false,
   }
 }
@@ -478,44 +455,28 @@ const exportExcelFile = async () => {
       columns: [
         { key: 'cliente', header: 'Cliente', width: 28, value: (r) => r.nombre_cliente },
         { key: 'nro', header: 'Nro alquiler', width: 16, value: (r) => r.numero_alquiler },
-        { key: 'codigo', header: 'Código', width: 14, value: (r) => r.codigo_balon },
-        { key: 'serie', header: 'Serie', width: 14, value: (r) => r.numero_serie },
-        { key: 'gas', header: 'Gas', width: 18, value: (r) => r.nombre_producto_gas },
-        {
-          key: 'capacidad',
-          header: 'Capacidad',
-          width: 14,
-          value: (r) =>
-            r.capacidad != null
-              ? `${r.capacidad}${r.nombre_unidad_medida ? ` ${r.nombre_unidad_medida}` : ''}`
-              : '',
-        },
-        { key: 'marca', header: 'Marca', width: 14, value: (r) => r.nombre_marca_cilindro },
-        { key: 'planta', header: 'Planta', width: 18, value: (r) => r.nombre_planta },
-        {
-          key: 'organo',
-          header: 'Órgano',
-          width: 16,
-          value: (r) => (r.organo_inspector_no_aplica ? 'N/A' : r.nombre_organo_inspector),
-        },
+        { key: 'accesorio', header: 'Accesorio', width: 24, value: (r) => r.nombre_producto },
+        { key: 'codigo', header: 'Código', width: 14, value: (r) => r.codigo_producto },
+        { key: 'almacen', header: 'Almacén', width: 18, value: (r) => r.nombre_almacen },
         {
           key: 'desde',
           header: 'Desde',
           width: 12,
           value: (r) => r.fecha_inicio_alquiler?.slice(0, 10),
         },
-        { key: 'dias', header: 'Días de atraso', width: 14, value: (r) => r.dias_en_alquiler },
+        {
+          key: 'fin',
+          header: 'Fin pactado',
+          width: 12,
+          value: (r) => r.fecha_fin_pactada?.slice(0, 10),
+        },
+        { key: 'dias', header: 'Días fuera', width: 12, value: (r) => r.dias_en_alquiler },
+        { key: 'atraso', header: 'Días de atraso', width: 14, value: (r) => r.dias_atraso },
         {
           key: 'rango',
           header: 'Rango',
           width: 12,
           value: (r) => rangoLabel(r.rango_antiguedad),
-        },
-        {
-          key: 'ph',
-          header: 'P.H. próxima',
-          width: 12,
-          value: (r) => formatMonthYear(r.fecha_proxima_prueba_hidrostatica),
         },
       ],
     })

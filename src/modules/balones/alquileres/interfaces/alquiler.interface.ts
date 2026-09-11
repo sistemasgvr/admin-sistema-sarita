@@ -28,9 +28,13 @@ export interface Alquiler {
   id_producto_stock?: number | null
   codigo_producto_stock?: string | null
   nombre_producto_stock?: string | null
+  /** Devolución del regulador/accesorio: cierra el alquiler. */
+  fecha_devolucion_regulador?: string | null
+  id_condicion_regulador?: number | null
+  nombre_condicion_regulador?: string | null
+  id_mantenimiento_regulador?: number | null
   /** Días del periodo de renovación (default 14). */
   dias_periodo?: number | null
-  total_detalles?: number | null
   puede_eliminar?: boolean
   estado: number
   fecha_creacion: string
@@ -78,6 +82,15 @@ export interface UpdateAlquilerPayload {
   idComprobanteVenta?: number
   idProductoRegulador?: number
   idProductoStock?: number
+}
+
+export type CondicionReguladorDevolucion = 'BUENO' | 'PARA_REPARAR'
+
+export interface DevolverReguladorAlquilerPayload {
+  idUsuarioAuditoria: number
+  fecha?: string
+  condicion?: CondicionReguladorDevolucion
+  observacion?: string
 }
 
 export interface DeleteAlquilerResponse {

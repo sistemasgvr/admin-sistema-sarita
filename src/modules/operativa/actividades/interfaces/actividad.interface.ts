@@ -29,7 +29,6 @@ export interface ActividadItem {
   id_doc_salida_detalle?: number | null
   id_venta_detalle?: number | null
   id_prestamo_detalle?: number | null
-  id_alquiler_detalle?: number | null
 }
 
 export type TipoOrigenRecojo = 'PRESTAMO' | 'ALQUILER'

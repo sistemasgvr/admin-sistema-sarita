@@ -3,6 +3,7 @@ import { alquileresQueryKeys } from '@/modules/balones/alquileres/constants/alqu
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import type {
   CreateAlquilerPayload,
+  DevolverReguladorAlquilerPayload,
   UpdateAlquilerPayload,
 } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
@@ -35,6 +36,23 @@ export function useUpdateAlquilerMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo actualizar el alquiler')
+    },
+  })
+}
+
+export function useDevolverReguladorAlquilerMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: DevolverReguladorAlquilerPayload }) =>
+      alquileresService.devolverRegulador(id, payload),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: alquileresQueryKeys.detail(variables.id) })
+      toastSuccess('Regulador devuelto: alquiler finalizado')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo devolver el regulador')
     },
   })
 }

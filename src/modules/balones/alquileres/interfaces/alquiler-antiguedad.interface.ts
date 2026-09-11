@@ -13,33 +13,26 @@ export interface AlquilerAntiguedadResumen {
   critico_180?: number
 }
 
+/** Una fila por alquiler: el alquiler es solo del regulador/accesorio. */
 export interface AlquilerAntiguedadItem {
-  id_detalle: number
   id_alquiler: number
   numero_alquiler?: string | null
   id_cliente?: number | null
   nombre_cliente?: string | null
   id_almacen?: number | null
   nombre_almacen?: string | null
-  id_balon?: number | null
-  codigo_balon?: string | null
-  numero_serie?: string | null
-  nombre_tipo_balon?: string | null
-  capacidad?: number | null
-  nombre_unidad_medida?: string | null
-  nombre_producto_gas?: string | null
-  nombre_marca_cilindro?: string | null
-  nombre_organo_inspector?: string | null
-  organo_inspector_no_aplica?: boolean
-  nombre_planta?: string | null
-  fecha_proxima_prueba_hidrostatica?: string | null
-  mes_fabricacion?: number | null
-  anio_fabricacion?: number | null
-  nombre_estado_balon?: string | null
+  id_producto?: number | null
+  nombre_producto?: string | null
+  codigo_producto?: string | null
+  nombre_estado?: string | null
+  dias_periodo?: number | null
+  tarifa_diaria?: number | null
   fecha_inicio_alquiler?: string | null
   fecha_fin_pactada?: string | null
   fecha_devolucion?: string | null
+  nombre_condicion_regulador?: string | null
   dias_en_alquiler?: number | null
+  dias_atraso?: number | null
   rango_antiguedad: RangoAntiguedadAlquiler
 }
 
@@ -49,6 +42,5 @@ export interface AlquilerAntiguedadFilters {
   limite?: number
   idCliente?: number
   rangoDias?: RangoAntiguedadAlquiler | string
-  excluirBajas?: boolean
   soloPendientes?: boolean
 }

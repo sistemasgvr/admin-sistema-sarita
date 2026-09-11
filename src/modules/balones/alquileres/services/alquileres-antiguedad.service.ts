@@ -13,7 +13,6 @@ export const alquileresAntiguedadService = {
         limite: filters.limite,
         idCliente: filters.idCliente,
         rangoDias: filters.rangoDias,
-        excluirBajas: filters.excluirBajas,
         soloPendientes: filters.soloPendientes,
       },
     })

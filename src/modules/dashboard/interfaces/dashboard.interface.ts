@@ -72,7 +72,6 @@ export interface DashboardBalonesKpi {
   totalBalones: number
   enAlmacen: DashboardCantidadDetalle
   prestados: DashboardCantidadDetalle
-  alquilados: DashboardCantidadDetalle
   mantenimiento: DashboardCantidadDetalle
   phPorVencer: DashboardPhPorVencerDetalle
   envasesEnCampo: DashboardBalonesEnvasesCampo

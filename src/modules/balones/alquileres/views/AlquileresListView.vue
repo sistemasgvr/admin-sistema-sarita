@@ -64,14 +64,6 @@
         <ListaOpcionBadge :value="value as string" />
       </template>
 
-      <template #cell-total_detalles="{ value }">
-        <span
-          class="inline-flex min-w-8 items-center justify-center rounded-full bg-gray-100 px-2 py-0.5 text-sm font-medium text-gray-700 dark:bg-white/10 dark:text-gray-300"
-        >
-          {{ value ?? 0 }}
-        </span>
-      </template>
-
       <template #actions="{ row }">
         <div class="inline-flex items-center justify-end gap-1.5">
           <button
@@ -104,8 +96,8 @@
 
     <AlquilerDetailModal v-model="detailModalOpen" :alquiler-id="alquilerToViewId" />
 
-    <AlquilerDevolverCilindrosModal
-      v-model="devolverCilindrosModalOpen"
+    <AlquilerDevolverReguladorModal
+      v-model="devolverReguladorModalOpen"
       :alquiler="alquilerToDevolver"
       @saved="onDevolucionDesdeLista"
     />
@@ -151,7 +143,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerDetailModal from '@/modules/balones/alquileres/components/AlquilerDetailModal.vue'
-import AlquilerDevolverCilindrosModal from '@/modules/balones/alquileres/components/AlquilerDevolverCilindrosModal.vue'
+import AlquilerDevolverReguladorModal from '@/modules/balones/alquileres/components/AlquilerDevolverReguladorModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeleteAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
 import { useAlquileresQuery } from '@/modules/balones/alquileres/composables/useAlquileresQuery'
@@ -219,7 +211,7 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const detailModalOpen = ref(false)
 const alquilerToViewId = ref<number | null>(null)
 
-const devolverCilindrosModalOpen = ref(false)
+const devolverReguladorModalOpen = ref(false)
 const alquilerToDevolver = ref<Alquiler | null>(null)
 
 const deleteModalOpen = ref(false)
@@ -232,11 +224,7 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILE
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_ELIMINAR))
-const canDevolver = computed(
-  () =>
-    authStore.hasPermission(PermisoBanderas.ALQUILERES_DETALLE_EDITAR) ||
-    authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR),
-)
+const canDevolver = computed(() => authStore.hasPermission(PermisoBanderas.ALQUILERES_BALON_EDITAR))
 const canProgramarRecojo = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
 )
@@ -255,7 +243,6 @@ const columns: TableColumn[] = [
   { key: 'vigencia', label: 'Inicio / Fin' },
   { key: 'tarifa_diaria', label: 'Tarifa' },
   { key: 'nombre_estado', label: 'Estado' },
-  { key: 'total_detalles', label: 'Cilindros' },
 ]
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
@@ -353,9 +340,9 @@ const openDeleteModal = (row: Alquiler) => {
   deleteModalOpen.value = true
 }
 
-const openDevolverCilindros = (row: Alquiler) => {
+const openDevolverRegulador = (row: Alquiler) => {
   alquilerToDevolver.value = row
-  devolverCilindrosModalOpen.value = true
+  devolverReguladorModalOpen.value = true
 }
 
 const openProgramarRecojo = (row: Alquiler) => {
@@ -381,35 +368,33 @@ function isAlquilerActivo(row: Alquiler): boolean {
 
 function deleteLabelForRow(row: Alquiler): string {
   if (row.puede_eliminar !== false) return 'Eliminar'
-  if (row.id_comprobante_venta != null) return 'Eliminar (tiene comprobante)'
-  return 'Eliminar (tiene detalles)'
+  return 'Eliminar (tiene comprobante)'
 }
 
 function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
   const busy = deleteMutation.isPending.value
   const blockedDelete = row.puede_eliminar === false
   const activo = isAlquilerActivo(row)
-  const tieneCilindros = Number(row.total_detalles ?? 0) > 0
-  const tieneAccesorio = Boolean(row.id_producto_regulador || row.id_producto_stock)
+  // El alquiler es solo del regulador/accesorio: hay algo que devolver o
+  // recoger mientras el accesorio siga fuera.
+  const accesorioPendiente =
+    Boolean(row.id_producto_regulador || row.id_producto_stock) &&
+    !row.fecha_devolucion_regulador
 
   return [
     {
       key: 'devolver',
-      label: 'Devolver cilindros',
+      label: 'Devolver regulador',
       icon: ICONS.clipboardCheck,
       disabled: busy,
-      hidden: !canDevolver.value || !activo || !tieneCilindros,
+      hidden: !canDevolver.value || !activo || !accesorioPendiente,
     },
     {
       key: 'programar_recojo',
       label: 'Programar recojo',
       icon: ICONS.truck,
       disabled: busy,
-      hidden:
-        !canProgramarRecojo.value ||
-        !activo ||
-        !(tieneCilindros || tieneAccesorio) ||
-        !row.id_cliente,
+      hidden: !canProgramarRecojo.value || !activo || !accesorioPendiente || !row.id_cliente,
     },
     {
       key: 'edit',
@@ -430,7 +415,7 @@ function actionItemsForRow(row: Alquiler): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Alquiler) {
-  if (key === 'devolver') openDevolverCilindros(row)
+  if (key === 'devolver') openDevolverRegulador(row)
   if (key === 'programar_recojo') openProgramarRecojo(row)
   if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)

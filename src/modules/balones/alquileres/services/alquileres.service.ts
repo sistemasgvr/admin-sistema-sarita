@@ -4,6 +4,7 @@ import type {
   AlquilerListFilters,
   CreateAlquilerPayload,
   DeleteAlquilerResponse,
+  DevolverReguladorAlquilerPayload,
   UpdateAlquilerPayload,
 } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import type {
@@ -55,6 +56,10 @@ export const alquileresService = {
 
   registrarPeriodo(idAlquiler: number, payload: RegistrarAlquilerPeriodoPayload) {
     return apiPost<AlquilerPeriodo>(`/balones/alquileres/${idAlquiler}/periodos`, payload)
+  },
+
+  devolverRegulador(idAlquiler: number, payload: DevolverReguladorAlquilerPayload) {
+    return apiPost<Alquiler>(`/balones/alquileres/${idAlquiler}/devolver-regulador`, payload)
   },
 
   renovar(idAlquiler: number, payload: RenovarAlquilerPayload) {

@@ -464,10 +464,10 @@ export async function exportarReporteClienteExcel(idCliente: number): Promise<vo
     1,
     NUM_COLUMNAS,
     `Alquileres — Total: ${alquileresRes.meta.total} registros`,
-    ['N° Alquiler', 'Balón / cilindro', 'F. inicio', 'F. fin pactada', 'F. devolución', 'Días', 'Alerta', ''],
+    ['N° Alquiler', 'Regulador / accesorio', 'F. inicio', 'F. fin pactada', 'F. devolución', 'Días', 'Alerta', ''],
     alquileresRes.data.map((a) => [
       a.numero_alquiler,
-      [a.codigo_balon, a.nombre_producto_gas].filter(Boolean).join(' — '),
+      [a.codigo_producto, a.nombre_producto].filter(Boolean).join(' — '),
       a.fecha_inicio_alquiler?.slice(0, 10),
       a.fecha_fin_pactada?.slice(0, 10),
       a.fecha_devolucion?.slice(0, 10),
