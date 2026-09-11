@@ -121,6 +121,11 @@ export const adminMenuGroups: AdminMenuGroup[] = [
     title: 'Sistema',
     items: [
       {
+        icon: ICONS.circleHelp,
+        name: 'Soporte',
+        path: '/admin/soporte',
+      },
+      {
         icon: ICONS.userCircle,
         name: 'Usuarios',
         path: '/admin/usuarios',

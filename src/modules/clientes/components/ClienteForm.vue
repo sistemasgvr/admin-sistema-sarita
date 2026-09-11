@@ -40,6 +40,7 @@
     @submit="onSubmit"
   >
     <section
+      data-tutorial="cliente-documento"
       class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
     >
       <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Documento</h5>
@@ -126,6 +127,7 @@
       </div>
     </section>
     <section
+      data-tutorial="cliente-datos-generales"
       class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
     >
       <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Datos generales</h5>
@@ -211,9 +213,13 @@
       </div>
     </section>
     <section
+      data-tutorial="cliente-contacto"
       class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
     >
-      <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
+      <h5
+        data-tutorial="cliente-contacto-titulo"
+        class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90"
+      >
         Contacto y ubicación
       </h5>
 
@@ -320,6 +326,7 @@
       </div>
     </section>
     <section
+      data-tutorial="cliente-sunat"
       class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
     >
       <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
@@ -367,6 +374,7 @@
       </div>
     </section>
     <section
+      data-tutorial="cliente-observaciones"
       class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
     >
       <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">Observaciones</h5>
@@ -389,6 +397,7 @@
         Cancelar
       </button>
       <button
+        data-tutorial="cliente-guardar"
         type="submit"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
@@ -400,7 +409,7 @@
     </div>
   </form>
 
-  <div v-if="mostrarRelacionados" class="mt-5">
+  <div v-if="mostrarRelacionados" data-tutorial="cliente-relacionados" class="mt-5">
     <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
       Direcciones, vehículos, choferes y cuentas bancarias
     </h5>

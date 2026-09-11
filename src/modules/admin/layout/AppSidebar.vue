@@ -58,6 +58,7 @@
                 <button
                   v-if="item.subItems"
                   type="button"
+                  :data-tutorial="item.name === 'Clientes' ? 'menu-clientes' : undefined"
                   @click="toggleSubmenu(groupIndex, index)"
                   :class="[
                     'menu-item group w-full',
@@ -93,6 +94,7 @@
                 <router-link
                   v-else-if="item.path"
                   :to="item.path"
+                  :data-tutorial="item.name === 'Clientes' ? 'menu-clientes' : undefined"
                   :class="[
                     'menu-item group',
                     {

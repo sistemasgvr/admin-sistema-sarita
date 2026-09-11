@@ -9,6 +9,7 @@ interface SidebarContextType {
   expandedSubmenus: Ref<Set<string>>
   collapsedSubmenus: Ref<Set<string>>
   toggleSidebar: () => void
+  setExpanded: (expanded: boolean) => void
   toggleMobileSidebar: () => void
   setIsHovered: (isHovered: boolean) => void
   setActiveItem: (item: string | null) => void
@@ -50,6 +51,14 @@ export function useSidebarProvider() {
     }
   }
 
+  const setExpanded = (expanded: boolean) => {
+    if (isMobile.value) {
+      isMobileOpen.value = expanded
+    } else {
+      isExpanded.value = expanded
+    }
+  }
+
   const toggleMobileSidebar = () => {
     isMobileOpen.value = !isMobileOpen.value
   }
@@ -70,6 +79,7 @@ export function useSidebarProvider() {
     expandedSubmenus,
     collapsedSubmenus,
     toggleSidebar,
+    setExpanded,
     toggleMobileSidebar,
     setIsHovered,
     setActiveItem,

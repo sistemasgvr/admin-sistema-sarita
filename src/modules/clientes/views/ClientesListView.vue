@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div data-tutorial="clientes-listado">
     <PageBreadcrumb v-if="!embedded" page-title="Clientes" />
 
     <AppSummaryChips :chips="summaryChips" />
@@ -7,6 +7,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          data-tutorial="clientes-buscador"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -98,9 +99,10 @@
           />
         </button>
 
-        <button
+        <button 
           v-if="canEdit && !esClientesVarios(row)"
           type="button"
+          data-tutorial="clientes-editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditView(row)"
         >
@@ -208,8 +210,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteBajaModal from '@/modules/clientes/bajas-cliente/components/ClienteBajaModal.vue'
 import ClienteReactivacionModal from '@/modules/clientes/bajas-cliente/components/ClienteReactivacionModal.vue'
@@ -245,6 +247,8 @@ import type { SelectOption } from '@/shared/interfaces/form.interface'
 import type { SummaryChip } from '@/shared/interfaces/summary-chip.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { createClienteRelacionadosListadoTutorial } from '@/modules/soporte/tutorials/cliente-relacionados-listado.tutorial'
+import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 withDefaults(
   defineProps<{
@@ -256,7 +260,21 @@ withDefaults(
 )
 
 const authStore = useAuthStore()
+const route = useRoute()
 const router = useRouter()
+const { setExpanded: setSidebarExpanded } = useSidebar()
+
+let destroyTutorial: (() => void) | undefined
+
+onMounted(async () => {
+  if (route.query.tutorial !== 'asociar-datos-cliente') return
+  await nextTick()
+  window.setTimeout(() => {
+    destroyTutorial = createClienteRelacionadosListadoTutorial({ setSidebarExpanded })
+  }, 350)
+})
+
+onBeforeUnmount(() => destroyTutorial?.())
 
 const buscar = ref('')
 const dynamicFilters = ref<DynamicFilterValues>({ estado: 'activos' })
@@ -435,6 +453,7 @@ const openEditView = (cliente: Cliente) => {
   void router.push({
     name: 'admin-clientes-editar',
     params: { id: String(cliente.id) },
+    query: route.query.tutorial === 'asociar-datos-cliente' ? { tutorial: route.query.tutorial } : undefined,
   })
 }
 

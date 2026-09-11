@@ -70,6 +70,7 @@
         role="tab"
         :aria-selected="modelValue === tab.key"
         :disabled="tab.disabled"
+        :data-tutorial="`cliente-tab-${tab.key}`"
         class="app-tabs__tab"
         :class="{
           'app-tabs__tab--active': modelValue === tab.key,

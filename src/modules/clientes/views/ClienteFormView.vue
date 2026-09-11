@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteForm from '@/modules/clientes/components/ClienteForm.vue'
@@ -34,9 +34,13 @@ import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
+import { createClienteTutorial } from '@/modules/soporte/tutorials/cliente-crear.tutorial'
+import { createClienteRelacionadosTutorial } from '@/modules/soporte/tutorials/cliente-relacionados.tutorial'
+import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 const route = useRoute()
 const router = useRouter()
+const { setExpanded: setSidebarExpanded } = useSidebar()
 
 const isEdit = computed(() => route.name === 'admin-clientes-editar')
 const clienteId = computed(() => {
@@ -48,6 +52,28 @@ const pageTitle = computed(() => (isEdit.value ? 'Editar cliente' : 'Nuevo clien
 const pageHelpText =
   'Persona o empresa. El documento (DNI/RUC) se usa en ventas, GRE y alquileres/préstamos.'
 const breadcrumbItems = computed(() => clientesBreadcrumbItems(pageTitle.value))
+
+let destroyTutorial: (() => void) | undefined
+
+onMounted(async () => {
+  const tutorial = route.query.tutorial
+  if (tutorial === 'crear-cliente' && !isEdit.value) {
+    await nextTick()
+    window.setTimeout(() => {
+      destroyTutorial = createClienteTutorial({ setSidebarExpanded })
+    }, 350)
+    return
+  }
+
+  if (tutorial === 'asociar-datos-cliente' && isEdit.value) {
+    await nextTick()
+    window.setTimeout(() => {
+      destroyTutorial = createClienteRelacionadosTutorial({ setSidebarExpanded })
+    }, 600)
+  }
+})
+
+onBeforeUnmount(() => destroyTutorial?.())
 
 const goToList = () => {
   void router.push({ name: 'admin-clientes' })

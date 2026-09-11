@@ -112,6 +112,17 @@ layer(base);
   }
 }
 
+/* Driver.js: adapta los tutoriales al diseño de Oxígeno Sarita. */
+.sarita-tutorial-popover {
+  --driver-popover-font-family: Outfit, sans-serif;
+  --driver-popover-border-radius: 12px;
+  --driver-popover-color: #374151;
+  --driver-popover-title-color: #1f2937;
+  --driver-popover-description-color: #4b5563;
+  --driver-popover-next-btn-background-color: #1565c0;
+  --driver-popover-next-btn-text-color: #ffffff;
+}
+
 @utility login-input {
   @apply form-control;
 }
@@ -475,4 +486,13 @@ layer(base);
   /* Por encima del z-index más alto de la app (999999, AppTimePicker): un
      confirm que bloquea la operación debe estar sobre todo lo demás. */
   z-index: 1000000;
+}
+
+/* Driver.js debe cubrir el sidebar, que usa z-index elevado, dentro del iframe. */
+.driver-overlay {
+  z-index: 100000 !important;
+}
+
+.driver-popover {
+  z-index: 100001 !important;
 }

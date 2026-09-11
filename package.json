@@ -26,6 +26,7 @@
     "@vee-validate/yup": "^4.15.1",
     "apexcharts": "^6.8.0",
     "axios": "^1.18.1",
+    "driver.js": "^1.8.0",
     "dropzone": "^6.0.0-beta.2",
     "exceljs": "^4.4.0",
     "leaflet": "^1.9.4",
