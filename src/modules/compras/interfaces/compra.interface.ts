@@ -77,6 +77,8 @@ export interface CompraDetalle {
   precio_unitario: number | null
   importe: number
   afecta_stock: boolean
+  /** Del producto: un gas admite cantidades fraccionadas aunque su U.M. sea UNID. */
+  es_gas?: boolean
   id_clasificacion_gasto: number | null
   clasificacion_gasto: string | null
   id_estado_pago: number | null
@@ -147,13 +149,17 @@ export interface CreateCompraPayload {
   idAlmacen?: number
   idComprobanteReferencia?: number
   idRecargaPlanta?: number
-  /** Si true (o si se envía fechaLlegadaAlmacen): registra retorno e ingreso ENTRADA_PLANTA_EXTERNA. */
+  /**
+   * Si true y hay idRecargaPlanta: registra el retorno de los cilindros
+   * (ENTRADA_PLANTA_EXTERNA). Si la orden ya tiene retorno registrado se
+   * ignora: la compra solo se vincula y el gas se ajusta a lo facturado.
+   */
   guardarBalonesAlmacen?: boolean
   fechaLlegadaAlmacen?: string
   lote?: string
   fechaVencimientoLote?: string
   fechaPruebaHidrostatica?: string
-  idGuiaRetorno?: number
+  /** GRE con la que el proveedor devuelve los cilindros (referencial; se guarda en la orden). */
   serieGuiaIngreso?: string
   numeroGuiaIngreso?: string
   idTipoRegistro?: number
@@ -165,7 +171,8 @@ export interface CreateCompraPayload {
   glosa?: string
   fechaVencimiento?: string
   cuotas?: { fechaPago: string; monto?: number }[]
-  detalles: CreateCompraDetallePayload[]
+  /** Opcional: la compra puede registrarse sin líneas y recibirlas después. */
+  detalles?: CreateCompraDetallePayload[]
 }
 
 export interface ActualizarCompraCabeceraPayload {

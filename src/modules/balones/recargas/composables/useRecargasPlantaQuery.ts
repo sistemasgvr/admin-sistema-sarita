@@ -20,11 +20,18 @@ import type {
 function estadoRecargaDe(d: {
   id_comprobante_compra?: number | null
   fecha_llegada_almacen?: string | null
+  retorno_fisico?: boolean
   nombre_estado_ciclo?: string
 }) {
-  if (d.id_comprobante_compra) return 'CERRADO'
-  if (d.fecha_llegada_almacen) return 'RETORNADO'
+  // El ciclo del documento manda: una orden anulada no está "enviada" aunque
+  // conserve fecha de llegada o compra de cuando estaba vigente.
+  if (d.nombre_estado_ciclo === 'ANULADA') return 'ANULADA'
   if (d.nombre_estado_ciclo === 'BORRADOR') return 'BORRADOR'
+  if (d.id_comprobante_compra) return 'CERRADO'
+  // Retornada = los envases entraron al almacén, no que haya fecha. El fallback
+  // a la fecha cubre respuestas de una API anterior a retorno_fisico; desde
+  // 20260910_retorno_fisico_fecha_ph la fecha solo existe con entrada física.
+  if (d.retorno_fisico ?? Boolean(d.fecha_llegada_almacen)) return 'RETORNADO'
   return 'ENVIADO'
 }
 
@@ -53,6 +60,7 @@ function mapDetalle(d: DocumentoSalida['detalle'][number]): RecargaPlantaDetalle
     id_unidad_medida: d.id_unidad_medida,
     nombre_unidad_medida: d.unidad_capacidad_balon ?? d.nombre_unidad_medida,
     unidad_capacidad_balon: d.unidad_capacidad_balon ?? null,
+    id_unidad_capacidad_balon: d.id_unidad_capacidad_balon ?? null,
     lote: null,
     fecha_vencimiento_lote: null,
     fecha_prueba_hidrostatica: null,
@@ -87,6 +95,9 @@ function mapCompleto(d: DocumentoSalida): RecargaPlanta {
     serie_factura: d.serie_factura,
     numero_factura: d.numero_factura,
     fecha_llegada_almacen: d.fecha_llegada_almacen,
+    retorno_fisico: d.retorno_fisico ?? Boolean(d.fecha_llegada_almacen),
+    id_almacen_retorno: d.id_almacen_retorno ?? null,
+    nombre_almacen_retorno: d.nombre_almacen_retorno ?? null,
     lote: d.lote,
     fecha_vencimiento_lote: d.fecha_vencimiento_lote,
     fecha_prueba_hidrostatica: d.fecha_prueba_hidrostatica,
@@ -94,6 +105,7 @@ function mapCompleto(d: DocumentoSalida): RecargaPlanta {
     nombre_estado: estadoRecargaDe(d),
     descripcion_estado: null,
     total_cilindros: d.detalle.filter((x) => x.id_balon).length,
+    total_productos: d.detalle.filter((x) => !x.id_balon).length,
     observacion: d.observaciones,
     detalles: d.detalle.filter((x) => x.id_balon).map(mapDetalle),
     puede_eliminar: d.nombre_estado_ciclo === 'BORRADOR',
@@ -115,8 +127,11 @@ function mapListItem(d: DocumentoSalidaListItem): RecargaPlanta {
     id_almacen: d.id_almacen,
     nombre_almacen: d.nombre_almacen,
     id_guia_salida: null,
-    serie_guia_salida: null,
-    numero_guia_salida: null,
+    // La guía de salida de la recarga es la GRE del propio documento; el
+    // listado ya trae serie y correlativo, y dejarlos en null hacía que la
+    // columna se viera vacía aunque la orden estuviera convertida a GRE.
+    serie_guia_salida: d.serie,
+    numero_guia_salida: d.numero_sunat,
     id_guia_retorno: null,
     serie_guia_ingreso: null,
     numero_guia_ingreso: null,
@@ -124,13 +139,18 @@ function mapListItem(d: DocumentoSalidaListItem): RecargaPlanta {
     serie_factura: null,
     numero_factura: null,
     fecha_llegada_almacen: d.fecha_llegada_almacen,
+    retorno_fisico: d.retorno_fisico ?? Boolean(d.fecha_llegada_almacen),
+    id_almacen_retorno: d.id_almacen_retorno ?? null,
+    nombre_almacen_retorno: d.nombre_almacen_retorno ?? null,
     lote: d.lote,
     fecha_vencimiento_lote: null,
     fecha_prueba_hidrostatica: null,
     id_estado: d.id_estado_ciclo,
     nombre_estado: estadoRecargaDe(d),
     descripcion_estado: null,
-    total_cilindros: d.total_items,
+    // total_items mezcla cilindros y líneas de gas; el listado ya los separa.
+    total_cilindros: d.total_cilindros ?? null,
+    total_productos: d.total_productos ?? null,
     observacion: d.observaciones,
     detalles: undefined,
     puede_eliminar: d.nombre_estado_ciclo === 'BORRADOR',
@@ -156,6 +176,8 @@ export function useRecargasPlantaQuery(filters: Ref<RecargaPlantaListFilters>) {
         pagina: filters.value.pagina,
         limite: filters.value.limite,
         idAlmacen: filters.value.idAlmacen,
+        idProveedor: filters.value.idProveedor,
+        codigoEstadoCiclo: filters.value.codigoEstadoCiclo,
         fechaDesde: filters.value.fechaDesde,
         fechaHasta: filters.value.fechaHasta,
         codigoTipoOrden: 'RECARGA_PLANTA_EXTERNA',

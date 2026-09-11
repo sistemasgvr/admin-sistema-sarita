@@ -82,6 +82,18 @@ export const comprobantesService = {
     })
   },
 
+  /**
+   * Venta de mostrador: el cliente se lleva el cilindro y no hay orden de
+   * salida que cierre la custodia. Pasa los balones que la venta dejó
+   * reservados a "en poder del cliente".
+   */
+  confirmarEntregaMostrador(id: number) {
+    return apiPost<{ id: number; balones_actualizados: number }>(
+      `/comprobantes/${id}/entrega-mostrador`,
+      {},
+    )
+  },
+
   listarResumenDiario(filters: ResumenDiarioListFilters) {
     return apiGetPaginated<ResumenDiarioListItem>('/comprobantes/resumenes', {
       params: filters,

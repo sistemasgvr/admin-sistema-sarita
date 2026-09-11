@@ -286,6 +286,7 @@ import type {
 import { actividadesService } from '@/modules/operativa/actividades/services/actividades.service'
 import {
   esActividadCancelada,
+  esActividadEnRuta,
   esActividadRealizada,
   esTipoRepartoNombre,
   idOpcionPorNombre,
@@ -663,6 +664,7 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
   const cerrada =
     esActividadRealizada(row.nombre_estado_actividad) ||
     esActividadCancelada(row.nombre_estado_actividad)
+  const enRuta = esActividadEnRuta(row.nombre_estado_actividad)
   // El reparto se cierra por el flujo de entrega (verificar salida -> en ruta ->
   // verificar llegada -> culminar). Ofrecer aquí "marcar realizada" dejaría
   // saltarse la verificación de llegada y vaciaría de sentido el gate.
@@ -702,7 +704,8 @@ function actionItemsForRow(row: Actividad): ActionMenuItem[] {
       icon: ICONS.trash,
       danger: true,
       disabled: busy,
-      hidden: !canDelete.value,
+      // age_eliminar bloquea EN_RUTA / REALIZADA; no ofrecer la acción en esos estados.
+      hidden: !canDelete.value || cerrada || enRuta,
     },
   ]
 }

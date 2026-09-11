@@ -54,6 +54,8 @@ const props = withDefaults(
     disabled?: boolean
     required?: boolean
     searchable?: boolean
+    /** Si se indica, solo lista almacenes de esa sucursal. */
+    idSucursal?: number | null
     label?: string
     placeholder?: string
     searchPlaceholder?: string
@@ -66,6 +68,7 @@ const props = withDefaults(
     disabled: false,
     required: false,
     searchable: false,
+    idSucursal: null,
     label: 'Almacén',
     placeholder: 'Selecciona almacén',
     searchPlaceholder: 'Nombre del almacén...',
@@ -89,8 +92,20 @@ const almacenesFilters = ref({
   pagina: 1,
   limite: 200,
   buscar: undefined as string | undefined,
+  idSucursal: undefined as number | undefined,
 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+
+watch(
+  () => props.idSucursal,
+  (suc) => {
+    almacenesFilters.value = {
+      ...almacenesFilters.value,
+      idSucursal: suc != null && !Number.isNaN(Number(suc)) ? Number(suc) : undefined,
+    }
+  },
+  { immediate: true },
+)
 
 watch(search, (term) => {
   if (!props.searchable) return

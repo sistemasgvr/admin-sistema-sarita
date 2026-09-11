@@ -57,15 +57,26 @@
               <AppIcon :name="ICONS.mapPin" :size="14" />
               Punto de llegada
             </h4>
-            <button
-              v-if="documento?.direccion_entrega"
-              type="button"
-              class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
-              @click="usarDireccionEntrega"
-            >
-              <AppIcon :name="ICONS.mapPin" :size="12" />
-              Usar dirección de entrega
-            </button>
+            <div class="flex items-center gap-3">
+              <button
+                v-if="direccionProveedor"
+                type="button"
+                class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                @click="usarDireccionProveedor"
+              >
+                <AppIcon :name="ICONS.warehouse" :size="12" />
+                Usar dirección de la planta
+              </button>
+              <button
+                v-if="documento?.direccion_entrega"
+                type="button"
+                class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+                @click="usarDireccionEntrega"
+              >
+                <AppIcon :name="ICONS.mapPin" :size="12" />
+                Usar dirección de entrega
+              </button>
+            </div>
           </div>
           <div class="space-y-3">
             <AppInput v-model="form.direccionLlegada" label="Dirección" placeholder="Dirección del destinatario" />
@@ -172,9 +183,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
+import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
@@ -260,6 +272,44 @@ function usarDireccionEntrega() {
     llegadaPresetting.value = false
   })
 }
+
+/**
+ * En recarga de planta externa la carga va al proveedor: su dirección es el
+ * punto de llegada de la guía. No viene en el documento, así que se pide al
+ * abrir el modal; si el proveedor no la tiene registrada, el bloque queda como
+ * estaba y se llena a mano.
+ */
+const esPlantaExterna = computed(
+  () => props.documento?.nombre_tipo_orden === 'RECARGA_PLANTA_EXTERNA',
+)
+const proveedorQuery = useClienteDetailQuery(
+  computed(() => props.documento?.id_proveedor ?? undefined),
+  computed(() => open.value && esPlantaExterna.value),
+)
+const proveedor = computed(() => (esPlantaExterna.value ? proveedorQuery.data.value : null))
+const direccionProveedor = computed(() => proveedor.value?.direccion?.trim() || '')
+
+function usarDireccionProveedor() {
+  const p = proveedor.value
+  if (!direccionProveedor.value || !p) return
+  form.direccionLlegada = direccionProveedor.value
+  llegadaPresetting.value = true
+  llegadaPaisId.value = p.id_pais ?? undefined
+  llegadaDeptoId.value = p.id_departamento ?? undefined
+  llegadaProvId.value = p.id_provincia ?? undefined
+  form.idDistritoLlegada = p.id_distrito ?? undefined
+  requestAnimationFrame(() => {
+    llegadaPresetting.value = false
+  })
+}
+
+// La dirección llega después de abrir el modal: se precarga solo si el punto
+// de llegada sigue vacío, para no pisar lo que el usuario ya escribió.
+watch(direccionProveedor, (direccion) => {
+  if (!open.value || !direccion) return
+  if (form.direccionLlegada.trim() || form.idDistritoLlegada) return
+  usarDireccionProveedor()
+})
 const choferModalOpen = ref(false)
 const vehiculoModalOpen = ref(false)
 const transportistaModalOpen = ref(false)
@@ -362,6 +412,11 @@ watch(open, (isOpen) => {
     llegadaDeptoId.value = undefined
     llegadaProvId.value = undefined
     form.idDistritoLlegada = undefined
+  }
+
+  // Con la dirección del proveedor ya en caché el watch de arriba no dispara.
+  if (!form.direccionLlegada.trim() && !form.idDistritoLlegada) {
+    usarDireccionProveedor()
   }
 
   requestAnimationFrame(() => {

@@ -398,18 +398,12 @@ function openDevolver(row: PrestamoAntiguedadItem) {
 }
 
 function openProgramarRecojo(row: PrestamoAntiguedadItem) {
-  const numero = row.numero_prestamo || `#${row.id_prestamo}`
-  const cliente = row.nombre_cliente || ''
   void router.push({
-    name: 'admin-operativa-actividades-nueva',
+    name: 'admin-balones-recojos',
     query: {
-      lockTipoRecojo: '1',
-      tipoOrigenRecojo: 'PRESTAMO',
-      idOrigenRecojo: String(row.id_prestamo),
-      titulo: `Recojo préstamo ${numero}`,
-      ...(row.id_cliente ? { clienteId: String(row.id_cliente) } : {}),
-      ...(cliente ? { clienteLabel: cliente } : {}),
-      origenRecojoLabel: cliente ? `${numero} · ${cliente}` : numero,
+      tab: 'pendientes',
+      idPrestamo: String(row.id_prestamo),
+      ...(row.id_cliente ? { idCliente: String(row.id_cliente) } : {}),
     },
   })
 }

@@ -38,7 +38,7 @@ export interface VehiculoListFilters {
 
 export interface VehiculoPayload {
   idUsuarioAuditoria: number
-  idCliente?: number
+  idCliente?: number | null
   idTipoVehiculo: number
   placa: string
   placa2?: string

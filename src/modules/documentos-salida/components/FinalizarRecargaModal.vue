@@ -17,17 +17,24 @@
         se registra con "Registrar lote y protocolo" y trae además los análisis y
         los envases aprobados. Duplicarlos en dos sitios los dejaba desalineados.
       -->
-      <AppDatePicker v-model="form.fechaPruebaHidrostatica" label="Prueba hidrostática" />
-      <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input v-model="form.guardarBalonesAlmacen" type="checkbox" class="mt-0.5 h-4 w-4" />
-        <span>
-          Dejar los cilindros disponibles en el almacén y registrar la entrada de gas
-          <span class="block text-xs text-gray-500 dark:text-gray-400">
-            El gas entra con las cantidades de la compra vinculada; si aún no hay compra, con las
-            cantidades que salieron en la orden.
-          </span>
-        </span>
-      </label>
+      <AppDatePicker
+        v-model="form.fechaPruebaHidrostatica"
+        label="Prueba hidrostática"
+        hint="Se registra en el libro de P.H. de cada cilindro que vuelve."
+      />
+      <!--
+        El retorno es siempre físico: ya no hay opción de "solo anotar la
+        fecha". Esa variante dejaba la orden marcada como retornada con los
+        cilindros todavía en planta, sin gas ingresado, y bloqueaba el retorno
+        de verdad desde Compras.
+      -->
+      <p
+        class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400"
+      >
+        Al guardar, los cilindros quedan disponibles en el almacén de retorno y entra su gas. El gas
+        entra con las cantidades de la compra vinculada; si aún no hay compra, con las cantidades que
+        salieron en la orden.
+      </p>
     </div>
 
     <template #footer>
@@ -69,15 +76,20 @@ const mutation = useFinalizarRecargaMutation()
 
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
-const almacenOptions = computed(
-  () => almacenesQuery.data.value?.data?.map((a) => ({ value: a.id, label: a.nombre })) ?? [],
-)
+const almacenOptions = computed(() => {
+  const lista = almacenesQuery.data.value?.data ?? []
+  const idSucursalDoc = props.documento?.id_sucursal
+  const filtrados =
+    idSucursalDoc != null
+      ? lista.filter((a) => Number(a.id_sucursal) === Number(idSucursalDoc))
+      : lista
+  return filtrados.map((a) => ({ value: a.id, label: a.nombre }))
+})
 
 const form = reactive({
   fechaLlegadaAlmacen: '',
   idAlmacen: '' as number | '',
   fechaPruebaHidrostatica: '',
-  guardarBalonesAlmacen: true,
 })
 
 const puedeGuardar = computed(
@@ -86,8 +98,9 @@ const puedeGuardar = computed(
 
 watch(open, (abierto) => {
   if (!abierto || !props.documento) return
-  // El almacén de retorno por defecto es el del documento.
-  form.idAlmacen = props.documento.id_almacen
+  // Por defecto vuelven al almacén del que salieron; el backend lo guarda como
+  // almacén de retorno, sin pisar el origen de la orden.
+  form.idAlmacen = props.documento.id_almacen_retorno ?? props.documento.id_almacen
 })
 
 async function onGuardar() {
@@ -98,7 +111,11 @@ async function onGuardar() {
       fechaLlegadaAlmacen: form.fechaLlegadaAlmacen,
       idAlmacen: Number(form.idAlmacen),
       fechaPruebaHidrostatica: form.fechaPruebaHidrostatica || undefined,
-      guardarBalonesAlmacen: form.guardarBalonesAlmacen,
+      // Este modal es "registrar retorno": siempre mueve inventario. Sin esto
+      // el backend no guarda las fechas y la orden queda igual que antes.
+      guardarBalonesAlmacen: true,
+      // Ficha ICP ya enganchada a la OS (Registrar lote): se re-aplica en el retorno.
+      idLoteProtocolo: props.documento.id_lote_protocolo ?? undefined,
       idUsuarioAuditoria: authStore.user?.id,
     },
   })

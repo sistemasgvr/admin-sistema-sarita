@@ -13,6 +13,23 @@ export interface DocSalidaAccionesFuente {
   serie?: string | null
   ticket_sunat?: string | null
   detalle_desde_venta?: boolean | null
+  /**
+   * Los envases ya entraron al almacén (ENTRADA_PLANTA_EXTERNA vigente). Es lo
+   * único que prueba el retorno: `fecha_llegada_almacen` acompaña al retorno
+   * pero por sí sola no mueve inventario.
+   */
+  retorno_fisico?: boolean | null
+  fecha_llegada_almacen?: string | null
+  id_comprobante_compra?: number | null
+  /**
+   * SUNAT exige número de documento de quien recibe. La API lo busca en este
+   * orden (destinatario → cliente → proveedor, y el proveedor primero en
+   * planta externa), así que aquí hacen falta los tres. El listado no los
+   * envía: son opcionales y su ausencia no decide nada.
+   */
+  documento_destinatario?: string | null
+  documento_cliente?: string | null
+  documento_proveedor?: string | null
 }
 
 export type DocSalidaAccion =
@@ -59,26 +76,76 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
     () => !anulada.value && !emitido.value && puedeEditar.value,
   )
 
+  /** El retorno físico ya se registró: los cilindros y el gas están en almacén. */
+  const retornoRegistrado = computed(() => Boolean(documento.value?.retorno_fisico))
+
+  /** La factura del proveedor ya está vinculada a la orden. */
+  const tieneCompraVinculada = computed(() => Boolean(documento.value?.id_comprobante_compra))
+
+  /**
+   * Solo hay retorno cuando hubo salida: en borrador el inventario no se movió
+   * y los cilindros nunca fueron a planta (la API también lo rechaza). Y solo
+   * se registra una vez: repetirlo duplicaba el ingreso de envases y gas.
+   */
   const puedeRegistrarRetorno = computed(
-    () => esPlantaExterna.value && !anulada.value && puedeEditar.value,
+    () =>
+      esPlantaExterna.value &&
+      (estado.value === 'GENERADA' || estado.value === 'EMITIDA_SUNAT') &&
+      !retornoRegistrado.value &&
+      puedeEditar.value,
   )
 
   const puedeConvertirGre = computed(
     () => documento.value != null && !esBorrador.value && !anulada.value && !emitido.value,
   )
 
+  /**
+   * La guía no se puede armar sin documento de quien recibe. En planta externa
+   * el receptor es el proveedor (mismo criterio que el PDF y el mapper de la
+   * API). Cuando la fuente es una fila del listado ninguno de los campos
+   * viaja: ahí no hay nada que juzgar y la acción se ofrece igual, que la API
+   * valida antes de llamar a SUNAT.
+   */
+  const destinatarioDocumentado = computed(() => {
+    const candidatos = [
+      documento.value?.documento_destinatario,
+      documento.value?.documento_cliente,
+      documento.value?.documento_proveedor,
+    ]
+    if (candidatos.every((doc) => doc === undefined)) return true
+    return candidatos.some((doc) => Boolean(doc?.trim()))
+  })
+
+  /** Una orden anulada conserva su serie: sin este corte seguía siendo emitible. */
   const puedeEmitir = computed(
     () =>
+      !anulada.value &&
       Boolean(documento.value?.serie) &&
       !emitido.value &&
+      destinatarioDocumentado.value &&
       authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_EMITIR),
   )
 
-  /** Anular en API usa DOCUMENTOS_SALIDA_ELIMINAR. */
+  /**
+   * Anular en API usa DOCUMENTOS_SALIDA_ELIMINAR. Con factura vinculada
+   * doc_anular_salida rechaza la operación (hay que anular la compra primero):
+   * ofrecer la acción solo llevaba al error.
+   */
+  const tieneTicketSunat = computed(
+    () => Boolean(String(documento.value?.ticket_sunat ?? '').trim()),
+  )
+
+  /**
+   * Anular en API usa DOCUMENTOS_SALIDA_ELIMINAR. Con factura vinculada
+   * doc_anular_salida rechaza; con ticket_sunat (aunque aún PENDIENTE)
+   * también — no ofrecer la acción.
+   */
   const puedeAnular = computed(
     () =>
       !anulada.value &&
       !emitido.value &&
+      !tieneTicketSunat.value &&
+      !tieneCompraVinculada.value &&
       authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_ELIMINAR),
   )
 
@@ -134,10 +201,13 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
 
   return {
     esPlantaExterna,
+    retornoRegistrado,
+    tieneCompraVinculada,
     puedeGenerar,
     puedeEditarDatos,
     puedeRegistrarRetorno,
     puedeConvertirGre,
+    destinatarioDocumentado,
     puedeEmitir,
     puedeAnular,
     puedeAsociarLote,

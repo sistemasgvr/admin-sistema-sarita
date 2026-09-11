@@ -571,7 +571,13 @@ const garantiasCobroMediosCaja = computed(() =>
   Number(totales.value?.garantiasCobroMediosCaja ?? 0),
 )
 const totalDepositos = computed(() => Number(totales.value?.depositos ?? 0))
-const totalGastosCaja = computed(() => Number(totales.value?.gastosCaja ?? 0))
+/** Solo gastos con medio que vacía el cajón (mismo criterio que el cierre BE). */
+const totalGastosCajaMedios = computed(() =>
+  Number(totales.value?.gastosCajaMediosCaja ?? totales.value?.gastosCaja ?? 0),
+)
+const pagosProveedorMediosCaja = computed(() =>
+  Number(totales.value?.pagosProveedorMediosCaja ?? 0),
+)
 const garantiasDevolucionMediosCaja = computed(() =>
   Number(totales.value?.garantiasDevolucionMediosCaja ?? 0),
 )
@@ -584,7 +590,8 @@ const cajaEsperada = computed(
       cobranzasMediosCaja.value +
       garantiasCobroMediosCaja.value -
       totalDepositos.value -
-      totalGastosCaja.value -
+      totalGastosCajaMedios.value -
+      pagosProveedorMediosCaja.value -
       garantiasDevolucionMediosCaja.value,
 )
 
@@ -656,7 +663,7 @@ const resumenCards = computed<SummaryCardItem[]>(() => [
   {
     key: 'gastos',
     label: 'Gastos caja',
-    value: formatCurrency(totales.value?.gastosCaja ?? 0),
+    value: formatCurrency(totales.value?.gastosCajaMediosCaja ?? totales.value?.gastosCaja ?? 0),
     icon: ICONS.arrowUpFromLine,
     iconClass: 'bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300',
   },
@@ -717,9 +724,16 @@ const desgloseArqueo = computed(() => [
   },
   {
     key: 'gastos',
-    label: 'Gastos de caja',
+    label: 'Gastos de caja (efectivo / Yape / Plin)',
     signo: '-' as const,
-    monto: totalGastosCaja.value,
+    monto: totalGastosCajaMedios.value,
+    destacado: false,
+  },
+  {
+    key: 'pagosProveedor',
+    label: 'Pagos a proveedores (CxP)',
+    signo: '-' as const,
+    monto: pagosProveedorMediosCaja.value,
     destacado: false,
   },
   {

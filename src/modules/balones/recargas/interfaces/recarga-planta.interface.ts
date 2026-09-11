@@ -18,6 +18,8 @@ export interface RecargaPlantaDetalle {
   id_unidad_medida?: number | null
   nombre_unidad_medida?: string | null
   unidad_capacidad_balon?: string | null
+  /** Id de la U.M. de la capacidad del tipo de balón (U.M. de las líneas de gas en Compras). */
+  id_unidad_capacidad_balon?: number | null
   lote?: string | null
   fecha_vencimiento_lote?: string | null
   fecha_prueba_hidrostatica?: string | null
@@ -49,6 +51,14 @@ export interface RecargaPlanta {
   serie_factura?: string | null
   numero_factura?: string | null
   fecha_llegada_almacen?: string | null
+  /**
+   * Los cilindros ya entraron al almacén. `fecha_llegada_almacen` acompaña al
+   * retorno pero no lo prueba: sin este flag la orden puede tener fecha y los
+   * envases seguir en planta.
+   */
+  retorno_fisico?: boolean | null
+  id_almacen_retorno?: number | null
+  nombre_almacen_retorno?: string | null
   lote?: string | null
   fecha_vencimiento_lote?: string | null
   fecha_prueba_hidrostatica?: string | null
@@ -56,6 +66,7 @@ export interface RecargaPlanta {
   nombre_estado?: string | null
   descripcion_estado?: string | null
   total_cilindros?: number | null
+  total_productos?: number | null
   observacion?: string | null
   detalles?: RecargaPlantaDetalle[]
   puede_eliminar?: boolean | null
@@ -72,6 +83,8 @@ export interface RecargaPlantaListFilters {
   idProveedor?: number
   idAlmacen?: number
   idEstado?: number
+  /** Estados de ciclo del documento separados por coma, p. ej. 'GENERADA,EMITIDA_SUNAT'. */
+  codigoEstadoCiclo?: string
   fechaDesde?: string
   fechaHasta?: string
 }

@@ -428,6 +428,17 @@ async function ejecutarCrear(row: ComprobanteListItem, origen: Comprobante, user
   }
 
   try {
+    const pagosMapped = (origen.pagos ?? [])
+      .filter((p) => Number(p.id_medio_pago) > 0 && Number(p.monto) > 0)
+      .map((p) => ({
+        idMedioPago: Number(p.id_medio_pago),
+        monto: Number(p.monto),
+        idCuentaBancaria: p.id_cuenta_bancaria || undefined,
+        numeroOperacion: p.numero_operacion || undefined,
+        referencia: p.referencia || undefined,
+        observacion: p.observacion || undefined,
+      }))
+
     const creado = await createMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idTipoComprobante: idTipoComprobante.value!,
@@ -437,11 +448,14 @@ async function ejecutarCrear(row: ComprobanteListItem, origen: Comprobante, user
       idComprobanteOrigen: row.id,
       idMoneda: origen.id_moneda ?? undefined,
       idMedioPago: origen.id_medio_pago ?? undefined,
-      idSucursal: idSucursalCaja.value ?? undefined,
+      idCondicionPago: origen.id_condicion_pago ?? undefined,
+      fechaVencimiento: origen.fecha_vencimiento ?? undefined,
+      idSucursal: idSucursalCaja.value ?? origen.id_sucursal ?? undefined,
       idAlmacen: origen.id_almacen ?? undefined,
       idTipoOperacionSunat: origen.id_tipo_operacion_sunat ?? undefined,
       glosa: `${esFactura.value ? 'Factura' : 'Boleta'} de VSD ${row.serie}-${row.numero}`,
       observaciones: observaciones.value.trim() || undefined,
+      ...(pagosMapped.length > 0 ? { pagos: pagosMapped } : {}),
       detalles: lineas.value.map((linea) => ({
         idProducto: linea.idProducto,
         cantidad: Number(linea.cantidad),

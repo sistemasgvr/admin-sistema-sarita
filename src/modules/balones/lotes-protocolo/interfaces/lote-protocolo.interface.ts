@@ -120,6 +120,8 @@ export interface AplicarLoteProtocoloPayload {
   idUsuarioAuditoria: number
   /** Omitir para aplicar a los envases que ya emparejaron por número de serie. */
   idBalones?: number[]
+  /** Orden de salida a la que se engancha la ficha (doc_salida.id_lote_protocolo). */
+  idDocSalida?: number
 }
 
 export interface AplicarLoteProtocoloResult {

@@ -149,7 +149,7 @@
                 v-model="idSucursal"
                 label="Sucursal"
                 placeholder="Seleccionar"
-                help="Sucursal a la que se atribuye la compra: sus pagos entran en la caja de esta sucursal y sus ingresos de stock se reportan aquí."
+                help="Sucursal a la que se atribuye la compra: sus ingresos de stock se reportan aquí y los pagos de su cuenta por pagar salen de la caja de esta sucursal."
                 :options="sucursalOptions"
                 :loading="sucursalesQuery.isFetching.value"
                 :disabled="saving"
@@ -168,7 +168,7 @@
                 v-model="idCondicionPago"
                 label="Condición pago"
                 placeholder="Seleccionar"
-                help="Crédito o cuotas: verás un preview editable. Al guardar se crea la cuenta por pagar."
+                :help="CONDICION_PAGO_HELP"
                 :options="condicionPagoOptions"
                 :loading="condicionesQuery.isFetching.value"
                 :disabled="saving"
@@ -196,7 +196,7 @@
             <AppSwitch
               v-model="desdeRecargaExterna"
               label="A partir de recarga externa"
-              help="Vincula la factura a una orden de planta. El gas no entra a stock de productos; el inventario físico es el cilindro al retornar."
+              help="Vincula la factura a una orden de planta. El gas entra al stock con el retorno de los cilindros, con las cantidades de esta factura."
               :disabled="saving"
             />
 
@@ -210,6 +210,7 @@
               :options="recargaPlantaOptions"
               :loading="recargaPlantaQuery.isFetching.value"
               :disabled="saving || !idProveedor"
+              :error="errors.idRecargaPlanta"
             />
             </div>
 
@@ -230,9 +231,9 @@
                 />
                 <span>
                   Retorno registrado el
-                  <strong class="font-semibold">{{ fechaRetornoOrdenLabel }}</strong> desde el
-                  documento de salida: los cilindros y el gas ya ingresaron. Esta factura solo
-                  queda vinculada a la orden.
+                  <strong class="font-semibold">{{ fechaRetornoOrdenLabel }}</strong>: los
+                  cilindros ya están en almacén. Al guardar, esta factura queda vinculada a la
+                  orden y el gas ingresado se ajusta a las cantidades que indiques en el detalle.
                 </span>
               </div>
 
@@ -261,10 +262,7 @@
                   </span>
                 </div>
 
-                <div
-                  v-if="guardarBalonesAlmacen"
-                  class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3"
-                >
+                <div v-if="guardarBalonesAlmacen" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <AppInput
                     v-model="fechaLlegadaAlmacen"
                     label="Fecha llegada almacén"
@@ -273,23 +271,30 @@
                     :disabled="saving"
                     :error="errors.fechaLlegadaAlmacen"
                   />
-
-                  <AppInput
-                    v-model="serieGuiaIngreso"
-                    label="Serie GRE proveedor"
-                    placeholder="T001"
-                    help="Guía con la que el proveedor devuelve los cilindros; es referencial."
-                    :disabled="saving"
-                  />
-
-                  <AppInput
-                    v-model="numeroGuiaIngreso"
-                    label="Número GRE proveedor"
-                    placeholder="00000002"
-                    :disabled="saving"
-                  />
                 </div>
               </template>
+
+              <!--
+                La GRE del proveedor es un dato de la factura, no del retorno:
+                se puede tipear aunque el retorno ya esté registrado o aún no
+                se marque. Se guarda en la orden como referencia.
+              -->
+              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <AppInput
+                  v-model="serieGuiaIngreso"
+                  label="Serie GRE proveedor"
+                  placeholder="T001"
+                  help="Guía con la que el proveedor devuelve los cilindros; es referencial."
+                  :disabled="saving"
+                />
+
+                <AppInput
+                  v-model="numeroGuiaIngreso"
+                  label="Número GRE proveedor"
+                  placeholder="00000002"
+                  :disabled="saving"
+                />
+              </div>
 
               <div class="mt-4">
                 <p
@@ -355,7 +360,11 @@
                   Gas que ingresa según los cilindros
                 </p>
                 <span class="text-[11px] text-gray-500 dark:text-gray-400">
-                  Lo que cargó la planta por cada gas; entra al stock con el retorno.
+                  {{
+                    ordenYaRetorno
+                      ? 'Lo facturado por cada gas; el stock ya entró con el retorno y se ajusta a estas cantidades.'
+                      : 'Lo que cargó la planta por cada gas; entra al stock con el retorno.'
+                  }}
                 </span>
               </div>
 
@@ -664,7 +673,7 @@
                 v-model="idCondicionPago"
                 label="Condición pago"
                 placeholder="Seleccionar"
-                help="Crédito o cuotas: verás un preview editable. Al guardar se crea la cuenta por pagar."
+                :help="CONDICION_PAGO_HELP"
                 :options="condicionPagoOptions"
                 :loading="condicionesQuery.isFetching.value"
                 :disabled="saving"
@@ -782,6 +791,7 @@
                             v-model="lineasDraft[det.id].cantidad"
                             :name="`compra-edit-cantidad-${det.id}`"
                             :nombre-unidad="det.unidad_medida"
+                            :es-gas="det.es_gas"
                             :disabled="saving || lineaGuardando === det.id"
                           />
                         </template>
@@ -921,6 +931,7 @@ import {
   useRecargasPlantaQuery,
 } from '@/modules/balones/recargas/composables/useRecargasPlantaQuery'
 import type {
+  RecargaPlanta,
   RecargaPlantaDetalle,
   RecargaPlantaListFilters,
 } from '@/modules/balones/recargas/interfaces/recarga-planta.interface'
@@ -939,7 +950,7 @@ import {
   type CuotaPreviewItem,
 } from '@/modules/compras/utils/previewCuotasCompra'
 import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
-import { formatListaOpcionLabel, formatListaOpcionNombre } from '@/shared/utils/formatListaOpcion'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { ListaIds, TipoClienteIds } from '@/shared/constants/lista-ids'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -1033,6 +1044,10 @@ const saving = computed(
     eliminarDetalleMutation.isPending.value,
 )
 
+// Vive fuera del formulario (no se envía) pero el esquema lo consulta: con el
+// switch encendido la orden de recarga pasa a ser obligatoria.
+const desdeRecargaExterna = ref(false)
+
 const requiredOnCreate = (label: string) =>
   yup
     .mixed<string | number>()
@@ -1054,7 +1069,14 @@ const { defineField, handleSubmit, resetForm, errors } = useForm({
       serie: requiredOnCreate('La serie'),
       numero: requiredOnCreate('El número'),
       idProveedor: requiredOnCreate('El proveedor'),
-      idRecargaPlanta: yup.mixed<string | number>().optional(),
+      // Con el switch encendido la factura declara ser el costo de una orden:
+      // sin orden el backend la registra como compra suelta y el gas nunca
+      // llega al retorno.
+      idRecargaPlanta: yup
+        .mixed<string | number>()
+        .test('orden-requerida', 'Selecciona la orden de recarga', (value) =>
+          !desdeRecargaExterna.value || (value !== '' && value != null),
+        ),
       guardarBalonesAlmacen: yup.boolean().default(false),
       fechaLlegadaAlmacen: optionalString().test(
         'retorno-fecha',
@@ -1104,7 +1126,6 @@ const [serie, serieAttrs] = defineField('serie')
 const [numero, numeroAttrs] = defineField('numero')
 const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
 const [idRecargaPlanta] = defineField('idRecargaPlanta')
-const desdeRecargaExterna = ref(false)
 const [guardarBalonesAlmacen] = defineField('guardarBalonesAlmacen')
 const [fechaLlegadaAlmacen] = defineField('fechaLlegadaAlmacen')
 const [serieGuiaIngreso] = defineField('serieGuiaIngreso')
@@ -1120,6 +1141,8 @@ const [glosa] = defineField('glosa')
 const [declararSunat] = defineField('declararSunat')
 const DECLARAR_SUNAT_HELP =
   'Marca la factura para el registro de compras SUNAT (PLE). No la envía por internet; solo la clasifica para declarar.'
+const CONDICION_PAGO_HELP =
+  'Contado: la compra no mueve la caja por sí sola; si pagaste en efectivo, regístralo aparte como gasto de caja. Crédito o cuotas: verás un preview editable y al guardar se crea la cuenta por pagar; cada pago que registres sobre ella sí sale de la caja de la sucursal.'
 
 const lineas = reactive<CompraLineaForm[]>([])
 const lineasExistentes = computed(() => compraData.value?.detalle ?? [])
@@ -1258,11 +1281,11 @@ const tipoComprobanteOptions = computed(() => {
 })
 const tipoRegistroOptions = computed(() => toSelectOptions(tipoRegistroQuery.data.value))
 // La descripción de estas opciones es una aclaración larga, no una etiqueta:
-// el select muestra el nombre (toSelectOptions prefiere la descripción).
+// el select muestra el nombre humanizado (toSelectOptions prefiere la descripción).
 const categoriaGastoOptions = computed(() =>
   (categoriaGastoQuery.data.value ?? []).map((opcion) => ({
     value: opcion.id,
-    label: formatListaOpcionNombre(opcion.nombre),
+    label: formatListaOpcionLabel(opcion.nombre),
   })),
 )
 const monedaOptions = computed(() => toSelectOptions(monedaQuery.data.value))
@@ -1304,34 +1327,51 @@ const proveedorOptions = computed(() => {
 })
 
 
-const recargaPlantaFilters = ref<RecargaPlantaListFilters>({ pagina: 1, limite: 50 })
+/**
+ * Solo órdenes que ya salieron a planta: en borrador no hay nada que facturar
+ * ni que retornar, y las anuladas no cuentan. El proveedor se agrega al cambiar
+ * el de la factura (una orden es de un proveedor concreto).
+ */
+const RECARGA_PLANTA_FILTROS_BASE: RecargaPlantaListFilters = {
+  pagina: 1,
+  limite: 50,
+  codigoEstadoCiclo: 'GENERADA,EMITIDA_SUNAT',
+}
+const recargaPlantaFilters = ref<RecargaPlantaListFilters>({ ...RECARGA_PLANTA_FILTROS_BASE })
 const recargaPlantaQuery = useRecargasPlantaQuery(recargaPlantaFilters)
-const recargaPlantaOptions = computed(() =>
+
+function opcionDeRecarga(rp: RecargaPlanta) {
+  const numero = rp.numero || `RP-${rp.id}`
+  const yaRetorno = Boolean(rp.retorno_fisico) || rp.nombre_estado === 'RETORNADO'
+  const partes = [numero, formatListDate(rp.fecha_salida)]
+  // total_items mezclaba cilindros y líneas de gas; el listado ya los separa.
+  if (rp.total_cilindros != null) {
+    partes.push(`${rp.total_cilindros} cilindro${rp.total_cilindros === 1 ? '' : 's'}`)
+  }
+  if (rp.total_productos != null) {
+    partes.push(`${rp.total_productos} producto${rp.total_productos === 1 ? '' : 's'}`)
+  }
+  return {
+    value: rp.id,
+    label: partes.join(' · '),
+    // El badge avisa que el retorno ya está hecho; la orden sigue siendo
+    // elegible porque lo que falta es justamente vincular su factura.
+    badges: yaRetorno ? [{ label: 'Retorno registrado', color: 'success' as const }] : undefined,
+  }
+}
+
+const recargaPlantaOptionsListado = computed(() =>
   (recargaPlantaQuery.data.value?.data ?? [])
     // Lo que descarta una orden es estar ya facturada, no haber retornado: el
     // retorno puede haberse marcado antes de que llegue la factura del proveedor.
-    .filter((rp) => !rp.id_comprobante_compra)
-    .map((rp) => {
-      const numero = rp.numero || `RP-${rp.id}`
-      const yaRetorno = Boolean(rp.fecha_llegada_almacen) || rp.nombre_estado === 'RETORNADO'
-      const partes = [numero, formatListDate(rp.fecha_salida)]
-      // total_items mezclaba cilindros y líneas de gas; el listado ya los separa.
-      if (rp.total_cilindros != null) {
-        partes.push(`${rp.total_cilindros} cilindro${rp.total_cilindros === 1 ? '' : 's'}`)
-      }
-      if (rp.total_productos != null) {
-        partes.push(`${rp.total_productos} producto${rp.total_productos === 1 ? '' : 's'}`)
-      }
-      return {
-        value: rp.id,
-        label: partes.join(' · '),
-        // El badge avisa que el retorno ya está hecho; la orden sigue siendo
-        // elegible porque lo que falta es justamente vincular su factura.
-        badges: yaRetorno
-          ? [{ label: 'Retorno registrado', color: 'success' as const }]
-          : undefined,
-      }
-    }),
+    // El estado lo filtra la API; el guard local cubre datos en caché.
+    .filter(
+      (rp) =>
+        !rp.id_comprobante_compra &&
+        rp.nombre_estado !== 'BORRADOR' &&
+        rp.nombre_estado !== 'ANULADA',
+    )
+    .map(opcionDeRecarga),
 )
 
 const idRecargaPlantaNum = computed(() =>
@@ -1339,16 +1379,38 @@ const idRecargaPlantaNum = computed(() =>
 )
 const recargaPlantaDetalleQuery = useRecargaPlantaQuery(idRecargaPlantaNum)
 
+/**
+ * Al llegar por deep-link (o al corregir una compra anulada) la orden elegida
+ * puede no estar en la página que devolvió el listado: sin su opción el select
+ * mostraba el campo vacío como si no hubiera nada seleccionado. Se inyecta con
+ * los datos del detalle, que ya se está pidiendo para armar las líneas de gas.
+ */
+const recargaPlantaOptions = computed(() => {
+  const opciones = recargaPlantaOptionsListado.value
+  const id = idRecargaPlantaNum.value
+  if (!id || opciones.some((opt) => Number(opt.value) === id)) return opciones
+
+  const detalle = recargaPlantaDetalleQuery.data.value
+  if (!detalle || detalle.id !== id) return opciones
+  return [opcionDeRecarga(detalle), ...opciones]
+})
+
 const tituloDetalleProductos = computed(() =>
   desdeRecargaExterna.value && idRecargaPlantaNum.value
     ? 'Detalle de productos (gases de la orden)'
     : 'Detalle de productos (opcional)',
 )
-const helpDetalleProductos = computed(() =>
-  desdeRecargaExterna.value && idRecargaPlantaNum.value
-    ? 'Gases de la orden: indica cuánto ingresó de cada uno (tope: la capacidad de los cilindros) y su precio. El stock entra al registrar el retorno, con estas cantidades. Puedes agregar extras abajo.'
-    : 'Opcional: puedes registrar la compra sin líneas y agregarlas después. Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros).',
-)
+const helpDetalleProductos = computed(() => {
+  if (!(desdeRecargaExterna.value && idRecargaPlantaNum.value)) {
+    return 'Opcional: puedes registrar la compra sin líneas y agregarlas después. Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros).'
+  }
+  // Con el retorno ya hecho el gas está en almacén: estas cantidades no vuelven
+  // a ingresarlo, solo ajustan lo ingresado a lo que el proveedor facturó.
+  if (ordenYaRetorno.value) {
+    return 'El retorno ya se registró: el gas está en el almacén. Estas cantidades son el costo facturado y ajustan lo que ingresó; no vuelven a sumar stock. Puedes agregar extras abajo.'
+  }
+  return 'Gases de la orden: indica cuánto ingresó de cada uno (tope: la capacidad de los cilindros) y su precio. El stock entra al registrar el retorno, con estas cantidades. Puedes agregar extras abajo.'
+})
 
 const suppressRecargaPlantaReset = ref(false)
 
@@ -1372,43 +1434,67 @@ function resetRetornoFields() {
 
 watch(idProveedor, (id) => {
   const idNum = id !== '' && id != null ? Number(id) : undefined
-  recargaPlantaFilters.value = { pagina: 1, limite: 50, idProveedor: idNum }
+  recargaPlantaFilters.value = { ...RECARGA_PLANTA_FILTROS_BASE, idProveedor: idNum }
   if (suppressRecargaPlantaReset.value) return
   idRecargaPlanta.value = ''
   resetRetornoFields()
 })
 
-/** Deep-link: /admin/compras/nuevo?idRecargaPlanta=..&serieFactura=..&idGuiaRetorno=.. */
+/**
+ * Deshace lo que dejó el deep-link cuando la URL pierde la orden (volver atrás,
+ * o navegar a "Nueva compra" desde el menú estando en una de recarga). Antes el
+ * formulario se quedaba con la orden, sus líneas de gas y el bloque de retorno
+ * de la pantalla anterior.
+ */
+function limpiarRecargaExterna() {
+  desdeRecargaExterna.value = false
+  idRecargaPlanta.value = ''
+  recargaPlantaLineasSyncedFor.value = null
+  recargaRetornoPrefillFor.value = null
+  referenciaLineasPendientes.value = null
+  resetRetornoFields()
+  quitarLineasDeRecargaPlanta()
+}
+
+/**
+ * Deep-link: /admin/compras/nuevo?idRecargaPlanta=..&idProveedor=..&idAlmacen=..
+ * (&serieFactura=..&numeroFactura=..). Solo precarga; marcar el retorno es
+ * decisión del cajero: antes un parámetro lo dejaba activado por defecto y la
+ * compra registraba un retorno que nadie pidió.
+ */
 async function prefillDesdeQuery() {
   if (isEdit.value) return
 
   const idRecarga = queryId('idRecargaPlanta')
-  const idGuia = queryId('idGuiaRetorno')
-  if (!idRecarga && !idGuia) return
+  if (!idRecarga) {
+    if (desdeRecargaExterna.value || idRecargaPlantaNum.value) limpiarRecargaExterna()
+    return
+  }
 
   suppressRecargaPlantaReset.value = true
   desdeRecargaExterna.value = true
+  idRecargaPlanta.value = idRecarga
 
-  if (idRecarga) {
-    idRecargaPlanta.value = idRecarga
-    const serieFactura = queryParam('serieFactura')
-    const numeroFactura = queryParam('numeroFactura')
-    if (serieFactura) serie.value = serieFactura
-    if (numeroFactura) numero.value = numeroFactura
-  }
+  // Proveedor y almacén también llegan de la orden, pero tenerlos en la URL
+  // evita el parpadeo: el selector de órdenes ya filtra por proveedor desde el
+  // primer render en vez de quedar deshabilitado hasta que cargue el detalle.
+  const idProveedorQuery = queryId('idProveedor')
+  const idAlmacenQuery = queryId('idAlmacen')
+  if (idProveedorQuery) idProveedor.value = idProveedorQuery
+  if (idAlmacenQuery) idAlmacen.value = idAlmacenQuery
 
-  // idGuiaRetorno en query solo indica que el retorno ya aplica; la GRE es
-  // referencial (serie/número tipados), no se vincula un DocumentoSalida.
-  if (idGuia) {
-    guardarBalonesAlmacen.value = true
-  }
+  const serieFactura = queryParam('serieFactura')
+  const numeroFactura = queryParam('numeroFactura')
+  if (serieFactura) serie.value = serieFactura
+  if (numeroFactura) numero.value = numeroFactura
 
   await nextTick()
   suppressRecargaPlantaReset.value = false
+  sincronizarDesdeRecarga(idRecargaPlantaNum.value, recargaPlantaDetalleQuery.data.value)
 }
 
 watch(
-  () => [route.query.idRecargaPlanta, route.query.idGuiaRetorno] as const,
+  () => route.query.idRecargaPlanta,
   () => {
     void prefillDesdeQuery()
   },
@@ -1439,9 +1525,14 @@ function esLineaRecargaPlanta(key: string) {
 const lineasRecarga = computed(() => lineas.filter((lin) => esLineaRecargaPlanta(lin.key)))
 const lineasManuales = computed(() => lineas.filter((lin) => !esLineaRecargaPlanta(lin.key)))
 
-/** La orden ya retornó desde el documento de salida: el gas y los cilindros ya ingresaron. */
+/**
+ * La orden ya retornó desde el documento de salida: el gas y los cilindros ya
+ * ingresaron. Lo prueba la entrada de inventario (`retorno_fisico`), no la
+ * fecha de llegada: con "finalizar sin guardar en almacén" la orden quedaba con
+ * fecha y los cilindros seguían en planta, y la compra se saltaba el retorno.
+ */
 const ordenYaRetorno = computed(() =>
-  Boolean(recargaPlantaDetalleQuery.data.value?.fecha_llegada_almacen),
+  Boolean(recargaPlantaDetalleQuery.data.value?.retorno_fisico),
 )
 const fechaRetornoOrdenLabel = computed(
   () => formatListDate(recargaPlantaDetalleQuery.data.value?.fecha_llegada_almacen) || '—',
@@ -1549,7 +1640,10 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
         : nombreGas,
       cantidad: capacidad,
       precioUnitario: 0,
-      idUnidadMedida: balon.id_unidad_medida ?? null,
+      // La cantidad es una suma de capacidades: su U.M. es la de la capacidad
+      // del tipo de balón. La línea del cilindro en la orden no trae unidad, y
+      // sin id la API no puede convertir a la unidad del producto.
+      idUnidadMedida: balon.id_unidad_capacidad_balon ?? balon.id_unidad_medida ?? null,
       nombreUnidadMedida:
         balon.unidad_capacidad_balon ?? balon.nombre_unidad_medida ?? null,
       esGas: true,
@@ -1572,38 +1666,112 @@ function agregarLineasDesdeRecargaPlanta(detalles: RecargaPlantaDetalle[]) {
   }
 }
 
+/**
+ * Corrección de una compra anulada ligada a una orden: las líneas de gas se
+ * vuelven a armar desde los cilindros de la orden (tope, U.M., badges) y sobre
+ * ellas se aplican cantidad y precio de la compra anulada; lo que no era gas de
+ * la orden entra como línea manual. Se resuelve cuando llega el detalle de la
+ * orden, por eso queda pendiente. Antes se copiaban las líneas tal cual y el
+ * formulario perdía la UI de gases (claves recarga-planta-*, esGas, tope).
+ */
+type LineaReferencia = Pick<
+  CompraLineaForm,
+  | 'idProducto'
+  | 'productoLabel'
+  | 'cantidad'
+  | 'precioUnitario'
+  | 'idUnidadMedida'
+  | 'nombreUnidadMedida'
+  | 'afectaStock'
+>
+const referenciaLineasPendientes = ref<LineaReferencia[] | null>(null)
+
+function lineaDesdeReferencia(d: CompraDetalle): LineaReferencia {
+  return {
+    idProducto: d.id_producto as number,
+    cantidad: Number(d.cantidad),
+    precioUnitario: Number(d.precio_unitario ?? 0),
+    productoLabel: d.codigo_producto
+      ? `${d.codigo_producto} - ${d.nombre_producto ?? ''}`
+      : (d.nombre_producto ?? d.descripcion),
+    idUnidadMedida: d.id_unidad_medida ?? null,
+    nombreUnidadMedida: d.unidad_medida ?? null,
+    afectaStock: Boolean(d.afecta_stock),
+  }
+}
+
+function agregarLineaManualDesdeReferencia(l: LineaReferencia) {
+  const key = crypto.randomUUID()
+  precioNuevoInputs[key] = montoPrecioAString(l.precioUnitario)
+  lineas.push({ key, ...l })
+}
+
+function aplicarLineasReferenciaPendientes() {
+  const pendientes = referenciaLineasPendientes.value
+  if (!pendientes) return
+  referenciaLineasPendientes.value = null
+
+  for (const l of pendientes) {
+    const gasOrden = lineas.find(
+      (lin) => esLineaRecargaPlanta(lin.key) && lin.idProducto === l.idProducto,
+    )
+    if (!gasOrden) {
+      agregarLineaManualDesdeReferencia(l)
+      continue
+    }
+    const tope = Number(gasOrden.capacidadRecarga ?? 0)
+    gasOrden.cantidad = tope > 0 ? Math.min(l.cantidad, tope) : l.cantidad
+    gasOrden.precioUnitario = l.precioUnitario
+    precioNuevoInputs[gasOrden.key] =
+      l.precioUnitario > 0 ? montoPrecioAString(l.precioUnitario) : ''
+  }
+}
+
+/**
+ * Sincroniza el formulario con la orden elegida: proveedor/almacén/GRE la
+ * primera vez, y las líneas de gas una sola vez por orden. Vive fuera del watch
+ * para poder invocarla también cuando el detalle ya estaba en caché y el watch
+ * no vuelve a disparar (deep-link y corrección la precargan con el reset
+ * suprimido).
+ */
+function sincronizarDesdeRecarga(id: number | null, data: RecargaPlanta | null | undefined) {
+  if (!id) {
+    quitarLineasDeRecargaPlanta()
+    recargaPlantaLineasSyncedFor.value = null
+    recargaRetornoPrefillFor.value = null
+    resetRetornoFields()
+    return
+  }
+
+  if (!data || data.id !== id) return
+
+  if (recargaRetornoPrefillFor.value !== id) {
+    recargaRetornoPrefillFor.value = id
+    void prefillProveedorAlmacenDesdeRecarga(data)
+    serieGuiaIngreso.value = data.serie_guia_ingreso ?? ''
+    numeroGuiaIngreso.value = data.numero_guia_ingreso ?? ''
+    // Retorno ya hecho desde el documento: no se vuelve a marcar aquí (antes
+    // se auto-marcaba y la compra repetía el ingreso de los cilindros). Manda
+    // la entrada de inventario: una orden con solo fecha de llegada todavía
+    // tiene los cilindros en planta y su retorno se registra desde aquí.
+    if (data.retorno_fisico) {
+      guardarBalonesAlmacen.value = false
+      fechaLlegadaAlmacen.value = ''
+    }
+  }
+
+  if (recargaPlantaLineasSyncedFor.value === id) return
+
+  recargaPlantaLineasSyncedFor.value = id
+  agregarLineasDesdeRecargaPlanta(data.detalles ?? [])
+  aplicarLineasReferenciaPendientes()
+}
+
 watch(
   () => [idRecargaPlantaNum.value, recargaPlantaDetalleQuery.data.value] as const,
   ([id, data]) => {
     if (suppressRecargaPlantaReset.value) return
-
-    if (!id) {
-      quitarLineasDeRecargaPlanta()
-      recargaPlantaLineasSyncedFor.value = null
-      recargaRetornoPrefillFor.value = null
-      resetRetornoFields()
-      return
-    }
-
-    if (!data || data.id !== id) return
-
-    if (recargaRetornoPrefillFor.value !== id) {
-      recargaRetornoPrefillFor.value = id
-      void prefillProveedorAlmacenDesdeRecarga(data)
-      serieGuiaIngreso.value = data.serie_guia_ingreso ?? ''
-      numeroGuiaIngreso.value = data.numero_guia_ingreso ?? ''
-      // Retorno ya hecho desde el documento: no se vuelve a marcar aquí (antes
-      // se auto-marcaba y la compra repetía el ingreso de los cilindros).
-      if (data.fecha_llegada_almacen) {
-        guardarBalonesAlmacen.value = false
-        fechaLlegadaAlmacen.value = ''
-      }
-    }
-
-    if (recargaPlantaLineasSyncedFor.value === id) return
-
-    recargaPlantaLineasSyncedFor.value = id
-    agregarLineasDesdeRecargaPlanta(data.detalles ?? [])
+    sincronizarDesdeRecarga(id, data)
   },
 )
 
@@ -1801,6 +1969,7 @@ async function guardarLinea(det: CompraDetalle) {
     cantidad,
     det.unidad_medida,
     det.nombre_producto ?? det.descripcion,
+    det.es_gas,
   )
   if (errorCantidad) {
     toastWarning(errorCantidad)
@@ -1885,7 +2054,13 @@ async function agregarProducto(producto: Producto) {
     return
   }
 
-  const existente = lineas.find((linea) => linea.idProducto === producto.id)
+  // Las filas de gas de la orden no se acumulan con los extras: su cantidad es
+  // lo que la planta cargó (topada por la capacidad de los cilindros) y su
+  // línea va como costo sin stock. Sumarle un extra del mismo producto rompía
+  // el tope y convertía el extra en parte del retorno.
+  const existente = lineas.find(
+    (linea) => linea.idProducto === producto.id && !esLineaRecargaPlanta(linea.key),
+  )
   if (existente) {
     existente.cantidad = Math.max(incremento, Number(existente.cantidad || 0) + incremento)
     existente.nombreUnidadMedida = unidad ?? existente.nombreUnidadMedida
@@ -1926,8 +2101,23 @@ async function eliminarLinea(idDetalle: number) {
   }
 }
 
+/** Código ISO de la moneda elegida (las opciones de la lista Moneda son 'PEN' / 'USD'). */
+const codigoMoneda = computed(() => {
+  const id = Number(idMoneda.value)
+  const opcion = (monedaQuery.data.value ?? []).find((o) => Number(o.id) === id)
+  const codigo = opcion?.nombre?.trim().toUpperCase()
+  return codigo && /^[A-Z]{3}$/.test(codigo) ? codigo : 'PEN'
+})
+
 function formatMoney(value: number) {
-  return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
+  try {
+    return new Intl.NumberFormat('es-PE', {
+      style: 'currency',
+      currency: codigoMoneda.value,
+    }).format(value)
+  } catch {
+    return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
+  }
 }
 
 function resetCreateForm() {
@@ -1954,8 +2144,9 @@ function resetCreateForm() {
     },
   })
   recargaRetornoPrefillFor.value = null
-  recargaPlantaFilters.value = { pagina: 1, limite: 50 }
+  recargaPlantaFilters.value = { ...RECARGA_PLANTA_FILTROS_BASE }
   recargaPlantaLineasSyncedFor.value = null
+  referenciaLineasPendientes.value = null
   desdeRecargaExterna.value = false
   lineas.splice(0, lineas.length)
   for (const key of Object.keys(precioNuevoInputs)) {
@@ -1996,42 +2187,37 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
   })
 
   recargaPlantaFilters.value = {
-    pagina: 1,
-    limite: 50,
+    ...RECARGA_PLANTA_FILTROS_BASE,
     idProveedor: c.id_proveedor ?? undefined,
   }
 
-  recargaPlantaLineasSyncedFor.value = c.id_recarga_planta ?? null
+  // Se deja que la orden vuelva a armar sus líneas de gas (no se marca como
+  // ya sincronizada): las de la compra anulada se aplican encima.
+  recargaPlantaLineasSyncedFor.value = null
+  recargaRetornoPrefillFor.value = null
   desdeRecargaExterna.value = Boolean(c.id_recarga_planta)
 
   proveedorBuscar.value = c.proveedor ?? ''
 
+  lineas.splice(0, lineas.length)
+  for (const key of Object.keys(precioNuevoInputs)) {
+    delete precioNuevoInputs[key]
+  }
+
+  const lineasRef = (data.detalle ?? [])
+    .filter((d) => d.id_producto != null)
+    .map(lineaDesdeReferencia)
+
   await nextTick()
   suppressRecargaPlantaReset.value = false
 
-  lineas.splice(
-    0,
-    lineas.length,
-    ...(data.detalle ?? [])
-      .filter((d) => d.id_producto != null)
-      .map((d) => {
-        const key = crypto.randomUUID()
-        const precio = Number(d.precio_unitario ?? 0)
-        precioNuevoInputs[key] = montoPrecioAString(precio)
-        return {
-          key,
-          idProducto: d.id_producto as number,
-          cantidad: Number(d.cantidad),
-          precioUnitario: precio,
-          productoLabel: d.codigo_producto
-            ? `${d.codigo_producto} - ${d.nombre_producto ?? ''}`
-            : (d.nombre_producto ?? d.descripcion),
-          idUnidadMedida: d.id_unidad_medida ?? null,
-          nombreUnidadMedida: d.unidad_medida ?? null,
-          afectaStock: Boolean(d.afecta_stock),
-        }
-      }),
-  )
+  if (c.id_recarga_planta) {
+    referenciaLineasPendientes.value = lineasRef
+    sincronizarDesdeRecarga(idRecargaPlantaNum.value, recargaPlantaDetalleQuery.data.value)
+    return
+  }
+
+  for (const l of lineasRef) agregarLineaManualDesdeReferencia(l)
 }
 
 watch(
@@ -2116,6 +2302,14 @@ const onSubmit = handleSubmit(async (values) => {
     return
   }
 
+
+  // Una compra suelta puede guardarse solo con cabecera y recibir sus líneas
+  // después, pero la de una orden de planta no: sin líneas de gas el retorno se
+  // registra con cantidad cero y la factura queda sin costo que repartir.
+  if (desdeRecargaExterna.value && idRecargaPlantaNum.value && lineas.length === 0) {
+    toastWarning('Agrega al menos una línea: es el gas (y el costo) que aporta esta factura')
+    return
+  }
 
   const cantidadesOk = await validarCantidadesVeeValidate()
   if (!cantidadesOk) {

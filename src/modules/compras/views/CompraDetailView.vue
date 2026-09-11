@@ -334,6 +334,8 @@
           El retorno de cilindros genera
           <strong>nuevos movimientos</strong> en el historial del balón
           (<code class="text-xs">ENTRADA_PLANTA_EXTERNA</code>), no reemplaza los de salida.
+          Anular esta compra <strong>no deshace el retorno</strong>: desvincula la orden y
+          el gas ingresado vuelve a lo declarado en ella hasta que se registre otra factura.
         </div>
 
         <DetailSectionCard title="Detalle de productos" :icon="ICONS.clipboardList" :full-width="true">

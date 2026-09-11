@@ -170,6 +170,8 @@ interface LineaNc {
   descuento: number
   porcentajeIgv: number
   idAfectacionIgv?: number
+  idBalon?: number | null
+  noMueveKardex?: boolean
 }
 
 const props = defineProps<{
@@ -323,6 +325,9 @@ watch(
           descuento: Number(detalle.descuento ?? 0),
           porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
           idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
+          idBalon: detalle.id_balon ?? null,
+          // Recarga (gas+cilindro): el stock se restaura vía custodia RECARGA, no INGRESO.
+          noMueveKardex: detalle.id_balon != null,
         }
       })
       .filter((linea) => linea.cantidadMax > 0)
@@ -387,6 +392,8 @@ async function confirm() {
         porcentajeIgv: linea.porcentajeIgv,
         idAfectacionIgv: linea.idAfectacionIgv,
         descripcion: linea.descripcion,
+        idBalon: linea.idBalon ?? undefined,
+        noMueveKardex: linea.noMueveKardex || undefined,
       })),
     })
 

@@ -7,7 +7,7 @@
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Libro diario</h3>
           <AppHelpTip
-            text="Vista operativa del día / mes: ventas, cobranzas, gastos, depósitos y observaciones. Distinto del Resumen diario SUNAT."
+            text="Vista operativa del día / mes: ventas, cobranzas, pagos a proveedores, gastos, depósitos y observaciones. Distinto del Resumen diario SUNAT."
           />
         </div>
 
@@ -51,7 +51,7 @@
     </div>
 
     <template v-else-if="libro">
-      <AppSummaryCards :cards="resumenCards" :columns="5" />
+      <AppSummaryCards :cards="resumenCards" :columns="6" />
 
       <div class="space-y-3">
         <AppCollapsibleSection
@@ -111,6 +111,31 @@
                   :execute="(key) => onCobranzaAction(key, row)"
                 />
               </div>
+            </template>
+          </AppTable>
+        </AppCollapsibleSection>
+
+        <AppCollapsibleSection
+          v-model:open="pagosProveedorOpen"
+          title="Pagos a proveedores"
+          :badge="String(pagosProveedor.length)"
+          :icon="ICONS.arrowUpFromLine"
+        >
+          <AppTable
+            :columns="colsPagosProveedor"
+            :rows="pagosProveedor"
+            empty-text="Sin pagos a proveedores en el rango"
+          >
+            <template #actions="{ row }">
+              <button
+                type="button"
+                title="Ver detalle de compra"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 disabled:opacity-40 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+                :disabled="!row.idCompra"
+                @click="irACompra(row.idCompra)"
+              >
+                <AppIcon :name="ICONS.eye" :size="15" />
+              </button>
             </template>
           </AppTable>
         </AppCollapsibleSection>
@@ -309,12 +334,15 @@ const errorDetalle = computed(() => {
   return null
 })
 
+const pagosProveedor = computed(() => libro.value?.pagosProveedor ?? [])
+
 const canObservacion = computed(() => auth.hasPermission(PermisoBanderas.CAJA_OBSERVACION))
 const nuevaObs = ref('')
 const crearObs = useCrearCajaObservacionMutation()
 
 const ventasOpen = ref(true)
 const cobranzasOpen = ref(true)
+const pagosProveedorOpen = ref(true)
 const gastosOpen = ref(true)
 const depositosOpen = ref(true)
 const obsOpen = ref(true)
@@ -452,13 +480,15 @@ function gastoActionTitle(row: LibroDiarioGasto) {
 
 function onGastoAction(row: LibroDiarioGasto) {
   if (row.origen === 'COMPRA') {
-    void router.push({
-      name: 'admin-compras-detalle',
-      params: { id: String(row.id) },
-    })
+    irACompra(row.id)
     return
   }
   irACaja(row.fecha)
+}
+
+function irACompra(idCompra?: number | null) {
+  if (!idCompra) return
+  void router.push({ name: 'admin-compras-detalle', params: { id: String(idCompra) } })
 }
 
 const resumenCards = computed<SummaryCardItem[]>(() => {
@@ -484,6 +514,14 @@ const resumenCards = computed<SummaryCardItem[]>(() => {
       value: formatCurrency(t?.cobranzas ?? 0),
       icon: ICONS.wallet,
       iconClass: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
+    },
+    {
+      key: 'pagosProveedor',
+      label: 'Pagos a proveedores',
+      value: formatCurrency(t?.pagosProveedor ?? 0),
+      hint: 'Cuentas por pagar de compras',
+      icon: ICONS.arrowUpFromLine,
+      iconClass: 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300',
     },
     {
       key: 'gastos',
@@ -519,6 +557,15 @@ const colsVentas: TableColumn[] = [
 const colsCobranzas: TableColumn[] = [
   { key: 'fechaPago', label: 'Fecha' },
   { key: 'cliente', label: 'Cliente' },
+  { key: 'medioPago', label: 'Medio' },
+  { key: 'numeroOperacion', label: 'Operación' },
+  { key: 'monto', label: 'Monto', formatter: (v) => formatCurrency(Number(v ?? 0)) },
+]
+
+const colsPagosProveedor: TableColumn[] = [
+  { key: 'fechaPago', label: 'Fecha' },
+  { key: 'proveedor', label: 'Proveedor' },
+  { key: 'compraSerieNumero', label: 'Compra' },
   { key: 'medioPago', label: 'Medio' },
   { key: 'numeroOperacion', label: 'Operación' },
   { key: 'monto', label: 'Monto', formatter: (v) => formatCurrency(Number(v ?? 0)) },

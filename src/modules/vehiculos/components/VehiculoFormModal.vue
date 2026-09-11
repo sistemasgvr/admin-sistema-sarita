@@ -336,8 +336,9 @@ const onSubmit = handleSubmit(async (values) => {
   try {
     const payload = {
       idUsuarioAuditoria: currentUserId,
+      // null explícito = flota propia; el backend usa p_clear_id_cliente.
       idCliente: props.soloEmpresa
-        ? undefined
+        ? null
         : values.idCliente
           ? Number(values.idCliente)
           : undefined,
