@@ -27,3 +27,19 @@ export function useDocumentoSalidaCatalogosQuery() {
     staleTime: 5 * 60 * 1000,
   })
 }
+
+/**
+ * Series GRE disponibles para el tipo de guía con su siguiente correlativo.
+ * Se refresca al abrir el modal (staleTime 0) para no mostrar un número ya usado.
+ */
+export function useSeriesGreQuery(
+  idTipoGuiaRemision: Ref<number | null> | ComputedRef<number | null>,
+  enabled: Ref<boolean> | ComputedRef<boolean>,
+) {
+  return useQuery({
+    queryKey: computed(() => documentosSalidaQueryKeys.seriesGre(idTipoGuiaRemision.value)),
+    queryFn: () => documentosSalidaService.listarSeriesGre(idTipoGuiaRemision.value),
+    enabled,
+    staleTime: 0,
+  })
+}

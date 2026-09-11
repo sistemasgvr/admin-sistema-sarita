@@ -7,7 +7,6 @@
           Datos de la guía
         </h4>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <AppInput v-model="form.serie" label="Serie (4 caracteres)" required maxlength="4" placeholder="T001" />
           <AppSelect
             v-model="form.idTipoGuiaRemision"
             label="Tipo de guía"
@@ -15,6 +14,29 @@
             :options="tipoGuiaOptions"
             :disabled="catalogosQuery.isLoading.value"
           />
+          <!--
+            Serie y correlativo como en boletas: la serie se elige entre las ya
+            usadas para el tipo de guía y el número lo reserva la API al guardar.
+          -->
+          <AppSelect
+            v-model="serieSeleccionada"
+            label="Serie"
+            required
+            :placeholder="seriesGreQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            :options="serieOptions"
+            :disabled="seriesGreQuery.isLoading.value"
+            :hint="serieHint"
+          />
+          <AppInput
+            v-if="serieSeleccionada === NUEVA_SERIE"
+            v-model="form.serie"
+            label="Nueva serie (4 caracteres)"
+            required
+            maxlength="4"
+            :placeholder="`${prefijoSerie}002`"
+            :error="errorSerie ?? undefined"
+          />
+          <AppInput :model-value="numeroPreview" label="Número" placeholder="Automático" disabled />
           <AppSelect
             v-model="form.idMotivoTraslado"
             label="Motivo de traslado"
@@ -173,7 +195,7 @@
       <button
         type="button"
         class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
-        :disabled="!form.serie || mutation.isPending.value"
+        :disabled="!form.serie || Boolean(errorSerie) || mutation.isPending.value"
         @click="onGuardar"
       >
         {{ mutation.isPending.value ? 'Guardando...' : 'Guardar' }}
@@ -196,7 +218,10 @@ import type { Chofer } from '@/modules/choferes/interfaces/chofer.interface'
 import VehiculoFormModal from '@/modules/vehiculos/components/VehiculoFormModal.vue'
 import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import type { Vehiculo } from '@/modules/vehiculos/interfaces/vehiculo.interface'
-import { useDocumentoSalidaCatalogosQuery } from '../composables/useDocumentosSalidaQuery'
+import {
+  useDocumentoSalidaCatalogosQuery,
+  useSeriesGreQuery,
+} from '../composables/useDocumentosSalidaQuery'
 import { useConvertirAGreMutation } from '../composables/useDocumentoSalidaMutations'
 import type { DocumentoSalida } from '../interfaces/documento-salida.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
@@ -248,6 +273,102 @@ const form = reactive({
   pesoBruto: undefined as number | undefined,
   numeroBultos: undefined as number | undefined,
 })
+
+// ---- Serie y correlativo ----
+/** Valor del select para escribir una serie que todavía no se ha usado. */
+const NUEVA_SERIE = '__nueva__'
+const serieSeleccionada = ref<string>('')
+
+const idTipoGuiaSeleccionado = computed(() =>
+  form.idTipoGuiaRemision ? Number(form.idTipoGuiaRemision) : null,
+)
+const codigoTipoGuia = computed(
+  () =>
+    catalogosQuery.data.value?.tiposGuia.find((o) => o.id === idTipoGuiaSeleccionado.value)
+      ?.descripcion ?? null,
+)
+/** SUNAT: 09 GRE Remitente → T###, 31 GRE Transportista → V###. */
+const prefijoSerie = computed(() => (codigoTipoGuia.value === '31' ? 'V' : 'T'))
+
+const seriesGreQuery = useSeriesGreQuery(idTipoGuiaSeleccionado, open)
+const seriesGre = computed(() => seriesGreQuery.data.value?.series ?? [])
+
+const serieOptions = computed<SelectOption[]>(() => [
+  ...seriesGre.value.map((s) => ({
+    value: s.serie,
+    label: `${s.serie} · siguiente ${s.siguiente_numero}`,
+  })),
+  { value: NUEVA_SERIE, label: 'Otra serie...' },
+])
+
+const errorSerie = computed<string | null>(() => {
+  if (serieSeleccionada.value !== NUEVA_SERIE) return null
+  const serie = form.serie.trim().toUpperCase()
+  if (!serie) return 'Ingresa la nueva serie'
+  if (!/^[A-Z][A-Z0-9]{3}$/.test(serie)) return 'La serie debe tener 4 caracteres (ej. T001)'
+  if (!serie.startsWith(prefijoSerie.value)) {
+    return `Para este tipo de guía la serie debe empezar con ${prefijoSerie.value} (ej. ${prefijoSerie.value}001)`
+  }
+  return null
+})
+
+/** Número que reservará la API: el ya asignado si se conserva la serie, o el siguiente de la serie. */
+const numeroPreview = computed(() => {
+  const d = props.documento
+  const serie = form.serie.trim().toUpperCase()
+  if (!serie) return ''
+  if (d?.numero_sunat && d.serie === serie) return d.numero_sunat
+  return seriesGre.value.find((s) => s.serie === serie)?.siguiente_numero ?? '00000001'
+})
+
+const serieHint = computed(() => {
+  const d = props.documento
+  if (d?.numero_sunat && d.serie === form.serie.trim().toUpperCase()) {
+    return `Este documento ya tiene reservado ${d.serie}-${d.numero_sunat}`
+  }
+  return 'El número se asigna automáticamente al guardar'
+})
+
+watch(serieSeleccionada, (value) => {
+  if (value === NUEVA_SERIE) {
+    // Se vacía solo si el texto era una serie existente; una serie nueva a medio escribir se conserva.
+    if (seriesGre.value.some((s) => s.serie === form.serie)) form.serie = ''
+    return
+  }
+  form.serie = value
+})
+
+watch(
+  () => form.serie,
+  (value) => {
+    const upper = value.toUpperCase()
+    if (upper !== value) form.serie = upper
+  },
+)
+
+/**
+ * Al cargar (o cambiar de tipo de guía) alinear el select con la serie del
+ * formulario: si ya está en la lista se selecciona; si el documento trae una
+ * serie que no se ha usado aún se mantiene como "otra"; si no hay ninguna se
+ * toma la primera disponible.
+ */
+const sincronizarSerieSeleccionada = () => {
+  // Hasta que llegue la lista del tipo actual no hay con qué alinear.
+  if (!open.value || !seriesGreQuery.data.value) return
+  const lista = seriesGre.value
+  const actual = form.serie.trim().toUpperCase()
+  if (actual && lista.some((s) => s.serie === actual)) {
+    serieSeleccionada.value = actual
+    return
+  }
+  if (actual && actual.startsWith(prefijoSerie.value)) {
+    serieSeleccionada.value = NUEVA_SERIE
+    return
+  }
+  serieSeleccionada.value = lista[0]?.serie ?? NUEVA_SERIE
+}
+
+watch(seriesGre, sincronizarSerieSeleccionada)
 
 // ---- Ubigeo en cascada ----
 const origenPaisId = ref<number | undefined>(undefined)
@@ -361,7 +482,9 @@ watch(open, (isOpen) => {
   const d = props.documento
 
   form.serie = d.serie ?? ''
+  serieSeleccionada.value = ''
   form.idTipoGuiaRemision = d.id_tipo_guia_remision ?? ''
+  sincronizarSerieSeleccionada()
   form.idMotivoTraslado = d.id_motivo_traslado ?? ''
   form.idModalidadTraslado = d.id_modalidad_traslado ?? ''
   form.direccionOrigen = d.direccion_origen ?? d.direccion_almacen ?? ''
@@ -428,7 +551,7 @@ watch(open, (isOpen) => {
 const mutation = useConvertirAGreMutation()
 
 async function onGuardar() {
-  if (!props.documento || !form.serie) return
+  if (!props.documento || !form.serie || errorSerie.value) return
   try {
     await mutation.mutateAsync({
       id: props.documento.id,

@@ -6,11 +6,12 @@
     :size="paso === 'catalogo' || esConfigPrestamo ? 'xl' : 'lg'"
   >
     <!-- Paso 1: tipo -->
-    <div v-if="paso === 'tipo'" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div v-if="paso === 'tipo'" data-tutorial="pos-tipos" class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <button
         v-for="opcion in tiposDisponibles"
         :key="opcion.key"
         type="button"
+        :data-tutorial="`pos-tipo-${opcion.key}`"
         class="flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-left transition hover:border-brand-400 hover:bg-brand-50/40 dark:border-gray-700 dark:hover:border-brand-500 dark:hover:bg-brand-500/10"
         @click="elegirTipo(opcion.key)"
       >

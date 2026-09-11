@@ -27,12 +27,16 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createBalonesMantenimientosTutorial } from '@/modules/soporte/tutorials/balones-mantenimientos.tutorial'
 import MantenimientoForm from '@/modules/balones/mantenimientos/components/MantenimientoForm.vue'
 import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import { balonesSectionBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
+
+useTutorialAutoStart('balones-mantenimientos', createBalonesMantenimientosTutorial, 600)
 
 const route = useRoute()
 const router = useRouter()

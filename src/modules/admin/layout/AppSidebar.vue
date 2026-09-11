@@ -58,7 +58,7 @@
                 <button
                   v-if="item.subItems"
                   type="button"
-                  :data-tutorial="item.name === 'Clientes' ? 'menu-clientes' : undefined"
+                  :data-tutorial="menuTutorialId(item)"
                   @click="toggleSubmenu(groupIndex, index)"
                   :class="[
                     'menu-item group w-full',
@@ -94,7 +94,7 @@
                 <router-link
                   v-else-if="item.path"
                   :to="item.path"
-                  :data-tutorial="item.name === 'Clientes' ? 'menu-clientes' : undefined"
+                  :data-tutorial="menuTutorialId(item)"
                   :class="[
                     'menu-item group',
                     {
@@ -130,6 +130,7 @@
                       <li v-for="subItem in item.subItems" :key="subItem.name">
                         <router-link
                           :to="subItem.path"
+                          :data-tutorial="submenuTutorialId(subItem)"
                           :class="[
                             'menu-dropdown-item',
                             {
@@ -179,6 +180,25 @@ const { visibleMenuGroups } = useAdminMenu()
 const { isExpanded, isMobileOpen, isHovered, expandedSubmenus, collapsedSubmenus } = useSidebar()
 
 const submenuKey = (groupIndex: number, itemIndex: number) => `${groupIndex}-${itemIndex}`
+
+/**
+ * Anclas para las rutas guiadas de Soporte (driver.js):
+ * - ítem principal: `menu-<nombre>` (Clientes → menu-clientes, Gastos y Compras → menu-gastos-y-compras)
+ * - sub-ítem: `menu-<ruta sin /admin/>` (/admin/clientes/mapa → menu-clientes-mapa, /admin/ventas/pos → menu-ventas-pos)
+ * Si un sub-ítem coincide con el id del padre (/admin/clientes) querySelector devuelve el padre.
+ */
+const tutorialSlug = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+const menuTutorialId = (item: AdminMenuItem) => `menu-${tutorialSlug(item.name)}`
+const submenuTutorialId = (subItem: AdminMenuSubItem) =>
+  `menu-${tutorialSlug(subItem.path.replace(/^\/admin\//, '').replace(/\//g, ' '))}`
 
 const matchesRoute = (path: string) =>
   route.path === path || route.path.startsWith(`${path}/`)

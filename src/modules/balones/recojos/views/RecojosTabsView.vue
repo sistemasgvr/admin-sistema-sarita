@@ -17,6 +17,7 @@
         @filter-change="onFiltersChange"
       />
       <AppTable
+        data-tutorial="recojos-pendientes-tabla"
         :columns="columns"
         :rows="rows"
         row-key="row_key"
@@ -62,6 +63,7 @@
           <button
             v-if="canCreate && !row.tiene_recojo_programado"
             type="button"
+            data-tutorial="recojos-pendiente-programar"
             class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-sm text-white hover:bg-brand-600"
             @click="programar(row)"
           >
@@ -98,6 +100,8 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createBalonesRecojosTutorial } from '@/modules/soporte/tutorials/balones-recojos.tutorial'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import RecojoProgramarModal from '@/modules/balones/recojos/components/RecojoProgramarModal.vue'
 import RecojosListView from '@/modules/balones/recojos/views/RecojosListView.vue'
@@ -122,6 +126,8 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+useTutorialAutoStart('balones-recojos', createBalonesRecojosTutorial, 600)
 
 const route = useRoute()
 const router = useRouter()

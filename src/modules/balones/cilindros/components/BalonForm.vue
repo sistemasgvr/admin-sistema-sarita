@@ -9,12 +9,13 @@
     >
       <FormCardsLayout>
         <DetailSectionCard
+          data-tutorial="balon-datos"
           title="Datos"
           :icon="ICONS.idCard"
           help="Código interno del cilindro. Si no hay serie distinta, se copia el código. El tipo sugiere el gas y define la vigencia de P.H."
         >
           <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div class="flex min-w-0 items-start gap-2">
+            <div data-tutorial="balon-codigo" class="flex min-w-0 items-start gap-2">
               <div class="min-w-0 flex-1">
                 <AppInput
                   v-model="codigoBalon"
@@ -113,6 +114,7 @@
             />
             <TipoBalonSelectField
               v-model="idTipoBalon"
+              data-tutorial="balon-tipo"
               label="Tipo de balón"
               placeholder="Selecciona..."
               required
@@ -175,6 +177,7 @@
         </DetailSectionCard>
 
         <DetailSectionCard
+          data-tutorial="balon-propiedad"
           title="Propiedad"
           :icon="ICONS.mapPin"
           help="De quién es el envase: cliente pide un cliente (no proveedor); planta pide el proveedor. El almacén donde está va en Datos."
@@ -216,6 +219,7 @@
         </DetailSectionCard>
 
         <DetailSectionCard
+          data-tutorial="balon-ph"
           title="P.H. y datos técnicos"
           :icon="ICONS.gauge"
           help="Mes y año del lomo: el vencimiento se calcula con la vigencia del tipo (5 u 10 años). Las renovaciones van en Mantenimientos (P.H. / Recertificación)."
@@ -345,6 +349,7 @@
         </button>
         <button
           type="submit"
+          data-tutorial="balon-guardar"
           class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="isSubmitting || isLoadingBalon"
         >

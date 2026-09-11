@@ -113,6 +113,15 @@ layer(base);
 }
 
 /* Driver.js: adapta los tutoriales al diseño de Oxígeno Sarita. */
+/*
+ * El overlay nace con z-index 10000 (inline) y los AppModal usan 99999: se sube
+ * para que las rutas también puedan resaltar elementos dentro de un modal.
+ * El popover de driver.js va en 1e9, siempre por encima.
+ */
+.driver-overlay {
+  z-index: 100000 !important;
+}
+
 .sarita-tutorial-popover {
   --driver-popover-font-family: Outfit, sans-serif;
   --driver-popover-border-radius: 12px;

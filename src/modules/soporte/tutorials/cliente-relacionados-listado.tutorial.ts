@@ -1,9 +1,4 @@
-import {
-  TUTORIAL_WAIT_FOR_ELEMENT_MS,
-  runTutorial,
-  scrollIntoScrollableParents,
-  type TutorialOptions,
-} from '@/modules/soporte/tutorials/tutorial-base'
+import { runTutorial, tableStep, type TutorialOptions } from '@/modules/soporte/tutorials/tutorial-base'
 
 export function createClienteRelacionadosListadoTutorial(options: TutorialOptions = {}) {
   return runTutorial(options, ({ sidebarStep }) => [
@@ -34,12 +29,7 @@ export function createClienteRelacionadosListadoTutorial(options: TutorialOption
         align: 'start',
       },
     },
-    {
-      element: '[data-tutorial="clientes-editar"]',
-      // Los registros se cargan de forma asíncrona: se mantiene el overlay hasta que aparezcan.
-      waitForElement: TUTORIAL_WAIT_FOR_ELEMENT_MS,
-      // El botón queda en la última columna de la tabla; hay que desplazarla horizontalmente.
-      onHighlightStarted: (element) => scrollIntoScrollableParents(element),
+    tableStep('[data-tutorial="clientes-editar"]', {
       advanceOnClick: true,
       popover: {
         title: '4. Editar cliente',
@@ -48,6 +38,6 @@ export function createClienteRelacionadosListadoTutorial(options: TutorialOption
         align: 'center',
         showButtons: ['close'],
       },
-    },
+    }),
   ])
 }

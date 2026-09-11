@@ -37,13 +37,14 @@
         </DetailSectionCard>
 
         <DetailSectionCard
+          data-tutorial="mantenimiento-servicio"
           title="Datos del servicio"
           :icon="ICONS.construction"
           help="Ingreso a taller: cilindro de inventario o servicio al que trae el cliente. Para cerrar use Finalizar en el listado."
         >
           <div class="space-y-4">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div v-if="mode === 'create'" class="sm:col-span-2">
+              <div v-if="mode === 'create'" data-tutorial="mantenimiento-item" class="sm:col-span-2">
                 <AppSelect
                   v-model="tipoItem"
                   label="Tipo de item"
@@ -179,6 +180,7 @@
 
         <DetailSectionCard
           v-if="esTipoPh"
+          data-tutorial="mantenimiento-ph"
           title="Datos de P.H."
           :icon="ICONS.gauge"
         >
@@ -219,7 +221,7 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Proveedor externo" :icon="ICONS.building">
+        <DetailSectionCard data-tutorial="mantenimiento-proveedor" title="Proveedor externo" :icon="ICONS.building">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div class="sm:col-span-2">
               <AppCheckbox
@@ -239,7 +241,7 @@
           </div>
         </DetailSectionCard>
 
-        <DetailSectionCard title="Comprobantes" :icon="ICONS.clipboardList">
+        <DetailSectionCard data-tutorial="mantenimiento-comprobantes" title="Comprobantes" :icon="ICONS.clipboardList">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <AppInput
               v-model="idComprobanteVenta"
@@ -289,6 +291,7 @@
         </button>
         <button
           type="submit"
+          data-tutorial="mantenimiento-guardar"
           class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="isSubmitting || !formularioValido"
         >

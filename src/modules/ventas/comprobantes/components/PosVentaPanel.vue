@@ -32,7 +32,10 @@
               Limpiar
             </button>
           </template>
-          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div
+            data-tutorial="pos-comprobante"
+            class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+          >
             <AppSelect
               v-model="idTipoComprobante"
               label="Tipo"
@@ -46,28 +49,32 @@
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
-            <PosClienteField
-              v-model="idCliente"
-              v-model:search="clienteBuscar"
-              :options="clienteOptions"
-              :loading="clientesQuery.isFetching.value"
-              :disabled="clientesQuery.isLoading.value"
-              :can-create="canCreateCliente"
-              @created="seleccionarCliente"
-            />
+            <div data-tutorial="pos-cliente">
+              <PosClienteField
+                v-model="idCliente"
+                v-model:search="clienteBuscar"
+                :options="clienteOptions"
+                :loading="clientesQuery.isFetching.value"
+                :disabled="clientesQuery.isLoading.value"
+                :can-create="canCreateCliente"
+                @created="seleccionarCliente"
+              />
+            </div>
             <AppInput
               v-model="clienteDescripcion"
               label="Observaciones"
               placeholder="Opcional"
             />
-            <AlmacenSelectField
-              v-model="idAlmacen"
-              searchable
-              :required="requiereAlmacen"
-              :id-sucursal="idSucursalPreferida"
-              :disabled="almacenesQuery.isLoading.value"
-              @created="onAlmacenCreated"
-            />
+            <div data-tutorial="pos-almacen">
+              <AlmacenSelectField
+                v-model="idAlmacen"
+                searchable
+                :required="requiereAlmacen"
+                :id-sucursal="idSucursalPreferida"
+                :disabled="almacenesQuery.isLoading.value"
+                @created="onAlmacenCreated"
+              />
+            </div>
           </div>
 
           <div
@@ -90,6 +97,7 @@
         </DetailSectionCard>
 
         <DetailSectionCard
+          data-tutorial="pos-items"
           title="Ítems"
           :icon="ICONS.boxes"
           help="Añade lo que necesite el cliente. Cada ítem abre su propio catálogo y configuración."
@@ -97,6 +105,7 @@
           <template #actions>
             <button
               type="button"
+              data-tutorial="pos-anadir"
               class="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-brand-600"
               @click="abrirAnadir"
             >
@@ -276,6 +285,7 @@
 
     <aside class="space-y-4 xl:sticky xl:top-20 xl:self-start">
       <DetailSectionCard
+        data-tutorial="pos-carrito"
         title="Carrito"
         :icon="ICONS.shoppingcard"
         help="Resumen de lo añadido. El total incluye IGV según el tipo de comprobante."

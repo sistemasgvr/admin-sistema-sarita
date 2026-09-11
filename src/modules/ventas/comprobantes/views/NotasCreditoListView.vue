@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb page-title="Notas de crédito" :items="breadcrumbItems" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <AppTable data-tutorial="nc-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -15,6 +15,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="nc-nueva"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="origenModalOpen = true"
             >
@@ -69,6 +70,7 @@
             v-if="canView"
             type="button"
             title="Ver detalle"
+            data-tutorial="nc-ver"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetailModal(row)"
           >
@@ -76,6 +78,7 @@
           </button>
 
           <AppActionMenu
+            data-tutorial="nc-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -172,6 +175,8 @@ import {
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import { emitirConImpresionTicket } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createVentasNotasCreditoTutorial } from '@/modules/soporte/tutorials/ventas-notas-credito.tutorial'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
@@ -185,6 +190,8 @@ import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+useTutorialAutoStart('ventas-notas-credito', createVentasNotasCreditoTutorial)
 
 const breadcrumbItems = ventasBreadcrumbItems('Notas de crédito')
 const authStore = useAuthStore()

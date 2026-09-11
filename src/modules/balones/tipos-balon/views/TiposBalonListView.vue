@@ -3,6 +3,7 @@
     <PageBreadcrumb page-title="Tipos de balón" :items="breadcrumbItems" />
 
     <AppTable
+      data-tutorial="tipos-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -17,6 +18,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="tipos-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -78,12 +80,14 @@
             v-if="canView"
             type="button"
             title="Ver detalle"
+            data-tutorial="tipos-ver"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetailModal(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
           <AppActionMenu
+            data-tutorial="tipos-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -164,6 +168,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createBalonesTiposTutorial } from '@/modules/soporte/tutorials/balones-tipos.tutorial'
 import TipoBalonFormModal from '@/modules/balones/tipos-balon/components/TipoBalonFormModal.vue'
 import TipoBalonDetailModal from '@/modules/balones/tipos-balon/components/TipoBalonDetailModal.vue'
 import { useDeleteTipoBalonMutation } from '@/modules/balones/tipos-balon/composables/useTipoBalonMutations'
@@ -188,6 +194,8 @@ import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+useTutorialAutoStart('balones-tipos', createBalonesTiposTutorial)
 
 const authStore = useAuthStore()
 

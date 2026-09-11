@@ -8,8 +8,10 @@
     "
   >
     <!-- Búsqueda (+ extras como pistola). En lg+ (o inline) comparte fila con filtros/acciones. -->
+    <!-- data-tutorial: anclas genéricas para las rutas guiadas de Soporte (una lista por vista). -->
     <div
       v-if="showSearch"
+      data-tutorial="lista-buscador"
       class="flex min-w-0 items-center gap-2"
       :class="inline ? 'min-w-[12rem] flex-1' : 'lg:min-w-[12rem] lg:flex-1'"
     >
@@ -37,6 +39,7 @@
       <AppDynamicFilters
         v-if="filterFields?.length"
         v-model="filters"
+        data-tutorial="lista-filtros"
         :fields="filterFields"
         :preload-all-fields="preloadAllFields"
         @change="emit('filter-change')"

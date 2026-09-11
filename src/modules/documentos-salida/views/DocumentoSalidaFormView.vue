@@ -829,7 +829,7 @@
       v-if="documento"
       v-model="direccionModalOpen"
       :id-doc-salida="documento.id"
-      :id-cliente="documento.id_cliente"
+      :id-cliente="documento.id_destinatario ?? documento.id_cliente ?? documento.id_proveedor"
     />
 
     <!-- Modal: Convertir a GRE -->

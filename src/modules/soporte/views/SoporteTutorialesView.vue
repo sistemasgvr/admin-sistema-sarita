@@ -113,6 +113,118 @@ const tutorials = [
     path: '/admin/clientes',
     query: { tutorial: 'asociar-datos-cliente' },
   },
+  {
+    id: 'mapa-clientes',
+    title: 'Mapa de clientes',
+    description: 'Ubica clientes y proveedores en el mapa y revisa los balones en custodia.',
+    path: '/admin/clientes/mapa',
+    query: { tutorial: 'mapa-clientes' },
+  },
+] as const
+
+const tutorialsVentas = [
+  {
+    id: 'ventas-caja',
+    title: 'Abrir y cerrar caja',
+    description: 'Apertura del día, gastos, depósitos y arqueo al cierre.',
+    path: '/admin/ventas/caja',
+    query: { tutorial: 'ventas-caja' },
+  },
+  {
+    id: 'ventas-pos',
+    title: 'Registrar una venta (POS)',
+    description: 'Comprobante, cliente, ítems (producto, gas, alquiler, servicio), pago y emisión.',
+    path: '/admin/ventas/pos',
+    query: { tutorial: 'ventas-pos' },
+  },
+  {
+    id: 'ventas-comprobantes',
+    title: 'Consultar y emitir comprobantes',
+    description: 'Buscar, estado SUNAT, emitir, orden de salida, anular y PDF.',
+    path: '/admin/ventas/comprobantes',
+    query: { tutorial: 'ventas-comprobantes' },
+  },
+  {
+    id: 'ventas-sin-documento',
+    title: 'Ventas sin documento',
+    description: 'Ventas internas con ticket que no se declaran a SUNAT.',
+    path: '/admin/ventas/vsd',
+    query: { tutorial: 'ventas-sin-documento' },
+  },
+  {
+    id: 'ventas-notas-credito',
+    title: 'Notas de crédito',
+    description: 'Anular o corregir un comprobante aceptado por SUNAT.',
+    path: '/admin/ventas/notas-credito',
+    query: { tutorial: 'ventas-notas-credito' },
+  },
+  {
+    id: 'ventas-resumen-diario',
+    title: 'Resumen diario de boletas',
+    description: 'Declarar a SUNAT las boletas del día y hacer seguimiento.',
+    path: '/admin/ventas/resumen-diario',
+    query: { tutorial: 'ventas-resumen-diario' },
+  },
+] as const
+
+/** Orden de aprendizaje: primero el maestro (tipos), luego cilindros y su operativa. */
+const tutorialsBalones = [
+  {
+    id: 'balones-tipos',
+    title: 'Crear tipos de balón',
+    description: 'Gas, capacidad, tara y vigencia de P.H. que heredan los cilindros.',
+    path: '/admin/balones/tipos',
+    query: { tutorial: 'balones-tipos' },
+  },
+  {
+    id: 'balones-cilindro-crear',
+    title: 'Registrar un cilindro',
+    description: 'Código, tipo, propiedad y datos de P.H. de cada envase.',
+    path: '/admin/balones/cilindros/nuevo',
+    query: { tutorial: 'balones-cilindro-crear' },
+  },
+  {
+    id: 'balones-cilindros',
+    title: 'Libro de cilindros',
+    description: 'Consultar, filtrar, exportar, dar de baja y reactivar cilindros.',
+    path: '/admin/balones/cilindros',
+    query: { tutorial: 'balones-cilindros' },
+  },
+  {
+    id: 'balones-prestamos',
+    title: 'Préstamos de cilindros',
+    description: 'Cilindros de la empresa en poder de clientes, antigüedad y devolución.',
+    path: '/admin/balones/prestamos',
+    query: { tutorial: 'balones-prestamos' },
+  },
+  {
+    id: 'balones-alquileres',
+    title: 'Alquileres de accesorios',
+    description: 'Vigencia, atrasos, renovación y devolución de accesorios alquilados.',
+    path: '/admin/balones/alquileres',
+    query: { tutorial: 'balones-alquileres' },
+  },
+  {
+    id: 'balones-recojos',
+    title: 'Programar recojos',
+    description: 'Pendientes de devolución, programar la visita y registrar el resultado.',
+    path: '/admin/balones/recojos',
+    query: { tutorial: 'balones-recojos' },
+  },
+  {
+    id: 'balones-rutas-pueblos',
+    title: 'Ruta pueblos',
+    description: 'Salida de cilindros con chofer, retorno con pesaje y cierre.',
+    path: '/admin/balones/rutas-pueblos',
+    query: { tutorial: 'balones-rutas-pueblos' },
+  },
+  {
+    id: 'balones-mantenimientos',
+    title: 'Mantenimiento y P.H.',
+    description: 'Ingreso a taller, prueba hidrostática, proveedor externo y finalización.',
+    path: '/admin/balones/mantenimientos/nuevo',
+    query: { tutorial: 'balones-mantenimientos' },
+  },
 ] as const
 
 const tutorialGroups = [
@@ -121,14 +233,26 @@ const tutorialGroups = [
     icon: ICONS.users,
     tutorials,
   },
+  {
+    title: 'Módulo Ventas',
+    icon: ICONS.shoppingCart,
+    tutorials: tutorialsVentas,
+  },
+  {
+    title: 'Módulo Balones',
+    icon: ICONS.cylinder,
+    tutorials: tutorialsBalones,
+  },
 ] as const
+
+const allTutorials = [...tutorials, ...tutorialsVentas, ...tutorialsBalones]
 
 const router = useRouter()
 const selectedTutorialId = ref<string>('crear-cliente')
 const iframeVersion = ref(0)
 const tutorialFinished = ref(false)
 const selectedTutorial = computed(
-  () => tutorials.find((tutorial) => tutorial.id === selectedTutorialId.value) ?? tutorials[0],
+  () => allTutorials.find((tutorial) => tutorial.id === selectedTutorialId.value) ?? allTutorials[0],
 )
 const tutorialUrl = computed(() =>
   router.resolve({ path: selectedTutorial.value.path, query: selectedTutorial.value.query }).href,

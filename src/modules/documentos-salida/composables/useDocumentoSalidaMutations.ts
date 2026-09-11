@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
 import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
+import { clientesQueryKeys } from '@/modules/clientes/constants/clientesQueryKeys'
 import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
+import { direccionesQueryKeys } from '@/modules/direcciones/constants/direccionesQueryKeys'
 import { documentosSalidaQueryKeys } from '@/modules/documentos-salida/constants/documentosSalidaQueryKeys'
 import { inventarioMovimientosQueryKeys } from '@/modules/inventario/constants/inventarioMovimientosQueryKeys'
 import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
@@ -205,6 +207,10 @@ export function useRegistrarDireccionEntregaMutation() {
       documentosSalidaService.registrarDireccionEntrega(id, payload),
     onSuccess: (_data, variables) => {
       invalidateAll(queryClient, variables.id)
+      // La dirección manual se registra también en cli_direcciones del
+      // cliente/proveedor: refrescar su ficha y el mapa de clientes.
+      queryClient.invalidateQueries({ queryKey: direccionesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: clientesQueryKeys.all })
       toastSuccess('Dirección de entrega guardada')
     },
     onError: (error) => toastApiError(error, 'No se pudo guardar la dirección de entrega'),

@@ -389,6 +389,8 @@ export interface RegistrarDireccionEntregaPayload {
   latitud?: number
   longitud?: number
   idDistritoEntrega?: number
+  /** Dirección manual: guardarla también en la ficha del cliente/proveedor (mapa). Default true. */
+  guardarEnCliente?: boolean
   idUsuarioAuditoria?: number
 }
 
@@ -409,6 +411,18 @@ export interface EmitirDocumentoSalidaResponse {
 
 export interface SiguienteNumeroDocumentoSalidaResponse {
   numero: string
+}
+
+/** Serie de guía de remisión con su correlativo (GET /documentos-salida/series-gre). */
+export interface SerieGre {
+  serie: string
+  ultimo_numero: string | null
+  siguiente_numero: string
+  total: number
+}
+
+export interface SeriesGreResponse {
+  series: SerieGre[]
 }
 
 /**

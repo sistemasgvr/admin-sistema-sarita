@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb page-title="Ventas Sin Documento" :items="breadcrumbItems" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <AppTable data-tutorial="vsd-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -15,6 +15,7 @@
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-ventas-pos' }"
+              data-tutorial="vsd-nueva-venta"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
@@ -64,6 +65,7 @@
             v-if="canView"
             type="button"
             title="Ver detalle"
+            data-tutorial="vsd-ver"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetailModal(row)"
           >
@@ -71,6 +73,7 @@
           </button>
 
           <AppActionMenu
+            data-tutorial="vsd-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -164,6 +167,8 @@ import {
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createVentasSinDocumentoTutorial } from '@/modules/soporte/tutorials/ventas-sin-documento.tutorial'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -175,6 +180,8 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+useTutorialAutoStart('ventas-sin-documento', createVentasSinDocumentoTutorial)
 
 const breadcrumbItems = ventasBreadcrumbItems('Ventas sin documento')
 const authStore = useAuthStore()

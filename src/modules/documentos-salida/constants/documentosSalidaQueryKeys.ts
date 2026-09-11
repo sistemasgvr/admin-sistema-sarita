@@ -8,4 +8,6 @@ export const documentosSalidaQueryKeys = {
   details: () => [...documentosSalidaQueryKeys.all, 'detail'] as const,
   detail: (id: number) => [...documentosSalidaQueryKeys.details(), id] as const,
   catalogos: () => [...documentosSalidaQueryKeys.all, 'catalogos'] as const,
+  seriesGre: (idTipoGuiaRemision: number | null) =>
+    [...documentosSalidaQueryKeys.all, 'series-gre', idTipoGuiaRemision] as const,
 }

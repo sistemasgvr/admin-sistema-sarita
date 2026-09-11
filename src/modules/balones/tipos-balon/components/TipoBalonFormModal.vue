@@ -16,6 +16,7 @@
           <div class="space-y-4">
             <AppInput
               v-model="nombre"
+              data-tutorial="tipo-nombre"
               label="Nombre"
               placeholder="Oxígeno Industrial D/E"
               required
@@ -27,6 +28,7 @@
             <ProductoSelectField
               v-model="idGas"
               v-model:search="gasBuscar"
+              data-tutorial="tipo-gas"
               label="Gas (producto)"
               placeholder="Buscar y seleccionar gas..."
               search-placeholder="Código o nombre..."
@@ -37,7 +39,7 @@
               help="Solo productos marcados como gas. Borra el buscador para ver el listado."
             />
 
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div data-tutorial="tipo-capacidad" class="grid gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="capacidad"
                 :label="labelCapacidad"
@@ -83,7 +85,7 @@
               />
             </AppSelectWithCreate>
 
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div data-tutorial="tipo-tara" class="grid gap-4 sm:grid-cols-2">
               <AppInput
                 v-model="peso"
                 label="Peso tara (kg)"
@@ -130,6 +132,7 @@
 
             <AppInput
               v-model="presionLlenadoPsi"
+              data-tutorial="tipo-presion"
               label="Presión de llenado (PSI)"
               type="number"
               :min="NUMBER_MIN.measure"
@@ -142,6 +145,7 @@
             />
 
             <AppSelectWithCreate
+              data-tutorial="tipo-vigencia"
               can-create
               create-title="Agregar vigencia P.H."
               :disabled="isSubmitting"
@@ -175,6 +179,7 @@
       <button
         type="submit"
         form="tipo-balon-form"
+        data-tutorial="tipo-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

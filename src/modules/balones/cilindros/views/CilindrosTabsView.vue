@@ -53,6 +53,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createBalonesCilindrosTutorial } from '@/modules/soporte/tutorials/balones-cilindros.tutorial'
 import BajasPendientesListView from '@/modules/balones/bajas-pendientes/views/BajasPendientesListView.vue'
 import CilindrosListView from '@/modules/balones/cilindros/views/CilindrosListView.vue'
 import { useBajasPendientesQuery } from '@/modules/balones/bajas-pendientes/composables/useBajasPendientesQuery'
@@ -61,6 +63,8 @@ import { AppTabs } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
+
+useTutorialAutoStart('balones-cilindros', createBalonesCilindrosTutorial, 600)
 
 const route = useRoute()
 const router = useRouter()

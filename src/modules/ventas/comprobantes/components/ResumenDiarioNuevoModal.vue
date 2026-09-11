@@ -6,7 +6,7 @@
     size="xl"
   >
     <div class="space-y-4">
-      <DetailSectionCard title="Filtro" :icon="ICONS.calendar" :full-width="true">
+      <DetailSectionCard data-tutorial="rd-filtro" title="Filtro" :icon="ICONS.calendar" :full-width="true">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <AppInput
             v-model="fecha"
@@ -46,7 +46,12 @@
         {{ errorMessage }}
       </div>
 
-      <DetailSectionCard title="Comprobantes a incluir" :icon="ICONS.clipboardList" :full-width="true">
+      <DetailSectionCard
+        data-tutorial="rd-comprobantes"
+        title="Comprobantes a incluir"
+        :icon="ICONS.clipboardList"
+        :full-width="true"
+      >
         <div
           v-if="previewLoading"
           class="py-6 text-center text-sm text-gray-500 dark:text-gray-400"
@@ -123,6 +128,7 @@
       </button>
       <button
         type="button"
+        data-tutorial="rd-enviar"
         class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
         :disabled="busy || !preview?.items.length"
         @click="enviar"

@@ -62,7 +62,8 @@
       </ul>
     </div>
 
-    <div class="app-tabs__bar" role="tablist" :aria-label="ariaLabel">
+    <!-- data-tutorial: anclas genéricas para las rutas guiadas (barra y cada tab por su key). -->
+    <div data-tutorial="tabs" class="app-tabs__bar" role="tablist" :aria-label="ariaLabel">
       <button
         v-for="(tab, index) in tabs"
         :key="tab.key"
@@ -70,7 +71,7 @@
         role="tab"
         :aria-selected="modelValue === tab.key"
         :disabled="tab.disabled"
-        :data-tutorial="`cliente-tab-${tab.key}`"
+        :data-tutorial="`tab-${tab.key}`"
         class="app-tabs__tab"
         :class="{
           'app-tabs__tab--active': modelValue === tab.key,

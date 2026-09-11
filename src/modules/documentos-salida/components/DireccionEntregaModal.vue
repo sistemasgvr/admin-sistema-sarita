@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Dirección de entrega"
-    subtitle="Elige una dirección guardada del cliente o ingrésala manualmente con el mapa."
+    subtitle="Elige una dirección guardada del cliente/proveedor o ingrésala manualmente con el mapa."
     size="lg"
     @close="handleClose"
   >
@@ -19,7 +19,7 @@
           :disabled="!idCliente"
           @click="modo = 'guardada'"
         >
-          Dirección guardada del cliente
+          Dirección guardada del cliente/proveedor
         </button>
         <button
           type="button"
@@ -36,7 +36,7 @@
       </div>
 
       <p v-if="!idCliente && modo === 'guardada'" class="text-xs text-amber-600 dark:text-amber-400">
-        Este documento no tiene cliente asociado — solo puedes ingresar la dirección manualmente.
+        Este documento no tiene cliente ni proveedor asociado — solo puedes ingresar la dirección manualmente.
       </p>
 
       <template v-if="modo === 'guardada' && idCliente">
@@ -44,7 +44,7 @@
           Cargando direcciones...
         </div>
         <div v-else-if="!direccionesGuardadas.length" class="py-4 text-center text-sm text-gray-500">
-          Este cliente no tiene direcciones guardadas todavía.
+          Este cliente/proveedor no tiene direcciones guardadas todavía.
         </div>
         <div v-else class="space-y-2">
           <button
@@ -96,6 +96,15 @@
             @location-confirmed="onMapLocationConfirmed"
           />
         </div>
+        <AppCheckbox
+          v-if="idCliente"
+          v-model="guardarEnCliente"
+          label="Guardar también en las direcciones del cliente/proveedor"
+        />
+        <p v-if="idCliente" class="-mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Así queda disponible en su ficha y, si marcaste la ubicación, aparece en el mapa de
+          clientes. Solo se vuelve principal si aún no tiene una.
+        </p>
       </template>
     </div>
 
@@ -129,10 +138,11 @@ import { extractUbigeoDesdeNominatim } from '@/modules/catalogos/utils/ubigeoFro
 import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
 import type { MapaLocationAddress, MapaLocationConfirmed } from '@/shared/components/map/MapaLeaflet.vue'
 import { useRegistrarDireccionEntregaMutation } from '../composables/useDocumentoSalidaMutations'
-import { AppInput, AppModal, MapaLeaflet, UbigeoCascadeSelect } from '@/shared/components'
+import { AppCheckbox, AppInput, AppModal, MapaLeaflet, UbigeoCascadeSelect } from '@/shared/components'
 
 const props = defineProps<{
   idDocSalida: number
+  /** Cliente o proveedor destinatario (ambos viven en cli_clientes). */
   idCliente?: number | null
 }>()
 
@@ -148,6 +158,7 @@ const direccionManual = ref('')
 const referenciaManual = ref('')
 const latitudManual = ref<number | null>(null)
 const longitudManual = ref<number | null>(null)
+const guardarEnCliente = ref(true)
 const idPaisManual = ref<number | undefined>(undefined)
 const idDepartamentoManual = ref<number | undefined>(undefined)
 const idProvinciaManual = ref<number | undefined>(undefined)
@@ -174,6 +185,7 @@ watch(open, (isOpen) => {
   referenciaManual.value = ''
   latitudManual.value = null
   longitudManual.value = null
+  guardarEnCliente.value = true
   idPaisManual.value = paisesQuery.data.value?.[0]?.id
   idDepartamentoManual.value = undefined
   idProvinciaManual.value = undefined
@@ -270,6 +282,7 @@ async function onGuardar() {
             latitud: latitudManual.value ?? undefined,
             longitud: longitudManual.value ?? undefined,
             idDistritoEntrega: idDistritoManual.value,
+            guardarEnCliente: Boolean(props.idCliente) && guardarEnCliente.value,
             idUsuarioAuditoria: authStore.user?.id,
           },
   })

@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb page-title="Resumen diario" :items="breadcrumbItems" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <AppTable data-tutorial="rd-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -14,6 +14,7 @@
           <template #actions>
             <button
               type="button"
+              data-tutorial="rd-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="nuevoModalOpen = true"
             >
@@ -46,7 +47,7 @@
       </template>
 
       <template #actions="{ row }">
-        <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+        <div data-tutorial="rd-acciones" class="inline-flex flex-wrap items-center justify-end gap-1.5">
           <button
             type="button"
             title="Ver detalle"
@@ -100,6 +101,8 @@ import type {
   ResumenDiarioListItem,
 } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createVentasResumenDiarioTutorial } from '@/modules/soporte/tutorials/ventas-resumen-diario.tutorial'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import {
@@ -115,6 +118,8 @@ import type {
   DynamicFilterValues,
 } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+
+useTutorialAutoStart('ventas-resumen-diario', createVentasResumenDiarioTutorial)
 
 const breadcrumbItems = ventasBreadcrumbItems('Resumen diario')
 

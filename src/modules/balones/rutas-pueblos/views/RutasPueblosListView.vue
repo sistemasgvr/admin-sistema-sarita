@@ -15,6 +15,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="rutas-nueva"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
               @click="formOpen = true"
             >
@@ -78,12 +79,14 @@
             v-if="canView"
             type="button"
             title="Ver detalle"
+            data-tutorial="rutas-ver"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetail(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
           <AppActionMenu
+            data-tutorial="rutas-acciones"
             v-if="actionsFor(row).length"
             :items="actionsFor(row)"
             :execute="(k) => onAction(k, row)"
@@ -164,6 +167,8 @@ import {
 } from '@/modules/balones/rutas-pueblos/interfaces/ruta-pueblo.interface'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createBalonesRutasPueblosTutorial } from '@/modules/soporte/tutorials/balones-rutas-pueblos.tutorial'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import {
@@ -181,6 +186,8 @@ import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { formatListDate } from '@/shared/utils/date'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
+
+useTutorialAutoStart('balones-rutas-pueblos', createBalonesRutasPueblosTutorial)
 
 const authStore = useAuthStore()
 

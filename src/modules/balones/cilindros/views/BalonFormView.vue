@@ -27,12 +27,16 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createBalonesCilindroCrearTutorial } from '@/modules/soporte/tutorials/balones-cilindro-crear.tutorial'
 import BalonForm from '@/modules/balones/cilindros/components/BalonForm.vue'
 import type { BalonFormMode } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { balonesCilindrosBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
+
+useTutorialAutoStart('balones-cilindro-crear', createBalonesCilindroCrearTutorial, 600)
 
 const route = useRoute()
 const router = useRouter()

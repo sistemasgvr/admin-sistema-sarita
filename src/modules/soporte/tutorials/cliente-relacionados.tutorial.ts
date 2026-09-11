@@ -1,7 +1,7 @@
 import { runTutorial, type TutorialOptions } from '@/modules/soporte/tutorials/tutorial-base'
 
 const selectTab = (key: string) => {
-  document.querySelector<HTMLElement>(`[data-tutorial="cliente-tab-${key}"]`)?.click()
+  document.querySelector<HTMLElement>(`[data-tutorial="tab-${key}"]`)?.click()
 }
 
 export function createClienteRelacionadosTutorial(options: TutorialOptions = {}) {
@@ -24,7 +24,7 @@ export function createClienteRelacionadosTutorial(options: TutorialOptions = {})
         },
       },
       {
-        element: '[data-tutorial="cliente-tab-contactos"]',
+        element: '[data-tutorial="tab-contactos"]',
         popover: {
           title: '6. Contactos',
           description: 'Registra y administra los contactos del cliente.',
@@ -34,7 +34,7 @@ export function createClienteRelacionadosTutorial(options: TutorialOptions = {})
         },
       },
       {
-        element: '[data-tutorial="cliente-tab-direcciones"]',
+        element: '[data-tutorial="tab-direcciones"]',
         popover: {
           title: '7. Direcciones',
           description: 'Agrega las direcciones y ubicaciones de entrega.',
@@ -44,7 +44,7 @@ export function createClienteRelacionadosTutorial(options: TutorialOptions = {})
         },
       },
       {
-        element: '[data-tutorial="cliente-tab-choferes"]',
+        element: '[data-tutorial="tab-choferes"]',
         popover: {
           title: '8. Choferes',
           description: 'Relaciona los choferes que trabajan con este cliente.',
@@ -54,7 +54,7 @@ export function createClienteRelacionadosTutorial(options: TutorialOptions = {})
         },
       },
       {
-        element: '[data-tutorial="cliente-tab-vehiculos"]',
+        element: '[data-tutorial="tab-vehiculos"]',
         popover: {
           title: '9. Vehículos',
           description: 'Gestiona los vehículos asociados al cliente.',
@@ -64,7 +64,7 @@ export function createClienteRelacionadosTutorial(options: TutorialOptions = {})
         },
       },
       {
-        element: '[data-tutorial="cliente-tab-cuentas-bancarias"]',
+        element: '[data-tutorial="tab-cuentas-bancarias"]',
         popover: {
           title: '10. Cuentas bancarias',
           description: 'Aquí registras las cuentas bancarias del cliente.',
@@ -74,7 +74,7 @@ export function createClienteRelacionadosTutorial(options: TutorialOptions = {})
         },
       },
       {
-        element: '[data-tutorial="cliente-tab-solicitudes"]',
+        element: '[data-tutorial="tab-solicitudes"]',
         popover: {
           title: '11. Solicitudes',
           description: 'Consulta las solicitudes de baja o reactivación. Este es el último tab.',

@@ -19,6 +19,7 @@
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-ventas-pos', query: { escenario: 'prestamo' } }"
+              data-tutorial="prestamos-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               title="Los préstamos se gestionan desde la venta en punto de venta"
             >
@@ -70,12 +71,14 @@
             v-if="canView"
             type="button"
             title="Ver detalle"
+            data-tutorial="prestamos-ver"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetailModal(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
           <AppActionMenu
+            data-tutorial="prestamos-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />

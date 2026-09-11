@@ -16,6 +16,7 @@ import type {
   FinalizarRecargaPayload,
   GenerarRecojoDocSalidaPayload,
   RegistrarDireccionEntregaPayload,
+  SeriesGreResponse,
   SiguienteNumeroDocumentoSalidaResponse,
 } from '@/modules/documentos-salida/interfaces/documento-salida.interface'
 
@@ -35,6 +36,12 @@ export const documentosSalidaService = {
   obtenerSiguienteNumero(idSucursal: number, fecha?: string) {
     return apiGet<SiguienteNumeroDocumentoSalidaResponse>('/documentos-salida/siguiente-numero', {
       params: { idSucursal, fecha },
+    })
+  },
+
+  listarSeriesGre(idTipoGuiaRemision?: number | null) {
+    return apiGet<SeriesGreResponse>('/documentos-salida/series-gre', {
+      params: { idTipoGuiaRemision: idTipoGuiaRemision ?? undefined },
     })
   },
 

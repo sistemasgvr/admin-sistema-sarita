@@ -6,7 +6,7 @@
     size="lg"
   >
     <div class="space-y-4">
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div data-tutorial="ruta-datos" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppInput v-model="fecha" label="Fecha" type="date" required />
         <AlmacenSelectField v-model="idAlmacen" searchable required />
         <AppSelect
@@ -20,7 +20,7 @@
       </div>
 
       <!-- Sección de Cilindros -->
-      <div class="space-y-2">
+      <div data-tutorial="ruta-cilindros" class="space-y-2">
         <div class="flex items-center justify-between">
           <p class="text-sm font-medium text-gray-800 dark:text-white/90">Cilindros a enviar</p>
           <button
@@ -73,7 +73,7 @@
       </div>
 
       <!-- Sección de Productos -->
-      <div class="space-y-2">
+      <div data-tutorial="ruta-productos" class="space-y-2">
         <div class="flex items-center justify-between">
           <p class="text-sm font-medium text-gray-800 dark:text-white/90">Productos a enviar</p>
           <button
@@ -136,6 +136,7 @@
       </button>
       <button
         type="button"
+        data-tutorial="ruta-guardar"
         class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
         :disabled="saving || !canSave"
         @click="guardar"

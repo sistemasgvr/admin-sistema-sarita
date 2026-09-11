@@ -9,7 +9,7 @@
       class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
     >
       <div class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
-        <div class="min-w-0 flex-1 sm:max-w-sm">
+        <div data-tutorial="mapa-buscador" class="min-w-0 flex-1 sm:max-w-sm">
           <AppInput
             v-model="buscar"
             type="search"
@@ -17,7 +17,7 @@
           />
         </div>
 
-        <div class="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:gap-2">
+        <div data-tutorial="mapa-filtros" class="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:gap-2">
           <div class="min-w-0 sm:w-36">
             <AppSelect
               v-model="mostrarClientes"
@@ -42,6 +42,7 @@
     </div>
 
     <div
+      data-tutorial="mapa-leyenda"
       class="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400"
     >
       <span class="inline-flex items-center gap-1.5">
@@ -62,7 +63,10 @@
       </span>
     </div>
 
-    <div class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+    <div
+      data-tutorial="mapa-contenedor"
+      class="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700"
+    >
       <div ref="mapContainer" class="z-0 h-[520px] w-full sm:h-[600px]"></div>
 
       <div class="absolute right-3 top-3 z-[1000] flex flex-col gap-2">
@@ -115,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -134,8 +138,13 @@ import { AppInput, AppSelect } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import { createClienteMapaTutorial } from '@/modules/soporte/tutorials/cliente-mapa.tutorial'
+import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 const route = useRoute()
+const { setExpanded: setSidebarExpanded } = useSidebar()
+
+let destroyTutorial: (() => void) | undefined
 
 const initialBuscar =
   typeof route.query.buscar === 'string'
@@ -674,7 +683,7 @@ watch(
   },
 )
 
-onMounted(() => {
+onMounted(async () => {
   initMap()
   if (
     typeof route.query.filtroBalones === 'string' &&
@@ -683,9 +692,17 @@ onMounted(() => {
   ) {
     filtroBalones.value = route.query.filtroBalones as ClienteMapaFiltroBalones
   }
+
+  if (route.query.tutorial === 'mapa-clientes') {
+    await nextTick()
+    window.setTimeout(() => {
+      destroyTutorial = createClienteMapaTutorial({ setSidebarExpanded })
+    }, 350)
+  }
 })
 
 onBeforeUnmount(() => {
+  destroyTutorial?.()
   if (map) {
     map.remove()
     map = null

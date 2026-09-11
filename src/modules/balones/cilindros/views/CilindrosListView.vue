@@ -6,7 +6,7 @@
       :items="breadcrumbItems"
     />
 
-    <AppSummaryCards :cards="resumenCards" />
+    <AppSummaryCards data-tutorial="cilindros-resumen" :cards="resumenCards" />
 
     <div
       v-if="activeFilterChips.length"
@@ -79,12 +79,14 @@
         >
           <template #search-extra>
             <BalonBarcodeScanButton
+              data-tutorial="cilindros-escanear"
               title="Escanear cilindro"
               @captured="onCodigoScanned"
             />
           </template>
           <template #actions>
             <AppExportExcelButton
+              data-tutorial="cilindros-exportar"
               label="Exportar Excel"
               title="Exportar cilindros por propietario (resumen + detalle)"
               :on-export="exportExcelFile"
@@ -94,6 +96,7 @@
               type="button"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Nuevo"
+              data-tutorial="cilindros-nuevo"
               @click="goToCreate"
             >
               <AppIcon :name="ICONS.plus" :size="18" />
@@ -215,12 +218,14 @@
             v-if="canView"
             type="button"
             title="Ver detalle"
+            data-tutorial="cilindros-ver"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetailView(row)"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
           <AppActionMenu
+            data-tutorial="cilindros-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />

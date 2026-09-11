@@ -7,7 +7,7 @@
         class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] sm:px-5"
       >
         <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <div class="min-w-0 lg:max-w-xs lg:shrink">
+          <div data-tutorial="caja-estado" class="min-w-0 lg:max-w-xs lg:shrink">
             <div class="flex flex-wrap items-center gap-2">
               <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
                 Caja / arqueo
@@ -54,7 +54,10 @@
             </p>
           </div>
 
-          <div class="grid w-full grid-cols-2 gap-2 sm:max-w-md lg:flex lg:w-auto lg:max-w-none lg:shrink-0">
+          <div
+            data-tutorial="caja-filtros"
+            class="grid w-full grid-cols-2 gap-2 sm:max-w-md lg:flex lg:w-auto lg:max-w-none lg:shrink-0"
+          >
             <div class="min-w-0 lg:w-[10.5rem]">
               <AppFormField label="Fecha">
                 <AppInput v-model="fecha" type="date" />
@@ -70,7 +73,10 @@
             </div>
           </div>
 
-          <div class="flex w-full flex-wrap gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:items-end">
+          <div
+            data-tutorial="caja-acciones"
+            class="flex w-full flex-wrap gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:items-end"
+          >
             <button
               v-if="canAbrir && !sesion?.id && !pendienteCierreSucursal"
               type="button"
@@ -191,7 +197,7 @@
         </div>
 
         <div class="grid items-stretch gap-3 xl:grid-cols-3">
-          <div class="min-h-0 xl:col-span-2 xl:h-full">
+          <div data-tutorial="caja-resumen" class="min-h-0 xl:col-span-2 xl:h-full">
             <AppSummaryCards
               class="!mb-0 grid-cols-2"
               :cards="resumenCards"
@@ -201,6 +207,7 @@
           </div>
 
           <div
+            data-tutorial="caja-arqueo"
             class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]"
           >
           <div class="mb-3 flex items-center gap-2">
@@ -255,7 +262,11 @@
         </div>
         </div>
 
-        <div v-if="sesion?.id" class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+        <div
+          v-if="sesion?.id"
+          data-tutorial="caja-movimientos"
+          class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2"
+        >
           <AppCollapsibleSection
             v-model:open="gastosOpen"
             title="Gastos de caja"
@@ -407,6 +418,8 @@
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createVentasCajaTutorial } from '@/modules/soporte/tutorials/ventas-caja.tutorial'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import {
   AppBadge,
@@ -442,6 +455,8 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatCurrency } from '@/shared/utils/currency'
 import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 import { toastWarning } from '@/shared/composables/useToast'
+
+useTutorialAutoStart('ventas-caja', createVentasCajaTutorial, 600)
 
 const breadcrumbItems = ventasBreadcrumbItems('Caja')
 

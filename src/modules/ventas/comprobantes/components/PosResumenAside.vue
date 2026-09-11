@@ -1,6 +1,6 @@
 <template>
   <DetailSectionCard title="Resumen" :icon="ICONS.creditCard">
-    <div class="space-y-2 text-sm">
+    <div data-tutorial="pos-totales" class="space-y-2 text-sm">
       <div class="flex justify-between">
         <span class="text-gray-500 dark:text-gray-400">Valor venta</span>
         <span class="tabular-nums text-gray-800 dark:text-white/90">{{
@@ -49,7 +49,7 @@
       </template>
     </div>
 
-    <div class="mt-5 space-y-3">
+    <div data-tutorial="pos-pago" class="mt-5 space-y-3">
       <div>
         <div class="mb-1.5 flex items-center gap-1">
           <span
@@ -108,10 +108,11 @@
       </span>
     </div>
 
-    <div class="mt-5 flex flex-col gap-2">
+    <div data-tutorial="pos-acciones" class="mt-5 flex flex-col gap-2">
       <div class="flex items-center gap-2">
         <button
           type="button"
+          data-tutorial="pos-guardar"
           class="inline-flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
           :disabled="!puedeGuardar || guardando || Boolean(comprobanteGuardadoId)"
           @click="emit('guardar')"

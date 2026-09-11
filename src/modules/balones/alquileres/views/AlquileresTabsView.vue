@@ -52,11 +52,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createBalonesAlquileresTutorial } from '@/modules/soporte/tutorials/balones-alquileres.tutorial'
 import AlquileresAntiguedadView from '@/modules/balones/alquileres/views/AlquileresAntiguedadView.vue'
 import AlquileresListView from '@/modules/balones/alquileres/views/AlquileresListView.vue'
 import { AppTabs } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
+
+useTutorialAutoStart('balones-alquileres', createBalonesAlquileresTutorial, 600)
 
 const route = useRoute()
 const router = useRouter()
