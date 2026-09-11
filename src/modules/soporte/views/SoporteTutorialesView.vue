@@ -205,13 +205,6 @@ const tutorialsBalones = [
     query: { tutorial: 'balones-alquileres' },
   },
   {
-    id: 'balones-recojos',
-    title: 'Programar recojos',
-    description: 'Pendientes de devolución, programar la visita y registrar el resultado.',
-    path: '/admin/balones/recojos',
-    query: { tutorial: 'balones-recojos' },
-  },
-  {
     id: 'balones-rutas-pueblos',
     title: 'Ruta pueblos',
     description: 'Salida de cilindros con chofer, retorno con pesaje y cierre.',

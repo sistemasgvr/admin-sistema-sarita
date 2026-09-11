@@ -359,12 +359,18 @@ const openDevolverCilindros = (row: Alquiler) => {
 }
 
 const openProgramarRecojo = (row: Alquiler) => {
+  // Un recojo es una actividad: se programa en operativa/actividades con el
+  // alquiler ya fijado como origen (idempotente si ya existe una vigente).
   void router.push({
-    name: 'admin-balones-recojos',
+    name: 'admin-operativa-actividades-nueva',
     query: {
-      tab: 'pendientes',
-      idAlquiler: String(row.id),
-      ...(row.id_cliente ? { idCliente: String(row.id_cliente) } : {}),
+      lockTipoRecojo: '1',
+      tipoOrigenRecojo: 'ALQUILER',
+      idOrigenRecojo: String(row.id),
+      origenRecojoLabel: `Alquiler ${row.numero_alquiler}`,
+      ...(row.fecha_fin_pactada ? { fecha: row.fecha_fin_pactada.slice(0, 10) } : {}),
+      ...(row.id_cliente ? { clienteId: String(row.id_cliente) } : {}),
+      ...(row.nombre_cliente ? { clienteLabel: row.nombre_cliente } : {}),
     },
   })
 }

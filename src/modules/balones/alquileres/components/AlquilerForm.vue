@@ -67,7 +67,7 @@
           <DetailSectionCard
             title="Vigencia"
             :icon="ICONS.calendar"
-            help="La vigencia es del accesorio alquilado. El cilindro no se alquila: si se entrega, es un préstamo y el recojo va por Préstamos."
+            help="La vigencia es del accesorio alquilado. El cilindro no se alquila: si se entrega, es un préstamo y su recojo se agenda en Actividades."
           >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <AppInput
@@ -236,7 +236,7 @@
           v-if="detalleRows.length === 0"
           class="text-sm text-gray-500 dark:text-gray-400"
         >
-          Sin cilindros en este contrato. El recojo del envase se gestiona en Préstamos / Recojos.
+          Sin cilindros en este contrato. El recojo del envase se agenda en Operativa / Actividades.
         </p>
         <template v-else>
           <p class="mb-3 text-sm text-gray-500 dark:text-gray-400">

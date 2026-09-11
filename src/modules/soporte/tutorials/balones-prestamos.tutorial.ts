@@ -64,7 +64,7 @@ export function createBalonesPrestamosTutorial(options: TutorialOptions = {}) {
           ['Devolver', 'registra el retorno de uno o todos los cilindros y libera la garantía.'],
           ['Editar', 'ajusta fechas, observación o cilindros mientras esté activo.'],
           ['Eliminar', 'solo préstamos sin movimientos.'],
-        ])}Para programar la visita de recojo usa el módulo Recojos.`,
+        ])}Para programar el recojo usa «Programar recojo» en la fila: crea la actividad en Operativa / Actividades.`,
         side: 'left',
         align: 'center',
         onNextClick: () => finish('balones-prestamos'),

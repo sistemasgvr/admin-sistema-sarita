@@ -14,7 +14,6 @@ import type {
   DocumentoSalidaListItem,
   EmitirDocumentoSalidaResponse,
   FinalizarRecargaPayload,
-  GenerarRecojoDocSalidaPayload,
   RegistrarDireccionEntregaPayload,
   SeriesGreResponse,
   SiguienteNumeroDocumentoSalidaResponse,
@@ -102,10 +101,6 @@ export const documentosSalidaService = {
 
   finalizarRecarga(id: number, payload: FinalizarRecargaPayload) {
     return apiPost<DocumentoSalida>(`/documentos-salida/${id}/finalizar-recarga`, payload)
-  },
-
-  generarRecojo(id: number, payload: GenerarRecojoDocSalidaPayload) {
-    return apiPost<DocumentoSalida>(`/documentos-salida/${id}/recojo`, payload)
   },
 
   anular(id: number, payload: AnularDocumentoSalidaPayload) {

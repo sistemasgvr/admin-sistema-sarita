@@ -375,13 +375,6 @@ export interface ActualizarTrasladoPayload {
   idUsuarioAuditoria?: number
 }
 
-export interface GenerarRecojoDocSalidaPayload {
-  fechaProgramada?: string
-  idUsuarioResponsable?: number
-  observacion?: string
-  idUsuarioAuditoria?: number
-}
-
 export interface RegistrarDireccionEntregaPayload {
   idDireccionCliente?: number
   direccionEntrega?: string

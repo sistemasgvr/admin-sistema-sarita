@@ -12,6 +12,7 @@
 | 08/09 ~19:23 | Recojo desde vencidos (préstamo/alquiler), prefijos F6 `/operativa/...`, `iniciar-verificacion` |
 | 09/09 (código actual, staged) | Hora de inicio obligatoria en recojo; hora fin opcional en recojo; calendario por tipo; `estaAsignada` mira trabajador |
 | 09/09 | Flujo RECOJO: `iniciar-recojo` → verificar LLEGADA → `culminar-recojo` + almacén → `bal_devolver_*` |
+| 11/09 | **Un recojo es una actividad**: se retira `balones/recojos` (UI, API `recojos-balon`, tablas `bal_recojo*`, catálogos y permisos `recojos_balon.*`). POS crea la actividad RECOJO; préstamos/alquileres “Programar recojo” → `/operativa/actividades/nueva`; devolver/finalizar cancela la actividad pendiente (`age_cancelar_recojos_pendientes_origen`). Migración `20260911_recojos_solo_actividades.sql`. |
 
 ---
 
@@ -26,7 +27,7 @@ Actividades es un módulo de **agenda operativa** maduro (CRUD, calendario, filt
 | Recojos desde origen | Alta | UI + `POST /recojo` (PRESTAMO / ALQUILER); préstamo también desde listados |
 | Auto-recojo / job | Baja | Solo botón/API manual; cron de notificaciones **no** crea actividades |
 | Producto recogido | Media | Al culminar recojo los cilindros vuelven al almacén elegido (`bal_devolver_*`) |
-| Unificación con `balones/recojos` | Abierta | Alquileres siguen usando `RecojoProgramarModal`; préstamos ya van a actividades |
+| Unificación con `balones/recojos` | **Hecha (11/09)** | El módulo ya no existe; todo recojo vive en actividades |
 
 ---
 
@@ -99,7 +100,8 @@ Orden visual en listados (prioridad):
 1. **Manual** desde operativa/actividades (página `/nueva`).
 2. **Reparto desde orden de salida** (`DocumentoSalidaFormView` → “Agendar a reparto” navega a `/nueva` con `lockTipoReparto` + `idDocSalida`).
 3. **Recojo desde préstamo** — UI lista préstamos / antigüedad → `/nueva` con `lockTipoRecojo` + origen `PRESTAMO`; o selector de vencidos en el form.
-4. **Recojo desde alquiler** — selector de vencidos en el form de actividades (`POST /recojo`). El listado de **alquileres** sigue abriendo `RecojoProgramarModal` (módulo `balones/recojos`), no actividades.
+4. **Recojo desde alquiler** — selector de vencidos en el form de actividades (`POST /recojo`) o botón “Programar recojo” del listado de alquileres → `/nueva` con `lockTipoRecojo` + origen `ALQUILER`.
+4b. **Auto-recojo POS** — al vender un préstamo con fecha de retorno, `ven_aplicar_efectos_pos` crea la actividad RECOJO (PENDIENTE, 08:00, fecha = retorno pactado) vía `age_crear_recojo_origen`.
 5. **Generación masiva** de recojos por vencer (`POST .../generar-recojos`) — botón en toolbar. Hora fija **08:00**.
 
 ### 3.4 Recojo: modelo lazy (ítems)
@@ -211,7 +213,7 @@ Auth: JWT global + `PermisosGuard`. Bypass: `AUTH_TODO`.
 | `bal_alquiler` (+ detalle) | Recojos vencidos + iniciar verificación (incl. regulador) |
 | `ven_garantia` | Contador en listado vencidos |
 | `gen_lista` / `gen_lista_opciones` | Catálogos |
-| `bal_recojo` | Módulo **separado**; alquileres UI aún lo usan |
+| `bal_recojo` | **Eliminada** (11/09); el recojo es `age_actividad` tipo RECOJO |
 | Notificaciones | Job 08:00 Lima notifica vencidos; **no** llama `age_generar_recojos_por_vencer` |
 
 Sin FK directa a sedes/categorías.
@@ -345,7 +347,7 @@ Definidos en `src/shared/constants/permissions.ts`.
 |--------|-------------|
 | Documentos de salida | “Agregar a reparto” → ruta `admin-operativa-actividades-nueva` |
 | Préstamos / antigüedad | “Programar recojo” → misma ruta con `lockTipoRecojo` + `PRESTAMO` |
-| Alquileres | Siguen `RecojoProgramarModal` (balones); el form de actividades **sí** acepta origen `ALQUILER` vía vencidos |
+| Alquileres | “Programar recojo” navega a actividades con origen `ALQUILER`; el form también lo acepta vía vencidos |
 | Comprobantes | Badge actividad/reparto; cancelar reparto; **creación de reparto ya no** desde comprobante |
 | Clientes / Trabajadores / Choferes | Selects del formulario |
 | Catálogos | `useListaOpcionesQuery` |
@@ -408,7 +410,7 @@ El servicio frontend llama **todo** bajo `/operativa/actividades` (verificar, re
 | Tab Colaboradores: dos rankings (API vs agrupación local) | **Sigue** |
 | `estado_producto_recogido` en interface de ítem | **Sigue** sin UI ni write SQL |
 | `useCrearRecojoPrestamoMutation` | Legacy; UI usa `crearRecojo` unificado |
-| Alquileres “Programar recojo” | Sigue en `balones/recojos`, no en actividades |
+| Alquileres “Programar recojo” | En actividades (11/09) |
 | Job auto-recojo | **Sigue** solo botón/API |
 
 ---
@@ -442,7 +444,7 @@ El servicio frontend llama **todo** bajo `/operativa/actividades` (verificar, re
 - [ ] Mostrar / escribir `id_estado_producto_recogido`
 - [ ] Deep-link inventario → actividad (`admin-operativa-actividades` + abrir detalle)
 - [ ] Alinear sync SQL (`tablas/actividades/`) con `id_doc_salida` + F6 + `id_alquiler`
-- [ ] Decisión: ¿`operativa/actividades` absorbe `balones/recojos`? (alquileres aún en el módulo viejo)
+- [x] Decisión: `operativa/actividades` absorbe `balones/recojos` (11/09, módulo retirado)
 - [ ] Enlazar “Programar recojo” de alquileres al form de actividades (como préstamos)
 - [ ] Decisiones abiertas del plan: días antes (default provisional 3), responsable por defecto
 - [ ] Unificar o clarificar los dos rankings del tab Colaboradores
@@ -454,7 +456,7 @@ El servicio frontend llama **todo** bajo `/operativa/actividades` (verificar, re
 ## 9. Punto de partida sugerido para retomar
 
 1. **Probar** el circuito recojo: vencidos → crear con hora inicio → iniciar verificación → escaneo.
-2. **Definir** si recojos de alquiler (y el módulo `balones/recojos`) se absorben en actividades o se enlazan.
+2. ~~Definir si recojos de alquiler (y el módulo `balones/recojos`) se absorben en actividades o se enlazan.~~ Resuelto 11/09: absorbidos.
 3. **Completar** producto recogido (SQL write + UI) y deep-link inventario.
 4. **Enganchar** el job de auto-recojo al planificador de notificaciones cuando se cierre la decisión de días/responsable.
 5. **Sincronizar** archivos `database_sql/tablas/actividades/` con el esquema real.

@@ -33,8 +33,6 @@ export function resolveDocumentoOrigenRoute(
       return { name: 'admin-balones-recargas', query: { id: String(docId) } }
     case 'MANTENIMIENTO':
       return { name: 'admin-balones-mantenimientos-editar', params: { id: String(docId) } }
-    case 'RECOJO':
-      return { name: 'admin-balones-recojos', query: { id: String(docId) } }
     case 'ACTIVIDAD':
       return { name: 'admin-operativa-actividades-detalle', params: { id: String(docId) } }
     case 'AJUSTE_MANUAL':

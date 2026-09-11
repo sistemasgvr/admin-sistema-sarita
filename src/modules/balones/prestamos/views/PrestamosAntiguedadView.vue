@@ -398,12 +398,17 @@ function openDevolver(row: PrestamoAntiguedadItem) {
 }
 
 function openProgramarRecojo(row: PrestamoAntiguedadItem) {
+  // Un recojo es una actividad: se programa en operativa/actividades con el
+  // préstamo ya fijado como origen (idempotente si ya existe una vigente).
   void router.push({
-    name: 'admin-balones-recojos',
+    name: 'admin-operativa-actividades-nueva',
     query: {
-      tab: 'pendientes',
-      idPrestamo: String(row.id_prestamo),
-      ...(row.id_cliente ? { idCliente: String(row.id_cliente) } : {}),
+      lockTipoRecojo: '1',
+      tipoOrigenRecojo: 'PRESTAMO',
+      idOrigenRecojo: String(row.id_prestamo),
+      ...(row.numero_prestamo ? { origenRecojoLabel: `Préstamo ${row.numero_prestamo}` } : {}),
+      ...(row.id_cliente ? { clienteId: String(row.id_cliente) } : {}),
+      ...(row.nombre_cliente ? { clienteLabel: row.nombre_cliente } : {}),
     },
   })
 }

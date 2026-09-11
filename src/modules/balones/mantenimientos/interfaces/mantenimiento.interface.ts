@@ -7,7 +7,6 @@ export interface Mantenimiento {
   nombre_producto?: string | null
   tipo_origen?: 'CILINDRO' | 'PRODUCTO' | string | null
   id_alquiler?: number | null
-  id_recojo?: number | null
   id_almacen?: number | null
   id_propietario?: number | null
   nombre_propietario?: string | null

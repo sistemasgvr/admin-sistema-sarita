@@ -41,15 +41,6 @@ export const balonesMenuItems: BalonesMenuItem[] = [
     implemented: true,
   },
   {
-    key: 'recojos',
-    title: 'Recojos',
-    path: '/admin/balones/recojos',
-    icon: ICONS.arrowDownToLine,
-    permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
-    phase: 5,
-    implemented: true,
-  },
-  {
     key: 'rutas-pueblos',
     title: 'Ruta pueblos',
     path: '/admin/balones/rutas-pueblos',

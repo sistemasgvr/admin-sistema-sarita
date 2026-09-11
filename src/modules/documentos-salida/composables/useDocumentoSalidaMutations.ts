@@ -18,7 +18,6 @@ import type {
   CreateDocumentoSalidaPayload,
   CrearDesdeVentaPayload,
   FinalizarRecargaPayload,
-  GenerarRecojoDocSalidaPayload,
   RegistrarDireccionEntregaPayload,
 } from '@/modules/documentos-salida/interfaces/documento-salida.interface'
 import { toastApiError, toastError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
@@ -231,19 +230,6 @@ export function useFinalizarRecargaMutation() {
       toastSuccess('Retorno de recarga registrado')
     },
     onError: (error) => toastApiError(error, 'No se pudo registrar el retorno'),
-  })
-}
-
-export function useGenerarRecojoDocSalidaMutation() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: GenerarRecojoDocSalidaPayload }) =>
-      documentosSalidaService.generarRecojo(id, payload),
-    onSuccess: (_data, variables) => {
-      invalidateAll(queryClient, variables.id)
-      toastSuccess('Recojo generado')
-    },
-    onError: (error) => toastApiError(error, 'No se pudo generar el recojo'),
   })
 }
 
