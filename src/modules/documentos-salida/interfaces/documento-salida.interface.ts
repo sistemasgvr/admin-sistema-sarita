@@ -27,6 +27,8 @@ export interface DocumentoSalidaDetalle {
    */
   capacidad_balon?: number | null
   unidad_capacidad_balon?: string | null
+  /** Id de esa unidad: Compras la usa como U.M. de sus líneas de gas. */
+  id_unidad_capacidad_balon?: number | null
   /** Gas del cilindro: una ficha de lote y protocolo cubre un solo gas. */
   id_producto_gas_balon?: number | null
   nombre_producto_gas_balon?: string | null
@@ -96,6 +98,8 @@ export interface DocumentoSalida {
   destinatario_documento: string | null
   nombre_destinatario: string | null
   documento_destinatario: string | null
+  /** Documento del cliente: destinatario por defecto cuando no hay uno aparte. */
+  documento_cliente?: string | null
   id_proveedor: number | null
   nombre_proveedor: string | null
   documento_proveedor?: string | null
@@ -160,6 +164,16 @@ export interface DocumentoSalida {
   lote: string | null
   fecha_vencimiento_lote: string | null
   fecha_prueba_hidrostatica: string | null
+  id_lote_protocolo?: number | null
+  /** Almacén al que llegaron los cilindros de planta externa. Distinto del origen. */
+  id_almacen_retorno?: number | null
+  nombre_almacen_retorno?: string | null
+  /**
+   * Los envases ya entraron al almacén (ENTRADA_PLANTA_EXTERNA vigente). Es el
+   * único signo de que la recarga volvió: `fecha_llegada_almacen` se guarda con
+   * el retorno pero no lo prueba.
+   */
+  retorno_fisico?: boolean
   observaciones: string | null
   estado: number
   fecha_creacion: string
@@ -195,6 +209,11 @@ export interface DocumentoSalidaListItem {
   nombre_almacen: string | null
   id_almacen_destino?: number | null
   nombre_almacen_destino?: string | null
+  /** Almacén al que llegaron los cilindros de planta externa. Distinto del origen. */
+  id_almacen_retorno?: number | null
+  nombre_almacen_retorno?: string | null
+  /** Los envases ya entraron al almacén: la recarga volvió de verdad. */
+  retorno_fisico?: boolean
   /** Ubicación del almacén: origen por defecto de la guía de remisión. */
   direccion_almacen?: string | null
   id_distrito_almacen?: number | null
@@ -212,6 +231,9 @@ export interface DocumentoSalidaListItem {
   observaciones: string | null
   detalle_desde_venta: boolean
   total_items: number
+  /** Líneas propias con cilindro / con producto (total_items las mezcla). */
+  total_cilindros?: number
+  total_productos?: number
   fecha_creacion: string
 }
 
@@ -233,6 +255,10 @@ export interface DocumentoSalidaListFilters {
   idSucursal?: number
   idAlmacen?: number
   idCliente?: number
+  /** Proveedor de la orden (recarga en planta externa). */
+  idProveedor?: number
+  /** Uno o varios estados de ciclo separados por coma, p. ej. 'GENERADA,EMITIDA_SUNAT'. */
+  codigoEstadoCiclo?: string
   emitidoSunat?: boolean
   fechaDesde?: string
   fechaHasta?: string

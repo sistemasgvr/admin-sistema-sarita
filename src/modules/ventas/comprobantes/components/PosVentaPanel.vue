@@ -64,6 +64,7 @@
               v-model="idAlmacen"
               searchable
               :required="requiereAlmacen"
+              :id-sucursal="idSucursalPreferida"
               :disabled="almacenesQuery.isLoading.value"
               @created="onAlmacenCreated"
             />
@@ -437,7 +438,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
@@ -457,10 +458,12 @@ import PosAnadirItemModal, {
 import PosClienteField from '@/modules/ventas/comprobantes/components/PosClienteField.vue'
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
 import {
+  useConfirmarEntregaMostradorMutation,
   useCreateComprobanteMutation,
   useEmitirComprobanteMutation,
 } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
+import { usePosSucursalCajaAbierta } from '@/modules/ventas/comprobantes/composables/usePosSucursalCajaAbierta'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import {
   calcularTotalesDesdeImporte,
@@ -573,6 +576,7 @@ const prestamoActivoCliente = computed(() => {
   )
 })
 const crearDesdeVentaMutation = useCrearDesdeVentaMutation()
+const confirmarEntregaMostradorMutation = useConfirmarEntregaMostradorMutation()
 
 /**
  * La renovación se hace como una venta nueva (recarga real, cobrada) — no una
@@ -602,11 +606,30 @@ function esRecargaCliente(linea: PosLineItem) {
   return linea.escenarioGas === 'balon_cliente' || linea.escenarioGas === 'solo_gas'
 }
 
-const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesFilters = ref<{
+  pagina: number
+  limite: number
+  idSucursal?: number
+}>({ pagina: 1, limite: 100 })
+const { idSucursal: idSucursalPreferida } = usePosSucursalCajaAbierta(fecha)
+watch(
+  idSucursalPreferida,
+  (suc) => {
+    almacenesFilters.value = {
+      ...almacenesFilters.value,
+      idSucursal: suc ?? undefined,
+    }
+  },
+  { immediate: true },
+)
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
-const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(
+  almacenesData,
+  idAlmacen,
+  idSucursalPreferida,
+)
 
 /** Caja es por fecha + sucursal; se toma del almacén seleccionado en el POS. */
 const idSucursalCaja = computed(() => {
@@ -1461,13 +1484,21 @@ try {
       }))
     }
 
+    // Arqueo es por sucursal: nunca persistir venta con id_sucursal NULL.
+    const idSucursalVenta =
+      idSucursalCaja.value ?? idSucursalPreferida.value ?? null
+    if (idSucursalVenta == null) {
+      toastWarning('Selecciona un almacén con sucursal para registrar la venta')
+      return
+    }
+
     const comprobante = await createMutation.mutateAsync({
       idUsuarioAuditoria: userId,
       idTipoComprobante: Number(idTipoComprobante.value),
       serie: serie.value.trim(),
       fecha: fecha.value,
       idCliente: Number(idCliente.value),
-      idSucursal: idSucursalCaja.value ?? undefined,
+      idSucursal: idSucursalVenta,
       idAlmacen: idAlmacenNum,
       detalles,
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
@@ -1495,8 +1526,9 @@ try {
     toastSuccess('Venta registrada')
 
     let navegoAOrdenSalida = false
+    let esParaEnvio = false
     if (hayEntregaDeBalon.value) {
-      const esParaEnvio = await confirmarGenerarOrdenSalida()
+      esParaEnvio = await confirmarGenerarOrdenSalida()
       if (esParaEnvio) {
         try {
           const doc = await crearDesdeVentaMutation.mutateAsync({
@@ -1512,6 +1544,25 @@ try {
         } catch (error) {
           toastApiError(error, 'No se pudo generar la orden de salida')
         }
+      }
+    }
+
+    // Venta de mostrador: el cliente se lleva el cilindro ahora mismo. Al
+    // guardar, la venta lo reservó en PENDIENTE_ENVIO por si había que
+    // despacharlo; sin orden de salida no hay reparto que cierre esa reserva y
+    // el cilindro quedaría inmovilizado, así que se marca aquí como entregado.
+    // Si el envío se pidió pero la orden falló no se toca: el usuario va a
+    // reintentarla.
+    if (!esParaEnvio) {
+      try {
+        await confirmarEntregaMostradorMutation.mutateAsync(comprobante.id)
+      } catch (error) {
+        // La venta ya quedó guardada; avisar para no dejar cilindros en
+        // PENDIENTE_ENVIO sin que el cajero se entere.
+        toastApiError(
+          error,
+          'Venta guardada, pero no se marcó la entrega de mostrador. Revisa la custodia de los cilindros.',
+        )
       }
     }
 

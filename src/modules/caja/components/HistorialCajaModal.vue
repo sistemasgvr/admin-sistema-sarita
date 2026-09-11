@@ -206,6 +206,15 @@ const COLUMNAS: Record<string, TableColumn[]> = {
     { key: 'numeroOperacion', label: 'N° op.' },
     { key: 'monto', label: 'Monto', align: 'right' },
   ],
+  pagosProveedor: [
+    { key: 'fechaPago', label: 'Fecha', formatter: celdaFecha },
+    { key: 'proveedor', label: 'Proveedor' },
+    { key: 'compraSerieNumero', label: 'Compra' },
+    { key: 'medioPago', label: 'Medio' },
+    { key: 'cuentaBancaria', label: 'Cuenta' },
+    { key: 'numeroOperacion', label: 'N° op.' },
+    { key: 'monto', label: 'Monto', align: 'right' },
+  ],
   garantias: [
     { key: 'fecha', label: 'Fecha', formatter: celdaFecha },
     { key: 'cliente', label: 'Cliente' },

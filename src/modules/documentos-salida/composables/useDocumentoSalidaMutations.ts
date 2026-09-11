@@ -1,5 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
+import { comprasQueryKeys } from '@/modules/compras/constants/comprasQueryKeys'
 import { documentosSalidaQueryKeys } from '@/modules/documentos-salida/constants/documentosSalidaQueryKeys'
+import { inventarioMovimientosQueryKeys } from '@/modules/inventario/constants/inventarioMovimientosQueryKeys'
+import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
 import { documentosSalidaService } from '@/modules/documentos-salida/services/documentos-salida.service'
 import type {
   ActualizarDocumentoSalidaDetallePayload,
@@ -34,6 +39,18 @@ function invalidateAll(queryClient: ReturnType<typeof useQueryClient>, id?: numb
   if (id != null) {
     queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.detail(id) })
   }
+}
+
+/**
+ * Generar, anular y registrar retorno mueven inventario (salida de envases,
+ * entrada de gas, reversas). Stock, stock de gas y kardex viven en otros
+ * módulos y se quedaban con el saldo anterior hasta recargar el navegador.
+ */
+function invalidarInventario(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: stockGasQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: inventarioMovimientosQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
 }
 
 export function useCreateDocumentoSalidaMutation() {
@@ -135,6 +152,7 @@ export function useGenerarDocSalidaMutation() {
       documentosSalidaService.generar(id, idUsuarioAuditoria),
     onSuccess: (_data, variables) => {
       invalidateAll(queryClient, variables.id)
+      invalidarInventario(queryClient)
       toastSuccess('Documento generado')
     },
     onError: (error) => toastApiError(error, 'No se pudo generar el documento'),
@@ -200,6 +218,10 @@ export function useFinalizarRecargaMutation() {
       documentosSalidaService.finalizarRecarga(id, payload),
     onSuccess: (_data, variables) => {
       invalidateAll(queryClient, variables.id)
+      invalidarInventario(queryClient)
+      // El retorno cierra la orden contra su factura: la compra vinculada pasa
+      // a mostrar el gas ya ingresado.
+      queryClient.invalidateQueries({ queryKey: comprasQueryKeys.all })
       toastSuccess('Retorno de recarga registrado')
     },
     onError: (error) => toastApiError(error, 'No se pudo registrar el retorno'),
@@ -226,6 +248,7 @@ export function useAnularDocSalidaMutation() {
       documentosSalidaService.anular(id, payload),
     onSuccess: (_data, variables) => {
       invalidateAll(queryClient, variables.id)
+      invalidarInventario(queryClient)
       toastSuccess('Documento anulado')
     },
     onError: (error) => toastApiError(error, 'No se pudo anular el documento'),

@@ -145,19 +145,24 @@ const capacidadTotalLabel = computed(() => {
 
 const estadoColor = computed(() => {
   const e = (props.recarga?.nombre_estado ?? '').toUpperCase()
+  if (e === 'ANULADA') return 'error'
   if (e === 'CERRADO') return 'success'
   if (e === 'RETORNADO') return 'primary'
   if (e === 'ENVIADO') return 'warning'
   return 'neutral'
 })
 
+// CERRADO es el estado derivado "tiene compra vinculada": no cierra nada (la
+// compra se puede anular y la orden vuelve a quedar facturable), así que se
+// muestra como lo que es.
 const etiquetaEstado = computed(() => {
   const e = props.recarga?.nombre_estado ?? ''
   const map: Record<string, string> = {
     BORRADOR: 'Borrador',
-    ENVIADO: 'Enviado',
-    RETORNADO: 'Retornado',
-    CERRADO: 'Cerrado',
+    ENVIADO: 'En planta',
+    RETORNADO: 'Retornada',
+    CERRADO: 'Facturada',
+    ANULADA: 'Anulada',
   }
   return map[e] ?? e
 })

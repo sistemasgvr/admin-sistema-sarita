@@ -292,14 +292,14 @@
           >
             <AppCheckbox
               v-model="esChofer"
-              :disabled="isSubmitting || Boolean(trabajadorActual?.es_chofer)"
+              :disabled="isSubmitting"
               class="mt-0.5"
             />
             <AppIcon :name="ICONS.car" :size="18" class="mt-0.5 shrink-0 text-gray-400" />
             <span>
               <span class="block text-sm font-medium text-gray-800 dark:text-gray-100">Es chofer de la flota propia de la empresa</span>
               <span class="block text-xs text-gray-500 dark:text-gray-400">
-                Habilita los campos de licencia de conducir (brevete).
+                Habilita los campos de licencia de conducir (brevete). Al desmarcar se desactiva el chofer vinculado.
               </span>
             </span>
           </label>

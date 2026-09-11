@@ -221,13 +221,27 @@
                   :model-value="cantidades[grupo.idProducto] ?? ''"
                   :unidad="grupo.unidad"
                   :stock="stockDe(grupo.idProducto)"
-                  :capacidad="grupo.capacidadTotal || null"
+                  :capacidad="grupo.capacidadEsTope ? grupo.capacidadTotal : null"
                   :disabled="disabled"
                   :readonly="readonly"
                   @update:model-value="cantidades[grupo.idProducto] = $event"
                   @focus="editando = grupo.idProducto"
                   @commit="onCommitProducto(grupo.idProducto)"
                 />
+                <!--
+                  Capacidad y cantidad en unidades distintas: mostrarla como
+                  tope recortaría el campo con un número que no le corresponde
+                  (6 m³ no son 6 kg). Se informa y la conversión la resuelve la
+                  API al generar.
+                -->
+                <p
+                  v-if="!grupo.capacidadEsTope && grupo.capacidadTotal > 0"
+                  class="mt-1 text-[11px] leading-tight text-gray-400"
+                >
+                  Los cilindros suman {{ formatCantidad(grupo.capacidadTotal) }}
+                  {{ grupo.unidadCapacidad ?? '' }}, y esta cantidad va en
+                  {{ grupo.unidad ?? 'la unidad del producto' }}: no se aplica como tope.
+                </p>
               </td>
             </tr>
           </tbody>
@@ -470,6 +484,10 @@ import { computed, ref, watch } from 'vue'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { esBalonEntregable } from '@/modules/balones/cilindros/utils/disponibilidadBalon'
 import type { BalonListFilters } from '@/modules/balones/cilindros/interfaces/balon.interface'
+import {
+  kindUnidadCapacidad,
+  normalizarCodigoUnidad,
+} from '@/modules/balones/tipos-balon/utils/tipoBalonConversion'
 import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import CantidadProductoInput from '@/modules/documentos-salida/components/CantidadProductoInput.vue'
@@ -573,10 +591,30 @@ function stockDe(idProducto: number) {
 }
 
 /**
+ * Dos unidades son "la misma" si la API las trataría igual al convertir
+ * (inv_convertir_a_unidad_producto: KGM ≡ KG, M³ ≡ MT3). Sin nombre en alguno
+ * de los dos lados no se puede afirmar nada, así que se responde que no.
+ */
+function mismaUnidad(a?: string | null, b?: string | null) {
+  const ua = normalizarCodigoUnidad(a)
+  const ub = normalizarCodigoUnidad(b)
+  if (!ua || !ub) return false
+  if (ua === ub) return true
+  const kind = kindUnidadCapacidad(ua)
+  return kind !== 'other' && kind === kindUnidadCapacidad(ub)
+}
+
+/**
  * Los productos que la orden debe declarar, derivados de los tipos de balón
  * agregados. Se agrupa por PRODUCTO y no por tipo: "Oxígeno Medicinal 6 m³" y
  * "Oxígeno Medicinal 10 m³" cargan el mismo gas, así que comparten una sola
  * fila de cantidad — la capacidad que topa esa fila es la suma de ambos.
+ *
+ * La cantidad se declara en la unidad del producto (es la que guarda la línea
+ * y la que usa pro_stock), mientras que las capacidades vienen en la unidad
+ * del tipo de balón. Cuando no coinciden —acetileno en KG contra cilindros
+ * medidos en m³— la suma de capacidades no es un tope válido para ese campo:
+ * se muestra como dato, pero no recorta lo que se teclea.
  */
 const gruposGas = computed(() => {
   const mapa = new Map<
@@ -585,11 +623,15 @@ const gruposGas = computed(() => {
       idProducto: number
       nombre: string
       unidad?: string
+      unidadCapacidad?: string
       capacidadTotal: number
+      /** La capacidad está en la misma unidad que la cantidad: sirve de tope. */
+      capacidadEsTope: boolean
       balones: number
       tipos: { nombre: string; cantidad: number }[]
     }
   >()
+  const unidadesCapacidad = new Map<number, Set<string>>()
 
   for (const linea of balones.value) {
     const idGas = linea.idProductoGas
@@ -602,21 +644,37 @@ const gruposGas = computed(() => {
         nombre: linea.nombreProductoGas ?? stockPorProducto.value.get(idGas)?.nombre ?? 'Gas',
         unidad:
           stockPorProducto.value.get(idGas)?.unidad ?? linea.unidadCapacidadBalon ?? undefined,
+        unidadCapacidad: linea.unidadCapacidadBalon ?? undefined,
         capacidadTotal: 0,
+        capacidadEsTope: false,
         balones: 0,
         tipos: [],
       }
       mapa.set(idGas, grupo)
+      unidadesCapacidad.set(idGas, new Set())
     }
 
     grupo.balones += 1
     const capacidad = Number(linea.capacidadBalon ?? 0)
-    if (Number.isFinite(capacidad) && capacidad > 0) grupo.capacidadTotal += capacidad
+    if (Number.isFinite(capacidad) && capacidad > 0) {
+      grupo.capacidadTotal += capacidad
+      unidadesCapacidad.get(idGas)?.add(normalizarCodigoUnidad(linea.unidadCapacidadBalon))
+    }
 
     const nombreTipo = linea.nombreTipoBalon ?? 'Sin tipo'
     const tipo = grupo.tipos.find((item) => item.nombre === nombreTipo)
     if (tipo) tipo.cantidad += 1
     else grupo.tipos.push({ nombre: nombreTipo, cantidad: 1 })
+  }
+
+  for (const grupo of mapa.values()) {
+    // Con cilindros medidos en unidades distintas la suma ya no significa
+    // nada, ni siquiera como dato: se descarta el tope.
+    const unidades = unidadesCapacidad.get(grupo.idProducto)
+    grupo.capacidadEsTope =
+      grupo.capacidadTotal > 0 &&
+      (unidades?.size ?? 0) <= 1 &&
+      mismaUnidad(grupo.unidad, grupo.unidadCapacidad)
   }
 
   return [...mapa.values()]

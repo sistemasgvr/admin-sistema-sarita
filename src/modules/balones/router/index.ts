@@ -181,10 +181,18 @@ export const balonesRoutes: RouteRecordRaw[] = [
         },
       },
       {
-        // Absorbido por operativa/actividades (recojos dual path).
+        // Camino dual con operativa/actividades: ambos módulos programan el
+        // recojo de un origen y el candado de bal_crear_recojo /
+        // age_crear_recojo_origen impide que convivan dos vivos. Redirigir esta
+        // ruta a actividades dejaba sin interfaz las visitas que nacen en el POS.
         path: 'recojos',
         name: 'admin-balones-recojos',
-        redirect: { name: 'admin-operativa-actividades' },
+        component: () => import('@/modules/balones/recojos/views/RecojosTabsView.vue'),
+        meta: {
+          title: 'Recojos',
+          module: 'balones',
+          permission: PermisoBanderas.RECOJOS_BALON_LISTAR,
+        },
       },
       {
         path: 'alquileres/antiguedad',

@@ -21,6 +21,7 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
           { concepto: 'Ventas contado', monto: money(t.ventasContado) },
           { concepto: 'Ventas crédito', monto: money(t.ventasCredito) },
           { concepto: 'Cobranzas', monto: money(t.cobranzas) },
+          { concepto: 'Pagos a proveedores (CxP)', monto: money(t.pagosProveedor) },
           { concepto: 'Gastos', monto: money(t.gastos) },
           { concepto: 'Depósitos', monto: money(t.depositos) },
         ],
@@ -55,6 +56,19 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
           { key: 'obs', header: 'Observación', width: 28, value: (r) => r.observacion },
         ],
         rows: libro.cobranzas,
+      },
+      {
+        name: 'Pagos proveedores',
+        columns: [
+          { key: 'fecha', header: 'Fecha', width: 12, value: (r) => r.fechaPago },
+          { key: 'proveedor', header: 'Proveedor', width: 28, value: (r) => r.proveedor },
+          { key: 'compra', header: 'Compra', width: 16, value: (r) => r.compraSerieNumero },
+          { key: 'medio', header: 'Medio', width: 14, value: (r) => r.medioPago },
+          { key: 'operacion', header: 'Operación', width: 16, value: (r) => r.numeroOperacion },
+          { key: 'monto', header: 'Monto', width: 12, value: (r) => money(r.monto) },
+          { key: 'obs', header: 'Observación', width: 28, value: (r) => r.observacion },
+        ],
+        rows: libro.pagosProveedor ?? [],
       },
       {
         name: 'Gastos',

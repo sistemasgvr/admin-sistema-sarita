@@ -356,21 +356,12 @@ const openDevolverCilindros = (row: Alquiler) => {
 }
 
 const openProgramarRecojo = (row: Alquiler) => {
-  const numero = row.numero_alquiler || `#${row.id}`
-  const cliente = row.nombre_cliente || ''
   void router.push({
-    name: 'admin-operativa-actividades-nueva',
+    name: 'admin-balones-recojos',
     query: {
-      lockTipoRecojo: '1',
-      tipoOrigenRecojo: 'ALQUILER',
-      idOrigenRecojo: String(row.id),
-      titulo: `Recojo alquiler ${numero}`,
-      ...(row.id_cliente ? { clienteId: String(row.id_cliente) } : {}),
-      ...(cliente ? { clienteLabel: cliente } : {}),
-      ...(row.fecha_fin_pactada
-        ? { fecha: String(row.fecha_fin_pactada).slice(0, 10) }
-        : {}),
-      origenRecojoLabel: cliente ? `${numero} · ${cliente}` : numero,
+      tab: 'pendientes',
+      idAlquiler: String(row.id),
+      ...(row.id_cliente ? { idCliente: String(row.id_cliente) } : {}),
     },
   })
 }

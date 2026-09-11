@@ -64,7 +64,7 @@ export interface SummaryCardItem {
 const props = withDefaults(
   defineProps<{
     cards: SummaryCardItem[]
-    columns?: 2 | 3 | 4 | 5
+    columns?: 2 | 3 | 4 | 5 | 6
     stretch?: boolean
   }>(),
   {
@@ -84,6 +84,8 @@ const gridClass = computed(() => {
       return 'grid-cols-2 xl:grid-cols-3'
     case 5:
       return 'sm:grid-cols-2 xl:grid-cols-5'
+    case 6:
+      return 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6'
     case 4:
     default:
       return 'sm:grid-cols-2 xl:grid-cols-4'

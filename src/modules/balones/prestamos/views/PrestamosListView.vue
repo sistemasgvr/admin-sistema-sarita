@@ -339,21 +339,15 @@ const openDevolverCilindros = (row: Prestamo) => {
 }
 
 const openProgramarRecojo = (row: Prestamo) => {
-  const numero = row.numero_prestamo || `#${row.id}`
-  const cliente = row.nombre_cliente || ''
+  // El POS crea bal_recojo al vender con fecha de retorno; Actividades queda
+  // bloqueada por el candado. La UI de Recojos es el lugar para ver/cerrar esa
+  // visita o programar una nueva si aún no existe.
   void router.push({
-    name: 'admin-operativa-actividades-nueva',
+    name: 'admin-balones-recojos',
     query: {
-      lockTipoRecojo: '1',
-      tipoOrigenRecojo: 'PRESTAMO',
-      idOrigenRecojo: String(row.id),
-      titulo: `Recojo préstamo ${numero}`,
-      ...(row.id_cliente ? { clienteId: String(row.id_cliente) } : {}),
-      ...(cliente ? { clienteLabel: cliente } : {}),
-      ...(row.fecha_retorno_pactada
-        ? { fecha: String(row.fecha_retorno_pactada).slice(0, 10) }
-        : {}),
-      origenRecojoLabel: cliente ? `${numero} · ${cliente}` : numero,
+      tab: 'pendientes',
+      idPrestamo: String(row.id),
+      ...(row.id_cliente ? { idCliente: String(row.id_cliente) } : {}),
     },
   })
 }

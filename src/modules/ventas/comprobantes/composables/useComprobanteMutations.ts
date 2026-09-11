@@ -10,7 +10,7 @@ import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQ
 import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
 export function useCreateComprobanteMutation() {
   const queryClient = useQueryClient()
@@ -62,7 +62,14 @@ export function useEmitirComprobanteMutation() {
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       void invalidateCajaQueries(queryClient)
-      toastSuccess(`Comprobante emitido: ${data.sunat.estado}`)
+      const estado = String(data?.sunat?.estado ?? '').toUpperCase()
+      if (estado === 'RECHAZADO' || estado === 'ERROR') {
+        toastWarning(
+          `SUNAT respondió ${estado}: el comprobante no quedó aceptado. Si era una NC, se revirtieron sus efectos de stock.`,
+        )
+      } else {
+        toastSuccess(`Comprobante emitido: ${data.sunat.estado}`)
+      }
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo emitir el comprobante')
@@ -87,6 +94,26 @@ export function useDeleteComprobanteMutation() {
   })
 }
 
+/**
+ * Cierra la custodia de una venta que no se despacha: sin orden de salida no
+ * hay reparto que saque los cilindros de la reserva PENDIENTE_ENVIO, y ahí se
+ * quedarían inmovilizados (ni vendibles ni en poder del cliente).
+ */
+export function useConfirmarEntregaMostradorMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => comprobantesService.confirmarEntregaMostrador(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+    },
+    onError: (error) => {
+      toastApiError(error, 'La venta se registró, pero no se pudo marcar la entrega en mostrador')
+    },
+  })
+}
+
 export function useConsultarCdrComprobanteMutation() {
   const queryClient = useQueryClient()
 
@@ -96,7 +123,11 @@ export function useConsultarCdrComprobanteMutation() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
-      toastSuccess(`CDR actualizado: ${data.sunat.estado}`)
+      if (data.sunat.estado === 'RECHAZADO') {
+        toastWarning(`SUNAT rechazó el comprobante (CDR): ${data.sunat.estado}`)
+      } else {
+        toastSuccess(`CDR actualizado: ${data.sunat.estado}`)
+      }
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo consultar el CDR')

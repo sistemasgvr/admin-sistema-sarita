@@ -474,8 +474,15 @@ const props = withDefaults(
      */
     balonesPreset?: LoteProtocoloBalonPreset[]
     idProductoGasPreset?: number | null
+    /** Orden de salida a enganchar (escribe doc_salida.id_lote_protocolo). */
+    idDocSalida?: number | null
   }>(),
-  { loteId: null, balonesPreset: () => [], idProductoGasPreset: null },
+  {
+    loteId: null,
+    balonesPreset: () => [],
+    idProductoGasPreset: null,
+    idDocSalida: null,
+  },
 )
 
 const open = defineModel<boolean>({ default: false })
@@ -784,13 +791,22 @@ const onSubmit = handleSubmit(async (values) => {
       })
 
       // Nace desde una orden de salida: la ficha no sirve de nada si no queda
-      // aplicada a los cilindros que la originaron.
+      // aplicada a los cilindros que la originaron, y enganchada a la OS.
       if (creada?.id && balonesDeLaOrden.value.length) {
         await aplicarMutation.mutateAsync({
           id: creada.id,
           payload: {
             idUsuarioAuditoria: currentUserId,
             idBalones: balonesDeLaOrden.value.map((balon) => balon.idBalon),
+            idDocSalida: props.idDocSalida ?? undefined,
+          },
+        })
+      } else if (creada?.id && props.idDocSalida) {
+        await aplicarMutation.mutateAsync({
+          id: creada.id,
+          payload: {
+            idUsuarioAuditoria: currentUserId,
+            idDocSalida: props.idDocSalida,
           },
         })
       }

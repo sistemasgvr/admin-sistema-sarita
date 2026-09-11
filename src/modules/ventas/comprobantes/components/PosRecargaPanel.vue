@@ -58,6 +58,7 @@
               label="Almacén"
               searchable
               required
+              :id-sucursal="idSucursalPreferida"
               :disabled="almacenesQuery.isLoading.value"
               @created="onAlmacenCreated"
             />
@@ -226,6 +227,7 @@ import PosClienteField from '@/modules/ventas/comprobantes/components/PosCliente
 import PosResumenAside from '@/modules/ventas/comprobantes/components/PosResumenAside.vue'
 import { useEmitirComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
+import { usePosSucursalCajaAbierta } from '@/modules/ventas/comprobantes/composables/usePosSucursalCajaAbierta'
 import {
   calcularTotalesDesdeImporte,
   usePosComprobanteForm,
@@ -284,11 +286,30 @@ const createMutation = useCreateRecargaClienteMutation()
 const emitMutation = useEmitirComprobanteMutation()
 const imprimiendoTicket = ref(false)
 
-const almacenesFilters = ref({ pagina: 1, limite: 100 })
+const almacenesFilters = ref<{
+  pagina: number
+  limite: number
+  idSucursal?: number
+}>({ pagina: 1, limite: 100 })
+const { idSucursal: idSucursalPreferida } = usePosSucursalCajaAbierta(fecha)
+watch(
+  idSucursalPreferida,
+  (suc) => {
+    almacenesFilters.value = {
+      ...almacenesFilters.value,
+      idSucursal: suc ?? undefined,
+    }
+  },
+  { immediate: true },
+)
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const idAlmacen = ref<number | ''>('')
 const almacenesData = computed(() => almacenesQuery.data.value?.data)
-const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(almacenesData, idAlmacen)
+const { aplicarAlmacenPorDefecto } = usePosAlmacenDefault(
+  almacenesData,
+  idAlmacen,
+  idSucursalPreferida,
+)
 
 async function onAlmacenCreated() {
   await almacenesQuery.refetch()

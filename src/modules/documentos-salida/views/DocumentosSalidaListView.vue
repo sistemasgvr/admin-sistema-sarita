@@ -123,6 +123,7 @@
       mode="create"
       :balones-preset="balonesPreset"
       :id-producto-gas-preset="gasUnicoSeleccionado"
+      :id-doc-salida="documentoSeleccionado?.id ?? null"
     />
 
     <AppModal v-model="anularModalOpen" title="Anular documento" size="sm">

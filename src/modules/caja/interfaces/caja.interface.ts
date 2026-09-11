@@ -8,6 +8,13 @@ export interface CajaTotales {
   cobranzas: number
   cobranzasMediosCaja: number
   cobranzasEfectivo?: number
+  /**
+   * Pagos de cuentas por pagar (CxP de compras). Son EGRESOS: salen del cajon.
+   * `pagosProveedorMediosCaja` es el subconjunto pagado con medios que afectan
+   * caja, el unico que se resta del efectivo esperado.
+   */
+  pagosProveedor?: number
+  pagosProveedorMediosCaja?: number
   gastosCaja: number
   /** Gastos pagados con medios que afectan caja: los únicos que vacían el cajón. */
   gastosCajaMediosCaja?: number
@@ -210,7 +217,14 @@ export interface LibroDiarioResumen {
   clave: string
   etiqueta: string
   /** Array del payload del que salen las filas de esta pestana. */
-  coleccion: 'ventasPagos' | 'cobranzas' | 'gastos' | 'depositos' | 'garantias' | 'observaciones'
+  coleccion:
+    | 'ventasPagos'
+    | 'cobranzas'
+    | 'pagosProveedor'
+    | 'gastos'
+    | 'depositos'
+    | 'garantias'
+    | 'observaciones'
   /** Campo por el que filtrar esa coleccion (null = toda). */
   filtroCampo?: string | null
   filtroValor?: string | null
@@ -233,6 +247,28 @@ export interface LibroDiarioCobranza {
   idCliente?: number | null
   idCuentaBancaria?: number | null
   cuentaBancaria?: string | null
+}
+
+/**
+ * Pago de una cuenta por pagar (CxP de una compra a credito). Va aparte de
+ * `gastos`: ahi conviven los gastos de caja con el devengo de las compras tipo
+ * GASTO, y el pago de una de esas compras apareceria dos veces si se mezclaran.
+ */
+export interface LibroDiarioPagoProveedor {
+  id: number
+  fechaPago: string
+  monto: number
+  idMedioPago?: number | null
+  medioPago?: string | null
+  idCuentaBancaria?: number | null
+  cuentaBancaria?: string | null
+  numeroOperacion?: string | null
+  observacion?: string | null
+  idCuenta?: number | null
+  idProveedor?: number | null
+  proveedor?: string | null
+  idCompra?: number | null
+  compraSerieNumero?: string | null
 }
 
 export interface LibroDiarioGasto {
@@ -275,6 +311,8 @@ export interface LibroDiario {
   /** Fase 3: una fila por linea de cobro, para las pestanas de ventas. */
   ventasPagos?: LibroDiarioVentaPago[]
   cobranzas: LibroDiarioCobranza[]
+  /** Pagos de CxP de compras: egresos de caja. */
+  pagosProveedor?: LibroDiarioPagoProveedor[]
   gastos: LibroDiarioGasto[]
   depositos: LibroDiarioDeposito[]
   garantias?: LibroDiarioGarantia[]

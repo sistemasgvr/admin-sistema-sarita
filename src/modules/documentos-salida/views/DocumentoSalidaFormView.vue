@@ -394,7 +394,7 @@
               -->
               <RouterLink
                 v-if="puedeRegistrarCompra"
-                :to="{ name: 'admin-compras-nuevo', query: { idRecargaPlanta: String(documento.id) } }"
+                :to="{ name: 'admin-compras-nuevo', query: compraDesdeOrdenQuery }"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
               >
                 <AppIcon :name="ICONS.receipt" :size="14" />
@@ -821,6 +821,7 @@
       mode="create"
       :balones-preset="balonesPreset"
       :id-producto-gas-preset="gasUnicoDelDocumento?.id ?? null"
+      :id-doc-salida="documento?.id ?? null"
     />
 
     <!-- Modal: Dirección de entrega -->
@@ -938,9 +939,15 @@ const almacenesQuery = useAlmacenesQuery(almacenesFilters)
 const sucursalOptions = computed(
   () => sucursalesQuery.data.value?.data?.map((s) => ({ value: s.id, label: s.nombre })) ?? [],
 )
-const almacenOptions = computed(
-  () => almacenesQuery.data.value?.data?.map((a) => ({ value: a.id, label: a.nombre })) ?? [],
-)
+const almacenOptions = computed(() => {
+  const lista = almacenesQuery.data.value?.data ?? []
+  const idSucursal = form.idSucursal
+  const filtrados =
+    idSucursal !== '' && idSucursal != null
+      ? lista.filter((a) => Number(a.id_sucursal) === Number(idSucursal))
+      : lista
+  return filtrados.map((a) => ({ value: a.id, label: a.nombre }))
+})
 
 // Los cuatro que existen en gen_lista_opciones (TipoOrdenSalida). ORDEN_SALIDA_VENTA
 // no se ofrece acá: esa orden nace de la venta, no se arma a mano. El retorno de
@@ -1011,6 +1018,17 @@ const form = reactive<{
 })
 
 const isTraslado = computed(() => form.codigoTipoOrden === 'TRASLADO')
+
+watch(
+  () => form.idSucursal,
+  (suc) => {
+    if (suc === '' || suc == null) return
+    const origen = almacenesQuery.data.value?.data?.find((a) => a.id === Number(form.idAlmacen))
+    if (origen && Number(origen.id_sucursal) !== Number(suc)) {
+      form.idAlmacen = ''
+    }
+  },
+)
 
 // El destino puede estar en otra sucursal (traslado entre sedes), así que el
 // listado no se acota por sucursal — solo se excluye el propio origen.
@@ -1198,6 +1216,20 @@ const puedeRegistrarCompra = computed(
     authStore.hasPermission(PermisoBanderas.COMPRAS_CREAR),
 )
 
+/**
+ * Proveedor y almacén viajan en la URL además del id: la compra los deduce de
+ * la orden igual, pero llevarlos evita que el selector de órdenes arranque
+ * deshabilitado ("selecciona el proveedor primero") mientras carga el detalle.
+ */
+const compraDesdeOrdenQuery = computed(() => {
+  const doc = documento.value
+  return {
+    idRecargaPlanta: String(doc?.id ?? ''),
+    ...(doc?.id_proveedor ? { idProveedor: String(doc.id_proveedor) } : {}),
+    ...(doc?.id_almacen ? { idAlmacen: String(doc.id_almacen) } : {}),
+  }
+})
+
 const hitosDelDocumento = computed(() => {
   const doc = documento.value
   if (!doc) return []
@@ -1218,8 +1250,15 @@ const hitosDelDocumento = computed(() => {
   } else if (doc.ticket_sunat) {
     hitos.push({ texto: 'Ticket SUNAT pendiente', color: 'warning' })
   }
-  if (doc.fecha_llegada_almacen) {
-    hitos.push({ texto: `Retorno registrado ${doc.fecha_llegada_almacen}`, color: 'success' })
+  // El hito es el retorno físico (los cilindros entraron), no la fecha: una
+  // orden podía quedar con fecha de llegada y los envases todavía en planta.
+  if (doc.retorno_fisico) {
+    hitos.push({
+      texto: doc.fecha_llegada_almacen
+        ? `Retorno registrado ${doc.fecha_llegada_almacen}`
+        : 'Retorno registrado',
+      color: 'success',
+    })
   }
   if (doc.id_comprobante_compra) {
     hitos.push({ texto: 'Facturada en compras', color: 'neutral' })
