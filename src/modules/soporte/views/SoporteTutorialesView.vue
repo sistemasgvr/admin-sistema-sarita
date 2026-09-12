@@ -98,7 +98,17 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 
-const tutorials = [
+const tutorialsDashboard = [
+  {
+    id: 'dashboard',
+    title: 'Dashboard',
+    description: 'Resumen del negocio: dinero, deudas, envases en campo, ventas y alertas.',
+    path: '/admin/dashboard',
+    query: { tutorial: 'dashboard' },
+  },
+] as const
+
+const tutorialsClientes = [
   {
     id: 'crear-cliente',
     title: 'Crear cliente',
@@ -119,6 +129,13 @@ const tutorials = [
     description: 'Ubica clientes y proveedores en el mapa y revisa los balones en custodia.',
     path: '/admin/clientes/mapa',
     query: { tutorial: 'mapa-clientes' },
+  },
+  {
+    id: 'cliente-relacionados-listado',
+    title: 'Listado general de clientes',
+    description: 'Consulta el listado completo, busca y filtra clientes por estado.',
+    path: '/admin/clientes',
+    query: { tutorial: 'cliente-relacionados-listado' },
   },
 ] as const
 
@@ -220,11 +237,250 @@ const tutorialsBalones = [
   },
 ] as const
 
+const tutorialsProductos = [
+  {
+    id: 'productos-catalogo',
+    title: 'Catálogo de productos',
+    description: 'Gestiona el catálogo completo: gases, accesorios, servicios y más.',
+    path: '/admin/productos/articulos',
+    query: { tutorial: 'productos-catalogo' },
+  },
+  {
+    id: 'productos-crear',
+    title: 'Crear un producto',
+    description: 'Registra un nuevo producto con categoría, precios y datos fiscales.',
+    path: '/admin/productos/articulos/nuevo',
+    query: { tutorial: 'productos-crear' },
+  },
+  {
+    id: 'productos-categorias',
+    title: 'Categorías',
+    description: 'Administra las categorías de productos del catálogo.',
+    path: '/admin/productos/categorias',
+    query: { tutorial: 'productos-categorias' },
+  },
+  {
+    id: 'productos-subcategorias',
+    title: 'Subcategorías',
+    description: 'Organiza los productos en subcategorías dentro de cada categoría.',
+    path: '/admin/productos/sub-categorias',
+    query: { tutorial: 'productos-subcategorias' },
+  },
+  {
+    id: 'productos-stock',
+    title: 'Stock por almacén',
+    description: 'Consulta y ajusta las cantidades disponibles en cada almacén.',
+    path: '/admin/productos/stock',
+    query: { tutorial: 'productos-stock' },
+  },
+] as const
+
+const tutorialsConfiguracion = [
+  {
+    id: 'configuracion-empresa',
+    title: 'Datos de la empresa',
+    description: 'RUC, razón social, dirección fiscal y parámetros operativos.',
+    path: '/admin/configuracion/empresas',
+    query: { tutorial: 'configuracion-empresa' },
+  },
+  {
+    id: 'configuracion-sucursales',
+    title: 'Sucursales',
+    description: 'Cada local de la empresa con su caja y almacenes.',
+    path: '/admin/configuracion/sucursales',
+    query: { tutorial: 'configuracion-sucursales' },
+  },
+  {
+    id: 'configuracion-almacenes',
+    title: 'Almacenes',
+    description: 'Lugares físicos donde se guarda el stock y los cilindros.',
+    path: '/admin/configuracion/almacenes',
+    query: { tutorial: 'configuracion-almacenes' },
+  },
+  {
+    id: 'configuracion-choferes',
+    title: 'Choferes',
+    description: 'Personal habilitado para conducir la flota de la empresa.',
+    path: '/admin/configuracion/choferes',
+    query: { tutorial: 'configuracion-choferes' },
+  },
+  {
+    id: 'configuracion-vehiculos',
+    title: 'Vehículos',
+    description: 'Flota de la empresa: placas, documentos y estado.',
+    path: '/admin/configuracion/vehiculos',
+    query: { tutorial: 'configuracion-vehiculos' },
+  },
+  {
+    id: 'configuracion-cuentas-bancarias',
+    title: 'Cuentas bancarias',
+    description: 'Cuentas donde se reciben transferencias y depósitos.',
+    path: '/admin/configuracion/cuentas-bancarias',
+    query: { tutorial: 'configuracion-cuentas-bancarias' },
+  },
+  {
+    id: 'configuracion-condiciones-pago',
+    title: 'Condiciones de pago',
+    description: 'Plantillas de crédito (contado, 30 días, cuotas) para ventas y compras.',
+    path: '/admin/configuracion/condiciones-pago',
+    query: { tutorial: 'configuracion-condiciones-pago' },
+  },
+  {
+    id: 'configuracion-servicios',
+    title: 'Servicios',
+    description: 'Catálogo de servicios que ofrece la empresa (flete, mantenimiento, etc.).',
+    path: '/admin/configuracion/servicios',
+    query: { tutorial: 'configuracion-servicios' },
+  },
+  {
+    id: 'configuracion-sunat',
+    title: 'Configuración SUNAT',
+    description: 'Credenciales, certificado digital y datos para comprobantes electrónicos.',
+    path: '/admin/configuracion/sunat',
+    query: { tutorial: 'configuracion-sunat' },
+  },
+] as const
+
+const tutorialsCompras = [
+  {
+    id: 'compras-listado',
+    title: 'Listado de compras',
+    description: 'Todas las compras registradas: facturas, mercadería, servicios y gastos.',
+    path: '/admin/compras',
+    query: { tutorial: 'compras-listado' },
+  },
+  {
+    id: 'compras-registrar',
+    title: 'Registrar una compra',
+    description: 'Comprobante, proveedor, clasificación, detalle y recarga externa.',
+    path: '/admin/compras/nuevo',
+    query: { tutorial: 'compras-registrar' },
+  },
+  {
+    id: 'compras-gastos-caja',
+    title: 'Gastos de caja',
+    description: 'Salidas menudas pagadas con dinero de la caja del día.',
+    path: '/admin/compras/gastos-caja',
+    query: { tutorial: 'compras-gastos-caja' },
+  },
+] as const
+
+const tutorialsFinanzas = [
+  {
+    id: 'finanzas-cuentas-cobrar',
+    title: 'Cuentas por cobrar',
+    description: 'Controla lo que los clientes te deben por ventas al crédito.',
+    path: '/admin/finanzas',
+    query: { tutorial: 'finanzas-cuentas-cobrar' },
+  },
+  {
+    id: 'finanzas-cuentas-pagar',
+    title: 'Cuentas por pagar',
+    description: 'Controla lo que la empresa debe a proveedores y otros terceros.',
+    path: '/admin/finanzas/pagar',
+    query: { tutorial: 'finanzas-cuentas-pagar' },
+  },
+  {
+    id: 'finanzas-garantias',
+    title: 'Garantías',
+    description: 'Depósitos y garantías de clientes, seguimiento y devolución.',
+    path: '/admin/finanzas/garantias',
+    query: { tutorial: 'finanzas-garantias' },
+  },
+  {
+    id: 'finanzas-libro-diario',
+    title: 'Libro diario',
+    description: 'Asientos contables generados automáticamente por cada movimiento.',
+    path: '/admin/finanzas/libro-diario',
+    query: { tutorial: 'finanzas-libro-diario' },
+  },
+] as const
+
+const tutorialsInventario = [
+  {
+    id: 'inventario-movimientos',
+    title: 'Movimientos de inventario',
+    description: 'Historial de entradas y salidas de stock: compras, ventas, ajustes y traslados.',
+    path: '/admin/inventario/movimientos',
+    query: { tutorial: 'inventario-movimientos' },
+  },
+  {
+    id: 'inventario-documentos-salida',
+    title: 'Documentos de salida',
+    description: 'Órdenes de salida para entregar productos a clientes o trasladar.',
+    path: '/admin/inventario/documentos-salida',
+    query: { tutorial: 'inventario-documentos-salida' },
+  },
+] as const
+
+const tutorialsActividades = [
+  {
+    id: 'actividades',
+    title: 'Actividades operativas',
+    description: 'Agenda de entregas, recojos, visitas y mantenimientos con calendario.',
+    path: '/admin/operativa/actividades',
+    query: { tutorial: 'actividades' },
+  },
+] as const
+
+const tutorialsGestion = [
+  {
+    id: 'gestion-trabajadores',
+    title: 'Trabajadores',
+    description: 'Padrón de personal, áreas, cargos, acceso al sistema y choferes.',
+    path: '/admin/trabajadores',
+    query: { tutorial: 'gestion-trabajadores' },
+  },
+  {
+    id: 'gestion-activos',
+    title: 'Activos fijos',
+    description: 'Inventario de bienes de la empresa: básculas, compresores, herramientas.',
+    path: '/admin/activos',
+    query: { tutorial: 'gestion-activos' },
+  },
+  {
+    id: 'gestion-documentos-vencimiento',
+    title: 'Documentos por vencer',
+    description: 'Seguimiento de licencias, soats, permisos y documentos con fecha de expiración.',
+    path: '/admin/documentos-vencimiento',
+    query: { tutorial: 'gestion-documentos-vencimiento' },
+  },
+] as const
+
+const tutorialsSistema = [
+  {
+    id: 'sistema-usuarios',
+    title: 'Usuarios',
+    description: 'Cuentas de acceso al sistema con roles y permisos.',
+    path: '/admin/usuarios',
+    query: { tutorial: 'sistema-usuarios' },
+  },
+  {
+    id: 'sistema-roles',
+    title: 'Roles',
+    description: 'Perfiles de acceso que agrupan permisos por función.',
+    path: '/admin/roles',
+    query: { tutorial: 'sistema-roles' },
+  },
+  {
+    id: 'sistema-permisos',
+    title: 'Permisos',
+    description: 'Detalles de qué puede hacer cada rol en el sistema.',
+    path: '/admin/permisos',
+    query: { tutorial: 'sistema-permisos' },
+  },
+] as const
+
 const tutorialGroups = [
+  {
+    title: 'Dashboard',
+    icon: ICONS.dashboard,
+    tutorials: tutorialsDashboard,
+  },
   {
     title: 'Módulo Clientes',
     icon: ICONS.users,
-    tutorials,
+    tutorials: tutorialsClientes,
   },
   {
     title: 'Módulo Ventas',
@@ -236,9 +492,62 @@ const tutorialGroups = [
     icon: ICONS.cylinder,
     tutorials: tutorialsBalones,
   },
+  {
+    title: 'Productos y Almacén',
+    icon: ICONS.package,
+    tutorials: tutorialsProductos,
+  },
+  {
+    title: 'Configuración',
+    icon: ICONS.settings,
+    tutorials: tutorialsConfiguracion,
+  },
+  {
+    title: 'Compras y Gastos',
+    icon: ICONS.receipt,
+    tutorials: tutorialsCompras,
+  },
+  {
+    title: 'Finanzas',
+    icon: ICONS.wallet,
+    tutorials: tutorialsFinanzas,
+  },
+  {
+    title: 'Inventario',
+    icon: ICONS.boxes,
+    tutorials: tutorialsInventario,
+  },
+  {
+    title: 'Actividades',
+    icon: ICONS.calendarRange,
+    tutorials: tutorialsActividades,
+  },
+  {
+    title: 'Gestión',
+    icon: ICONS.clipboardCheck,
+    tutorials: tutorialsGestion,
+  },
+  {
+    title: 'Sistema',
+    icon: ICONS.shield,
+    tutorials: tutorialsSistema,
+  },
 ] as const
 
-const allTutorials = [...tutorials, ...tutorialsVentas, ...tutorialsBalones]
+const allTutorials = [
+  ...tutorialsDashboard,
+  ...tutorialsClientes,
+  ...tutorialsVentas,
+  ...tutorialsBalones,
+  ...tutorialsProductos,
+  ...tutorialsConfiguracion,
+  ...tutorialsCompras,
+  ...tutorialsFinanzas,
+  ...tutorialsInventario,
+  ...tutorialsActividades,
+  ...tutorialsGestion,
+  ...tutorialsSistema,
+]
 
 const router = useRouter()
 const selectedTutorialId = ref<string>('crear-cliente')

@@ -2,6 +2,7 @@
   <div>
     <PageBreadcrumb page-title="Actividades" :items="breadcrumbItems" />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Actividades). -->
     <div class="mb-4">
       <AppListToolbar
         v-model:search="buscar"
@@ -19,6 +20,7 @@
             v-if="canCreate"
             type="button"
             class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            data-tutorial="actividades-generar-recojos"
             :disabled="generarRecojosMutation.isPending.value"
             @click="generarRecojos"
           >
@@ -29,6 +31,7 @@
           <button
             v-if="canCreate"
             type="button"
+            data-tutorial="actividades-nueva"
             class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
             @click="goToCreate()"
           >
@@ -39,7 +42,7 @@
       </AppListToolbar>
     </div>
 
-    <div v-if="alertasProximas.length" class="mb-4 space-y-2">
+    <div v-if="alertasProximas.length" data-tutorial="actividades-alertas" class="mb-4 space-y-2">
       <div
         v-for="a in alertasProximas"
         :key="`alerta-${a.id}`"
@@ -93,7 +96,7 @@
     <AppTabs v-model="activeTab" :tabs="tabs" inline class="mb-4" />
 
     <div v-show="activeTab === 'lista'">
-      <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoadingList">
+      <AppTable data-tutorial="actividades-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoadingList">
         <template #cell-actividad="{ row }">
           <p class="truncate font-medium text-gray-800 dark:text-white/90">
             {{ row.titulo }}
@@ -173,6 +176,7 @@
             <button
               v-if="canView"
               type="button"
+              data-tutorial="actividades-ver"
               title="Ver detalle"
               class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
               @click="openDetailModal(row)"
@@ -180,6 +184,7 @@
               <AppIcon :name="ICONS.eye" :size="15" />
             </button>
             <AppActionMenu
+              data-tutorial="actividades-acciones"
               :items="actionItemsForRow(row)"
               :execute="(key) => onActionSelect(key, row)"
             />
@@ -197,7 +202,7 @@
       </AppTable>
     </div>
 
-    <div v-show="activeTab === 'calendario'">
+    <div v-show="activeTab === 'calendario'" data-tutorial="actividades-calendario">
       <ActividadesCalendar
         :actividades="calendarRows"
         :loading="isLoadingCalendar"
@@ -208,7 +213,7 @@
       />
     </div>
 
-    <div v-show="activeTab === 'colaboradores'">
+    <div v-show="activeTab === 'colaboradores'" data-tutorial="actividades-colaboradores">
       <ActividadesRankingPanel v-if="canRanking" class="mb-5" />
 
       <ActividadesColaboradoresPanel
@@ -300,6 +305,8 @@ import {
   exportarColaboradoresExcel,
 } from '@/modules/operativa/actividades/utils/exportarActividadesExcel'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createActividadesTutorial } from '@/modules/soporte/tutorials/actividades.tutorial'
 import {
   AppActionMenu,
   AppBadge,
@@ -377,6 +384,8 @@ watch(
 )
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR))
+
+useTutorialAutoStart('actividades', createActividadesTutorial)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_ELIMINAR))

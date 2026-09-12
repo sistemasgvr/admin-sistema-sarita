@@ -2,7 +2,9 @@
   <div>
     <PageBreadcrumb page-title="Roles" />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Sistema › roles). -->
     <AppTable
+      data-tutorial="roles-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -17,6 +19,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="roles-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -31,6 +34,7 @@
         <button
           v-if="canManagePermisos"
           type="button"
+          data-tutorial="roles-permisos"
           title="Permisos"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/[0.05]"
           @click="openPermisosModal(row)"
@@ -42,6 +46,7 @@
         <button
           v-if="canEdit"
           type="button"
+          data-tutorial="roles-editar"
           title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
@@ -130,6 +135,8 @@ import { useDeleteRolMutation } from '@/modules/roles/composables/useRolMutation
 import { useRolesQuery } from '@/modules/roles/composables/useRolesQuery'
 import type { Rol, RolFormMode, RolListFilters } from '@/modules/roles/interfaces/rol.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createSistemaRolesTutorial } from '@/modules/soporte/tutorials/sistema-roles.tutorial'
 import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -162,6 +169,8 @@ const deleteModalOpen = ref(false)
 const rolToDelete = ref<Rol | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ROLES_CREAR))
+
+useTutorialAutoStart('sistema-roles', createSistemaRolesTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ROLES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ROLES_ELIMINAR))
 const canManagePermisos = computed(() =>

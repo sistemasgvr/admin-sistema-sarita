@@ -6,8 +6,9 @@
     size="lg"
     @close="handleClose"
   >
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gestión Empresa › activos). -->
     <form id="activo-form" class="space-y-4" autocomplete="off" @submit="onSubmit">
-      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+      <section data-tutorial="activo-datos" class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
         <header class="mb-3 flex items-center gap-2.5">
           <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
             <AppIcon :name="ICONS.package" :size="16" />
@@ -75,7 +76,7 @@
         </div>
       </section>
 
-      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+      <section data-tutorial="activo-adquisicion" class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
         <header class="mb-3 flex items-center gap-2.5">
           <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
             <AppIcon :name="ICONS.creditCard" :size="16" />
@@ -115,7 +116,7 @@
         </div>
       </section>
 
-      <section class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
+      <section data-tutorial="activo-responsable" class="rounded-xl border border-gray-200 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
         <header class="mb-3 flex items-center gap-2.5">
           <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400">
             <AppIcon :name="ICONS.contact" :size="16" />
@@ -154,6 +155,7 @@
         <button
           type="submit"
           form="activo-form"
+          data-tutorial="activo-guardar"
           class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
           :disabled="isSubmitting"
         >

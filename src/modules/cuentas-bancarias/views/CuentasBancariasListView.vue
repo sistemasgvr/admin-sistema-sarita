@@ -2,9 +2,10 @@
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
-    <AppSummaryChips :chips="summaryChips" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › cuentas bancarias). -->
+    <AppSummaryChips data-tutorial="cuentasbancarias-resumen" :chips="summaryChips" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <AppTable data-tutorial="cuentasbancarias-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -17,6 +18,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="cuentasbancarias-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -60,6 +62,7 @@
       <template #actions="{ row }">
         <button
           type="button"
+          data-tutorial="cuentasbancarias-ver"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openDetailModal(row)"
         >
@@ -69,6 +72,7 @@
         <button
           v-if="canEdit"
           type="button"
+          data-tutorial="cuentasbancarias-editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
@@ -78,6 +82,7 @@
         <button
           v-if="canDelete && row.estado === 1"
           type="button"
+          data-tutorial="cuentasbancarias-eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
@@ -156,6 +161,8 @@ import type {
   CuentaBancariaListFilters,
 } from '@/modules/cuentas-bancarias/interfaces/cuenta-bancaria.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createConfiguracionCuentasBancariasTutorial } from '@/modules/soporte/tutorials/configuracion-cuentas-bancarias.tutorial'
 import { configuracionBreadcrumbItems } from '@/modules/configuracion/config/configuracion-breadcrumb'
 import {
   AppBadge,
@@ -275,6 +282,8 @@ const cuentaToDelete = ref<CuentaBancaria | null>(null)
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CUENTAS_BANCARIAS_CREAR))
+
+useTutorialAutoStart('configuracion-cuentas-bancarias', createConfiguracionCuentasBancariasTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CUENTAS_BANCARIAS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CUENTAS_BANCARIAS_ELIMINAR))
 

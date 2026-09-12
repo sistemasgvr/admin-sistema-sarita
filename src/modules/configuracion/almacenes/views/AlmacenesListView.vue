@@ -2,7 +2,9 @@
   <div>
     <PageBreadcrumb page-title="Almacenes" />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › almacenes). -->
     <AppTable
+      data-tutorial="almacenes-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -20,6 +22,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="almacenes-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -34,6 +37,7 @@
         <button
           v-if="canEdit"
           type="button"
+          data-tutorial="almacenes-editar"
           title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
@@ -45,6 +49,7 @@
         <button
           v-if="canDelete"
           type="button"
+          data-tutorial="almacenes-eliminar"
           title="Eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
@@ -121,6 +126,8 @@ import type {
 import { sucursalesService } from '@/modules/configuracion/sucursales/services/sucursales.service'
 import type { Sucursal } from '@/modules/configuracion/sucursales/interfaces/sucursal.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createConfiguracionAlmacenesTutorial } from '@/modules/soporte/tutorials/configuracion-almacenes.tutorial'
 import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -155,6 +162,8 @@ const isLoadingSucursales = ref(false)
 const sucursales = ref<Sucursal[]>([])
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ALMACENES_CREAR))
+
+useTutorialAutoStart('configuracion-almacenes', createConfiguracionAlmacenesTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ALMACENES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ALMACENES_ELIMINAR))
 

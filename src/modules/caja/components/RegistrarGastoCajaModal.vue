@@ -1,11 +1,12 @@
 <template>
   <AppModal v-model="open" :title="isEdit ? 'Editar gasto de caja' : 'Registrar gasto de caja'" size="md">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gastos de caja). -->
     <div class="space-y-4">
-      <AppFormField label="Concepto" required :error="errores.concepto">
+      <AppFormField data-tutorial="gasto-concepto" label="Concepto" required :error="errores.concepto">
         <AppInput v-model="form.concepto" placeholder="Combustible, flete, vigilancia..." />
       </AppFormField>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppFormField label="Monto" required :error="errorMonto">
+        <AppFormField data-tutorial="gasto-monto" label="Monto" required :error="errorMonto">
           <MoneyInput
             v-model="form.monto"
             placeholder="0.00"
@@ -15,6 +16,7 @@
         </AppFormField>
       </div>
       <MedioPagoCuentaField
+        data-tutorial="gasto-medio-pago"
         v-model:id-medio-pago="form.idMedioPago"
         v-model:id-cuenta-bancaria="form.idCuentaBancaria"
         v-model:numero-operacion="form.numeroOperacion"
@@ -24,7 +26,7 @@
         mostrar-siempre-numero-operacion
         excluir-credito
       />
-      <AppFormField label="Categoría de gasto" optional>
+      <AppFormField data-tutorial="gasto-categoria" label="Categoría de gasto" optional>
         <AppSelectWithCreate
           :can-create="canCrearCategoriaGasto"
           create-title="Nueva categoría de gasto"
@@ -54,6 +56,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        data-tutorial="gasto-guardar"
         :disabled="guardando || !formularioValido"
         @click="submit"
       >

@@ -16,7 +16,7 @@
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div data-tutorial="sucursal-codigo-nombre" class="grid gap-3 sm:grid-cols-2">
         <AppInput
           v-model="codigo"
           label="Código"
@@ -40,13 +40,14 @@
 
       <AppInput
         v-model="direccion"
+        data-tutorial="sucursal-direccion"
         label="Dirección"
         placeholder="Av. Principal 123"
         v-bind="direccionAttrs"
         :disabled="isSubmitting"
       />
 
-      <div class="grid grid-cols-2 gap-3">
+      <div data-tutorial="sucursal-ubigeo" class="grid grid-cols-2 gap-3">
         <AppSelect
           v-model="idPaisUI"
           label="País"
@@ -116,6 +117,7 @@
       <button
         type="submit"
         form="sucursal-form"
+        data-tutorial="sucursal-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

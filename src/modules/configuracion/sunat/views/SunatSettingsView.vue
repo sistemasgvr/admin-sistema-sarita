@@ -21,8 +21,10 @@
       </router-link>
     </div>
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › SUNAT). -->
     <form v-else class="space-y-4 pb-32" @submit.prevent="onSubmit">
       <div
+        data-tutorial="sunat-empresa"
         class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] sm:p-5"
       >
         <AppSelect
@@ -46,6 +48,7 @@
 
       <AppCollapsibleSection
         v-model:open="openSol"
+        data-tutorial="sunat-sol"
         title="Credenciales SUNAT"
         description="Usuario SOL, certificado digital y ambiente de emisión."
         :icon="ICONS.shield"
@@ -105,7 +108,7 @@
             />
           </div>
 
-          <div class="lg:col-span-2" data-field="id_ambiente">
+          <div class="lg:col-span-2" data-field="id_ambiente" data-tutorial="sunat-ambiente">
             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
               Ambiente SUNAT
             </label>
@@ -122,6 +125,7 @@
 
       <AppCollapsibleSection
         v-model:open="openPse"
+        data-tutorial="sunat-pse"
         title="Conexión PSE / OSE"
         description="Credenciales del proveedor de facturación electrónica (independiente del nombre comercial)."
         :icon="ICONS.plug"
@@ -225,6 +229,7 @@
 
       <AppCollapsibleSection
         v-model:open="openOauth"
+        data-tutorial="sunat-oauth"
         title="OAuth GRE (gu?as de remisi?n)"
         description="Client ID / Secret del portal SUNAT. Obligatorio para emitir gu?as electr?nicas (GRE)."
         :icon="ICONS.keyRound"
@@ -274,6 +279,7 @@
           </router-link>
           <button
             type="submit"
+            data-tutorial="sunat-guardar"
             class="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="!canSave || isSubmitting"
           >
@@ -309,6 +315,8 @@ import type {
 } from '@/modules/configuracion/sunat/interfaces/configuracion-sunat.interface'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createConfiguracionSunatTutorial } from '@/modules/soporte/tutorials/configuracion-sunat.tutorial'
 import { AppCheckbox, AppCollapsibleSection, AppInput, AppSelect } from '@/shared/components'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
@@ -360,6 +368,8 @@ const PSE_FIELDS = new Set([
 const OAUTH_FIELDS = new Set(['client_id', 'client_secret'])
 
 const authStore = useAuthStore()
+
+useTutorialAutoStart('configuracion-sunat', createConfiguracionSunatTutorial)
 const { isExpanded, isHovered } = useSidebar()
 const breadcrumbItems = configuracionBreadcrumbItems('SUNAT')
 

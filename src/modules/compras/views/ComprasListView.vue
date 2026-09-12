@@ -2,7 +2,8 @@
   <div>
     <PageBreadcrumb page-title="Compras" :items="breadcrumbItems" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gastos y Compras › compras). -->
+    <AppTable data-tutorial="compras-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -12,10 +13,11 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <AppExportExcelButton :on-export="exportarExcel" />
+            <AppExportExcelButton data-tutorial="compras-exportar" :on-export="exportarExcel" />
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="compras-nueva"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Nueva compra"
               @click="openCreate"
@@ -74,6 +76,7 @@
           <button
             v-if="canView"
             type="button"
+            data-tutorial="compras-ver"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetail(row)"
@@ -82,6 +85,7 @@
           </button>
 
           <AppActionMenu
+            data-tutorial="compras-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -141,6 +145,8 @@ import type { CompraListFilters, CompraListItem } from '@/modules/compras/interf
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
 import { exportarComprasExcel } from '@/modules/compras/utils/exportarComprasExcel'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createComprasListadoTutorial } from '@/modules/soporte/tutorials/compras-listado.tutorial'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import {
   AppActionMenu,
@@ -190,6 +196,8 @@ const anularModalOpen = ref(false)
 const compraToAnular = ref<CompraListItem | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS_CREAR))
+
+useTutorialAutoStart('compras-listado', createComprasListadoTutorial)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPRAS_ELIMINAR))

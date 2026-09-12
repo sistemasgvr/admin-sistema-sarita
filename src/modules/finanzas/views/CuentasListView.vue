@@ -1,6 +1,7 @@
 <template>
   <div class="space-y-5">
-    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Finanzas › cuentas por cobrar/pagar). -->
+    <div data-tutorial="cuentas-resumen" class="grid grid-cols-2 gap-3 xl:grid-cols-4">
       <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]">
         <p class="text-xs text-gray-500 dark:text-gray-400">Total pendiente</p>
         <p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">
@@ -61,7 +62,7 @@
       </button>
     </div>
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <AppTable data-tutorial="cuentas-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -75,6 +76,7 @@
               v-if="canExportar"
               type="button"
               class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] lg:h-auto lg:w-auto lg:px-3 lg:py-2"
+              data-tutorial="cuentas-exportar"
               title="Exportar"
               aria-label="Exportar"
               @click="exportarModalOpen = true"
@@ -86,6 +88,7 @@
               v-if="canCrear"
               type="button"
               class="inline-flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 lg:h-auto lg:w-auto lg:px-4 lg:py-2.5"
+              data-tutorial="cuentas-nueva"
               :title="ctaCrearLabel"
               :aria-label="ctaCrearLabel"
               @click="crearModalOpen = true"
@@ -142,6 +145,7 @@
       <template #actions="{ row }">
         <button
           type="button"
+          data-tutorial="cuentas-ver"
           :title="row.es_plan ? 'Ver cuotas y pagar' : 'Ver detalle'"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openDetalle(row)"
@@ -151,6 +155,7 @@
         <button
           v-if="canRegistrarPago && !row.es_plan && tieneSaldoPendiente(row.saldo)"
           type="button"
+          data-tutorial="cuentas-pagar"
           :title="ctaPagoLabel"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
           @click="openPago(row)"
@@ -160,6 +165,7 @@
         <button
           v-if="canEditar && !row.es_plan"
           type="button"
+          data-tutorial="cuentas-editar"
           title="Editar"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openEditar(row)"
@@ -169,6 +175,7 @@
         <button
           v-if="canEliminar"
           type="button"
+          data-tutorial="cuentas-eliminar"
           title="Eliminar"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
           @click="openEliminar(row)"
@@ -275,6 +282,11 @@ import type {
   DynamicFilterValues,
 } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import {
+  createFinanzasCuentasTutorial,
+  finanzasCuentasTutorialId,
+} from '@/modules/soporte/tutorials/finanzas-cuentas.tutorial'
 
 const props = defineProps<{ tipo: TipoCuenta }>()
 
@@ -282,6 +294,10 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const esCobrar = computed(() => props.tipo === 'COBRAR')
+
+useTutorialAutoStart(finanzasCuentasTutorialId(props.tipo), (tutorialOptions) =>
+  createFinanzasCuentasTutorial(props.tipo, tutorialOptions),
+)
 const terceroLabel = computed(() => (esCobrar.value ? 'Cliente' : 'Proveedor'))
 const terceroLabelPlural = computed(() => (esCobrar.value ? 'Clientes' : 'Proveedores'))
 const ctaPagoLabel = computed(() => (esCobrar.value ? 'Registrar cobranza' : 'Registrar pago'))

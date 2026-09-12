@@ -2,7 +2,8 @@
   <div>
     <PageBreadcrumb page-title="Dashboard" />
 
-    <DashboardFiltrosGenerales class="mb-6" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Dashboard). -->
+    <DashboardFiltrosGenerales data-tutorial="dashboard-filtros" class="mb-6" />
 
     <AppTabs
       v-model="activeTab"
@@ -34,6 +35,8 @@ import DashboardPanelPrincipalView from '@/modules/dashboard/views/DashboardPane
 import DashboardGestionClientesView from '@/modules/dashboard/views/DashboardGestionClientesView.vue'
 import DashboardAnaliticaProductosView from '@/modules/dashboard/views/DashboardAnaliticaProductosView.vue'
 import DashboardControlCilindrosView from '@/modules/dashboard/views/DashboardControlCilindrosView.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createDashboardTutorial } from '@/modules/soporte/tutorials/dashboard.tutorial'
 
 const tabs: AppTabItem[] = [
   { key: 'panel', label: 'Panel Principal', icon: ICONS.dashboard },
@@ -54,6 +57,8 @@ const resolveTabFromRoute = (): string => {
 }
 
 const activeTab = ref(resolveTabFromRoute())
+
+useTutorialAutoStart('dashboard', createDashboardTutorial)
 
 watch(activeTab, (tab) => {
   const current = route.query.tab

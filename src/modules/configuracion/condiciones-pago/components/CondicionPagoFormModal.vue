@@ -18,6 +18,7 @@
     >
       <AppInput
         v-model="codigo"
+        data-tutorial="condicion-codigo"
         label="Código"
         placeholder="CONTADO"
         required
@@ -36,6 +37,7 @@
         :error="errors.nombre"
       />
 
+      <div data-tutorial="condicion-modalidad">
       <AppSelect
         v-model="modalidad"
         label="Modalidad"
@@ -43,6 +45,7 @@
         :options="modalidadOptions"
         :disabled="isSubmitting"
       />
+      </div>
 
       <AppInput
         v-if="modalidad !== 'CONTADO'"
@@ -109,6 +112,7 @@
       <button
         type="submit"
         form="condicion-pago-form"
+        data-tutorial="condicion-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

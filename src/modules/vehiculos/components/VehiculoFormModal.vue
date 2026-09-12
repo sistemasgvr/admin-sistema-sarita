@@ -35,6 +35,8 @@
           :search-fn="searchClientes"
         />
 
+        <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › vehículos). -->
+        <div data-tutorial="vehiculo-tipo">
         <AppSelect
           v-model="idTipoVehiculo"
           label="Tipo de vehículo"
@@ -45,9 +47,10 @@
           :error="errors.idTipoVehiculo"
           :options="tipoVehiculoOptions"
         />
+        </div>
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div data-tutorial="vehiculo-placa" class="grid gap-3 sm:grid-cols-2">
         <AppInput
           v-model="placa"
           label="Placa"
@@ -118,7 +121,7 @@
         />
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div data-tutorial="vehiculo-certificado" class="grid gap-3 sm:grid-cols-2">
         <AppInput
           v-model="certificadoInscripcion"
           label="Certificado de inscripción"
@@ -151,6 +154,7 @@
       <button
         type="submit"
         form="vehiculo-form"
+        data-tutorial="vehiculo-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

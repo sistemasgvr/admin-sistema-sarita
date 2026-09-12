@@ -1,6 +1,7 @@
 <template>
   <div>
-    <section v-if="hayCardsEconomico" class="mb-6">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Dashboard › panel principal). -->
+    <section v-if="hayCardsEconomico" data-tutorial="dashboard-economico" class="mb-6">
       <div class="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3">
         <AppInspectPopover
           v-for="card in resumenEconomicoCards"
@@ -50,7 +51,7 @@
       </div>
     </section>
 
-    <section v-if="hayGaugesEficiencia" class="mb-6">
+    <section v-if="hayGaugesEficiencia" data-tutorial="dashboard-eficiencia" class="mb-6">
       <div class="mb-3 flex items-center gap-2">
         <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
           Eficiencia de deudas
@@ -85,7 +86,7 @@
       </div>
     </section>
 
-    <section v-if="canVerBalones" class="mb-6">
+    <section v-if="canVerBalones" data-tutorial="dashboard-envases" class="mb-6">
       <div class="mb-3 flex items-center gap-2">
         <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
           Balance de envases en campo
@@ -94,7 +95,7 @@
       <AppSummaryCards :cards="envasesCards" :columns="3" />
     </section>
 
-    <section v-if="accionesRapidas.length" class="mb-6">
+    <section v-if="accionesRapidas.length" data-tutorial="dashboard-acciones" class="mb-6">
       <div class="mb-3 flex items-center gap-2">
         <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">Acciones rápidas</h3>
       </div>
@@ -126,6 +127,7 @@
 
     <section
       v-if="canVerVentas && (canVerCompras || demandaGasesDetalle.length)"
+      data-tutorial="dashboard-graficos"
       class="mb-6 grid gap-4 xl:grid-cols-3"
     >
       <div
@@ -186,7 +188,7 @@
       </div>
     </section>
 
-    <section v-if="canVerClientes || canVerProductos" class="mb-6 grid gap-4 lg:grid-cols-2">
+    <section v-if="canVerClientes || canVerProductos" data-tutorial="dashboard-alertas" class="mb-6 grid gap-4 lg:grid-cols-2">
       <DashboardTopClientesDeudaCard
         v-if="canVerClientes"
         :class="{ 'lg:col-span-2': !canVerProductos }"

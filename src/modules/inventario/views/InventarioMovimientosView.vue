@@ -2,7 +2,8 @@
   <div>
     <PageBreadcrumb page-title="Movimientos de inventario" :items="breadcrumbItems" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › movimientos). -->
+    <AppTable data-tutorial="movimientos-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -15,6 +16,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="movimientos-nuevo"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Nuevo movimiento"
               @click="crearModalOpen = true"
@@ -103,6 +105,7 @@
           <button
             v-if="canDelete && row.estado === 1 && row.puede_anular"
             type="button"
+            data-tutorial="movimientos-anular"
             title="Anular movimiento"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openAnular(row)"
@@ -158,6 +161,8 @@
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createInventarioMovimientosTutorial } from '@/modules/soporte/tutorials/inventario-movimientos.tutorial'
 import { useInventarioMovimientosQuery } from '../composables/useInventarioMovimientosQuery'
 import { useEliminarInventarioMovimientoMutation } from '../composables/useInventarioMovimientoMutations'
 import type { InventarioMovimientoListItem, InventarioMovimientoFilters } from '../interfaces/inventario-movimiento.interface'
@@ -208,6 +213,8 @@ const anularMutation = useEliminarInventarioMovimientoMutation()
 
 const crearModalOpen = ref(false)
 const crearPrefill = ref<InventarioMovimientoPrefill | null>(null)
+
+useTutorialAutoStart('inventario-movimientos', createInventarioMovimientosTutorial)
 const anularModalOpen = ref(false)
 const movimientoToAnular = ref<InventarioMovimientoListItem | null>(null)
 

@@ -36,10 +36,11 @@
       <section
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
+        <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › cuentas bancarias). -->
         <h5 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white/90">
           Datos de la cuenta
         </h5>
-        <div class="grid gap-3 sm:grid-cols-2">
+        <div data-tutorial="cuentabancaria-datos" class="grid gap-3 sm:grid-cols-2">
           <AppInput
             v-model="titular"
             label="Titular"
@@ -115,6 +116,7 @@
 
       <section
         v-if="soloEmpresa"
+        data-tutorial="cuentabancaria-medios"
         class="rounded-xl border border-gray-200 bg-white p-4 shadow-theme-xs dark:border-gray-800 dark:bg-gray-900/40"
       >
         <h5 class="mb-1 text-sm font-semibold text-gray-800 dark:text-white/90">
@@ -165,6 +167,7 @@
       >
         <AppCheckbox
           v-model="esPrincipal"
+          data-tutorial="cuentabancaria-principal"
           :disabled="isSubmitting"
           label="Establecer como cuenta principal"
         />
@@ -183,6 +186,7 @@
       <button
         type="submit"
         form="cuenta-bancaria-form"
+        data-tutorial="cuentabancaria-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

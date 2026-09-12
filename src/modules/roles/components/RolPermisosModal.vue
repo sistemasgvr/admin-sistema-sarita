@@ -18,8 +18,10 @@
         class="space-y-5"
         :class="isLoading ? 'pointer-events-none opacity-60' : ''"
       >
+        <!-- data-tutorial: anclas de la ruta guiada de Soporte (Sistema › roles). -->
         <AppInput
           v-model="buscar"
+          data-tutorial="rol-permisos-buscar"
           type="search"
           placeholder="Buscar permiso..."
           :disabled="isSaving || isLoading"
@@ -28,6 +30,7 @@
         <div
           v-for="group in filteredGroups"
           :key="group.name"
+          data-tutorial="rol-permisos-grupo"
           class="rounded-xl border border-gray-200 p-4 dark:border-gray-800"
         >
           <h5 class="mb-3 text-sm font-semibold capitalize text-gray-800 dark:text-white/90">
@@ -73,6 +76,7 @@
       <button
         v-if="canManage"
         type="button"
+        data-tutorial="rol-permisos-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSaving || isLoading || !hasChanges"
         @click="handleSave"

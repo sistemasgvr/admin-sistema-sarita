@@ -2,7 +2,9 @@
   <div>
     <PageBreadcrumb page-title="Usuarios" />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Sistema › usuarios). -->
     <AppTable
+      data-tutorial="usuarios-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -20,6 +22,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="usuarios-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -55,6 +58,7 @@
         <button
           v-if="canEdit && row.estado"
           type="button"
+          data-tutorial="usuarios-editar"
           title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
@@ -65,6 +69,7 @@
         <button
           v-if="canDeactivate && row.estado && row.id !== currentUserId"
           type="button"
+          data-tutorial="usuarios-desactivar"
           title="Desactivar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeactivateModal(row)"
@@ -186,6 +191,8 @@ import type {
   UsuarioListFilters,
 } from '@/modules/usuarios/interfaces/usuario.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createSistemaUsuariosTutorial } from '@/modules/soporte/tutorials/sistema-usuarios.tutorial'
 import {
   AppBadge,
   AppBadgeList,
@@ -245,6 +252,8 @@ const usuarioToActivate = ref<Usuario | null>(null)
 
 const currentUserId = computed(() => authStore.user?.id ?? null)
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_CREAR))
+
+useTutorialAutoStart('sistema-usuarios', createSistemaUsuariosTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_EDITAR))
 const canDeactivate = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_ELIMINAR))
 const canActivate = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_ACTIVAR))

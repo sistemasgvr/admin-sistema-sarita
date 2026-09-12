@@ -6,9 +6,11 @@
       help="Saldo actual por almacén. Ajusta o traslada desde aquí. Los ingresos entran por Compras y las salidas por Ventas."
     />
 
-    <AppSummaryCards :cards="resumenCards" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › stock). -->
+    <AppSummaryCards data-tutorial="stock-resumen" :cards="resumenCards" />
 
     <AppTable
+      data-tutorial="stock-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -24,6 +26,7 @@
         >
           <template #search-extra>
             <ProductoBarcodeScanButton
+              data-tutorial="stock-escanear"
               title="Escanear producto"
               :filters="{
                 soloActivos: 1,
@@ -42,6 +45,7 @@
             <RouterLink
               v-if="canCreateMovimiento"
               :to="{ name: 'admin-inventario-movimientos', query: { tipo: 'AJUSTE' } }"
+              data-tutorial="stock-ajuste"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Ajuste"
             >
@@ -51,6 +55,7 @@
             <RouterLink
               v-if="canCreateMovimiento"
               :to="{ name: 'admin-inventario-movimientos', query: { tipo: 'TRASLADO' } }"
+              data-tutorial="stock-traslado"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Traslado"
             >
@@ -60,6 +65,7 @@
             <RouterLink
               v-if="canListMovimientos"
               :to="{ name: 'admin-inventario-movimientos' }"
+              data-tutorial="stock-historial"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
               title="Historial"
             >
@@ -150,6 +156,7 @@
           <button
             v-if="canView"
             type="button"
+            data-tutorial="stock-ver"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetail(row)"
@@ -158,6 +165,7 @@
           </button>
 
           <AppActionMenu
+            data-tutorial="stock-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -258,6 +266,8 @@ import type {
   StockListFilters,
 } from '@/modules/productos/stock/interfaces/stock.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createProductosStockTutorial } from '@/modules/soporte/tutorials/productos-stock.tutorial'
 import {
   AppActionMenu,
   AppBadge,
@@ -336,6 +346,8 @@ const deleteBlockedByCantidad = computed(
 )
 
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_VER))
+
+useTutorialAutoStart('productos-stock', createProductosStockTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_ELIMINAR))
 const canRestore = computed(() => authStore.hasPermission(PermisoBanderas.STOCK_RESTAURAR))

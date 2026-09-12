@@ -1,6 +1,8 @@
 <template>
   <AppModal v-model="isOpen" title="Registrar movimiento de inventario" size="md">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › movimientos). -->
     <form class="space-y-4" @submit.prevent="onSubmit">
+      <div data-tutorial="movimiento-naturaleza">
       <AppSelect
         v-model="form.naturaleza"
         label="Naturaleza"
@@ -9,8 +11,10 @@
         required
         :error="errors.naturaleza"
       />
+      </div>
 
       <AppSelectWithCreate
+        data-tutorial="movimiento-tipo"
         :can-create="canCreateListaOpcion"
         create-title="Nuevo tipo de movimiento"
         :disabled="!form.naturaleza || tipoMovimientoQuery.isLoading.value"
@@ -68,6 +72,7 @@
 
       <AppInput
         v-model="form.cantidad"
+        data-tutorial="movimiento-cantidad"
         label="Cantidad"
         type="number"
         :min="1"
@@ -119,6 +124,7 @@
 
       <AppTextarea
         v-model="form.glosa"
+        data-tutorial="movimiento-glosa"
         label="Glosa"
         placeholder="Descripción del movimiento..."
         :rows="2"
@@ -137,6 +143,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        data-tutorial="movimiento-guardar"
         :disabled="mutation.isPending.value || !isFormValid"
         @click="onSubmit"
       >

@@ -2,7 +2,9 @@
   <div>
     <PageBreadcrumb page-title="Condiciones de pago" />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › condiciones de pago). -->
     <AppTable
+      data-tutorial="condiciones-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -17,6 +19,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="condiciones-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -31,6 +34,7 @@
         <button
           v-if="canEdit"
           type="button"
+          data-tutorial="condiciones-editar"
           title="Editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
@@ -42,6 +46,7 @@
         <button
           v-if="canDelete"
           type="button"
+          data-tutorial="condiciones-eliminar"
           title="Eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
@@ -116,6 +121,8 @@ import type {
   CondicionPagoListFilters,
 } from '@/modules/configuracion/condiciones-pago/interfaces/condicion-pago.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createConfiguracionCondicionesPagoTutorial } from '@/modules/soporte/tutorials/configuracion-condiciones-pago.tutorial'
 import { AppListToolbar, AppModal, AppPagination, AppTable } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -147,6 +154,8 @@ const condicionPagoToDelete = ref<CondicionPago | null>(null)
 const canCreate = computed(() =>
   authStore.hasPermission(PermisoBanderas.CONDICIONES_PAGO_CREAR),
 )
+
+useTutorialAutoStart('configuracion-condiciones-pago', createConfiguracionCondicionesPagoTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CONDICIONES_PAGO_EDITAR))
 const canDelete = computed(() =>
   authStore.hasPermission(PermisoBanderas.CONDICIONES_PAGO_ELIMINAR),

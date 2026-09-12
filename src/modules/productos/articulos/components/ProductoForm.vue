@@ -28,14 +28,16 @@
       elimina como un artículo de catálogo.
     </div>
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › crear producto). -->
     <FormCardsLayout>
       <DetailSectionCard
+        data-tutorial="producto-datos"
         title="Datos"
         :icon="ICONS.package"
         help="Producto: accesorio o gas. Servicio: cobro (flete, etc.), taller de cilindro, o regulador alquilable."
       >
         <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div class="sm:col-span-2 lg:col-span-1">
+          <div data-tutorial="producto-tipo" class="sm:col-span-2 lg:col-span-1">
             <p class="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Tipo</p>
             <div class="grid grid-cols-2 gap-2">
               <button
@@ -61,7 +63,7 @@
             </div>
           </div>
 
-          <div class="flex min-w-0 items-start gap-2">
+          <div data-tutorial="producto-codigo" class="flex min-w-0 items-start gap-2">
             <div class="min-w-0 flex-1">
               <AppInput
                 v-model="codigo"
@@ -88,6 +90,7 @@
 
           <AppInput
             v-model="nombre"
+            data-tutorial="producto-nombre"
             label="Nombre"
             placeholder="Oxígeno industrial"
             required
@@ -145,7 +148,7 @@
             :disabled="isSubmitting"
           />
 
-          <div class="flex min-w-0 items-start gap-2">
+          <div data-tutorial="producto-ubicacion" class="flex min-w-0 items-start gap-2">
             <div class="min-w-0 flex-1">
               <AppInput
                 v-model="codigoUbicacion"
@@ -172,6 +175,7 @@
           </div>
 
           <AppSelectWithCreate
+            data-tutorial="producto-categoria"
             :can-create="canCreateCategoria"
             create-title="Nueva categoría"
             :disabled="isSubmitting"
@@ -225,12 +229,13 @@
       </DetailSectionCard>
 
       <DetailSectionCard
+        data-tutorial="producto-comercial"
         title="Comercial"
         :icon="ICONS.creditCard"
         :help="ayudaCaracteristicas"
       >
         <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div class="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-3">
+          <div data-tutorial="producto-caracteristicas" class="flex flex-col justify-end gap-2 sm:col-span-2 lg:col-span-3">
             <div class="flex flex-wrap gap-x-5 gap-y-2">
               <AppCheckbox
                 v-if="tipoItem === 'producto'"
@@ -283,7 +288,7 @@
             :error="errors.factorLbM3"
           />
 
-          <AppFormField label="Precio de venta" :error="errors.precio">
+          <AppFormField data-tutorial="producto-precio" label="Precio de venta" :error="errors.precio">
             <MoneyInput
               v-model="precio"
               v-bind="precioAttrs"
@@ -323,7 +328,7 @@
         </div>
       </DetailSectionCard>
 
-      <DetailSectionCard title="Imágenes" :icon="ICONS.images">
+      <DetailSectionCard data-tutorial="producto-imagenes" title="Imágenes" :icon="ICONS.images">
         <ProductoImagenesManager
           v-if="isEdit && producto?.id"
           :id-producto="producto.id"
@@ -355,6 +360,7 @@
       </button>
       <button
         type="submit"
+        data-tutorial="producto-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting || esProductoDeSistema"
       >

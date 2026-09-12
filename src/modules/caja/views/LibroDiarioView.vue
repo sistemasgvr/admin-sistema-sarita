@@ -1,6 +1,8 @@
 <template>
   <div class="space-y-4">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Finanzas › libro diario). -->
     <div
+      data-tutorial="libro-cabecera"
       class="rounded-2xl border border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-white/[0.03] sm:px-5"
     >
       <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -12,6 +14,7 @@
         </div>
 
         <AppListToolbar
+          data-tutorial="libro-filtros"
           :show-search="false"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -25,6 +28,7 @@
 
       <div
         v-if="canObservacion"
+        data-tutorial="libro-observacion"
         class="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-800"
       >
         <AppFormField label="Nueva observación del día" class="min-w-[280px] flex-1">
@@ -51,9 +55,9 @@
     </div>
 
     <template v-else-if="libro">
-      <AppSummaryCards :cards="resumenCards" :columns="6" />
+      <AppSummaryCards data-tutorial="libro-resumen" :cards="resumenCards" :columns="6" />
 
-      <div class="space-y-3">
+      <div data-tutorial="libro-secciones" class="space-y-3">
         <AppCollapsibleSection
           v-model:open="ventasOpen"
           title="Ventas"
@@ -266,6 +270,8 @@ import { formatCurrency } from '@/shared/utils/currency'
 import { hoyIsoLima } from '@/shared/utils/date'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ApiError } from '@/shared/api/errors/api.error'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createFinanzasLibroDiarioTutorial } from '@/modules/soporte/tutorials/finanzas-libro-diario.tutorial'
 
 function hoyLocal(): string {
   return hoyIsoLima()
@@ -277,6 +283,8 @@ function esClienteVariosNombre(nombre?: string | null): boolean {
 
 const auth = useAuthStore()
 const router = useRouter()
+
+useTutorialAutoStart('finanzas-libro-diario', createFinanzasLibroDiarioTutorial)
 const hoy = hoyLocal()
 const dynamicFilters = ref<DynamicFilterValues>({
   fechaDesde: hoy,

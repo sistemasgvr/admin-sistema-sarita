@@ -7,8 +7,14 @@
     <form v-else id="compra-form" class="space-y-5" autocomplete="off" @submit.prevent="onSubmit">
       <FormCardsLayout>
         <!-- CREATE -->
+        <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gastos y Compras › registrar compra). -->
         <template v-if="!isEdit">
-          <DetailSectionCard title="Comprobante" :icon="ICONS.receipt" :full-width="true">
+          <DetailSectionCard
+            data-tutorial="compra-comprobante"
+            title="Comprobante"
+            :icon="ICONS.receipt"
+            :full-width="true"
+          >
             <div
               v-if="props.referenciaCompraId"
               class="mb-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
@@ -25,6 +31,7 @@
             </div>
 
             <AppSelectWithCreate
+              data-tutorial="compra-proveedor"
               :can-create="canCreateProveedor"
               create-title="Nuevo proveedor"
               :disabled="saving"
@@ -45,7 +52,7 @@
               />
             </AppSelectWithCreate>
 
-            <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div data-tutorial="compra-documento" class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <AppInput
                 v-model="fecha"
                 label="Fecha"
@@ -86,7 +93,7 @@
               />
             </div>
 
-            <div class="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div data-tutorial="compra-declarar-sunat" class="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <AppSwitch
                 v-model="declararSunat"
                 label="Declarar SUNAT"
@@ -104,7 +111,12 @@
             />
           </DetailSectionCard>
 
-          <DetailSectionCard title="Clasificación" :icon="ICONS.layers" :full-width="true">
+          <DetailSectionCard
+            data-tutorial="compra-clasificacion"
+            title="Clasificación"
+            :icon="ICONS.layers"
+            :full-width="true"
+          >
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <AppSelect
                 v-model="idTipoRegistro"
@@ -188,6 +200,7 @@
           </DetailSectionCard>
 
           <DetailSectionCard
+            data-tutorial="compra-recarga-externa"
             title="Recarga externa"
             :icon="ICONS.cylinder"
             :full-width="true"
@@ -312,6 +325,7 @@
           </DetailSectionCard>
 
           <DetailSectionCard
+            data-tutorial="compra-detalle"
             :title="tituloDetalleProductos"
             :icon="ICONS.clipboardList"
             :full-width="true"
@@ -323,7 +337,7 @@
               </span>
             </template>
 
-            <div class="mb-3">
+            <div data-tutorial="compra-agregar-producto" class="mb-3">
               <CompraProductoField
                 v-model="lineaIdProducto"
                 v-model:search="lineaProductoBuscar"
@@ -864,6 +878,7 @@
         </button>
         <button
           type="submit"
+          data-tutorial="compra-guardar"
           class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
           :disabled="saving || (isEdit && loadingDetail)"
         >

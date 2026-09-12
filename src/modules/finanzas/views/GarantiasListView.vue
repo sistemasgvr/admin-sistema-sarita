@@ -1,6 +1,7 @@
 <template>
   <div class="space-y-5">
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Finanzas › garantías). -->
+    <AppTable data-tutorial="garantias-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -14,6 +15,7 @@
               v-if="canExportar"
               type="button"
               class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] lg:h-auto lg:w-auto lg:px-3 lg:py-2"
+              data-tutorial="garantias-exportar"
               title="Exportar"
               aria-label="Exportar"
               @click="exportarModalOpen = true"
@@ -25,6 +27,7 @@
               v-if="canCrear"
               type="button"
               class="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-lg bg-brand-500 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 lg:h-auto lg:w-auto lg:px-4 lg:py-2.5"
+              data-tutorial="garantias-nueva"
               title="Nueva garantía"
               aria-label="Nueva garantía"
               @click="openCrear"
@@ -92,6 +95,7 @@
       <template #actions="{ row }">
         <button
           type="button"
+          data-tutorial="garantias-ver"
           title="Ver detalle"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openDetalle(row)"
@@ -101,6 +105,7 @@
         <button
           v-if="canReembolsar && Number(row.monto_saldo) > 0"
           type="button"
+          data-tutorial="garantias-devolver"
           title="Devolver garantía"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10"
           @click="openReembolsar(row)"
@@ -110,6 +115,7 @@
         <button
           v-if="canEditar && row.puede_editar"
           type="button"
+          data-tutorial="garantias-editar"
           title="Editar garantía manual"
           class="inline-flex items-center rounded-lg px-2 py-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
           @click="openEditar(row)"
@@ -317,10 +323,14 @@ import { formatCurrency } from '@/shared/utils/currency'
 import { formatListDate } from '@/shared/utils/date'
 import { exportarGarantiasExcel } from '@/modules/finanzas/utils/exportarExcel'
 import { toastApiError } from '@/shared/composables/useToast'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createFinanzasGarantiasTutorial } from '@/modules/soporte/tutorials/finanzas-garantias.tutorial'
 
 const authStore = useAuthStore()
 
 const canCrear = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_CREAR))
+
+useTutorialAutoStart('finanzas-garantias', createFinanzasGarantiasTutorial)
 const canEditar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_EDITAR))
 const canEliminar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_ELIMINAR))
 const canReembolsar = computed(() =>

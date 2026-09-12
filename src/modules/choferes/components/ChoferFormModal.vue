@@ -33,9 +33,11 @@
         :search-fn="searchClientes"
       />
 
+      <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › choferes). -->
       <SearchableSelect
         v-if="soloEmpresa"
         v-model="idTrabajador"
+        data-tutorial="chofer-trabajador"
         label="Trabajador de la empresa"
         placeholder="Buscar trabajador..."
         empty-option-label="Sin trabajador asignado"
@@ -46,7 +48,7 @@
         :search-fn="searchTrabajadores"
       />
 
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div data-tutorial="chofer-documento" class="grid gap-3 sm:grid-cols-2">
         <AppSelect
           v-model="idTipoDocumento"
           label="Tipo de documento"
@@ -71,7 +73,7 @@
         />
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-3">
+      <div data-tutorial="chofer-nombres" class="grid gap-3 sm:grid-cols-3">
         <AppInput
           v-model="nombres"
           label="Nombres"
@@ -101,7 +103,7 @@
         />
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div data-tutorial="chofer-licencia" class="grid gap-3 sm:grid-cols-2">
         <AppInput
           v-model="codigoLicencia"
           label="N° de licencia (brevete)"
@@ -149,7 +151,7 @@
         />
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-2">
+      <div data-tutorial="chofer-vigencia" class="grid gap-3 sm:grid-cols-2">
         <AppInput
           v-model="fechaEmision"
           type="date"
@@ -182,6 +184,7 @@
       <button
         type="submit"
         form="chofer-form"
+        data-tutorial="chofer-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

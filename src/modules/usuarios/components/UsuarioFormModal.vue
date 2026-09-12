@@ -16,7 +16,8 @@
       autocomplete="off"
       @submit="onSubmit"
     >
-      <div class="space-y-4">
+      <!-- data-tutorial: anclas de la ruta guiada de Soporte (Sistema › usuarios). -->
+      <div data-tutorial="usuario-datos" class="space-y-4">
         <AppInput
           v-model="nombre"
           label="Nombre"
@@ -56,6 +57,7 @@
 
         <SearchableSelect
           v-model="idTrabajador"
+          data-tutorial="usuario-trabajador"
           label="Trabajador vinculado"
           placeholder="Buscar trabajador..."
           empty-option-label="Sin trabajador asignado"
@@ -68,6 +70,7 @@
 
       <div
         v-if="showRolesSection"
+        data-tutorial="usuario-roles"
         class="space-y-3 border-t border-gray-100 pt-5 dark:border-gray-800"
       >
         <div>
@@ -121,6 +124,7 @@
       <button
         type="submit"
         form="usuario-form"
+        data-tutorial="usuario-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

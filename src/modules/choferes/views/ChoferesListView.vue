@@ -2,9 +2,11 @@
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
-    <AppSummaryChips :chips="summaryChips" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › choferes). -->
+    <AppSummaryChips data-tutorial="choferes-resumen" :chips="summaryChips" />
 
     <AppTable
+      data-tutorial="choferes-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -22,6 +24,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="choferes-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -56,6 +59,7 @@
       <template #actions="{ row }">
         <button
           type="button"
+          data-tutorial="choferes-ver"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openDetailModal(row)"
         >
@@ -65,6 +69,7 @@
         <button
           v-if="canEdit"
           type="button"
+          data-tutorial="choferes-editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
@@ -74,6 +79,7 @@
         <button
           v-if="canDelete && row.estado === 1"
           type="button"
+          data-tutorial="choferes-eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
@@ -155,6 +161,8 @@ import type {
   ChoferListFilters,
 } from '@/modules/choferes/interfaces/chofer.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createConfiguracionChoferesTutorial } from '@/modules/soporte/tutorials/configuracion-choferes.tutorial'
 import { choferesService } from '@/modules/choferes/services/choferes.service'
 import {
   AppBadge,
@@ -282,6 +290,8 @@ const choferToDelete = ref<Chofer | null>(null)
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CHOFERES_CREAR))
+
+useTutorialAutoStart('configuracion-choferes', createConfiguracionChoferesTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CHOFERES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CHOFERES_ELIMINAR))
 

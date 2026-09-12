@@ -2,7 +2,9 @@
   <div>
     <PageBreadcrumb page-title="Subcategorías" :items="breadcrumbItems" />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › subcategorías). -->
     <AppTable
+      data-tutorial="subcategorias-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -17,12 +19,13 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <div class="w-full sm:w-40">
+            <div data-tutorial="subcategorias-estado" class="w-full sm:w-40">
               <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
             </div>
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="subcategorias-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -82,6 +85,7 @@
           <button
             v-if="canView"
             type="button"
+            data-tutorial="subcategorias-ver"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetailModal(row)"
@@ -90,6 +94,7 @@
           </button>
 
           <AppActionMenu
+            data-tutorial="subcategorias-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -190,6 +195,8 @@ import type {
   SubCategoriaProductoListFilters,
 } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createProductosSubcategoriasTutorial } from '@/modules/soporte/tutorials/productos-subcategorias.tutorial'
 import {
   AppActionMenu,
   AppBadge,
@@ -263,6 +270,8 @@ const detailModalOpen = ref(false)
 const subCategoriaToView = ref<SubCategoriaProducto | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_CREAR))
+
+useTutorialAutoStart('productos-subcategorias', createProductosSubcategoriasTutorial)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_ELIMINAR))

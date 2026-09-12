@@ -12,6 +12,7 @@
     <form id="rol-form" class="space-y-4" @submit="onSubmit">
       <AppInput
         v-model="nombre"
+        data-tutorial="rol-nombre"
         label="Nombre"
         placeholder="Ej. Vendedor"
         required
@@ -42,6 +43,7 @@
       <button
         type="submit"
         form="rol-form"
+        data-tutorial="rol-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

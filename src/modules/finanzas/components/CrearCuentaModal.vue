@@ -15,6 +15,7 @@
 
       <!-- Toggle plan de cuotas -->
       <div
+        data-tutorial="cuenta-plan"
         class="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-white/[0.03]"
       >
         <div class="min-w-0">
@@ -48,7 +49,7 @@
       </div>
 
       <!-- Selector de modo tercero -->
-      <div>
+      <div data-tutorial="cuenta-tercero">
         <div class="mb-1.5 flex items-center justify-between">
           <label class="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
             {{ terceroLabel }} <span class="text-error-500">*</span>
@@ -120,7 +121,7 @@
       </div>
 
       <!-- Fechas y monto -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div data-tutorial="cuenta-fechas-monto" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Fecha de emisión" required :error="errores.fechaEmision">
           <AppInput
             v-model="form.fechaEmision"
@@ -232,7 +233,7 @@
         />
       </AppFormField>
 
-      <AppFormField label="Descripción / concepto" required :error="errores.observacion">
+      <AppFormField data-tutorial="cuenta-descripcion" label="Descripción / concepto" required :error="errores.observacion">
         <AppTextarea v-model="form.observacion" :rows="3" :placeholder="ejemploDescripcion" />
       </AppFormField>
     </div>
@@ -249,6 +250,7 @@
       <button
         type="button"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+        data-tutorial="cuenta-guardar"
         :disabled="guardando || !montoValido"
         @click="submit"
       >

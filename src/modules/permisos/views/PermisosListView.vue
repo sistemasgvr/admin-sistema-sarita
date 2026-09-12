@@ -5,7 +5,9 @@
       help="Las banderas se dan de alta en código (seeds SQL). Aquí solo se consultan y se asignan a roles."
     />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Sistema › permisos). -->
     <AppTable
+      data-tutorial="permisos-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -43,6 +45,10 @@ import type { Permiso, PermisoListFilters } from '@/modules/permisos/interfaces/
 import { AppBadge, AppListToolbar, AppPagination, AppTable } from '@/shared/components'
 import { formatDateTime } from '@/shared/utils/date'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createSistemaPermisosTutorial } from '@/modules/soporte/tutorials/sistema-permisos.tutorial'
+
+useTutorialAutoStart('sistema-permisos', createSistemaPermisosTutorial)
 
 const buscar = ref('')
 const pagina = ref(1)

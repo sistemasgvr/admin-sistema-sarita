@@ -6,9 +6,11 @@
       :help="pageHelpText"
     />
 
-    <AppSummaryCards :cards="resumenCards" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › catálogo). -->
+    <AppSummaryCards data-tutorial="productos-resumen" :cards="resumenCards" />
 
     <AppTable
+      data-tutorial="productos-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -23,14 +25,15 @@
           @filter-change="onFiltersChange"
         >
           <template #actions>
-            <AppExportExcelButton :on-export="exportarExcel" />
-            <div class="min-w-[9.5rem] flex-1 sm:w-40 sm:flex-none">
+            <AppExportExcelButton data-tutorial="productos-exportar" :on-export="exportarExcel" />
+            <div data-tutorial="productos-estado" class="min-w-[9.5rem] flex-1 sm:w-40 sm:flex-none">
               <AppSelect v-model="mostrarProductos" :options="estadoFiltroOptions" />
             </div>
             <button
               v-if="canView"
               type="button"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] sm:px-4"
+              data-tutorial="productos-imprimir"
               title="Imprimir ubicación"
               @click="printModalOpen = true"
             >
@@ -40,6 +43,7 @@
             <RouterLink
               v-if="canCreate"
               :to="{ name: 'admin-productos-articulos-nuevo' }"
+              data-tutorial="productos-nuevo"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Nuevo"
             >
@@ -189,6 +193,7 @@
           <button
             v-if="canView"
             type="button"
+            data-tutorial="productos-ver"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetail(row)"
@@ -197,6 +202,7 @@
           </button>
 
           <AppActionMenu
+            data-tutorial="productos-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -288,6 +294,8 @@ import { productosBreadcrumbItems } from '@/modules/productos/config/productos-b
 import { subCategoriasProductoService } from '@/modules/productos/sub-categorias/services/sub-categorias-producto.service'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createProductosCatalogoTutorial } from '@/modules/soporte/tutorials/productos-catalogo.tutorial'
 import {
   AppActionMenu,
   AppBadge,
@@ -362,6 +370,8 @@ const deleteBlockedByStock = computed(() => Boolean(productoToDelete.value?.tien
 const printModalOpen = ref(false)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_CREAR))
+
+useTutorialAutoStart('productos-catalogo', createProductosCatalogoTutorial)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PRODUCTOS_ELIMINAR))

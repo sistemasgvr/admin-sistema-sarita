@@ -28,8 +28,10 @@
         autocomplete="off"
         @submit="onSubmit"
       >
+        <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › empresa). -->
         <AppInput
           v-model="ruc"
+          data-tutorial="empresa-ruc"
           label="RUC"
           placeholder="20123456789"
           required
@@ -40,6 +42,7 @@
 
         <AppInput
           v-model="razon_social"
+          data-tutorial="empresa-razon-social"
           label="Razón social"
           placeholder="Empresa S.A.C."
           v-bind="razonSocialAttrs"
@@ -56,13 +59,14 @@
 
         <AppInput
           v-model="direccion"
+          data-tutorial="empresa-direccion"
           label="Dirección"
           placeholder="Av. Principal 123"
           v-bind="direccionAttrs"
           :disabled="!canSave || isSubmitting"
         />
 
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div data-tutorial="empresa-contacto" class="grid gap-4 sm:grid-cols-2">
           <AppInput
             v-model="telefono"
             label="Teléfono"
@@ -82,7 +86,7 @@
           />
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2">
+        <div data-tutorial="empresa-parametros" class="grid gap-4 sm:grid-cols-2">
           <AppInput
             v-model="tolerancia_m3_ruta_pueblo"
             label="Tolerancia ruta pueblos (m³)"
@@ -124,6 +128,7 @@
           v-if="canSave"
           type="submit"
           form="empresa-settings-form"
+          data-tutorial="empresa-guardar"
           class="inline-flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
           :disabled="isSubmitting"
         >
@@ -154,11 +159,15 @@ import {
 } from '@/modules/configuracion/empresas/composables/useEmpresaMutations'
 import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createConfiguracionEmpresaTutorial } from '@/modules/soporte/tutorials/configuracion-empresa.tutorial'
 import { AppInput } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalEmail, optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
 const authStore = useAuthStore()
+
+useTutorialAutoStart('configuracion-empresa', createConfiguracionEmpresaTutorial)
 const breadcrumbItems = configuracionBreadcrumbItems('Empresa')
 const empresaQuery = useEmpresaActualQuery()
 const createMutation = useCreateEmpresaMutation()

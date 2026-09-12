@@ -2,9 +2,11 @@
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
-    <AppSummaryChips :chips="summaryChips" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Configuración › vehiculos). -->
+    <AppSummaryChips data-tutorial="vehiculos-resumen" :chips="summaryChips" />
 
     <AppTable
+      data-tutorial="vehiculos-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -22,6 +24,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="vehiculos-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -56,6 +59,7 @@
       <template #actions="{ row }">
         <button
           type="button"
+          data-tutorial="vehiculos-ver"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openDetailModal(row)"
         >
@@ -65,6 +69,7 @@
         <button
           v-if="canEdit"
           type="button"
+          data-tutorial="vehiculos-editar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
           @click="openEditModal(row)"
         >
@@ -74,6 +79,7 @@
         <button
           v-if="canDelete && row.estado === 1"
           type="button"
+          data-tutorial="vehiculos-eliminar"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-error-500 hover:bg-error-500/10"
           @click="openDeleteModal(row)"
         >
@@ -155,6 +161,8 @@ import type {
   VehiculoListFilters,
 } from '@/modules/vehiculos/interfaces/vehiculo.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createConfiguracionVehiculosTutorial } from '@/modules/soporte/tutorials/configuracion-vehiculos.tutorial'
 import {
   AppBadge,
   AppListToolbar,
@@ -282,6 +290,8 @@ const vehiculoToDelete = ref<Vehiculo | null>(null)
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.VEHICULOS_CREAR))
+
+useTutorialAutoStart('configuracion-vehiculos', createConfiguracionVehiculosTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.VEHICULOS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.VEHICULOS_ELIMINAR))
 

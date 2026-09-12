@@ -2,7 +2,8 @@
   <div>
     <PageBreadcrumb page-title="Documentos de salida" :items="breadcrumbItems" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › documentos de salida). -->
+    <AppTable data-tutorial="docsalida-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -15,6 +16,7 @@
             <router-link
               v-if="canCreate"
               :to="{ name: 'admin-documentos-salida-nueva' }"
+              data-tutorial="docsalida-nuevo"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Nuevo documento de salida"
             >
@@ -84,12 +86,14 @@
         <div class="inline-flex items-center justify-end gap-1.5">
           <router-link
             :to="{ name: 'admin-documentos-salida-editar', params: { id: row.id } }"
+            data-tutorial="docsalida-ver"
             title="Ver / editar"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </router-link>
           <AppActionMenu
+            data-tutorial="docsalida-acciones"
             :items="accionesDeFila(row)"
             :execute="(key) => onAccion(key as DocSalidaAccion, row)"
           />
@@ -157,6 +161,8 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createInventarioDocumentosSalidaTutorial } from '@/modules/soporte/tutorials/inventario-documentos-salida.tutorial'
 import {
   useDocumentoSalidaCatalogosQuery,
   useDocumentoSalidaQuery,
@@ -224,6 +230,8 @@ const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number }
 const clientesQuery = useClientesQuery(clientesFilters)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_CREAR))
+
+useTutorialAutoStart('inventario-documentos-salida', createInventarioDocumentosSalidaTutorial)
 
 // ---- Acciones de fila ----
 // La fila del listado no trae el detalle: al elegir una acción se pide el

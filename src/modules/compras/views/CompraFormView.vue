@@ -34,9 +34,13 @@ import type { CompraFormMode } from '@/modules/compras/interfaces/compra.interfa
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createComprasRegistrarTutorial } from '@/modules/soporte/tutorials/compras-registrar.tutorial'
 
 const route = useRoute()
 const router = useRouter()
+
+useTutorialAutoStart('compras-registrar', createComprasRegistrarTutorial)
 
 const isEdit = computed(() => route.name === 'admin-compras-editar')
 const mode = computed<CompraFormMode>(() => (isEdit.value ? 'edit' : 'create'))

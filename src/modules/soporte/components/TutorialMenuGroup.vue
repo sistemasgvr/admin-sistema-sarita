@@ -1,6 +1,5 @@
 <template>
   <AppCollapsibleSection
-    v-model:open="isOpen"
     :title="title"
     :badge="`${tutorials.length}`"
     :icon="icon"

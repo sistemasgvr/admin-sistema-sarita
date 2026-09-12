@@ -18,6 +18,7 @@
       <FormCardsLayout>
         <DetailSectionCard title="Datos generales" :icon="ICONS.listTree" :full-width="true">
           <div class="space-y-4">
+            <div data-tutorial="subcategoria-categoria">
             <AppSelect
               v-model="idCategoria"
               label="Categoría"
@@ -28,9 +29,11 @@
               :error="errors.idCategoria"
               :options="categoriaOptions"
             />
+            </div>
 
             <AppInput
               v-model="nombre"
+              data-tutorial="subcategoria-nombre"
               label="Nombre"
               placeholder="Oxígeno industrial"
               required
@@ -63,6 +66,7 @@
       <button
         type="submit"
         form="sub-categoria-producto-form"
+        data-tutorial="subcategoria-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

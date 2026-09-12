@@ -2,9 +2,11 @@
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
-    <AppSummaryChips :chips="summaryChips" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gestión Empresa › activos). -->
+    <AppSummaryChips data-tutorial="activos-resumen" :chips="summaryChips" />
 
     <AppTable
+      data-tutorial="activos-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -22,6 +24,7 @@
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="activos-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -89,6 +92,7 @@
       <template #actions="{ row }">
         <button
           type="button"
+          data-tutorial="activos-ver"
           class="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-white/5"
           @click="openDetailModal(row)"
         >
@@ -178,6 +182,8 @@ import type {
   ActivoListFilters,
 } from '@/modules/activos/interfaces/activo.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createGestionActivosTutorial } from '@/modules/soporte/tutorials/gestion-activos.tutorial'
 import { activosService } from '@/modules/activos/services/activos.service'
 import {
   AppBadge,
@@ -295,6 +301,8 @@ const activoToDelete = ref<Activo | null>(null)
 const currentUserId = computed(() => authStore.user?.id ?? null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVO_CREAR))
+
+useTutorialAutoStart('gestion-activos', createGestionActivosTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVO_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVO_ELIMINAR))
 

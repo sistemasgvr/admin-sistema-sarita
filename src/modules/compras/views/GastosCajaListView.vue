@@ -2,9 +2,10 @@
   <div>
     <PageBreadcrumb page-title="Gastos de caja" :items="breadcrumbItems" />
 
-    <AppSummaryChips :chips="summaryChips" />
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gastos y Compras › gastos de caja). -->
+    <AppSummaryChips data-tutorial="gastos-resumen" :chips="summaryChips" />
 
-    <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
+    <AppTable data-tutorial="gastos-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
           v-model:search="buscar"
@@ -17,6 +18,7 @@
             <button
               v-if="canRegistrar"
               type="button"
+              data-tutorial="gastos-nuevo"
               class="inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600 sm:px-4"
               title="Nuevo gasto"
               @click="openCreate"
@@ -48,6 +50,7 @@
         <div class="inline-flex items-center justify-end gap-1.5">
           <button
             type="button"
+            data-tutorial="gastos-ver"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetail(row)"
@@ -57,6 +60,7 @@
 
           <AppActionMenu
             v-if="canRegistrar"
+            data-tutorial="gastos-acciones"
             :items="actionItemsForRow"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -163,6 +167,8 @@ import {
 } from '@/modules/caja/composables/useCajaQuery'
 import type { CajaGastosListFilters, CajaMovimientoGasto } from '@/modules/caja/interfaces/caja.interface'
 import RegistrarGastoCajaModal from '@/modules/caja/components/RegistrarGastoCajaModal.vue'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createComprasGastosCajaTutorial } from '@/modules/soporte/tutorials/compras-gastos-caja.tutorial'
 import { comprasBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -193,6 +199,8 @@ const breadcrumbItems = comprasBreadcrumbItems('Gastos de caja')
 
 const authStore = useAuthStore()
 const canRegistrar = computed(() => authStore.hasPermission(PermisoBanderas.CAJA_REGISTRAR_GASTO))
+
+useTutorialAutoStart('compras-gastos-caja', createComprasGastosCajaTutorial)
 
 const dynamicFilters = ref<DynamicFilterValues>({})
 const buscar = ref('')

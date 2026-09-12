@@ -16,6 +16,7 @@
       autocomplete="off"
       @submit="onSubmit"
     >
+      <div data-tutorial="almacen-sucursal">
       <AppSelect
         v-model="id_sucursal"
         label="Sucursal"
@@ -26,9 +27,11 @@
         :disabled="isSubmitting || isLoadingSucursales"
         :error="errors.id_sucursal"
       />
+      </div>
 
       <AppInput
         v-model="nombre"
+        data-tutorial="almacen-nombre"
         label="Nombre"
         placeholder="Almacén Central"
         required
@@ -66,6 +69,7 @@
       <button
         type="submit"
         form="almacen-form"
+        data-tutorial="almacen-guardar"
         class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
         :disabled="isSubmitting"
       >

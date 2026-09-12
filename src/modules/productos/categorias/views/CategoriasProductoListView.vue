@@ -2,7 +2,9 @@
   <div>
     <PageBreadcrumb page-title="Categorías" :items="breadcrumbItems" />
 
+    <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › categorías). -->
     <AppTable
+      data-tutorial="categorias-tabla"
       :columns="columns"
       :rows="rows"
       row-key="id"
@@ -15,12 +17,13 @@
         >
           <template #actions>
             <AppExportExcelButton :on-export="exportarExcel" />
-            <div class="w-full sm:w-40">
+            <div data-tutorial="categorias-estado" class="w-full sm:w-40">
               <AppSelect v-model="mostrarEstado" :options="estadoFiltroOptions" />
             </div>
             <button
               v-if="canCreate"
               type="button"
+              data-tutorial="categorias-nuevo"
               class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs transition hover:bg-brand-600"
               @click="openCreateModal"
             >
@@ -35,6 +38,7 @@
         <button
           v-if="canManageSubCategorias"
           type="button"
+          data-tutorial="categorias-subcategorias"
           class="inline-flex max-w-full flex-wrap items-center gap-1 text-left"
           :title="subcategoriasTitle(row)"
           @click="openSubcategoriasModal(row)"
@@ -103,6 +107,7 @@
           <button
             v-if="canView"
             type="button"
+            data-tutorial="categorias-ver"
             title="Ver detalle"
             class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
             @click="openDetailModal(row)"
@@ -111,6 +116,7 @@
           </button>
 
           <AppActionMenu
+            data-tutorial="categorias-acciones"
             :items="actionItemsForRow(row)"
             :execute="(key) => onActionSelect(key, row)"
           />
@@ -212,6 +218,8 @@ import type {
   CategoriaProductoListFilters,
 } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createProductosCategoriasTutorial } from '@/modules/soporte/tutorials/productos-categorias.tutorial'
 import {
   AppActionMenu,
   AppBadge,
@@ -285,6 +293,8 @@ const detailModalOpen = ref(false)
 const categoriaToView = ref<CategoriaProducto | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_CREAR))
+
+useTutorialAutoStart('productos-categorias', createProductosCategoriasTutorial)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.CATEGORIAS_ELIMINAR))

@@ -33,9 +33,13 @@ import { productosArticulosBreadcrumbItems } from '@/modules/productos/config/pr
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
+import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
+import { createProductosCrearTutorial } from '@/modules/soporte/tutorials/productos-crear.tutorial'
 
 const route = useRoute()
 const router = useRouter()
+
+useTutorialAutoStart('productos-crear', createProductosCrearTutorial)
 
 const isEdit = computed(() => route.name === 'admin-productos-articulos-editar')
 const productoId = computed(() => {
