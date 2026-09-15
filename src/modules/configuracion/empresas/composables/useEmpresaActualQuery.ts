@@ -1,13 +1,14 @@
+import { computed } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-import { empresasQueryKeys } from '@/modules/configuracion/empresas/constants/empresasQueryKeys'
-import { empresasService } from '@/modules/configuracion/empresas/services/empresas.service'
+import { empresasQueryKeys } from '../constants/empresasQueryKeys'
+import { empresasService } from '../services/empresas.service'
+import { useEmpresaSeleccionada } from './useEmpresaSeleccionada'
 
 export function useEmpresaActualQuery() {
+  const id = useEmpresaSeleccionada()
   return useQuery({
-    queryKey: empresasQueryKeys.current(),
-    queryFn: async () => {
-      const result = await empresasService.listar({ pagina: 1, limite: 1 })
-      return result.data[0] ?? null
-    },
+    queryKey: computed(() => [...empresasQueryKeys.current(), id.value]),
+    queryFn: () => empresasService.obtenerPorId(id.value!),
+    enabled: computed(() => id.value != null),
   })
 }

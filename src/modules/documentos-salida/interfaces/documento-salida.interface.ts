@@ -61,6 +61,7 @@ export interface DocumentoSalidaReferencia {
 }
 
 export interface DocumentoSalida {
+  id_empresa?: number | null;
   id: number
   numero: string
   id_tipo_orden: number
@@ -334,6 +335,7 @@ export interface ActualizarDocumentoSalidaPayload {
 }
 
 export interface ConvertirGrePayload {
+  idEmpresa: number;
   idTipoGuiaRemision?: number
   serie: string
   idMotivoTraslado?: number

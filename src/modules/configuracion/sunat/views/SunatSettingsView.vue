@@ -29,14 +29,16 @@
       >
         <AppSelect
           v-model="selectedEmpresaId"
-          label="Empresa"
+          label="Empresa activa"
           :options="empresaOptions"
           placeholder="Seleccionar empresa"
           required
           :disabled="isSubmitting"
         />
         <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          <template v-if="isLoadingSunat">Cargando configuración de la empresa...</template>
+          <template v-if="!selectedEmpresaId">Selecciona la empresa cuyos datos SUNAT deseas configurar.</template>
+          <template v-else-if="sunatQuery.isError.value">No se pudo cargar la configuración. Reintenta antes de guardar.</template>
+          <template v-else-if="isLoadingSunat">Cargando configuración de la empresa...</template>
           <template v-else-if="isEditMode">
             Editando la configuración SUNAT de esta empresa.
           </template>
@@ -298,6 +300,7 @@ import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useSidebar } from '@/modules/admin/composables/useSidebar'
+import { useEmpresaSeleccionada } from '@/modules/configuracion/empresas/composables/useEmpresaSeleccionada'
 import { useEmpresasQuery } from '@/modules/configuracion/empresas/composables/useEmpresasQuery'
 import type { EmpresaListFilters } from '@/modules/configuracion/empresas/interfaces/empresa.interface'
 import {
@@ -375,7 +378,7 @@ const breadcrumbItems = configuracionBreadcrumbItems('SUNAT')
 
 const empresasFilters = ref<EmpresaListFilters>({ pagina: 1, limite: 100 })
 const empresasQuery = useEmpresasQuery(empresasFilters)
-const selectedEmpresaId = ref<number | undefined>(undefined)
+const selectedEmpresaId = useEmpresaSeleccionada()
 const sunatQuery = useConfiguracionSunatPorEmpresaQuery(selectedEmpresaId)
 const createMutation = useCreateConfiguracionSunatMutation()
 const updateMutation = useUpdateConfiguracionSunatMutation()
@@ -397,11 +400,7 @@ const ambienteOptions = computed(() =>
 const empresaOptions = computed(() =>
   (empresasQuery.data.value?.data ?? []).map((empresaItem) => ({
     value: empresaItem.id,
-    label:
-      empresaItem.nombre_comercial ||
-      empresaItem.razon_social ||
-      empresaItem.ruc ||
-      `Empresa #${empresaItem.id}`,
+    label: `${empresaItem.razon_social || empresaItem.nombre_comercial || 'Empresa'} · ${empresaItem.ruc}`,
   })),
 )
 
@@ -414,22 +413,6 @@ const empresa = computed(() => {
 const configuracionSunat = computed(() => sunatQuery.data.value ?? null)
 const isEditMode = computed(() => configuracionSunat.value != null)
 
-watch(
-  () => empresasQuery.data.value?.data,
-  (empresas) => {
-    if (!empresas?.length) {
-      selectedEmpresaId.value = undefined
-      return
-    }
-    if (
-      selectedEmpresaId.value == null ||
-      !empresas.some((item) => item.id === selectedEmpresaId.value)
-    ) {
-      selectedEmpresaId.value = empresas[0].id
-    }
-  },
-  { immediate: true },
-)
 
 const openSol = ref(true)
 const openPse = ref(false)
@@ -529,6 +512,7 @@ const [client_secret, clientSecretAttrs] = defineField('client_secret')
 const [timeout_ms, timeoutMsAttrs] = defineField('timeout_ms')
 
 const canSave = computed(() => {
+  if (!empresa.value || sunatQuery.isFetching.value || sunatQuery.isError.value) return false;
   if (isEditMode.value) {
     return authStore.hasPermission(PermisoBanderas.CONFIGURACION_SUNAT_EDITAR)
   }

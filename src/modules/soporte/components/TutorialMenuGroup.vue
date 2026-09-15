@@ -27,7 +27,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import { AppCollapsibleSection } from '@/shared/components'
 import type { IconName } from '@/shared/constants/icons'
 
@@ -48,5 +47,4 @@ const emit = defineEmits<{
   select: [id: string]
 }>()
 
-const isOpen = ref(true)
 </script>

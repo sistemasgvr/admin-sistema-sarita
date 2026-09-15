@@ -2,6 +2,12 @@
   <div>
     <PageBreadcrumb page-title="Empresa" :items="breadcrumbItems" />
 
+    <div class="mb-4 flex items-end gap-4">
+      <AppSelect v-model="selectedEmpresaId" label="Empresa activa" :options="empresaOptions" placeholder="Selecciona una empresa" :disabled="isSubmitting || creating" />
+      <button v-if="authStore.hasPermission(PermisoBanderas.EMPRESAS_CREAR)" type="button" class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm text-white" @click="creating = true; syncFormValues()">Añadir empresa</button>
+    </div>
+    <p class="mb-4 text-sm text-gray-500">La selección se conserva para tu usuario en este navegador. Cada guía guarda su propia empresa emisora.</p>
+    <p v-if="empresaQuery.isError.value" role="alert" class="mb-4 text-red-600">No se pudo cargar la empresa seleccionada. Reintenta o selecciona otra empresa.</p>
     <div
       v-if="isLoading"
       class="w-full rounded-xl border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
@@ -9,8 +15,12 @@
       Cargando configuración...
     </div>
 
-    <div
-      v-else
+    <component
+      :is="creating ? AppModal : 'div'"
+      v-else-if="empresa || creating"
+      :model-value="creating"
+      title="Añadir empresa"
+      @update:model-value="closeCreate"
       class="w-full rounded-xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900"
     >
       <div class="border-b border-gray-200 px-6 py-5 dark:border-gray-800">
@@ -87,7 +97,7 @@
         </div>
 
         <div data-tutorial="empresa-parametros" class="grid gap-4 sm:grid-cols-2">
-          <AppInput
+          <!-- <AppInput
             v-model="tolerancia_m3_ruta_pueblo"
             label="Tolerancia ruta pueblos (m³)"
             type="number"
@@ -98,7 +108,7 @@
             v-bind="toleranciaAttrs"
             :disabled="!canSave || isSubmitting"
             :error="errors.tolerancia_m3_ruta_pueblo"
-          />
+          /> -->
           <AppInput
             v-model="psi_minimo_util"
             label="PSI mínimo útil"
@@ -117,7 +127,9 @@
       <div
         class="flex flex-col gap-3 border-t border-gray-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800"
       >
+        <button v-if="creating" type="button" class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm" :disabled="isSubmitting" @click="closeCreate">Cancelar</button>
         <router-link
+          v-else
           :to="CONFIGURACION_HUB_PATH"
           class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
         >
@@ -139,12 +151,12 @@
           Solo lectura: no tienes permisos para modificar la configuración de la empresa.
         </p>
       </div>
-    </div>
+    </component>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -157,11 +169,13 @@ import {
   useCreateEmpresaMutation,
   useUpdateEmpresaMutation,
 } from '@/modules/configuracion/empresas/composables/useEmpresaMutations'
+import { useEmpresaSeleccionada } from '../composables/useEmpresaSeleccionada'
+import { useEmpresasQuery } from '../composables/useEmpresasQuery'
 import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createConfiguracionEmpresaTutorial } from '@/modules/soporte/tutorials/configuracion-empresa.tutorial'
-import { AppInput } from '@/shared/components'
+import { AppInput, AppSelect, AppModal } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalEmail, optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
@@ -169,6 +183,11 @@ const authStore = useAuthStore()
 
 useTutorialAutoStart('configuracion-empresa', createConfiguracionEmpresaTutorial)
 const breadcrumbItems = configuracionBreadcrumbItems('Empresa')
+const selectedEmpresaId = useEmpresaSeleccionada()
+const empresasQuery = useEmpresasQuery(ref({ pagina: 1, limite: 100 }))
+const empresaOptions = computed(() => (empresasQuery.data.value?.data ?? []).map(e => ({ value: e.id, label: `${e.razon_social || e.nombre_comercial || 'Empresa'} · ${e.ruc}` })))
+const creating = ref(false)
+const closeCreate = () => { if (!isSubmitting.value) { creating.value = false; syncFormValues() } }
 const empresaQuery = useEmpresaActualQuery()
 const createMutation = useCreateEmpresaMutation()
 const updateMutation = useUpdateEmpresaMutation()
@@ -176,7 +195,7 @@ const updateMutation = useUpdateEmpresaMutation()
 const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
-      ruc: requiredString('El RUC'),
+      ruc: requiredString('El RUC').matches(/^\d{11}$/, 'El RUC debe tener 11 dígitos'),
       razon_social: optionalString(),
       nombre_comercial: optionalString(),
       direccion: optionalString(),
@@ -204,11 +223,11 @@ const [nombre_comercial, nombreComercialAttrs] = defineField('nombre_comercial')
 const [direccion, direccionAttrs] = defineField('direccion')
 const [telefono, telefonoAttrs] = defineField('telefono')
 const [email, emailAttrs] = defineField('email')
-const [tolerancia_m3_ruta_pueblo, toleranciaAttrs] = defineField('tolerancia_m3_ruta_pueblo')
+
 const [psi_minimo_util, psiMinimoAttrs] = defineField('psi_minimo_util')
 
-const isLoading = computed(() => empresaQuery.isFetching.value)
-const empresa = computed(() => empresaQuery.data.value ?? null)
+const isLoading = computed(() => !creating.value && empresaQuery.isFetching.value)
+const empresa = computed(() => creating.value ? null : empresaQuery.data.value ?? null)
 const isEditMode = computed(() => empresa.value != null)
 
 const canSave = computed(() => {
@@ -265,7 +284,9 @@ const onSubmit = handleSubmit(async (values) => {
         payload,
       })
     } else {
-      await createMutation.mutateAsync(payload)
+      const creada = await createMutation.mutateAsync(payload)
+      selectedEmpresaId.value = creada.id
+      creating.value = false
     }
   } catch {
     // toast en mutation

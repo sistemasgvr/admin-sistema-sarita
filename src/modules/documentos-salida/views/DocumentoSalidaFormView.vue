@@ -1,6 +1,9 @@
 <template>
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
+    <p v-if="documento?.id_empresa" class="mb-4 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800 dark:text-gray-300">
+      Empresa del documento: <strong>{{ empresaDocumentoLabel }}</strong>
+    </p>
 
     <div
       v-if="!documentoId"
@@ -10,6 +13,7 @@
         Nuevo documento de salida
       </h3>
 
+      <AppSelect v-model="empresaActiva" class="mb-4" label="Empresa del documento" :options="empresaOptions" placeholder="Selecciona la empresa" />
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppSelect
           v-model="form.codigoTipoOrden"
@@ -423,7 +427,7 @@
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 :disabled="emitirMutation.isPending.value"
-                @click="onEmitir"
+                @click="emitirConfirmOpen = true"
               >
                 Emitir a SUNAT
               </button>
@@ -835,6 +839,32 @@
     <!-- Modal: Convertir a GRE -->
     <ConvertirGreModal v-if="documento" v-model="greModalOpen" :documento="documento" />
 
+    <!--
+      Emitir es irreversible (revertir exige comunicación de baja), así que se
+      muestra qué guía y con qué transporte va antes de llamar a SUNAT.
+    -->
+    <AppConfirmDialog
+      v-if="documento"
+      v-model="emitirConfirmOpen"
+      title="Emitir a SUNAT"
+      variant="info"
+      confirm-label="Emitir"
+      loading-label="Emitiendo..."
+      :loading="emitirMutation.isPending.value"
+      @confirm="onEmitir"
+    >
+      <span class="block">
+        Se enviará la guía <strong>{{ documento.serie }}-{{ documento.numero_sunat }}</strong>
+        ({{ resumenEmision.tipo }}) a SUNAT.
+      </span>
+      <span class="mt-2 block text-xs text-gray-500 dark:text-gray-400">
+        {{ resumenEmision.transporte }}
+      </span>
+      <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+        Una vez aceptada no se puede editar; solo anular con comunicación de baja.
+      </span>
+    </AppConfirmDialog>
+
     <!-- Modal: Finalizar recarga -->
     <FinalizarRecargaModal v-model="finalizarModalOpen" :documento="documento" />
 
@@ -868,6 +898,8 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useEmpresasQuery } from '@/modules/configuracion/empresas/composables/useEmpresasQuery'
+import { useEmpresaSeleccionada } from '@/modules/configuracion/empresas/composables/useEmpresaSeleccionada'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
@@ -902,6 +934,7 @@ import type {
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import {
   AppBadge,
+  AppConfirmDialog,
   AppDatePicker,
   AppInput,
   AppModal,
@@ -1197,6 +1230,10 @@ async function submitHeader() {
 // ---- Documento existente ----
 const documentoQuery = useDocumentoSalidaQuery(documentoId)
 const documento = computed(() => documentoQuery.data.value)
+const empresaActiva = useEmpresaSeleccionada()
+const empresasQuery = useEmpresasQuery(ref({ pagina: 1, limite: 100 }))
+const empresaOptions = computed(() => (empresasQuery.data.value?.data ?? []).map(e => ({ value: e.id, label: `${e.razon_social || e.nombre_comercial || 'Empresa'} · ${e.ruc}` })))
+const empresaDocumentoLabel = computed(() => empresaOptions.value.find(e => e.value === documento.value?.id_empresa)?.label ?? `Empresa #${documento.value?.id_empresa}`)
 
 /**
  * Estados que ya no admiten acción: se leen como badges en vez de ocupar sitio
@@ -1531,12 +1568,31 @@ function abrirReparto() {
 const greModalOpen = ref(false)
 
 const emitirMutation = useEmitirSunatDocSalidaMutation()
+const emitirConfirmOpen = ref(false)
+
+/** Qué guía y qué transporte se enviará, para confirmar antes de emitir. */
+const resumenEmision = computed(() => {
+  const doc = documento.value
+  const esTransportista = doc?.codigo_tipo_guia === '31'
+  const tipo = esTransportista ? 'guía de transportista · 31' : 'guía de remisión remitente · 09'
+  const flotaPropia = esTransportista || doc?.nombre_modalidad_traslado !== 'PUBLICO'
+  const transporte = flotaPropia
+    ? `Vehículo ${doc?.placa_vehiculo ?? '—'} · chofer ${doc?.nombre_chofer?.trim() || '—'}`
+    : `Transportista ${doc?.nombre_transportista ?? '—'} (transporte público)`
+  return { tipo, transporte }
+})
+
 async function onEmitir() {
   if (!documento.value) return
-  await emitirMutation.mutateAsync({
-    id: documento.value.id,
-    idUsuarioAuditoria: idUsuarioAuditoria.value,
-  })
+  try {
+    await emitirMutation.mutateAsync({
+      id: documento.value.id,
+      idUsuarioAuditoria: idUsuarioAuditoria.value,
+    })
+    emitirConfirmOpen.value = false
+  } catch {
+    // toast en la mutation; el diálogo queda abierto para reintentar
+  }
 }
 
 const consultarMutation = useConsultarEstadoDocSalidaMutation()

@@ -28,30 +28,83 @@
     </div>
 
     <!-- Lectura -->
-    <div v-if="!editando" class="grid grid-cols-2 gap-4 px-6 py-4 text-xs sm:grid-cols-4">
-      <div>
-        <span class="block text-[11px] text-gray-400">Motivo</span>
-        <span class="font-semibold text-gray-800 dark:text-white/90">
-          {{ documento?.nombre_motivo_traslado?.replace(/_/g, ' ') ?? '—' }}
-        </span>
+    <div v-if="!editando" class="space-y-4 px-6 py-4 text-xs">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div>
+          <span class="block text-[11px] text-gray-400">Tipo de guía</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">{{ tipoGuiaLabel }}</span>
+        </div>
+        <div>
+          <span class="block text-[11px] text-gray-400">Motivo</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.nombre_motivo_traslado?.replace(/_/g, ' ') ?? '—' }}
+          </span>
+        </div>
+        <div>
+          <span class="block text-[11px] text-gray-400">Modalidad</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">{{ modalidadLabel }}</span>
+        </div>
+        <div>
+          <span class="block text-[11px] text-gray-400">Fecha de traslado</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.fecha_traslado?.slice(0, 10) ?? '—' }}
+          </span>
+        </div>
+        <div>
+          <span class="block text-[11px] text-gray-400">Peso bruto</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.peso_bruto != null ? `${documento.peso_bruto} kg` : '—' }}
+          </span>
+        </div>
+        <div>
+          <span class="block text-[11px] text-gray-400">N° de bultos</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.numero_bultos ?? '—' }}
+          </span>
+        </div>
+        <!--
+          Lo que SUNAT recibirá como transporte según el caso: flota propia
+          (privado o GRE transportista) o el tercero con RUC (público).
+        -->
+        <template v-if="flotaPropia">
+          <div>
+            <span class="block text-[11px] text-gray-400">Chofer</span>
+            <span class="font-semibold text-gray-800 dark:text-white/90">
+              {{ documento?.nombre_chofer?.trim() || '—' }}
+            </span>
+          </div>
+          <div>
+            <span class="block text-[11px] text-gray-400">Vehículo</span>
+            <span class="font-semibold text-gray-800 dark:text-white/90">
+              {{ documento?.placa_vehiculo ?? '—' }}
+            </span>
+          </div>
+        </template>
+        <div v-else class="col-span-2">
+          <span class="block text-[11px] text-gray-400">Transportista (RUC)</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.nombre_transportista ?? '—' }}
+          </span>
+        </div>
       </div>
-      <div>
-        <span class="block text-[11px] text-gray-400">Modalidad</span>
-        <span class="font-semibold text-gray-800 dark:text-white/90">
-          {{ documento?.nombre_modalidad_traslado?.replace(/_/g, ' ') ?? '—' }}
-        </span>
-      </div>
-      <div>
-        <span class="block text-[11px] text-gray-400">Peso bruto</span>
-        <span class="font-semibold text-gray-800 dark:text-white/90">
-          {{ documento?.peso_bruto != null ? `${documento.peso_bruto} kg` : '—' }}
-        </span>
-      </div>
-      <div>
-        <span class="block text-[11px] text-gray-400">N° de bultos</span>
-        <span class="font-semibold text-gray-800 dark:text-white/90">
-          {{ documento?.numero_bultos ?? '—' }}
-        </span>
+      <div
+        v-if="documento?.direccion_origen || documento?.direccion_llegada"
+        class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+      >
+        <div>
+          <span class="block text-[11px] text-gray-400">Punto de partida</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.direccion_origen || '—' }}
+            <span v-if="documento?.ubigeo_origen" class="font-normal text-gray-400">· {{ documento.ubigeo_origen }}</span>
+          </span>
+        </div>
+        <div>
+          <span class="block text-[11px] text-gray-400">Punto de llegada</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.direccion_llegada || '—' }}
+            <span v-if="documento?.ubigeo_llegada" class="font-normal text-gray-400">· {{ documento.ubigeo_llegada }}</span>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -70,7 +123,12 @@
           label="Modalidad"
           :placeholder="catalogosQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           :options="modalidadOptions"
-          :disabled="catalogosQuery.isLoading.value || mutation.isPending.value"
+          :disabled="catalogosQuery.isLoading.value || mutation.isPending.value || esGreTransportista"
+          :hint="
+            esGreTransportista
+              ? 'En la guía de transportista es siempre pública'
+              : 'Chofer, vehículo o transportista se cambian en «Editar datos GRE»'
+          "
         />
         <AppInput
           v-model.number="form.pesoBruto"
@@ -160,6 +218,29 @@ const modalidadOptions = computed(
       value: o.id,
       label: formatListaOpcionLabel(o.nombre, o.descripcion),
     })) ?? [],
+)
+
+/** 09 GRE Remitente (carga propia) · 31 GRE Transportista (carga de un tercero). */
+const tipoGuiaLabel = computed(() => {
+  const codigo = props.documento?.codigo_tipo_guia
+  if (codigo === '31') return 'Transportista (31)'
+  if (codigo === '09') return 'Remitente (09)'
+  return 'Sin definir'
+})
+
+const esGreTransportista = computed(() => props.documento?.codigo_tipo_guia === '31')
+
+const modalidadLabel = computed(() => {
+  if (esGreTransportista.value) return 'Transporte público (fija en la 31)'
+  const nombre = props.documento?.nombre_modalidad_traslado
+  if (nombre === 'PRIVADO') return 'Transporte privado (flota propia)'
+  if (nombre === 'PUBLICO') return 'Transporte público (tercero con RUC)'
+  return nombre?.replace(/_/g, ' ') ?? '—'
+})
+
+/** Vehículo + chofer propios: privado o GRE transportista; si no, va el tercero. */
+const flotaPropia = computed(
+  () => esGreTransportista.value || props.documento?.nombre_modalidad_traslado !== 'PUBLICO',
 )
 
 function empezarEdicion() {

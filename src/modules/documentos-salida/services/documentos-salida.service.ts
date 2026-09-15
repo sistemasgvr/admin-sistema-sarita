@@ -1,3 +1,4 @@
+import { useEmpresaSeleccionada } from '@/modules/configuracion/empresas/composables/useEmpresaSeleccionada'
 import { apiGet, apiGetBlob, apiGetPaginated, apiPatch, apiPost, apiDelete } from '@/shared/api/apiClient'
 import type {
   ActualizarDocumentoSalidaDetallePayload,
@@ -45,11 +46,11 @@ export const documentosSalidaService = {
   },
 
   crear(payload: CreateDocumentoSalidaPayload) {
-    return apiPost<DocumentoSalida>('/documentos-salida', payload)
+    return apiPost<DocumentoSalida>('/documentos-salida', { ...payload, idEmpresa: useEmpresaSeleccionada().value })
   },
 
   crearDesdeVenta(payload: CrearDesdeVentaPayload) {
-    return apiPost<DocumentoSalida>('/documentos-salida/crear-desde-venta', payload)
+    return apiPost<DocumentoSalida>('/documentos-salida/crear-desde-venta', { ...payload, idEmpresa: useEmpresaSeleccionada().value })
   },
 
   actualizarTraslado(id: number, payload: ActualizarTrasladoPayload) {
@@ -108,6 +109,6 @@ export const documentosSalidaService = {
   },
 
   obtenerPdf(id: number) {
-    return apiGetBlob(`/documentos-salida/${id}/pdf`)
+    return apiGetBlob(`/documentos-salida/${id}/pdf`, { params: { idEmpresa: useEmpresaSeleccionada().value } })
   },
 }
