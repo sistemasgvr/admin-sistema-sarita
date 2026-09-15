@@ -1,10 +1,5 @@
 <template>
   <Teleport to="body">
-    <!--
-      La duración va explícita: la transición vive en el panel y en el velo, no en
-      el contenedor raíz, y sin esto Vue lo desmontaría antes de que la salida se
-      vea.
-    -->
     <Transition name="app-modal" :duration="{ enter: 340, leave: 220 }">
       <div
         v-if="modelValue"
@@ -25,11 +20,6 @@
           :class="panelSizeClass"
           @click.stop
         >
-          <!--
-            Borde de scroll: la línea solo aparece cuando hay contenido oculto
-            debajo del encabezado. Sin contenido desplazado no separa nada, y una
-            raya permanente es ruido.
-          -->
           <div
             v-if="$slots.header || title || subtitle || showCloseButton"
             class="flex shrink-0 items-center gap-3 border-b px-4 py-3 transition-colors duration-200 sm:px-5"
@@ -133,11 +123,6 @@ const emit = defineEmits<{
 const titleId = useId()
 const contentScrollRef = ref<HTMLElement | null>(null)
 
-/**
- * Bordes de scroll en vez de divisores fijos: la línea del encabezado y la del
- * pie solo se dibujan cuando hay contenido oculto de ese lado. Así la separación
- * aparece cuando de verdad separa algo y el modal se lee más limpio en reposo.
- */
 const contenidoSobreEncabezado = ref(false)
 const contenidoBajoPie = ref(false)
 let observadorContenido: ResizeObserver | null = null
@@ -149,7 +134,6 @@ function actualizarBordesScroll() {
   contenidoBajoPie.value = el.scrollTop + el.clientHeight < el.scrollHeight - 1
 }
 
-/** El alto del contenido cambia solo (paneles condicionales, listas que cargan). */
 function observarContenido() {
   desconectarObservador()
   const el = contentScrollRef.value
@@ -178,6 +162,12 @@ const panelSizeClass = computed(() => {
 const close = () => {
   modelValue.value = false
   emit('close')
+} 
+
+function teclaScape(event: KeyboardEvent) {
+  if (event.key === 'Escape' && modelValue.value) {
+    close()
+  }
 }
 
 const onBackdropClick = () => {
@@ -190,6 +180,7 @@ watch(modelValue, (isOpen) => {
   document.body.style.overflow = isOpen ? 'hidden' : ''
 
   if (isOpen) {
+    window.addEventListener('keydown', teclaScape)
     nextTick(() => {
       contentScrollRef.value?.scrollTo({ top: 0 })
       actualizarBordesScroll()
@@ -208,12 +199,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/*
- * El panel se materializa: escala, desenfoque y opacidad viajan juntos, con una
- * curva sin rebote (equivalente a un muelle críticamente amortiguado, respuesta
- * ~0.34 s). La salida recorre el mismo camino a la inversa y algo más rápido,
- * para que cerrar se sienta como deshacer lo que se abrió.
- */
+
 .app-modal-enter-active .app-modal__panel {
   transition:
     transform 340ms cubic-bezier(0.32, 0.72, 0, 1),
@@ -250,7 +236,6 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-/* Sin transparencias: el velo se vuelve sólido en vez de desenfocar el fondo. */
 @media (prefers-reduced-transparency: reduce) {
   .app-modal__scrim {
     backdrop-filter: none;
@@ -258,7 +243,6 @@ onUnmounted(() => {
   }
 }
 
-/* Sin movimiento: se mantiene el cambio de opacidad, que sigue explicando qué pasó. */
 @media (prefers-reduced-motion: reduce) {
   .app-modal-enter-active .app-modal__panel,
   .app-modal-leave-active .app-modal__panel {
