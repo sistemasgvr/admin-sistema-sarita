@@ -160,8 +160,9 @@ import RutaPuebloCerrarModal from '@/modules/balones/rutas-pueblos/components/Ru
 import RutaPuebloDetailModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloDetailModal.vue'
 import RutaPuebloFormModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloFormModal.vue'
 import RutaPuebloRetornoModal from '@/modules/balones/rutas-pueblos/components/RutaPuebloRetornoModal.vue'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import {
-  ESTADOS_RUTA_PUEBLO_FILTRO,
   type RutaPueblo,
   type RutaPuebloListFilters,
 } from '@/modules/balones/rutas-pueblos/interfaces/ruta-pueblo.interface'
@@ -252,6 +253,13 @@ watch([pagina, limite], () => {
 syncFilters()
 
 const query = useRutasPueblosQuery(filters)
+const estadoRutaQuery = useListaOpcionesQuery(ref(ListaIds.ESTADO_RUTA_PUEBLO))
+const estadosRutaOptions = computed(() =>
+  (estadoRutaQuery.data.value ?? []).map((o) => ({
+    value: o.descripcion ?? o.nombre,
+    label: o.nombre,
+  })),
+)
 const iniciarMutation = useIniciarRutaPuebloMutation()
 const updateMutation = useUpdateRutaPuebloMutation()
 const deleteMutation = useDeleteRutaPuebloMutation()
@@ -271,7 +279,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     label: 'Estado',
     type: 'select',
     placeholder: 'Seleccionar estado',
-    options: ESTADOS_RUTA_PUEBLO_FILTRO.map((e) => ({ value: e.value, label: e.label })),
+    options: estadosRutaOptions,
   },
   {
     key: 'idAlmacen',

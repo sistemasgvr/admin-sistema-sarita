@@ -248,6 +248,20 @@ export const PermisoBanderas = {
   DOCUMENTOS_SALIDA_ELIMINAR: 'documentos_salida.eliminar',
   DOCUMENTOS_SALIDA_EMITIR: 'documentos_salida.emitir',
 
+  PERCEPCIONES_LISTAR: 'percepciones.listar',
+  PERCEPCIONES_VER: 'percepciones.ver',
+  PERCEPCIONES_CREAR: 'percepciones.crear',
+  PERCEPCIONES_EDITAR: 'percepciones.editar',
+  PERCEPCIONES_ELIMINAR: 'percepciones.eliminar',
+  PERCEPCIONES_EMITIR: 'percepciones.emitir',
+
+  RETENCIONES_LISTAR: 'retenciones.listar',
+  RETENCIONES_VER: 'retenciones.ver',
+  RETENCIONES_CREAR: 'retenciones.crear',
+  RETENCIONES_EDITAR: 'retenciones.editar',
+  RETENCIONES_ELIMINAR: 'retenciones.eliminar',
+  RETENCIONES_EMITIR: 'retenciones.emitir',
+
   BAJAS_BALON_LISTAR: 'bajas_balon.listar',
   BAJAS_BALON_VER: 'bajas_balon.ver',
   BAJAS_BALON_SOLICITAR: 'bajas_balon.solicitar',

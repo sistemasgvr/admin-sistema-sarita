@@ -426,10 +426,11 @@
                 v-if="puedeEmitir"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                :disabled="emitirMutation.isPending.value"
-                @click="emitirConfirmOpen = true"
+                :disabled="emitirMutation.isPending.value || validarGreMutation.isPending.value"
+                @click="abrirEmitir"
               >
-                Emitir a SUNAT
+                <AppIcon :name="entornoEsProduccion ? ICONS.alertTriangle : ICONS.info" :size="14" />
+                {{ validarGreMutation.isPending.value ? 'Validando...' : entornoEsProduccion ? 'Emitir a SUNAT (Producción)' : 'Emitir prueba (BETA)' }}
               </button>
               <!--
                 El reparto se programa desde aqui y no desde el comprobante: lo
@@ -454,7 +455,16 @@
                 :disabled="consultarMutation.isPending.value"
                 @click="onConsultarEstado"
               >
-                Consultar estado
+                {{ consultarMutation.isPending.value ? 'Consultando...' : 'Consultar ahora' }}
+              </button>
+              <button
+                v-if="documento.gre_estado_envio || documento.ticket_sunat"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                @click="historialGreOpen = true"
+              >
+                <AppIcon :name="ICONS.fileText" :size="14" class="text-gray-500" />
+                Historial SUNAT
               </button>
               <button
                 v-if="puedeRegistrarRetorno"
@@ -470,7 +480,26 @@
                 @click="onDescargarPdf"
               >
                 <AppIcon :name="ICONS.download" :size="14" class="text-gray-500" />
-                Descargar PDF
+                Ver PDF local
+              </button>
+              <button
+                v-if="documento.serie && documento.numero_sunat"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-xs font-medium text-brand-700 shadow-theme-xs transition hover:bg-brand-100 disabled:opacity-70 dark:border-brand-700 dark:bg-brand-900/30 dark:text-brand-300"
+                :disabled="archivoAbriendo !== null"
+                @click="onAbrirArchivoGre('pdf')"
+              >
+                <AppIcon :name="ICONS.download" :size="14" class="text-brand-500" />
+                {{ archivoAbriendo === 'pdf' ? 'Cargando PDF…' : 'Ver PDF del envío' }}
+              </button>
+              <button
+                v-if="documento.serie && documento.numero_sunat"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-xs font-medium text-brand-700 disabled:opacity-70 dark:border-brand-700 dark:bg-brand-900/30 dark:text-brand-300"
+                :disabled="archivoAbriendo !== null"
+                @click="onAbrirArchivoGre('xml')"
+              >
+                {{ archivoAbriendo === 'xml' ? 'Cargando XML…' : 'Ver XML del envío' }}
               </button>
             </div>
             <button
@@ -843,27 +872,150 @@
       Emitir es irreversible (revertir exige comunicación de baja), así que se
       muestra qué guía y con qué transporte va antes de llamar a SUNAT.
     -->
-    <AppConfirmDialog
+    <AppModal
       v-if="documento"
       v-model="emitirConfirmOpen"
-      title="Emitir a SUNAT"
-      variant="info"
-      confirm-label="Emitir"
-      loading-label="Emitiendo..."
-      :loading="emitirMutation.isPending.value"
-      @confirm="onEmitir"
+      :title="entornoEsProduccion ? 'Emitir a SUNAT (Producción)' : 'Emitir prueba a SUNAT (BETA)'"
+      size="md"
     >
-      <span class="block">
-        Se enviará la guía <strong>{{ documento.serie }}-{{ documento.numero_sunat }}</strong>
-        ({{ resumenEmision.tipo }}) a SUNAT.
-      </span>
-      <span class="mt-2 block text-xs text-gray-500 dark:text-gray-400">
-        {{ resumenEmision.transporte }}
-      </span>
-      <span class="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-        Una vez aceptada no se puede editar; solo anular con comunicación de baja.
-      </span>
-    </AppConfirmDialog>
+      <div class="space-y-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <span
+            class="rounded-full px-2 py-0.5 text-[11px] font-bold"
+            :class="entornoEsProduccion
+              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'"
+          >
+            {{ entornoResuelto ? (entornoEsProduccion ? 'PRODUCCIÓN' : 'PRUEBAS (BETA)') : 'ENTORNO SIN VERIFICAR' }}
+          </span>
+          <span class="text-xs text-gray-500 dark:text-gray-400">Entorno SUNAT según la empresa en el PSE</span>
+        </div>
+
+        <!-- Resumen de lo que se envía: empresa, RUC, guía, fechas, transporte y destinatario. -->
+        <dl class="grid grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2">
+          <div><dt class="text-gray-400">Empresa emisora</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ resumenGre.empresa || '—' }}</dd></div>
+          <div><dt class="text-gray-400">RUC</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ resumenGre.ruc || '—' }}</dd></div>
+          <div><dt class="text-gray-400">Guía</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ documento.serie }}-{{ documento.numero_sunat }} · {{ resumenEmision.tipo }}</dd></div>
+          <div><dt class="text-gray-400">Destinatario</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ resumenGre.destinatario || '—' }}</dd></div>
+          <div><dt class="text-gray-400">Fecha de la orden</dt><dd>{{ resumenGre.fechaOrden || documento.fecha?.slice(0, 10) || '—' }}</dd></div>
+          <div><dt class="text-gray-400">Emisión GRE · inicio traslado</dt><dd>{{ resumenGre.fechaEmisionGre || documento.fecha_emision_gre?.slice(0, 10) || '—' }} · {{ resumenGre.fechaTraslado || documento.fecha_traslado?.slice(0, 10) || '—' }}</dd></div>
+          <div class="sm:col-span-2"><dt class="text-gray-400">Transporte</dt><dd>{{ resumenEmision.transporte }}<span v-if="resumenGre.licencia"> · Lic. {{ resumenGre.licencia }}</span><span v-if="resumenGre.placa"> · placa enviada {{ resumenGre.placa }}</span></dd></div>
+        </dl>
+
+        <!-- Resultado de la prevalidación (misma que corre la emisión en el backend). -->
+        <div
+          v-if="validarGreMutation.isPending.value"
+          class="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400"
+        >
+          Validando datos de la guía y verificando la empresa en el PSE...
+        </div>
+        <div
+          v-else-if="validacionGre?.listo"
+          class="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300"
+        >
+          <AppIcon :name="ICONS.check" :size="14" class="mt-0.5 shrink-0" />
+          <span>Lista para emitir. No se detectaron problemas en los datos ni en la configuración del PSE.</span>
+        </div>
+        <div v-else-if="validacionGre" class="space-y-1.5">
+          <p class="text-xs font-semibold text-error-600 dark:text-error-400">
+            Corrige estos problemas antes de emitir:
+          </p>
+          <ul class="space-y-1">
+            <li
+              v-for="problema in erroresGre"
+              :key="problema.codigo + problema.campo"
+              class="flex items-start gap-2 rounded-lg border border-error-200 bg-error-50 px-3 py-1.5 text-xs text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+            >
+              <AppIcon :name="ICONS.alertTriangle" :size="13" class="mt-0.5 shrink-0" />
+              <span>
+                {{ problema.mensaje }}
+                <button
+                  v-if="campoEditableEnGre(problema.campo)"
+                  type="button"
+                  class="ml-1 font-medium underline"
+                  @click="irAlCampoGre"
+                >
+                  Editar datos GRE
+                </button>
+                <span v-else class="ml-1 text-[10px] text-gray-400">({{ problema.codigo }})</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+        <ul v-if="advertenciasGre.length" class="space-y-1">
+          <li
+            v-for="problema in advertenciasGre"
+            :key="problema.codigo + problema.campo"
+            class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+          >
+            <AppIcon :name="ICONS.info" :size="13" class="mt-0.5 shrink-0" />
+            <span>{{ problema.mensaje }}</span>
+          </li>
+        </ul>
+
+        <p class="text-xs text-amber-600 dark:text-amber-400">
+          Se envía una sola vez. Una vez aceptada no se puede editar; solo anular con comunicación de baja.
+          <span v-if="!entornoEsProduccion && entornoResuelto">En BETA la aceptación es del simulador y no tiene valor fiscal.</span>
+        </p>
+      </div>
+      <template #footer>
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
+          :disabled="emitirMutation.isPending.value"
+          @click="emitirConfirmOpen = false"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
+          :disabled="validarGreMutation.isPending.value || emitirMutation.isPending.value"
+          @click="revalidarGre"
+        >
+          Volver a validar
+        </button>
+        <button
+          type="button"
+          class="rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+          :class="entornoEsProduccion ? 'bg-warning-500 hover:bg-warning-600' : 'bg-brand-500 hover:bg-brand-600'"
+          :disabled="!validacionGre?.listo || validarGreMutation.isPending.value || emitirMutation.isPending.value"
+          @click="onEmitir"
+        >
+          {{ emitirMutation.isPending.value ? 'Emitiendo...' : entornoEsProduccion ? 'Emitir en producción' : 'Emitir prueba' }}
+        </button>
+      </template>
+    </AppModal>
+
+    <!-- Historial de intentos y consultas SUNAT: reconstruye qué pasó con cada envío. -->
+    <AppModal v-model="historialGreOpen" title="Historial de envíos a SUNAT" size="lg">
+      <div v-if="historialGreQuery.isLoading.value" class="text-sm text-gray-500">Cargando historial...</div>
+      <div v-else-if="!historialGre.length" class="text-sm text-gray-500">Esta guía aún no tiene intentos de envío.</div>
+      <div v-else class="space-y-3">
+        <div
+          v-for="intento in historialGre"
+          :key="intento.id"
+          class="rounded-xl border border-gray-100 p-3 text-xs dark:border-gray-800"
+        >
+          <div class="flex flex-wrap items-center gap-2">
+            <AppBadge size="sm" :color="estadoIntentoColor(intento.estado)">{{ etiquetaEstadoIntento(intento.estado) }}</AppBadge>
+            <span class="font-medium text-gray-800 dark:text-white/90">Intento #{{ intento.id }}</span>
+            <span class="text-gray-500">{{ formatFechaHora(intento.creado) }}</span>
+            <span v-if="intento.entorno" class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600 dark:bg-white/5 dark:text-gray-300">{{ intento.entorno }}</span>
+            <span v-if="intento.ruc_emisor" class="text-gray-500">RUC {{ intento.ruc_emisor }}</span>
+          </div>
+          <div class="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 text-gray-600 sm:grid-cols-3 dark:text-gray-400">
+            <span>Ticket: <strong>{{ intento.ticket || '—' }}</strong></span>
+            <span>Consultas: {{ intento.consultas }}</span>
+            <span v-if="intento.proxima_consulta && !['ACEPTADO', 'RECHAZADO'].includes(intento.estado)">Próxima consulta automática: {{ formatFechaHora(intento.proxima_consulta) }}</span>
+          </div>
+          <details class="mt-2">
+            <summary class="cursor-pointer text-[11px] text-gray-500 hover:underline">Detalle técnico (respuesta del PSE y consultas)</summary>
+            <pre class="mt-1 max-h-64 overflow-auto rounded-lg bg-gray-50 p-2 text-[10px] text-gray-700 dark:bg-gray-900 dark:text-gray-300">{{ JSON.stringify({ respuesta: intento.respuesta, consultas: intento.consultas_detalle }, null, 2) }}</pre>
+          </details>
+        </div>
+      </div>
+    </AppModal>
 
     <!-- Modal: Finalizar recarga -->
     <FinalizarRecargaModal v-model="finalizarModalOpen" :documento="documento" />
@@ -912,7 +1064,8 @@ import ConvertirGreModal from '../components/ConvertirGreModal.vue'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import DocSalidaDetalleEditor from '@/modules/documentos-salida/components/DocSalidaDetalleEditor.vue'
-import { useDocumentoSalidaQuery } from '../composables/useDocumentosSalidaQuery'
+import { useDocumentoSalidaQuery, useGreHistorialQuery } from '../composables/useDocumentosSalidaQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import {
   useActualizarDetalleDocSalidaMutation,
   useActualizarDocSalidaMutation,
@@ -923,18 +1076,21 @@ import {
   useEliminarDetalleDocSalidaMutation,
   useEmitirSunatDocSalidaMutation,
   useGenerarDocSalidaMutation,
+  useValidarGreMutation,
 } from '../composables/useDocumentoSalidaMutations'
+import { visualizarArchivo } from '@/shared/utils/visualizarArchivo'
 import { documentosSalidaService } from '../services/documentos-salida.service'
 import type {
   CodigoTipoOrdenSalida,
   DocSalidaLineaBorrador,
   DocSalidaDetalleLinea,
   DocSalidaProductoCantidad,
+  GreProblema,
+  ValidarGreResponse,
 } from '../interfaces/documento-salida.interface'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import {
   AppBadge,
-  AppConfirmDialog,
   AppDatePicker,
   AppInput,
   AppModal,
@@ -943,6 +1099,7 @@ import {
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
@@ -968,6 +1125,7 @@ const pageTitle = documentoId.value ? 'Documento de salida' : 'Nuevo documento d
 const sucursalesQuery = useSucursalesQuery(ref({ pagina: 1, limite: 100 }))
 const almacenesFilters = ref({ pagina: 1, limite: 200, buscar: undefined as string | undefined })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
+const tiposOrdenQuery = useListaOpcionesQuery(ref(ListaIds.TIPO_ORDEN_SALIDA))
 
 const sucursalOptions = computed(
   () => sucursalesQuery.data.value?.data?.map((s) => ({ value: s.id, label: s.nombre })) ?? [],
@@ -986,12 +1144,11 @@ const almacenOptions = computed(() => {
 // no se ofrece acá: esa orden nace de la venta, no se arma a mano. El retorno de
 // planta tampoco es un tipo: se registra con "Finalizar recarga" sobre la orden
 // de envío.
-const TIPO_ORDEN_OPCIONES: { value: CodigoTipoOrdenSalida; label: string }[] = [
-  { value: 'ORDEN_SALIDA_INTERNA', label: 'Orden interna (sin venta)' },
-  { value: 'TRASLADO', label: 'Traslado entre almacenes' },
-  { value: 'RECARGA_PLANTA_EXTERNA', label: 'Envío a planta externa (recarga)' },
-]
-const tipoOrdenOptions = TIPO_ORDEN_OPCIONES
+const tipoOrdenOptions = computed(() =>
+  (tiposOrdenQuery.data.value ?? [])
+    .filter((o) => o.descripcion !== 'ORDEN_SALIDA_VENTA')
+    .map((o) => ({ value: o.descripcion ?? '', label: `${o.descripcion ?? ''} - ${o.nombre}` })),
+)
 
 const TIPO_LABELS: Record<string, string> = {
   ORDEN_SALIDA_VENTA: 'Orden de venta',
@@ -1227,23 +1384,23 @@ async function submitHeader() {
   }
 }
 
-// ---- Documento existente ----
-const documentoQuery = useDocumentoSalidaQuery(documentoId)
+const refrescoTicketPendiente = ref<number | false>(false)
+const documentoQuery = useDocumentoSalidaQuery(documentoId, refrescoTicketPendiente)
+watch(
+  () => documentoQuery.data.value,
+  (doc) => {
+    refrescoTicketPendiente.value =
+      doc?.ticket_sunat && !doc.emitido_sunat && doc.nombre_estado_sunat === 'PENDIENTE' ? 30_000 : false
+  },
+  { immediate: true },
+)
 const documento = computed(() => documentoQuery.data.value)
 const empresaActiva = useEmpresaSeleccionada()
 const empresasQuery = useEmpresasQuery(ref({ pagina: 1, limite: 100 }))
 const empresaOptions = computed(() => (empresasQuery.data.value?.data ?? []).map(e => ({ value: e.id, label: `${e.razon_social || e.nombre_comercial || 'Empresa'} · ${e.ruc}` })))
 const empresaDocumentoLabel = computed(() => empresaOptions.value.find(e => e.value === documento.value?.id_empresa)?.label ?? `Empresa #${documento.value?.id_empresa}`)
 
-/**
- * Estados que ya no admiten acción: se leen como badges en vez de ocupar sitio
- * entre los botones. La barra de acciones queda solo con lo que aún se puede hacer.
- */
-/**
- * La factura del proveedor se registra desde la orden que la origina. Solo tiene
- * sentido en planta externa, una vez generada (antes no hay nada que facturar) y
- * mientras no exista ya una compra vinculada.
- */
+
 const puedeRegistrarCompra = computed(
   () =>
     isRecargaPlanta.value &&
@@ -1253,11 +1410,6 @@ const puedeRegistrarCompra = computed(
     authStore.hasPermission(PermisoBanderas.COMPRAS_CREAR),
 )
 
-/**
- * Proveedor y almacén viajan en la URL además del id: la compra los deduce de
- * la orden igual, pero llevarlos evita que el selector de órdenes arranque
- * deshabilitado ("selecciona el proveedor primero") mientras carga el detalle.
- */
 const compraDesdeOrdenQuery = computed(() => {
   const doc = documento.value
   return {
@@ -1281,6 +1433,12 @@ const hitosDelDocumento = computed(() => {
   }
   if (doc.serie && doc.numero_sunat) {
     hitos.push({ texto: `Guía ${doc.serie}-${doc.numero_sunat}`, color: 'neutral' })
+  }
+  if (doc.gre_entorno) {
+    hitos.push({
+      texto: doc.gre_entorno === 'produccion' ? 'Entorno: Producción' : 'Entorno: Pruebas (BETA)',
+      color: doc.gre_entorno === 'produccion' ? 'success' : 'warning',
+    })
   }
   if (doc.emitido_sunat) {
     hitos.push({ texto: 'Emitida a SUNAT', color: 'success' })
@@ -1327,12 +1485,6 @@ const puedeEditarDetalle = computed(
     !documento.value?.detalle_desde_venta,
 )
 
-
-
-// ---- Detalle del documento ya creado ----
-// La clave lleva el origen porque el detalle une dos tablas: los ítems de la
-// venta y los cilindros del préstamo, cuyos ids se pueden repetir entre sí.
-/** El detalle ya guardado, en la forma que consume el editor. */
 const lineasDocumentoDetalle = computed<DocSalidaDetalleLinea[]>(() =>
   (documento.value?.detalle ?? []).map((linea) => ({
     key: `${linea.origen_detalle}-${linea.id}`,
@@ -1375,11 +1527,7 @@ async function onAgregarLinea(linea: DocSalidaLineaBorrador) {
 const actualizarDetalleMutation = useActualizarDetalleDocSalidaMutation()
 const eliminarDetalleMutation = useEliminarDetalleDocSalidaMutation()
 
-/**
- * Misma semántica que en borrador, resuelta contra la BD: la línea del producto
- * se crea si no existía, se corrige si cambió y se quita cuando la cantidad
- * vuelve a cero.
- */
+
 async function onSetProductoDocumento(producto: DocSalidaProductoCantidad) {
   const doc = documento.value
   if (!doc) return
@@ -1434,9 +1582,7 @@ async function onQuitarLineaDocumento(key: string) {
   })
 }
 
-// ---- Observaciones ----
-// Se escriben al crear, pero una nota mal puesta quedaba fija: acá se corrigen
-// mientras el documento no esté anulado ni emitido.
+
 const actualizarDocMutation = useActualizarDocSalidaMutation()
 const editandoObservaciones = ref(false)
 const observacionesBorrador = ref('')
@@ -1465,10 +1611,9 @@ async function onGuardarObservaciones() {
   editandoObservaciones.value = false
 }
 
-// ---- Generar / anular ----
 const generarMutation = useGenerarDocSalidaMutation()
 
-/** Hay cilindros con gas derivado pero ninguna línea de gas con cantidad > 0. */
+/* Hay cilindros con gas derivado pero ninguna línea de gas con cantidad > 0. 
 function gasSinCantidadEnDetalle(): boolean {
   const detalle = documento.value?.detalle ?? []
   const cilindros = detalle.filter((linea) => linea.id_balon != null)
@@ -1487,16 +1632,10 @@ function gasSinCantidadEnDetalle(): boolean {
       .reduce((sum, linea) => sum + Number(linea.cantidad ?? 0), 0)
     return cantidad <= 0
   })
-}
+} */
 
 async function onGenerar() {
   if (!documento.value) return
-  if (gasSinCantidadEnDetalle()) {
-    toastWarning(
-      'Hay cilindros en el detalle pero todas las líneas de gas tienen cantidad 0. Indica la cantidad de gas antes de generar.',
-    )
-    return
-  }
   await generarMutation.mutateAsync({
     id: documento.value.id,
     idUsuarioAuditoria: idUsuarioAuditoria.value,
@@ -1582,17 +1721,84 @@ const resumenEmision = computed(() => {
   return { tipo, transporte }
 })
 
-async function onEmitir() {
+// ---- Prevalidación antes de emitir (misma validación que corre el backend) ----
+const validarGreMutation = useValidarGreMutation()
+const validacionGre = ref<ValidarGreResponse | null>(null)
+const erroresGre = computed<GreProblema[]>(() => (validacionGre.value?.problemas ?? []).filter((p) => p.severidad === 'error'))
+const advertenciasGre = computed<GreProblema[]>(() => (validacionGre.value?.problemas ?? []).filter((p) => p.severidad === 'advertencia'))
+const resumenGre = computed(() => validacionGre.value?.resumen ?? ({} as Partial<ValidarGreResponse['resumen']>))
+
+/**
+ * El entorno real lo dice la verificación del PSE (antes de emitir) o el
+ * intento ya enviado (después). Sin ninguno de los dos no se asume nada.
+ */
+const entornoResuelto = computed(() => validacionGre.value?.entorno ?? documento.value?.gre_entorno ?? null)
+const entornoEsProduccion = computed(() => entornoResuelto.value === 'produccion')
+
+async function revalidarGre() {
   if (!documento.value) return
+  validacionGre.value = null
+  try {
+    validacionGre.value = await validarGreMutation.mutateAsync(documento.value.id)
+  } catch {
+    // toast en la mutation; el modal muestra el estado sin validar
+  }
+}
+
+async function abrirEmitir() {
+  emitirConfirmOpen.value = true
+  await revalidarGre()
+}
+
+/** Campos que se corrigen desde el modal «Editar datos GRE». */
+const CAMPOS_MODAL_GRE = new Set([
+  'idTipoGuiaRemision', 'serie', 'fechaEmisionGre', 'fechaTraslado', 'idMotivoTraslado', 'idModalidadTraslado',
+  'direccionOrigen', 'idDistritoOrigen', 'direccionLlegada', 'idDistritoLlegada', 'pesoBruto', 'numeroBultos',
+  'idChofer', 'idVehiculo', 'idTransportista', 'empresa',
+])
+function campoEditableEnGre(campo: string) {
+  return CAMPOS_MODAL_GRE.has(campo)
+}
+function irAlCampoGre() {
+  emitirConfirmOpen.value = false
+  greModalOpen.value = true
+}
+
+async function onEmitir() {
+  if (!documento.value || !validacionGre.value?.listo) return
   try {
     await emitirMutation.mutateAsync({
       id: documento.value.id,
       idUsuarioAuditoria: idUsuarioAuditoria.value,
     })
     emitirConfirmOpen.value = false
+    validacionGre.value = null
   } catch {
-    // toast en la mutation; el diálogo queda abierto para reintentar
+    // toast en la mutation; se revalida porque el estado pudo cambiar (intento abierto, ticket)
+    await revalidarGre()
   }
+}
+
+// ---- Historial de intentos/consultas ----
+const historialGreOpen = ref(false)
+const historialGreQuery = useGreHistorialQuery(documentoId, historialGreOpen)
+const historialGre = computed(() => historialGreQuery.data.value?.intentos ?? [])
+
+function etiquetaEstadoIntento(estado: string) {
+  switch (estado) {
+    case 'ACEPTADO': return entornoResuelto.value === 'beta' ? 'Aceptada en pruebas' : 'Aceptada'
+    case 'RECHAZADO': return 'Rechazada'
+    case 'PENDIENTE': return 'En proceso'
+    case 'POR_CONFIRMAR': return 'Resultado por confirmar'
+    case 'ENVIANDO': return 'Enviando'
+    default: return estado
+  }
+}
+function estadoIntentoColor(estado: string): 'success' | 'error' | 'warning' | 'neutral' {
+  if (estado === 'ACEPTADO') return 'success'
+  if (estado === 'RECHAZADO') return 'error'
+  if (estado === 'PENDIENTE' || estado === 'POR_CONFIRMAR') return 'warning'
+  return 'neutral'
 }
 
 const consultarMutation = useConsultarEstadoDocSalidaMutation()
@@ -1602,6 +1808,25 @@ async function onConsultarEstado() {
     id: documento.value.id,
     idUsuarioAuditoria: idUsuarioAuditoria.value,
   })
+}
+
+// ---- Archivos del intento original ----
+const archivoAbriendo = ref<'pdf' | 'xml' | null>(null)
+async function onAbrirArchivoGre(tipo: 'pdf' | 'xml') {
+  const d = documento.value
+  if (!d || archivoAbriendo.value) return
+  archivoAbriendo.value = tipo
+  try {
+    await visualizarArchivo(
+      () => tipo === 'pdf' ? documentosSalidaService.obtenerPdfOficial(d.id) : documentosSalidaService.obtenerXmlOficial(d.id),
+      `GRE-${d.serie}-${d.numero_sunat}.${tipo}`,
+      tipo,
+    )
+  } catch (error) {
+    toastApiError(error, `No se pudo abrir el ${tipo.toUpperCase()} del envío`)
+  } finally {
+    archivoAbriendo.value = null
+  }
 }
 
 // ---- Finalizar recarga (retorno de planta) ----
@@ -1705,9 +1930,8 @@ function formatFechaHora(iso: string) {
 async function onDescargarPdf() {
   if (!documento.value) return
   try {
-    const blob = await documentosSalidaService.obtenerPdf(documento.value.id)
-    const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
+    const id = documento.value.id
+    await visualizarArchivo(() => documentosSalidaService.obtenerPdf(id), `Documento-${id}.pdf`, 'pdf')
     toastSuccess('PDF generado')
   } catch (error) {
     toastApiError(error, 'No se pudo generar el PDF')

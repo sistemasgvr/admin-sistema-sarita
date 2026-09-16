@@ -1,11 +1,5 @@
 <template>
   <div class="min-w-0">
-    <!--
-      La unidad va en un addon pegado al campo, no flotando encima: superpuesta
-      chocaba con las flechas del input numérico y quedaba ilegible. Las flechas
-      se ocultan (abajo, en el style) porque en cantidades con decimales no
-      sirven de nada.
-    -->
     <div
       class="flex items-stretch overflow-hidden rounded-lg border bg-white transition dark:bg-gray-900"
       :class="
@@ -37,12 +31,6 @@
         {{ unidad }}
       </span>
     </div>
-
-    <!--
-      Los dos techos de la cantidad en una sola línea: no se puede sacar más de
-      lo que hay en el almacén, ni más de lo que cabe en los cilindros de la
-      orden. El campo recorta al menor de los dos.
-    -->
     <p
       v-if="pistas.length"
       class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-tight"
@@ -90,15 +78,6 @@ const modelo = defineModel<number | string>({ default: '' })
 
 const campo = ref<HTMLInputElement | null>(null)
 
-/**
- * Recorta al tope mientras se teclea: el atributo `max` del HTML no impide
- * escribir de más. Solo aquí, no en un watcher: si el tope baja después (se
- * quitó un balón), el valor debe quedarse en rojo a la vista en vez de
- * corregirse solo por detrás.
- *
- * Se guarda el texto tal cual, sin convertir a número, para no romper el tecleo
- * de decimales ("1." se volvería 1 y borraría el punto).
- */
 function onInput(evento: Event) {
   const campoHtml = evento.target as HTMLInputElement
   let texto = campoHtml.value
@@ -114,11 +93,6 @@ function onInput(evento: Event) {
   modelo.value = texto
 }
 
-/**
- * Enter sale del campo en vez de emitir `commit` por su cuenta: así el guardado
- * tiene un solo camino (el blur) y no se dispara dos veces al pulsar Enter y
- * luego mover el foco.
- */
 function salirDelCampo() {
   campo.value?.blur()
 }

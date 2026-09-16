@@ -173,6 +173,14 @@ export function useConvertirAGreMutation() {
   })
 }
 
+/** Prevalidación GRE + verificación del PSE; no modifica nada. */
+export function useValidarGreMutation() {
+  return useMutation({
+    mutationFn: (id: number) => documentosSalidaService.validarGre(id),
+    onError: (error) => toastApiError(error, 'No se pudo validar la guía'),
+  })
+}
+
 export function useEmitirSunatDocSalidaMutation() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -196,6 +204,19 @@ export function useConsultarEstadoDocSalidaMutation() {
       toastEstadoSunat('Estado SUNAT', data.sunat.estado)
     },
     onError: (error) => toastApiError(error, 'No se pudo consultar el estado'),
+  })
+}
+
+export function useDescargarPdfXmlSunatMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: number }) =>
+      documentosSalidaService.descargarPdfXmlSunat(id),
+    onSuccess: (data, variables) => {
+      invalidateAll(queryClient, variables.id)
+      toastSuccess(data.mensaje)
+    },
+    onError: (error) => toastApiError(error, 'No se pudo descargar PDF/XML desde SUNAT'),
   })
 }
 

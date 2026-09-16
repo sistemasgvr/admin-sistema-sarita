@@ -635,10 +635,11 @@ const phPorVencerOptions = [
   { label: '90 días', value: 90 },
 ]
 
-const tipoValvulaFilterOptions = [
-  { label: 'Americana', value: 'Americana' },
-  { label: 'China', value: 'China' },
-]
+const tipoValvulaId = ref(ListaIds.TIPO_VALVULA)
+const tipoValvulaQuery = useListaOpcionesQuery(tipoValvulaId)
+const tipoValvulaFilterOptions = computed(() =>
+  (tipoValvulaQuery.data.value ?? []).map((o) => ({ label: o.nombre, value: o.nombre })),
+)
 
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {

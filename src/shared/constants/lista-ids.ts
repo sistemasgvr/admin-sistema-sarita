@@ -90,6 +90,42 @@ export const ListaIds = {
   CARGOS_TRABAJADOR: 68,
   /** gen_lista.nombre = ACTIVOS_TIPO (PCs/Laptops, Escritorios, etc.) */
   ACTIVOS_TIPO: 69,
+  /** gen_lista.nombre = RegimenPercepcion (catálogo 22 SUNAT) */
+  REGIMEN_PERCEPCION: 76,
+  /** gen_lista.nombre = RegimenRetencion (catálogo 23 SUNAT) */
+  REGIMEN_RETENCION: 77,
+  /** gen_lista.nombre = EstadoSunat */
+  ESTADO_SUNAT: 27,
+  /** gen_lista.nombre = TipoGuiaRemision */
+  TIPO_GUIA_REMISION: 43,
+  /** gen_lista.nombre = ModalidadTraslado */
+  MODALIDAD_TRASLADO: 44,
+  /** gen_lista.nombre = MotivoTraslado */
+  MOTIVO_TRASLADO: 45,
+  /** gen_lista.nombre = TipoOrdenSalida */
+  TIPO_ORDEN_SALIDA: 70,
+  /** gen_lista.nombre = EstadoCicloSalida */
+  ESTADO_CICLO_SALIDA: 71,
+  /** gen_lista.nombre = AfectacionIgv */
+  AFECTACION_IGV: 23,
+  /** gen_lista.nombre = TipoOperacionSunat */
+  TIPO_OPERACION_SUNAT: 25,
+  /** gen_lista.nombre = MotivoNotaCredito */
+  MOTIVO_NOTA_CREDITO: 31,
+  /** gen_lista.nombre = MedioPago */
+  MEDIO_PAGO: 58,
+  /** gen_lista.nombre = CondicionRegulador */
+  CONDICION_REGULADOR: 64,
+  /** gen_lista.nombre = EstadoRutaPueblo */
+  ESTADO_RUTA_PUEBLO: 66,
+  /** gen_lista.nombre = NaturalezaMovInv */
+  NATURALEZA_MOV_INV: 78,
+  /** gen_lista.nombre = TipoValvula */
+  TIPO_VALVULA: 79,
+  /** gen_lista.nombre = SentidoAjuste */
+  SENTIDO_AJUSTE: 80,
+  /** gen_lista.nombre = TipoItemMantenimiento */
+  TIPO_ITEM_MANTENIMIENTO: 81,
 } as const
 
 export type ListaIdKey = keyof typeof ListaIds

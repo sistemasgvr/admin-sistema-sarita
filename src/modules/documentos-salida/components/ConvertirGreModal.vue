@@ -3,6 +3,19 @@
     <div class="space-y-5">
       <AppSelect v-model="idEmpresaEmisora" label="Empresa emisora de esta guía" :options="empresaOptions" placeholder="Selecciona la empresa emisora" :disabled="(!!documento?.id_empresa && !!documento?.numero_sunat) || mutation.isPending.value" />
       <p class="text-sm text-gray-500">Comprueba la razón social y el RUC. La guía conservará esta empresa para el PDF, la emisión y las consultas SUNAT.</p>
+      <div
+        v-if="idEmpresaEmisora && empresaSeleccionadaInfo"
+        class="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs dark:border-gray-700 dark:bg-white/5"
+      >
+        <span class="font-semibold text-gray-800 dark:text-white/90">{{ empresaSeleccionadaInfo.razon_social || empresaSeleccionadaInfo.nombre_comercial }}</span>
+        <span class="rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-white/10 dark:text-gray-300">RUC: {{ empresaSeleccionadaInfo.ruc }}</span>
+        <span
+          class="rounded-full px-2 py-0.5 text-[11px] font-bold"
+          :class="entornoBadgeClass"
+        >
+          {{ documento?.gre_entorno === 'produccion' ? 'PRODUCCIÓN' : 'PRUEBAS (BETA)' }}
+        </span>
+      </div>
       <!-- 1. Tipo de guía: define quién emite y, con eso, qué datos pide SUNAT -->
       <section class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
         <h4 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -19,7 +32,7 @@
             type="button"
             class="flex items-start gap-3 rounded-xl border p-3 text-left transition"
             :class="cardClass(codigoTipoGuia === opcion.codigo, opcion.disponible)"
-            :disabled="!opcion.disponible || catalogosQuery.isLoading.value"
+            :disabled="!opcion.disponible || catalogosCargando"
             @click="seleccionarTipoGuia(opcion.codigo)"
           >
             <span
@@ -73,7 +86,7 @@
               type="button"
               class="flex items-start gap-3 rounded-xl border p-3 text-left transition"
               :class="cardClass(codigoModalidad === opcion.codigo, opcion.disponible)"
-              :disabled="!opcion.disponible || catalogosQuery.isLoading.value"
+              :disabled="!opcion.disponible || catalogosCargando"
               @click="seleccionarModalidad(opcion.codigo)"
             >
               <span
@@ -144,11 +157,12 @@
             v-model="form.idMotivoTraslado"
             label="Motivo de traslado"
             required
-            :placeholder="catalogosQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+            :placeholder="catalogosCargando ? 'Cargando...' : 'Selecciona...'"
             :options="motivoTrasladoOptions"
-            :disabled="catalogosQuery.isLoading.value"
+            :disabled="catalogosCargando"
             hint="Catálogo 20 SUNAT"
           />
+          <AppDatePicker v-model="form.fechaEmisionGre" label="Fecha de emisión de la GRE" required />
           <AppDatePicker v-model="form.fechaTraslado" label="Fecha de inicio del traslado" required />
           <AppInput
             v-model.number="form.pesoBruto"
@@ -395,12 +409,13 @@ import VehiculoFormModal from '@/modules/vehiculos/components/VehiculoFormModal.
 import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 import type { Vehiculo } from '@/modules/vehiculos/interfaces/vehiculo.interface'
 import {
-  useDocumentoSalidaCatalogosQuery,
   useSeriesGreQuery,
 } from '../composables/useDocumentosSalidaQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useConvertirAGreMutation } from '../composables/useDocumentoSalidaMutations'
 import type { DocumentoSalida } from '../interfaces/documento-salida.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { AppDatePicker, AppInput, AppModal, AppSelect, UbigeoCascadeSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -421,10 +436,17 @@ const tituloModal = computed(() =>
 )
 
 // ---- Catálogos ----
-const catalogosQuery = useDocumentoSalidaCatalogosQuery()
+const tiposGuiaQuery = useListaOpcionesQuery(ref(ListaIds.TIPO_GUIA_REMISION))
+const modalidadesQuery = useListaOpcionesQuery(ref(ListaIds.MODALIDAD_TRASLADO))
+const motivosQuery = useListaOpcionesQuery(ref(ListaIds.MOTIVO_TRASLADO))
+
+const catalogosCargando = computed(() =>
+  tiposGuiaQuery.isLoading.value || modalidadesQuery.isLoading.value || motivosQuery.isLoading.value,
+)
+
 const motivoTrasladoOptions = computed<SelectOption[]>(
   () =>
-    catalogosQuery.data.value?.motivosTraslado.map((o) => ({
+    motivosQuery.data.value?.map((o) => ({
       value: o.id,
       label: formatListaOpcionLabel(o.nombre, o.descripcion),
     })) ?? [],
@@ -449,11 +471,23 @@ const idEmpresaEmisora = ref<number | undefined>()
 const empresasQuery = useEmpresasQuery(ref({ pagina: 1, limite: 100 }))
 const empresaOptions = computed(() => (empresasQuery.data.value?.data ?? []).map(e => ({ value: e.id, label: `${e.razon_social || e.nombre_comercial || 'Empresa'} · ${e.ruc}` })))
 
+const empresaSeleccionadaInfo = computed(() => {
+  if (!idEmpresaEmisora.value) return null
+  return (empresasQuery.data.value?.data ?? []).find(e => e.id === idEmpresaEmisora.value) ?? null
+})
+
+const entornoBadgeClass = computed(() => {
+  const entorno = props.documento?.gre_entorno
+  if (entorno === 'produccion') return 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+  return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+})
+
 const form = reactive({
   serie: '',
   idTipoGuiaRemision: '' as number | '',
   idMotivoTraslado: '' as number | '',
   idModalidadTraslado: '' as number | '',
+  fechaEmisionGre: '',
   fechaTraslado: '',
   direccionOrigen: '',
   idDistritoOrigen: undefined as number | undefined,
@@ -467,14 +501,14 @@ const form = reactive({
 })
 
 // ---- Tipo de guía y modalidad (tarjetas) ----
-const codigoTipoGuia = computed(() => codigoPorId(catalogosQuery.data.value?.tiposGuia, form.idTipoGuiaRemision))
+const codigoTipoGuia = computed(() => codigoPorId(tiposGuiaQuery.data.value, form.idTipoGuiaRemision))
 const esGreTransportista = computed(() => codigoTipoGuia.value === CODIGO_GRE_TRANSPORTISTA)
 
 /** En la 31 la modalidad la fija SUNAT; en la 09 la elige el usuario. */
 const codigoModalidad = computed(() =>
   esGreTransportista.value
     ? CODIGO_MODALIDAD_PUBLICO
-    : codigoPorId(catalogosQuery.data.value?.modalidadesTraslado, form.idModalidadTraslado),
+    : codigoPorId(modalidadesQuery.data.value, form.idModalidadTraslado),
 )
 
 /** Vehículo + chofer propios: transporte privado (09/02) o guía de transportista (31). */
@@ -483,7 +517,7 @@ const requiereFlotaPropia = computed(
 )
 
 const tipoGuiaCards = computed(() => {
-  const tipos = catalogosQuery.data.value?.tiposGuia
+  const tipos = tiposGuiaQuery.data.value
   return [
     {
       codigo: CODIGO_GRE_REMITENTE,
@@ -507,7 +541,7 @@ const tipoGuiaCards = computed(() => {
 })
 
 const modalidadCards = computed(() => {
-  const modalidades = catalogosQuery.data.value?.modalidadesTraslado
+  const modalidades = modalidadesQuery.data.value
   return [
     {
       codigo: CODIGO_MODALIDAD_PRIVADO,
@@ -527,12 +561,12 @@ const modalidadCards = computed(() => {
 })
 
 function seleccionarTipoGuia(codigo: string) {
-  const id = idPorCodigo(catalogosQuery.data.value?.tiposGuia, codigo)
+  const id = idPorCodigo(tiposGuiaQuery.data.value, codigo)
   if (id != null) form.idTipoGuiaRemision = id
 }
 
 function seleccionarModalidad(codigo: string) {
-  const id = idPorCodigo(catalogosQuery.data.value?.modalidadesTraslado, codigo)
+  const id = idPorCodigo(modalidadesQuery.data.value, codigo)
   if (id != null) form.idModalidadTraslado = id
 }
 
@@ -553,7 +587,7 @@ watch(codigoTipoGuia, (nuevo, anterior) => {
   }
 })
 
-// ---- Serie y correlativo ----
+// ---- Serie y   correlativo ----
 /** Valor del select para escribir una serie que todavía no se ha usado. */
 const NUEVA_SERIE = '__nueva__'
 const serieSeleccionada = ref<string>('')
@@ -725,13 +759,15 @@ const documentoPorCliente = ref<Record<number, string>>({})
 async function searchChoferes(query: string): Promise<SelectOption[]> {
   const response = await choferesService.listar({ buscar: query || undefined, pagina: 1, limite: 30, isActivos: 1 })
   return response.data.map((c: Chofer) => {
-    licenciaPorChofer.value[c.id] = c.codigo_licencia?.trim() || null
+    if (c.codigo_licencia !== undefined) {
+      licenciaPorChofer.value[c.id] = c.codigo_licencia?.trim() || null
+    }
     return {
       value: c.id,
       label:
         `${c.nombres} ${c.apellido_paterno ?? ''}`.trim() +
         (c.numero_documento ? ` · ${c.numero_documento}` : '') +
-        (c.codigo_licencia ? ` · Lic. ${c.codigo_licencia}` : ' · sin licencia'),
+        (c.codigo_licencia?.trim() ? ` · Lic. ${c.codigo_licencia.trim()}` : c.codigo_licencia === undefined ? ' · licencia por verificar' : ' · sin licencia'),
     }
   })
 }
@@ -798,6 +834,7 @@ const pendientes = computed<string[]>(() => {
   if (!form.serie || errorSerie.value) faltan.push('Serie de la guía')
   if (!esGreTransportista.value && !codigoModalidad.value) faltan.push('Elige quién transporta la carga')
   if (!form.idMotivoTraslado) faltan.push('Motivo de traslado')
+  if (!form.fechaEmisionGre) faltan.push('Fecha de emisión de la GRE')
   if (!form.fechaTraslado) faltan.push('Fecha de inicio del traslado')
   if (!(Number(form.pesoBruto) > 0)) faltan.push('Peso bruto total mayor a 0')
   if (!form.direccionOrigen.trim()) faltan.push('Dirección de partida')
@@ -839,7 +876,7 @@ const pendientes = computed<string[]>(() => {
 // ---- Carga inicial ----
 /** Motivo SUNAT que se deduce del tipo de orden cuando la guía aún no tiene uno. */
 function motivoPorDefecto(): number | '' {
-  const motivos = catalogosQuery.data.value?.motivosTraslado
+  const motivos = motivosQuery.data.value
   switch (props.documento?.nombre_tipo_orden) {
     case 'ORDEN_SALIDA_VENTA':
       return idPorCodigo(motivos, '01') ?? ''
@@ -854,8 +891,8 @@ watch(open, (isOpen) => {
   if (!isOpen || !props.documento) return
   const d = props.documento
   idEmpresaEmisora.value = d.id_empresa ?? empresaActiva.value
-  const tipos = catalogosQuery.data.value?.tiposGuia
-  const modalidades = catalogosQuery.data.value?.modalidadesTraslado
+  const tipos = tiposGuiaQuery.data.value
+  const modalidades = modalidadesQuery.data.value
 
   form.serie = d.serie ?? ''
   serieSeleccionada.value = ''
@@ -866,6 +903,7 @@ watch(open, (isOpen) => {
     d.id_modalidad_traslado ?? idPorCodigo(modalidades, CODIGO_MODALIDAD_PRIVADO) ?? ''
   sincronizarSerieSeleccionada()
   form.idMotivoTraslado = d.id_motivo_traslado ?? motivoPorDefecto()
+  form.fechaEmisionGre = (d.fecha_emision_gre ?? new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Lima' }).format(new Date())).slice(0, 10)
   form.fechaTraslado = (d.fecha_traslado ?? d.fecha ?? '').slice(0, 10)
   form.direccionOrigen = d.direccion_origen ?? d.direccion_almacen ?? ''
   // En un traslado no hay dirección de entrega de cliente: la carga va a otro
@@ -933,14 +971,14 @@ watch(open, (isOpen) => {
 // Los catálogos pueden llegar después de abrir: completar los valores por
 // defecto que dependían de ellos sin pisar lo que el usuario ya eligió.
 watch(
-  () => catalogosQuery.data.value,
-  (data) => {
-    if (!open.value || !data) return
+  tiposGuiaQuery.data,
+  () => {
+    if (!open.value || !tiposGuiaQuery.data.value) return
     if (!form.idTipoGuiaRemision) {
-      form.idTipoGuiaRemision = idPorCodigo(data.tiposGuia, CODIGO_GRE_REMITENTE) ?? ''
+      form.idTipoGuiaRemision = idPorCodigo(tiposGuiaQuery.data.value, CODIGO_GRE_REMITENTE) ?? ''
     }
     if (!form.idModalidadTraslado) {
-      form.idModalidadTraslado = idPorCodigo(data.modalidadesTraslado, CODIGO_MODALIDAD_PRIVADO) ?? ''
+      form.idModalidadTraslado = idPorCodigo(modalidadesQuery.data.value, CODIGO_MODALIDAD_PRIVADO) ?? ''
     }
     if (!form.idMotivoTraslado) form.idMotivoTraslado = motivoPorDefecto()
   },
@@ -953,7 +991,7 @@ async function onGuardar() {
   if (!props.documento || !form.serie || errorSerie.value) return
   if (!idEmpresaEmisora.value) { toastWarning('Selecciona la empresa emisora de la guía'); return }
   const modalidadId = esGreTransportista.value
-    ? (idPorCodigo(catalogosQuery.data.value?.modalidadesTraslado, CODIGO_MODALIDAD_PUBLICO) ?? undefined)
+    ? (idPorCodigo(modalidadesQuery.data.value, CODIGO_MODALIDAD_PUBLICO) ?? undefined)
     : form.idModalidadTraslado
       ? Number(form.idModalidadTraslado)
       : undefined
@@ -966,6 +1004,7 @@ async function onGuardar() {
         idTipoGuiaRemision: form.idTipoGuiaRemision ? Number(form.idTipoGuiaRemision) : undefined,
         idMotivoTraslado: form.idMotivoTraslado ? Number(form.idMotivoTraslado) : undefined,
         idModalidadTraslado: modalidadId,
+        fechaEmisionGre: form.fechaEmisionGre,
         fechaTraslado: form.fechaTraslado || undefined,
         direccionOrigen: form.direccionOrigen || undefined,
         idDistritoOrigen: form.idDistritoOrigen,

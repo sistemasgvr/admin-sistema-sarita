@@ -264,6 +264,97 @@
             />
           </div>
         </div>
+    </AppCollapsibleSection>
+
+      <!--
+        Verificar = solo lecturas al PSE (RUC, entorno, URLs, credenciales).
+        Sincronizar = la única acción que escribe credenciales GRE en la
+        empresa del PSE; nunca ocurre al emitir ni al consultar un ticket.
+      -->
+      <AppCollapsibleSection
+        v-model:open="openVerificacion"
+        data-tutorial="sunat-verificacion"
+        title="Conexión y entorno GRE en el PSE"
+        description="Comprueba con qué empresa, RUC y entorno (pruebas o producción) saldrían las guías, y sincroniza las credenciales cuando corresponda."
+        :icon="ICONS.shield"
+        :badge="verificacionBadge"
+      >
+        <div class="space-y-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              :disabled="!selectedEmpresaId || verificarMutation.isPending.value || sincronizarMutation.isPending.value"
+              @click="onVerificarGre"
+            >
+              <AppIcon :name="ICONS.search" :size="14" />
+              {{ verificarMutation.isPending.value ? 'Verificando...' : 'Verificar conexión y empresa' }}
+            </button>
+            <button
+              v-if="canSave"
+              type="button"
+              class="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+              :disabled="!selectedEmpresaId || sincronizarMutation.isPending.value || verificarMutation.isPending.value"
+              @click="onSincronizarGre"
+            >
+              <AppIcon :name="ICONS.refreshCw" :size="14" />
+              {{ sincronizarMutation.isPending.value ? 'Sincronizando...' : 'Sincronizar configuración GRE' }}
+            </button>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+              Guarda primero los cambios: la sincronización usa lo registrado en esta pantalla.
+            </span>
+          </div>
+
+          <div v-if="verificacionGre" class="space-y-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <span
+                class="rounded-full px-2.5 py-0.5 text-xs font-bold"
+                :class="verificacionGre.entorno === 'produccion'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                  : verificacionGre.entorno === 'beta'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                    : 'bg-gray-100 text-gray-600 dark:bg-white/5 dark:text-gray-300'"
+              >
+                {{ verificacionGre.entorno === 'produccion' ? 'PRODUCCIÓN' : verificacionGre.entorno === 'beta' ? 'PRUEBAS (BETA)' : 'ENTORNO DESCONOCIDO' }}
+              </span>
+              <span
+                class="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                :class="verificacionGre.listo
+                  ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                  : 'bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-400'"
+              >
+                {{ verificacionGre.listo ? 'Lista para emitir GRE' : 'No lista para emitir' }}
+              </span>
+              <span v-if="'sincronizado' in verificacionGre && verificacionGre.sincronizado" class="text-xs text-gray-500">
+                Sincronizado: {{ verificacionGre.camposActualizados.join(', ') }}
+              </span>
+            </div>
+
+            <dl class="grid grid-cols-1 gap-x-6 gap-y-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+              <div><dt class="text-gray-400">RUC local</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ verificacionGre.ruc }}</dd></div>
+              <div><dt class="text-gray-400">Empresa en el PSE</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ verificacionGre.rucCoincide ? `#${verificacionGre.companyId} · RUC coincide` : 'No encontrada' }}</dd></div>
+              <div><dt class="text-gray-400">Entorno informado</dt><dd>{{ verificacionGre.entornoNombre || '—' }}</dd></div>
+              <div><dt class="text-gray-400">URL GRE</dt><dd class="break-all">{{ verificacionGre.apiCpeUrl || '—' }} <span v-if="!verificacionGre.urlsCoherentes" class="text-error-500">(incoherente)</span></dd></div>
+              <div><dt class="text-gray-400">client_id en el PSE</dt><dd class="break-all">{{ verificacionGre.clientIdPse || '—' }} <span v-if="verificacionGre.esCredencialPrueba" class="text-amber-600">(prueba)</span></dd></div>
+              <div><dt class="text-gray-400">client_id local</dt><dd class="break-all">{{ verificacionGre.clientIdLocal || '—' }}</dd></div>
+              <div><dt class="text-gray-400">SOL local</dt><dd>{{ verificacionGre.tieneSolLocal ? 'Configurado' : 'Sin usuario/clave' }}</dd></div>
+            </dl>
+
+            <ul v-if="verificacionGre.problemas.length" class="space-y-1">
+              <li
+                v-for="(problema, index) in verificacionGre.problemas"
+                :key="index"
+                class="flex items-start gap-2 rounded-lg border border-error-200 bg-error-50 px-3 py-1.5 text-xs text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
+              >
+                <AppIcon :name="ICONS.alertTriangle" :size="13" class="mt-0.5 shrink-0" />
+                <span>{{ problema }}</span>
+              </li>
+            </ul>
+            <p v-if="verificacionGre.entorno === 'beta'" class="text-xs text-amber-700 dark:text-amber-300">
+              En BETA las guías se aceptan en el simulador de SUNAT y no tienen valor fiscal. Para producción cambia el entorno de la empresa en APIsPERU, registra OAuth y SOL reales aquí y vuelve a sincronizar.
+            </p>
+          </div>
+        </div>
       </AppCollapsibleSection>
 
       <div
@@ -309,11 +400,15 @@ import {
 } from '@/modules/configuracion/config/configuracion-breadcrumb'
 import {
   useCreateConfiguracionSunatMutation,
+  useSincronizarGreMutation,
   useUpdateConfiguracionSunatMutation,
+  useVerificarGreMutation,
 } from '@/modules/configuracion/sunat/composables/useConfiguracionSunatMutations'
 import { useConfiguracionSunatPorEmpresaQuery } from '@/modules/configuracion/sunat/composables/useConfiguracionSunatPorEmpresaQuery'
 import type {
   CreateConfiguracionSunatPayload,
+  GreEmpresaVerificacion,
+  GreSincronizacionResultado,
   UpdateConfiguracionSunatPayload,
 } from '@/modules/configuracion/sunat/interfaces/configuracion-sunat.interface'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
@@ -321,6 +416,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createConfiguracionSunatTutorial } from '@/modules/soporte/tutorials/configuracion-sunat.tutorial'
 import { AppCheckbox, AppCollapsibleSection, AppInput, AppSelect } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
@@ -417,6 +513,41 @@ const isEditMode = computed(() => configuracionSunat.value != null)
 const openSol = ref(true)
 const openPse = ref(false)
 const openOauth = ref(false)
+const openVerificacion = ref(false)
+
+// ---- Verificación / sincronización GRE en el PSE ----
+const verificarMutation = useVerificarGreMutation()
+const sincronizarMutation = useSincronizarGreMutation()
+const verificacionGre = ref<GreEmpresaVerificacion | GreSincronizacionResultado | null>(null)
+
+const verificacionBadge = computed(() => {
+  const v = verificacionGre.value
+  if (!v) return 'Sin verificar'
+  const entorno = v.entorno === 'produccion' ? 'Producción' : v.entorno === 'beta' ? 'BETA' : '?'
+  return v.listo ? `${entorno} · lista` : `${entorno} · pendiente`
+})
+
+async function onVerificarGre() {
+  if (!selectedEmpresaId.value) return
+  try {
+    verificacionGre.value = await verificarMutation.mutateAsync(selectedEmpresaId.value)
+  } catch {
+    // toast en la mutation
+  }
+}
+
+async function onSincronizarGre() {
+  if (!selectedEmpresaId.value) return
+  try {
+    verificacionGre.value = await sincronizarMutation.mutateAsync(selectedEmpresaId.value)
+  } catch {
+    // toast en la mutation
+  }
+}
+
+watch(selectedEmpresaId, () => {
+  verificacionGre.value = null
+})
 
 const solBadge = computed(() => {
   if (!configuracionSunat.value) return 'Pendiente'

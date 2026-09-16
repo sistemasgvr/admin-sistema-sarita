@@ -12,6 +12,9 @@ export interface DocSalidaAccionesFuente {
   emitido_sunat?: boolean | null
   serie?: string | null
   ticket_sunat?: string | null
+  nombre_estado_sunat?: string | null
+  /** Estado del último intento de envío (doc_gre_intento). */
+  gre_estado_envio?: string | null
   detalle_desde_venta?: boolean | null
   /**
    * Los envases ya entraron al almacén (ENTRADA_PLANTA_EXTERNA vigente). Es lo
@@ -62,6 +65,19 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
   const anulada = computed(() => estado.value === 'ANULADA')
   const emitido = computed(() => Boolean(documento.value?.emitido_sunat))
 
+  /**
+   * Con un envío en curso, ticket pendiente o resultado por confirmar, los
+   * datos enviados quedan congelados: ni se reeditan ni se vuelve a emitir
+   * hasta conocer el resultado (la API también lo bloquea).
+   */
+  const envioEnCurso = computed(() => {
+    const doc = documento.value
+    if (!doc) return false
+    const estadoEnvio = doc.gre_estado_envio ?? null
+    if (estadoEnvio && estadoEnvio !== 'RECHAZADO') return true
+    return Boolean((doc.ticket_sunat ?? '').trim()) && doc.nombre_estado_sunat === 'PENDIENTE'
+  })
+
   const esBorrador = computed(() => estado.value === 'BORRADOR')
 
   const esPlantaExterna = computed(
@@ -96,7 +112,12 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
   )
 
   const puedeConvertirGre = computed(
-    () => documento.value != null && !esBorrador.value && !anulada.value && !emitido.value,
+    () =>
+      documento.value != null &&
+      !esBorrador.value &&
+      !anulada.value &&
+      !emitido.value &&
+      !envioEnCurso.value,
   )
 
   /**
@@ -122,6 +143,7 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
       !anulada.value &&
       Boolean(documento.value?.serie) &&
       !emitido.value &&
+      !envioEnCurso.value &&
       destinatarioDocumentado.value &&
       authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_EMITIR),
   )
@@ -207,6 +229,7 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
     puedeEditarDatos,
     puedeRegistrarRetorno,
     puedeConvertirGre,
+    envioEnCurso,
     destinatarioDocumentado,
     puedeEmitir,
     puedeAnular,

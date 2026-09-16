@@ -53,3 +53,24 @@ export function useDeleteConfiguracionSunatMutation() {
     },
   })
 }
+
+export function useVerificarGreMutation() {
+  return useMutation({
+    mutationFn: (idEmpresa: number) => configuracionSunatService.verificarGre(idEmpresa),
+    onError: (error) => {
+      toastApiError(error, 'No se pudo verificar la empresa en el PSE')
+    },
+  })
+}
+
+export function useSincronizarGreMutation() {
+  return useMutation({
+    mutationFn: (idEmpresa: number) => configuracionSunatService.sincronizarGre(idEmpresa),
+    onSuccess: (result) => {
+      if (result.sincronizado) toastSuccess('Credenciales GRE sincronizadas en el PSE')
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo sincronizar la configuración GRE')
+    },
+  })
+}

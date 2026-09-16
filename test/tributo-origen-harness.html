@@ -1,0 +1,17 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Prueba sección asociada</title></head><body><div id="test"></div>
+<script type="module">
+import { createApp, h, reactive } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
+import { VueQueryPlugin } from '@tanstack/vue-query'
+import Section from '/src/shared/components/tributos/TributoOrigenSection.vue'
+import { useEmpresaSeleccionada } from '/src/modules/configuracion/empresas/composables/useEmpresaSeleccionada.ts'
+const pinia = createPinia()
+setActivePinia(pinia)
+useEmpresaSeleccionada().value = 18
+const state = reactive({ percepcion: undefined, retencion: undefined, total: 100 })
+window.testState = state
+const app = createApp({ setup: () => () => h('div', ['percepcion','retencion'].map(tipo => h(Section, {
+  tipo, total: state.total, fecha: '2026-09-16', modelValue: state[tipo], 'onUpdate:modelValue': value => state[tipo] = value,
+}))) })
+app.use(pinia).use(VueQueryPlugin).mount('#test')
+</script></body></html>

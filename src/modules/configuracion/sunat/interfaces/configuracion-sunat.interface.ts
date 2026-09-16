@@ -80,3 +80,27 @@ export interface DeleteConfiguracionSunatResponse {
 }
 
 export type ConfiguracionSunatFormMode = 'create' | 'edit'
+
+export type GreEntorno = 'beta' | 'produccion'
+
+/** Resultado de «Verificar conexión y empresa» (solo lecturas al PSE). */
+export interface GreEmpresaVerificacion {
+  ruc: string
+  companyId: number | null
+  rucCoincide: boolean
+  entorno: GreEntorno | null
+  entornoNombre: string | null
+  apiCpeUrl: string | null
+  urlsCoherentes: boolean
+  clientIdPse: string | null
+  clientIdLocal: string | null
+  esCredencialPrueba: boolean
+  tieneSolLocal: boolean
+  listo: boolean
+  problemas: string[]
+}
+
+export interface GreSincronizacionResultado extends GreEmpresaVerificacion {
+  sincronizado: boolean
+  camposActualizados: string[]
+}

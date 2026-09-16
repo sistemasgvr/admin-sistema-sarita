@@ -54,10 +54,19 @@ function normalizeApiMessage(message: unknown, fallback: string): string {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: unknown) => {
+  async (error: unknown) => {
     if (axios.isAxiosError<ApiErrorResponse>(error)) {
       const statusCode = error.response?.status ?? 500
-      const payload = error.response?.data
+      let payload = error.response?.data
+      const body: unknown = payload
+      // Los endpoints de archivos también devuelven errores JSON; Axios los
+      // entrega como Blob por responseType y antes se perdía su mensaje.
+      if (body instanceof Blob && body.size <= 65536 && body.type.includes('json')) {
+        try {
+          const parsed: unknown = JSON.parse(await body.text())
+          if (parsed && typeof parsed === 'object') payload = parsed as ApiErrorResponse
+        } catch { /* conservar el error HTTP si el cuerpo no es JSON */ }
+      }
 
       if (statusCode === 401) {
         const isLoginRequest = error.config?.url?.includes('/auth/login')

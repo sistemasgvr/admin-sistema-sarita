@@ -164,10 +164,10 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createInventarioDocumentosSalidaTutorial } from '@/modules/soporte/tutorials/inventario-documentos-salida.tutorial'
 import {
-  useDocumentoSalidaCatalogosQuery,
   useDocumentoSalidaQuery,
   useDocumentosSalidaQuery,
 } from '../composables/useDocumentosSalidaQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import {
   useAnularDocSalidaMutation,
   useGenerarDocSalidaMutation,
@@ -198,10 +198,12 @@ import {
   AppPagination,
   AppTable,
 } from '@/shared/components'
+import { visualizarArchivo } from '@/shared/utils/visualizarArchivo'
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
@@ -221,7 +223,7 @@ const limite = ref(10)
 
 const filters = ref<DocumentoSalidaListFilters>({ buscar: '', pagina: 1, limite: 10 })
 const listQuery = useDocumentosSalidaQuery(filters)
-const catalogosQuery = useDocumentoSalidaCatalogosQuery()
+const estadosCicloQuery = useListaOpcionesQuery(ref(ListaIds.ESTADO_CICLO_SALIDA))
 
 const almacenesFilters = ref({ pagina: 1, limite: 200 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
@@ -296,8 +298,7 @@ async function onAccion(accion: DocSalidaAccion, row: DocSalidaAccionesFuente) {
 
   if (accion === 'pdf') {
     try {
-      const blob = await documentosSalidaService.obtenerPdf(row.id)
-      window.open(URL.createObjectURL(blob), '_blank')
+      await visualizarArchivo(() => documentosSalidaService.obtenerPdf(row.id), `Documento-${row.id}.pdf`, 'pdf')
       toastSuccess('PDF generado')
     } catch (error) {
       toastApiError(error, 'No se pudo generar el PDF')
@@ -375,8 +376,8 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     label: 'Estado',
     type: 'select',
     placeholder: 'Todos',
-    disabled: catalogosQuery.isLoading.value,
-    options: (catalogosQuery.data.value?.estadosCiclo ?? []).map((o) => ({
+    disabled: estadosCicloQuery.isLoading.value,
+    options: (estadosCicloQuery.data.value ?? []).map((o) => ({
       value: o.id,
       label: formatListaOpcionLabel(o.nombre, o.descripcion),
     })),

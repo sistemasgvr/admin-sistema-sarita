@@ -12,6 +12,13 @@
       </RouterLink>
 
       <div v-if="cabecera" class="flex flex-wrap items-center gap-2">
+        <template v-if="authStore.hasPermission(PermisoBanderas.RETENCIONES_VER)">
+          <RouterLink v-for="retencion in compra?.retenciones ?? []" :key="retencion.id"
+            :to="{ name: 'admin-retenciones-detalle', params: { id: retencion.id } }"
+            class="rounded-lg border border-brand-200 px-3 py-2 text-sm text-brand-600">
+            Retención {{ retencion.serie }}-{{ retencion.numero }}
+          </RouterLink>
+        </template>
         <RouterLink
           v-if="canEdit && cabecera.estado === 1 && cabecera.puede_modificarse_parcial"
           :to="{ name: 'admin-compras-editar', params: { id: String(cabecera.id) } }"

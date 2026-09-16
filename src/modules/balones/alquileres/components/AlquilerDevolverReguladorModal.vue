@@ -57,12 +57,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useDevolverReguladorAlquilerMutation } from '@/modules/balones/alquileres/composables/useAlquilerMutations'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import type {
   Alquiler,
   CondicionReguladorDevolucion,
 } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastWarning } from '@/shared/composables/useToast'
 
 const props = defineProps<{
@@ -83,10 +85,13 @@ const fecha = ref(hoy())
 const condicion = ref<CondicionReguladorDevolucion>('BUENO')
 const observacion = ref('')
 
-const condicionOptions = [
-  { value: 'BUENO', label: 'Buen estado (reingresa a stock)' },
-  { value: 'PARA_REPARAR', label: 'Para reparar (abre mantenimiento)' },
-]
+const condicionQuery = useListaOpcionesQuery(ref(ListaIds.CONDICION_REGULADOR))
+const condicionOptions = computed(() =>
+  (condicionQuery.data.value ?? []).map((o) => ({
+    value: o.descripcion ?? o.nombre,
+    label: o.nombre,
+  })),
+)
 
 const nombreAccesorio = computed(
   () =>

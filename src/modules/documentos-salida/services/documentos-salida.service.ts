@@ -10,10 +10,11 @@ import type {
   CreateDocumentoSalidaPayload,
   CrearDesdeVentaPayload,
   DocumentoSalida,
-  DocumentoSalidaCatalogos,
   DocumentoSalidaListFilters,
   DocumentoSalidaListItem,
   EmitirDocumentoSalidaResponse,
+  GreHistorialResponse,
+  ValidarGreResponse,
   FinalizarRecargaPayload,
   RegistrarDireccionEntregaPayload,
   SeriesGreResponse,
@@ -27,10 +28,6 @@ export const documentosSalidaService = {
 
   obtenerPorId(id: number) {
     return apiGet<DocumentoSalida>(`/documentos-salida/${id}`)
-  },
-
-  obtenerCatalogos() {
-    return apiGet<DocumentoSalidaCatalogos>('/documentos-salida/catalogos')
   },
 
   obtenerSiguienteNumero(idSucursal: number, fecha?: string) {
@@ -90,6 +87,15 @@ export const documentosSalidaService = {
     })
   },
 
+  /** Prevalidación + verificación del PSE; no escribe nada. */
+  validarGre(id: number) {
+    return apiPost<ValidarGreResponse>(`/documentos-salida/${id}/validar-gre`, {})
+  },
+
+  historialGre(id: number) {
+    return apiGet<GreHistorialResponse>(`/documentos-salida/${id}/gre-historial`)
+  },
+
   consultarEstado(id: number, idUsuarioAuditoria?: number) {
     return apiPost<EmitirDocumentoSalidaResponse>(`/documentos-salida/${id}/consultar-estado`, {
       idUsuarioAuditoria,
@@ -110,5 +116,20 @@ export const documentosSalidaService = {
 
   obtenerPdf(id: number) {
     return apiGetBlob(`/documentos-salida/${id}/pdf`, { params: { idEmpresa: useEmpresaSeleccionada().value } })
+  },
+
+  descargarPdfXmlSunat(id: number) {
+    return apiPost<{ pdfDescargado: boolean; xmlDescargado: boolean; mensaje: string }>(
+      `/documentos-salida/${id}/descargar-pdf-xml-sunat`,
+      {},
+    )
+  },
+
+  obtenerPdfOficial(id: number) {
+    return apiGetBlob(`/documentos-salida/${id}/pdf-oficial`)
+  },
+
+  obtenerXmlOficial(id: number) {
+    return apiGetBlob(`/documentos-salida/${id}/xml-oficial`)
   },
 }

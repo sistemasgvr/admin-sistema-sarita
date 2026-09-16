@@ -202,10 +202,11 @@ const props = defineProps<{
 const authStore = useAuthStore()
 const mutation = useCreateInventarioMovimientoMutation()
 
-const naturalezaOptions = [
-  { value: 'PRODUCTO', label: 'Producto' },
-  { value: 'BALON', label: 'Balón' },
-]
+const naturalezaId = ref(ListaIds.NATURALEZA_MOV_INV)
+const naturalezaQuery = useListaOpcionesQuery(naturalezaId)
+const naturalezaOptions = computed(() =>
+  (naturalezaQuery.data.value ?? []).map((o) => ({ value: o.descripcion, label: o.nombre })),
+)
 
 const TIPOS_PRODUCTO_MANUAL = new Set(['AJUSTE', 'TRASLADO', 'REPOSICION', 'CONSUMO_INTERNO'])
 const TIPOS_BALON_MANUAL = new Set([

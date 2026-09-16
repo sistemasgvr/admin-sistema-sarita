@@ -12,19 +12,28 @@ export function useDocumentosSalidaQuery(filters: Ref<DocumentoSalidaListFilters
   })
 }
 
-export function useDocumentoSalidaQuery(id: Ref<number | null> | ComputedRef<number | null>) {
+export function useDocumentoSalidaQuery(
+  id: Ref<number | null> | ComputedRef<number | null>,
+  /** Refresco periódico (ms) o false; se usa mientras un ticket SUNAT sigue en proceso. */
+  refetchInterval?: Ref<number | false> | ComputedRef<number | false>,
+) {
   return useQuery({
     queryKey: computed(() => documentosSalidaQueryKeys.detail(id.value ?? 0)),
     queryFn: () => documentosSalidaService.obtenerPorId(id.value!),
     enabled: computed(() => id.value != null && id.value > 0),
+    refetchInterval: computed(() => refetchInterval?.value ?? false),
   })
 }
 
-export function useDocumentoSalidaCatalogosQuery() {
+/** Intentos de envío y consultas SUNAT de la guía (auditoría, sin secretos). */
+export function useGreHistorialQuery(
+  id: Ref<number | null> | ComputedRef<number | null>,
+  enabled: Ref<boolean> | ComputedRef<boolean>,
+) {
   return useQuery({
-    queryKey: documentosSalidaQueryKeys.catalogos(),
-    queryFn: () => documentosSalidaService.obtenerCatalogos(),
-    staleTime: 5 * 60 * 1000,
+    queryKey: computed(() => documentosSalidaQueryKeys.greHistorial(id.value ?? 0)),
+    queryFn: () => documentosSalidaService.historialGre(id.value!),
+    enabled: computed(() => enabled.value && id.value != null && id.value > 0),
   })
 }
 

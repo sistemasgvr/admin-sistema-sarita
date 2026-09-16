@@ -13,6 +13,14 @@
     </div>
 
     <div v-else-if="comprobante" class="space-y-4">
+      <section v-if="comprobante.percepciones?.length && authStore.hasPermission(PermisoBanderas.PERCEPCIONES_VER)" class="rounded-lg border border-brand-200 p-3">
+        <h3 class="mb-2 text-sm font-semibold">Percepciones vinculadas</h3>
+        <RouterLink v-for="percepcion in comprobante.percepciones" :key="percepcion.id"
+          :to="{ name: 'admin-percepciones-detalle', params: { id: percepcion.id } }"
+          class="mr-3 text-sm text-brand-600 underline">
+          {{ percepcion.serie }}-{{ percepcion.numero }}
+        </RouterLink>
+      </section>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Comprobante</p>

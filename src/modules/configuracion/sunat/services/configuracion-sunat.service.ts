@@ -10,6 +10,8 @@ import type {
   ConfiguracionSunatListFilters,
   CreateConfiguracionSunatPayload,
   DeleteConfiguracionSunatResponse,
+  GreEmpresaVerificacion,
+  GreSincronizacionResultado,
   UpdateConfiguracionSunatPayload,
 } from '@/modules/configuracion/sunat/interfaces/configuracion-sunat.interface'
 
@@ -28,6 +30,16 @@ export const configuracionSunatService = {
 
   actualizar(id: number, payload: UpdateConfiguracionSunatPayload) {
     return apiPatch<ConfiguracionSunat>(`/configuracion/sunat/${id}`, payload)
+  },
+
+  /** Solo lecturas al PSE: RUC, entorno, URLs y credenciales GRE de la empresa. */
+  verificarGre(idEmpresa: number) {
+    return apiPost<GreEmpresaVerificacion>(`/configuracion/sunat/empresa/${idEmpresa}/verificar-gre`, {})
+  },
+
+  /** Única acción que escribe credenciales GRE en la empresa del PSE. */
+  sincronizarGre(idEmpresa: number) {
+    return apiPost<GreSincronizacionResultado>(`/configuracion/sunat/empresa/${idEmpresa}/sincronizar-gre`, {})
   },
 
   eliminar(id: number) {

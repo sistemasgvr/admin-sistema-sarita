@@ -76,6 +76,34 @@
           :disabled="!canSave || isSubmitting"
         />
 
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-400">
+              Distrito fiscal (ubigeo SUNAT)
+            </label>
+            <span
+              v-if="empresa"
+              class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              :class="empresa.codigo_ubigeo
+                ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'"
+            >
+              {{ empresa.codigo_ubigeo ? `Ubigeo ${empresa.codigo_ubigeo}` : 'Requerido para emitir GRE' }}
+            </span>
+          </div>
+          <UbigeoCascadeSelect
+            v-model:id-pais="fiscalPaisId"
+            v-model:id-departamento="fiscalDeptoId"
+            v-model:id-provincia="fiscalProvId"
+            v-model:id-distrito="fiscalDistritoId"
+            v-model:presetting="fiscalPresetting"
+            :disabled="!canSave || isSubmitting"
+          />
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Se envía como domicilio fiscal en las guías de remisión electrónicas de esta empresa.
+          </p>
+        </div>
+
         <div data-tutorial="empresa-contacto" class="grid gap-4 sm:grid-cols-2">
           <AppInput
             v-model="telefono"
@@ -175,7 +203,7 @@ import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composab
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createConfiguracionEmpresaTutorial } from '@/modules/soporte/tutorials/configuracion-empresa.tutorial'
-import { AppInput, AppSelect, AppModal } from '@/shared/components'
+import { AppInput, AppSelect, AppModal, UbigeoCascadeSelect } from '@/shared/components'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { optionalEmail, optionalNumber, optionalString, requiredString } from '@/shared/validation'
 
@@ -225,6 +253,24 @@ const [telefono, telefonoAttrs] = defineField('telefono')
 const [email, emailAttrs] = defineField('email')
 
 const [psi_minimo_util, psiMinimoAttrs] = defineField('psi_minimo_util')
+
+// ---- Domicilio fiscal (ubigeo en cascada) ----
+const fiscalPaisId = ref<number | undefined>(undefined)
+const fiscalDeptoId = ref<number | undefined>(undefined)
+const fiscalProvId = ref<number | undefined>(undefined)
+const fiscalDistritoId = ref<number | undefined>(undefined)
+const fiscalPresetting = ref(false)
+
+function syncUbigeoFiscal() {
+  fiscalPresetting.value = true
+  fiscalPaisId.value = empresa.value?.id_pais ?? undefined
+  fiscalDeptoId.value = empresa.value?.id_departamento ?? undefined
+  fiscalProvId.value = empresa.value?.id_provincia ?? undefined
+  fiscalDistritoId.value = empresa.value?.id_distrito ?? undefined
+  requestAnimationFrame(() => {
+    fiscalPresetting.value = false
+  })
+}
 
 const isLoading = computed(() => !creating.value && empresaQuery.isFetching.value)
 const empresa = computed(() => creating.value ? null : empresaQuery.data.value ?? null)
@@ -276,6 +322,7 @@ const onSubmit = handleSubmit(async (values) => {
           : undefined,
       psiMinimoUtil:
         values.psi_minimo_util != null ? Number(values.psi_minimo_util) : undefined,
+      idDistrito: fiscalDistritoId.value,
     }
 
     if (isEditMode.value && empresa.value) {
@@ -297,6 +344,7 @@ watch(
   empresa,
   () => {
     syncFormValues()
+    syncUbigeoFiscal()
   },
   { immediate: true },
 )

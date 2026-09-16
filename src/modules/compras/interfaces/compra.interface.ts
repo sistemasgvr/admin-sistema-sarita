@@ -1,3 +1,4 @@
+import type { TributoOrigen, TributoCreado } from '@/shared/components/tributos/tributoOrigen'
 export type CompraFormMode = 'create' | 'edit'
 
 export interface CompraListItem {
@@ -107,6 +108,8 @@ export interface CompraCuentaPorPagar {
 }
 
 export interface Compra {
+  retencion?: TributoCreado
+  retenciones?: TributoCreado[]
   cabecera: CompraCabecera
   detalle: CompraDetalle[]
   cuenta_por_pagar?: CompraCuentaPorPagar | null
@@ -140,6 +143,7 @@ export interface CreateCompraDetallePayload {
 }
 
 export interface CreateCompraPayload {
+  retencion?: TributoOrigen
   idUsuarioAuditoria: number
   idTipoComprobante?: number
   serie?: string

@@ -21,6 +21,8 @@ import { cuentasBancariasRoutes } from '@/modules/cuentas-bancarias/router'
 import { operativaRoutes } from '@/modules/operativa/router'
 import { finanzasRoutes } from '@/modules/finanzas/router'
 import { comprasRoutes } from '@/modules/compras/router'
+import { percepcionesRoutes } from '@/modules/percepciones/router'
+import { retencionesRoutes } from '@/modules/retenciones/router'
 import { documentosVencimientoRoutes } from '@/modules/documentos-vencimiento/router'
 import { trabajadoresRoutes } from '@/modules/trabajadores/router'
 import { activosRoutes } from '@/modules/activos/router'
@@ -43,12 +45,14 @@ const adminChildren: RouteRecordRaw[] = [
   ...direccionesRoutes,
   ...balonesRoutes,
   ...ventasRoutes,
+  ...percepcionesRoutes,
   ...choferesRoutes,
   ...vehiculosRoutes,
   ...cuentasBancariasRoutes,
   ...operativaRoutes,
   ...finanzasRoutes,
   ...comprasRoutes,
+  ...retencionesRoutes,
   ...documentosVencimientoRoutes,
   ...trabajadoresRoutes,
   ...activosRoutes,

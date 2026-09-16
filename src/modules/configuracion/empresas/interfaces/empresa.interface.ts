@@ -4,6 +4,15 @@ export interface Empresa {
   razon_social?: string
   nombre_comercial?: string
   direccion?: string
+  /** Domicilio fiscal: distrito → ubigeo SUNAT (obligatorio para emitir GRE). */
+  id_distrito?: number | null
+  nombre_distrito?: string | null
+  codigo_ubigeo?: string | null
+  id_provincia?: number | null
+  nombre_provincia?: string | null
+  id_departamento?: number | null
+  nombre_departamento?: string | null
+  id_pais?: number | null
   telefono?: string
   email?: string
   tolerancia_m3_ruta_pueblo?: number | string | null
@@ -28,6 +37,7 @@ export interface CreateEmpresaPayload {
   email?: string
   toleranciaM3RutaPueblo?: number
   psiMinimoUtil?: number
+  idDistrito?: number
 }
 
 export interface UpdateEmpresaPayload {
@@ -39,6 +49,7 @@ export interface UpdateEmpresaPayload {
   email?: string
   toleranciaM3RutaPueblo?: number
   psiMinimoUtil?: number
+  idDistrito?: number
 }
 
 export interface DeleteEmpresaResponse {

@@ -1,3 +1,4 @@
+import type { TributoOrigen, TributoCreado } from '@/shared/components/tributos/tributoOrigen'
 export interface ComprobanteListItem {
   id: number
   id_tipo_comprobante: number
@@ -144,6 +145,8 @@ export interface ComprobanteGarantia {
 }
 
 export interface Comprobante extends ComprobanteListItem {
+  percepcion?: TributoCreado
+  percepciones?: TributoCreado[]
   sub_total?: number | null
   descuento?: number | null
   valor_venta?: number | null
@@ -211,6 +214,7 @@ export interface ComprobanteDetallePayload {
 }
 
 export interface CreateComprobantePayload {
+  percepcion?: TributoOrigen
   idUsuarioAuditoria: number
   idTipoComprobante: number
   serie: string
@@ -414,22 +418,6 @@ export interface SiguienteNumeroResponse {
   id_tipo_comprobante: number
   ultimo_numero: string | null
   numero: string
-}
-
-export interface ListaOpcionBasica {
-  id: number
-  nombre: string
-  descripcion?: string | null
-}
-
-export interface ComprobanteCatalogosPos {
-  tiposComprobante: ListaOpcionBasica[]
-  afectacionesIgv: ListaOpcionBasica[]
-  monedas: ListaOpcionBasica[]
-  mediosPago: ListaOpcionBasica[]
-  tiposOperacionSunat: ListaOpcionBasica[]
-  estadosSunat: ListaOpcionBasica[]
-  motivosNotaCredito: ListaOpcionBasica[]
 }
 
 export interface ComprobanteResumenDiarioItem {

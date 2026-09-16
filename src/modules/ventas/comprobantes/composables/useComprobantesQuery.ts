@@ -1,7 +1,9 @@
 import { keepPreviousData, useQuery } from '@tanstack/vue-query'
-import { computed, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import { comprobantesQueryKeys } from '@/modules/ventas/comprobantes/constants/comprobantesQueryKeys'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import type { ComprobanteListFilters, ResumenDiarioListFilters } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 
 export function useComprobantesQuery(filters: Ref<ComprobanteListFilters>) {
@@ -20,12 +22,54 @@ export function useComprobanteQuery(id: Ref<number | null>) {
   })
 }
 
+/**
+ * Catálogos POS: 7 listas de gen_lista cargadas en paralelo.
+ * Mantiene la misma interfaz que el viejo useComprobanteCatalogosPosQuery
+ * pero usa useListaOpcionesQuery por lista.
+ */
 export function useComprobanteCatalogosPosQuery() {
-  return useQuery({
-    queryKey: comprobantesQueryKeys.catalogosPos(),
-    queryFn: () => comprobantesService.obtenerCatalogosPos(),
-    staleTime: 5 * 60 * 1000,
+  const tiposComprobante = useListaOpcionesQuery(ref(ListaIds.TIPO_COMPROBANTE))
+  const afectacionesIgv = useListaOpcionesQuery(ref(ListaIds.AFECTACION_IGV))
+  const monedas = useListaOpcionesQuery(ref(ListaIds.MONEDA))
+  const mediosPago = useListaOpcionesQuery(ref(ListaIds.MEDIO_PAGO))
+  const tiposOperacionSunat = useListaOpcionesQuery(ref(ListaIds.TIPO_OPERACION_SUNAT))
+  const estadosSunat = useListaOpcionesQuery(ref(ListaIds.ESTADO_SUNAT))
+  const motivosNotaCredito = useListaOpcionesQuery(ref(ListaIds.MOTIVO_NOTA_CREDITO))
+
+  const isLoading = computed(() =>
+    tiposComprobante.isLoading.value ||
+    afectacionesIgv.isLoading.value ||
+    monedas.isLoading.value ||
+    mediosPago.isLoading.value ||
+    tiposOperacionSunat.isLoading.value ||
+    estadosSunat.isLoading.value ||
+    motivosNotaCredito.isLoading.value,
+  )
+
+  const isFetching = computed(() =>
+    tiposComprobante.isFetching.value ||
+    afectacionesIgv.isFetching.value ||
+    monedas.isFetching.value ||
+    mediosPago.isFetching.value ||
+    tiposOperacionSunat.isFetching.value ||
+    estadosSunat.isFetching.value ||
+    motivosNotaCredito.isFetching.value,
+  )
+
+  const data = computed(() => {
+    if (isLoading.value) return undefined
+    return {
+      tiposComprobante: tiposComprobante.data.value ?? [],
+      afectacionesIgv: afectacionesIgv.data.value ?? [],
+      monedas: monedas.data.value ?? [],
+      mediosPago: mediosPago.data.value ?? [],
+      tiposOperacionSunat: tiposOperacionSunat.data.value ?? [],
+      estadosSunat: estadosSunat.data.value ?? [],
+      motivosNotaCredito: motivosNotaCredito.data.value ?? [],
+    }
   })
+
+  return { data, isLoading, isFetching }
 }
 
 export function useResumenDiarioListQuery(filters: Ref<ResumenDiarioListFilters>) {

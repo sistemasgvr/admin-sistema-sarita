@@ -105,6 +105,10 @@ export interface DocumentoSalida {
   nombre_proveedor: string | null
   documento_proveedor?: string | null
   fecha: string
+  fecha_emision_gre?: string | null;
+  gre_estado_envio?: string | null;
+  /** Entorno del PSE (beta/produccion) con el que se envió el último intento. */
+  gre_entorno?: string | null;
   fecha_traslado: string | null
   fecha_retorno: string | null
   id_tipo_guia_remision: number | null
@@ -202,6 +206,8 @@ export interface DocumentoSalidaListItem {
   serie_venta: string | null
   numero_venta: string | null
   fecha: string
+  fecha_emision_gre?: string | null;
+  gre_estado_envio?: string | null;
   fecha_traslado: string | null
   fecha_llegada_almacen: string | null
   id_sucursal: number
@@ -267,22 +273,6 @@ export interface DocumentoSalidaListFilters {
   sinActividadVigente?: boolean
 }
 
-export interface ListaOpcionBasica {
-  id: number
-  nombre: string
-  descripcion: string | null
-}
-
-export interface DocumentoSalidaCatalogos {
-  tiposOrden: ListaOpcionBasica[]
-  estadosCiclo: ListaOpcionBasica[]
-  tiposGuia: ListaOpcionBasica[]
-  modalidadesTraslado: ListaOpcionBasica[]
-  motivosTraslado: ListaOpcionBasica[]
-  estadosSunat: ListaOpcionBasica[]
-  unidadesMedida: ListaOpcionBasica[]
-}
-
 export interface CreateDocumentoSalidaPayload {
   codigoTipoOrden: CodigoTipoOrdenSalida
   idSucursal: number
@@ -335,6 +325,7 @@ export interface ActualizarDocumentoSalidaPayload {
 }
 
 export interface ConvertirGrePayload {
+  fechaEmisionGre: string
   idEmpresa: number;
   idTipoGuiaRemision?: number
   serie: string
@@ -398,10 +389,65 @@ export interface EmitirDocumentoSalidaResponse {
   documento: DocumentoSalida
   sunat: {
     estado: string
+    entorno?: string | null
     hash?: string | null
     ticket?: string | null
     respuesta?: unknown
   }
+}
+
+export type GreSeveridad = 'error' | 'advertencia'
+
+/** Problema de la prevalidación GRE; `campo` apunta al dato a corregir. */
+export interface GreProblema {
+  codigo: string
+  campo: string
+  mensaje: string
+  severidad: GreSeveridad
+}
+
+export interface GreResumenEmision {
+  empresa: string | null
+  ruc: string | null
+  entorno: string | null
+  tipo: string | null
+  serie: string | null
+  numero: string | null
+  fechaOrden: string | null
+  fechaEmisionGre: string | null
+  fechaTraslado: string | null
+  chofer: string | null
+  licencia: string | null
+  placa: string | null
+  transportista: string | null
+  destinatario: string | null
+  estadoEnvio: string | null
+}
+
+export interface ValidarGreResponse {
+  listo: boolean
+  entorno: string | null
+  problemas: GreProblema[]
+  resumen: GreResumenEmision
+}
+
+export interface GreIntento {
+  id: number
+  estado: string
+  entorno: string | null
+  id_empresa: number | null
+  ruc_emisor: string | null
+  ticket: string | null
+  consultas: number
+  proxima_consulta: string | null
+  creado: string
+  actualizado: string
+  respuesta: unknown
+  consultas_detalle: { id: number; creado: string; respuesta: unknown }[]
+}
+
+export interface GreHistorialResponse {
+  intentos: GreIntento[]
 }
 
 export interface SiguienteNumeroDocumentoSalidaResponse {

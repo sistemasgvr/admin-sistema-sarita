@@ -10,7 +10,6 @@ import type {
   Comprobante,
   ComprobantePago,
   RegistrarCobroPayload,
-  ComprobanteCatalogosPos,
   ComprobanteListFilters,
   ComprobanteListItem,
   ConsultarEstadoResumenResponse,
@@ -35,10 +34,6 @@ export const comprobantesService = {
 
   obtenerPorId(id: number) {
     return apiGet<Comprobante>(`/comprobantes/${id}`)
-  },
-
-  obtenerCatalogosPos() {
-    return apiGet<ComprobanteCatalogosPos>('/comprobantes/catalogos/pos')
   },
 
   obtenerSiguienteNumero(idTipoComprobante: number, serie: string) {

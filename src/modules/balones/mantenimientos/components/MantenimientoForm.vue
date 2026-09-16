@@ -377,10 +377,11 @@ const balonBuscar = ref('')
 
 // Productos
 const tipoItem = ref<'CILINDRO' | 'PRODUCTO'>('CILINDRO')
-const tipoItemOptions = [
-  { value: 'CILINDRO', label: 'Cilindro (balón)' },
-  { value: 'PRODUCTO', label: 'Producto (regulador / accesorio)' },
-]
+const tipoItemId = ref(ListaIds.TIPO_ITEM_MANTENIMIENTO)
+const tipoItemQuery = useListaOpcionesQuery(tipoItemId)
+const tipoItemOptions = computed(() =>
+  (tipoItemQuery.data.value ?? []).map((o) => ({ value: o.descripcion, label: o.nombre })),
+)
 const productoBuscar = ref('')
 const productoFilters = ref<ProductoListFilters>({ pagina: 1, limite: 100 })
 const productosQuery = useProductosQuery(productoFilters)

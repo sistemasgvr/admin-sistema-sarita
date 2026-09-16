@@ -51,6 +51,23 @@
           </span>
         </div>
         <div>
+          <span class="block text-[11px] text-gray-400">Fecha emisión GRE</span>
+          <span class="font-semibold text-gray-800 dark:text-white/90">
+            {{ documento?.fecha_emision_gre?.slice(0, 10) ?? '—' }}
+          </span>
+        </div>
+        <div v-if="documento?.gre_entorno">
+          <span class="block text-[11px] text-gray-400">Entorno</span>
+          <span
+            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+            :class="documento.gre_entorno === 'produccion'
+              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'"
+          >
+            {{ documento.gre_entorno === 'produccion' ? 'PRODUCCIÓN' : 'PRUEBAS' }}
+          </span>
+        </div>
+        <div>
           <span class="block text-[11px] text-gray-400">Peso bruto</span>
           <span class="font-semibold text-gray-800 dark:text-white/90">
             {{ documento?.peso_bruto != null ? `${documento.peso_bruto} kg` : '—' }}
@@ -114,16 +131,16 @@
         <AppSelect
           v-model="form.idMotivoTraslado"
           label="Motivo de traslado"
-          :placeholder="catalogosQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          :placeholder="motivosQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           :options="motivoOptions"
-          :disabled="catalogosQuery.isLoading.value || mutation.isPending.value"
+          :disabled="motivosQuery.isLoading.value || mutation.isPending.value"
         />
         <AppSelect
           v-model="form.idModalidadTraslado"
           label="Modalidad"
-          :placeholder="catalogosQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
+          :placeholder="modalidadesQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           :options="modalidadOptions"
-          :disabled="catalogosQuery.isLoading.value || mutation.isPending.value || esGreTransportista"
+          :disabled="modalidadesQuery.isLoading.value || mutation.isPending.value || esGreTransportista"
           :hint="
             esGreTransportista
               ? 'En la guía de transportista es siempre pública'
@@ -172,13 +189,14 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { useDocumentoSalidaCatalogosQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useActualizarTrasladoMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
 import type { DocumentoSalida } from '@/modules/documentos-salida/interfaces/documento-salida.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppInput, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 const props = defineProps<{
@@ -187,7 +205,8 @@ const props = defineProps<{
 }>()
 
 const authStore = useAuthStore()
-const catalogosQuery = useDocumentoSalidaCatalogosQuery()
+const motivosQuery = useListaOpcionesQuery(ref(ListaIds.MOTIVO_TRASLADO))
+const modalidadesQuery = useListaOpcionesQuery(ref(ListaIds.MODALIDAD_TRASLADO))
 const mutation = useActualizarTrasladoMutation()
 
 const editando = ref(false)
@@ -206,7 +225,7 @@ const form = reactive<{
 
 const motivoOptions = computed(
   () =>
-    catalogosQuery.data.value?.motivosTraslado.map((o) => ({
+    motivosQuery.data.value?.map((o) => ({
       value: o.id,
       label: formatListaOpcionLabel(o.nombre, o.descripcion),
     })) ?? [],
@@ -214,7 +233,7 @@ const motivoOptions = computed(
 
 const modalidadOptions = computed(
   () =>
-    catalogosQuery.data.value?.modalidadesTraslado.map((o) => ({
+    modalidadesQuery.data.value?.map((o) => ({
       value: o.id,
       label: formatListaOpcionLabel(o.nombre, o.descripcion),
     })) ?? [],

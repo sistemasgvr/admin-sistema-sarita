@@ -76,6 +76,7 @@
 import { computed, ref, watch } from 'vue'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import GarantiaDevolverModal from '@/modules/balones/garantias/components/GarantiaDevolverModal.vue'
 import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import { useDevolverPrestamoDetalleMutation } from '@/modules/balones/prestamos/composables/usePrestamoDetalleMutations'
@@ -83,6 +84,7 @@ import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/pre
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
 import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastInfo, toastWarning } from '@/shared/composables/useToast'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
@@ -105,11 +107,13 @@ const observacion = ref('')
 const garantiaModalOpen = ref(false)
 const garantiaPendienteId = ref<number | null>(null)
 
-const contenidoOptions = [
-  { value: 'VACIO', label: 'Vacío' },
-  { value: 'LLENO', label: 'Lleno' },
-  { value: 'DESCONOCIDO', label: 'Desconocido' },
-]
+const contenidoQuery = useListaOpcionesQuery(ref(ListaIds.ESTADO_CONTENIDO_BALON))
+const contenidoOptions = computed(() =>
+  (contenidoQuery.data.value ?? []).map((o) => ({
+    value: o.descripcion ?? o.nombre,
+    label: o.nombre,
+  })),
+)
 
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
