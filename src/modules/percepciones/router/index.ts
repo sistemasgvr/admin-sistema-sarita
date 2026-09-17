@@ -1,35 +1,30 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 
+/**
+ * Percepciones viven bajo ventas (ventas/percepciones). Las vistas son las compartidas de
+ * `tributos-sunat` parametrizadas por tipo: misma pantalla que retenciones/percepciones.
+ */
 export const percepcionesRoutes: RouteRecordRaw[] = [
   {
-    path: 'percepciones',
+    path: 'ventas/percepciones',
     name: 'admin-percepciones',
-    component: () => import('../views/PercepcionesListView.vue'),
-    meta: {
-      title: 'Percepciones',
-      module: 'ventas',
-      permission: PermisoBanderas.PERCEPCIONES_LISTAR,
-    },
+    component: () => import('@/modules/tributos-sunat/components/TributoListView.vue'),
+    props: { tipo: 'percepcion' },
+    meta: { title: 'Percepciones', module: 'ventas', permission: PermisoBanderas.PERCEPCIONES_LISTAR },
   },
   {
-    path: 'percepciones/nueva',
+    path: 'ventas/percepciones/nueva',
     name: 'admin-percepciones-nueva',
-    component: () => import('../views/PercepcionFormView.vue'),
-    meta: {
-      title: 'Nueva percepción',
-      module: 'ventas',
-      permission: PermisoBanderas.PERCEPCIONES_CREAR,
-    },
+    component: () => import('@/modules/tributos-sunat/components/TributoFormView.vue'),
+    props: { tipo: 'percepcion' },
+    meta: { title: 'Nueva percepción', module: 'ventas', permission: PermisoBanderas.PERCEPCIONES_CREAR },
   },
   {
-    path: 'percepciones/:id(\\d+)',
+    path: 'ventas/percepciones/:id(\\d+)',
     name: 'admin-percepciones-detalle',
-    component: () => import('../views/PercepcionDetailView.vue'),
-    meta: {
-      title: 'Detalle de percepción',
-      module: 'ventas',
-      permission: PermisoBanderas.PERCEPCIONES_VER,
-    },
+    component: () => import('@/modules/tributos-sunat/components/TributoDetailView.vue'),
+    props: { tipo: 'percepcion' },
+    meta: { title: 'Detalle de percepción', module: 'ventas', permission: PermisoBanderas.PERCEPCIONES_VER },
   },
 ]

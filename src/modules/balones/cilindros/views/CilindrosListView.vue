@@ -686,7 +686,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     label: 'Tipo válvula',
     type: 'select',
     placeholder: 'Americana / China...',
-    options: tipoValvulaFilterOptions,
+    options: tipoValvulaFilterOptions.value,
   },
   {
     key: 'idEstadoBalon',

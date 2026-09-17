@@ -29,6 +29,12 @@ export const ventasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.COMPROBANTES_LISTAR,
   },
   {
+    name: 'Percepciones',
+    path: '/admin/ventas/percepciones',
+    icon: ICONS.handCoins,
+    permission: PermisoBanderas.PERCEPCIONES_LISTAR,
+  },
+  {
     name: 'Ventas sin documento',
     path: '/admin/ventas/vsd',
     icon: ICONS.fileText,

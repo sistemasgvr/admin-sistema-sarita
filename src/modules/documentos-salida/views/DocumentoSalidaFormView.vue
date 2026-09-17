@@ -1101,7 +1101,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()

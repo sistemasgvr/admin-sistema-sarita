@@ -17,6 +17,12 @@ export const comprasMenuSubItems: AdminMenuSubItem[] = [
     permission: PermisoBanderas.COMPRAS_LISTAR,
   },
   {
+    name: 'Retenciones',
+    path: '/admin/compras/retenciones',
+    icon: ICONS.handCoins,
+    permission: PermisoBanderas.RETENCIONES_LISTAR,
+  },
+  {
     name: 'Gastos de caja',
     path: '/admin/compras/gastos-caja',
     icon: ICONS.wallet,

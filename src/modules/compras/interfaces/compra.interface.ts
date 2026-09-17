@@ -1,4 +1,4 @@
-import type { TributoOrigen, TributoCreado } from '@/shared/components/tributos/tributoOrigen'
+import type { TributoVinculado } from '@/modules/tributos-sunat/interfaces/tributo.interface'
 export type CompraFormMode = 'create' | 'edit'
 
 export interface CompraListItem {
@@ -108,8 +108,8 @@ export interface CompraCuentaPorPagar {
 }
 
 export interface Compra {
-  retencion?: TributoCreado
-  retenciones?: TributoCreado[]
+  /** Documentos de retenciones vinculados (solo lectura; se crean en su módulo). */
+  retenciones?: TributoVinculado[]
   cabecera: CompraCabecera
   detalle: CompraDetalle[]
   cuenta_por_pagar?: CompraCuentaPorPagar | null
@@ -143,7 +143,6 @@ export interface CreateCompraDetallePayload {
 }
 
 export interface CreateCompraPayload {
-  retencion?: TributoOrigen
   idUsuarioAuditoria: number
   idTipoComprobante?: number
   serie?: string

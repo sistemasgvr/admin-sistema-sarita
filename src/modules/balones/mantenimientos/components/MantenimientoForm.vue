@@ -380,7 +380,7 @@ const tipoItem = ref<'CILINDRO' | 'PRODUCTO'>('CILINDRO')
 const tipoItemId = ref(ListaIds.TIPO_ITEM_MANTENIMIENTO)
 const tipoItemQuery = useListaOpcionesQuery(tipoItemId)
 const tipoItemOptions = computed(() =>
-  (tipoItemQuery.data.value ?? []).map((o) => ({ value: o.descripcion, label: o.nombre })),
+  (tipoItemQuery.data.value ?? []).map((o) => ({ value: o.descripcion ?? o.nombre, label: o.nombre })),
 )
 const productoBuscar = ref('')
 const productoFilters = ref<ProductoListFilters>({ pagina: 1, limite: 100 })

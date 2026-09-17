@@ -205,7 +205,7 @@ const mutation = useCreateInventarioMovimientoMutation()
 const naturalezaId = ref(ListaIds.NATURALEZA_MOV_INV)
 const naturalezaQuery = useListaOpcionesQuery(naturalezaId)
 const naturalezaOptions = computed(() =>
-  (naturalezaQuery.data.value ?? []).map((o) => ({ value: o.descripcion, label: o.nombre })),
+  (naturalezaQuery.data.value ?? []).map((o) => ({ value: o.descripcion ?? o.nombre, label: o.nombre })),
 )
 
 const TIPOS_PRODUCTO_MANUAL = new Set(['AJUSTE', 'TRASLADO', 'REPOSICION', 'CONSUMO_INTERNO'])

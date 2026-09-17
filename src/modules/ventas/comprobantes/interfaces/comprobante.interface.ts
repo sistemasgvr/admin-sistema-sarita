@@ -1,4 +1,4 @@
-import type { TributoOrigen, TributoCreado } from '@/shared/components/tributos/tributoOrigen'
+import type { TributoVinculado } from '@/modules/tributos-sunat/interfaces/tributo.interface'
 export interface ComprobanteListItem {
   id: number
   id_tipo_comprobante: number
@@ -145,8 +145,8 @@ export interface ComprobanteGarantia {
 }
 
 export interface Comprobante extends ComprobanteListItem {
-  percepcion?: TributoCreado
-  percepciones?: TributoCreado[]
+  /** Documentos de percepciones vinculados (solo lectura; se crean en su módulo). */
+  percepciones?: TributoVinculado[]
   sub_total?: number | null
   descuento?: number | null
   valor_venta?: number | null
@@ -214,7 +214,6 @@ export interface ComprobanteDetallePayload {
 }
 
 export interface CreateComprobantePayload {
-  percepcion?: TributoOrigen
   idUsuarioAuditoria: number
   idTipoComprobante: number
   serie: string

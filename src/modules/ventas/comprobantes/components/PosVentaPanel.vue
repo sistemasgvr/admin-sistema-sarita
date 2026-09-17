@@ -281,11 +281,6 @@
           </div>
         </DetailSectionCard>
       </FormCardsLayout>
-      <TributoOrigenSection
-        v-if="authStore.hasPermission(PermisoBanderas.PERCEPCIONES_CREAR)"
-        v-model="percepcionOrigen" tipo="percepcion" :total="totales.total" :fecha="fecha"
-        :disabled="!!comprobanteGuardadoId || createMutation.isPending.value"
-      />
     </section>
 
     <aside class="space-y-4 xl:sticky xl:top-20 xl:self-start">
@@ -403,11 +398,6 @@
       </DetailSectionCard>
 
 
-      <RouterLink v-if="percepcionCreada && authStore.hasPermission(PermisoBanderas.PERCEPCIONES_VER)"
-        :to="{ name: 'admin-percepciones-detalle', params: { id: percepcionCreada.id } }"
-        class="block rounded-lg border border-brand-200 p-3 text-sm text-brand-600">
-        Ver percepción {{ percepcionCreada.serie }}-{{ percepcionCreada.numero }} · Pendiente de emisión
-      </RouterLink>
       <PosResumenAside
         v-model:glosa="glosa"
         v-model:id-condicion-pago="idCondicionPago"
@@ -459,8 +449,6 @@
 </template>
 
 <script setup lang="ts">
-import TributoOrigenSection from '@/shared/components/tributos/TributoOrigenSection.vue'
-import { validarTributoOrigen, type TributoOrigen, type TributoCreado } from '@/shared/components/tributos/tributoOrigen'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
@@ -688,8 +676,6 @@ const productoEdicion = ref<Producto | null>(null)
 const productosPorId = ref<Map<number, Producto>>(new Map())
 const inicioPreferidoAnadir = ref<'gas' | 'alquiler' | null>(null)
 
-const percepcionOrigen = ref<TributoOrigen>()
-const percepcionCreada = ref<TributoCreado>()
 const glosa = ref('')
 const comprobanteGuardadoId = ref<number | null>(null)
 const comprobanteGuardadoSerie = ref<string | null>(null)
@@ -820,12 +806,6 @@ const motivoNoGuardar = computed(() => {
   const base = mensajeValidacionComprobante()
   if (base) return base
   if (!lineasActivas.value.length) return 'Añade al menos un ítem a la venta'
-  if (percepcionOrigen.value) {
-    const codigo = tipoComprobanteOptions.value.find(op => op.value === idTipoComprobante.value)?.codigo
-    if (!['01', '03'].includes(codigo ?? '')) return 'La percepción requiere factura o boleta'
-    const error = validarTributoOrigen(percepcionOrigen.value, totales.value.total, 'percepcion')
-    if (error) return error
-  }
   if (requiereAlmacen.value && !idAlmacen.value) return 'Selecciona el almacén'
   if (!idAfectacionGravado.value) return 'Falta la afectación IGV en catálogos'
   for (const linea of lineasActivas.value) {
@@ -1523,10 +1503,7 @@ try {
       return
     }
 
-    const errorPercepcion = validarTributoOrigen(percepcionOrigen.value, totales.value.total, 'percepcion')
-    if (errorPercepcion) { toastWarning(errorPercepcion); return }
     const comprobante = await createMutation.mutateAsync({
-      percepcion: percepcionOrigen.value,
       idUsuarioAuditoria: userId,
       idTipoComprobante: Number(idTipoComprobante.value),
       serie: serie.value.trim(),
@@ -1554,11 +1531,10 @@ try {
           : undefined,
     })
 
-    percepcionCreada.value = comprobante.percepcion
     comprobanteGuardadoId.value = comprobante.id
     comprobanteGuardadoSerie.value = comprobante.serie
     comprobanteGuardadoNumero.value = comprobante.numero
-    toastSuccess(comprobante.percepcion ? `Venta registrada con percepción ${comprobante.percepcion.serie}-${comprobante.percepcion.numero}, pendiente de emisión` : 'Venta registrada')
+    toastSuccess('Venta registrada')
 
     let navegoAOrdenSalida = false
     let esParaEnvio = false
@@ -1624,8 +1600,6 @@ const { segundosRestantes, iniciarAutoLimpieza, detenerAutoLimpieza } =
   usePosAutoLimpieza(() => limpiarFormulario())
 
 async function limpiarFormulario() {
-  percepcionOrigen.value = undefined
-  percepcionCreada.value = undefined
   detenerAutoLimpieza()
   lineas.value = []
   glosa.value = ''

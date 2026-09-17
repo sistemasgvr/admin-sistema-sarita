@@ -279,7 +279,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     label: 'Estado',
     type: 'select',
     placeholder: 'Seleccionar estado',
-    options: estadosRutaOptions,
+    options: estadosRutaOptions.value,
   },
   {
     key: 'idAlmacen',

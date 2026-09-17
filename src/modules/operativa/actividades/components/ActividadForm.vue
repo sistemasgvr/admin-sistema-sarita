@@ -410,7 +410,7 @@
     </form>
 
     <div
-      class="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-gray-200 bg-white/95 px-1 py-4 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:flex-row sm:justify-end"
+      class="sticky bottom-0 z-10 flex flex-col-reverse gap-3 border-t border-black-200 bg-white/95 px-1 py-4 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95 sm:flex-row sm:justify-end"
     >
       <button
         type="button"

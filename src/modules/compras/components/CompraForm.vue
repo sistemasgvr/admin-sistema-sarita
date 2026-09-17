@@ -867,11 +867,6 @@
 </template>
       </FormCardsLayout>
 
-      <TributoOrigenSection
-        v-if="!isEdit && authStore.hasPermission(PermisoBanderas.RETENCIONES_CREAR)"
-        v-model="retencionOrigen" tipo="retencion" :total="totalParaCuotas" :fecha="fecha || ''"
-        :disabled="saving"
-      />
       <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button
           type="button"
@@ -913,8 +908,6 @@
 </template>
 
 <script setup lang="ts">
-import TributoOrigenSection from '@/shared/components/tributos/TributoOrigenSection.vue'
-import { validarTributoOrigen, type TributoOrigen } from '@/shared/components/tributos/tributoOrigen'
 import { computed, nextTick, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRoute } from 'vue-router'
 import { useForm } from 'vee-validate'
@@ -1023,7 +1016,6 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const retencionOrigen = ref<TributoOrigen>()
 const authStore = useAuthStore()
 const route = useRoute()
 const createMutation = useCreateCompraMutation()
@@ -2144,7 +2136,6 @@ function formatMoney(value: number) {
 }
 
 function resetCreateForm() {
-  retencionOrigen.value = undefined
   resetForm({
     values: {
       fecha: today(),
@@ -2187,7 +2178,6 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
 
   suppressRecargaPlantaReset.value = true
 
-  retencionOrigen.value = undefined
   resetForm({
     values: {
       fecha: today(),
@@ -2268,8 +2258,7 @@ watch(
   () => detailQuery.data.value,
   (data) => {
     if (!data || !isEdit.value) return
-    retencionOrigen.value = undefined
-  resetForm({
+    resetForm({
       values: {
         fecha: today(),
         serie: '',
@@ -2388,10 +2377,7 @@ const onSubmit = handleSubmit(async (values) => {
     desdeRecargaExterna.value && toOptionalNumber(values.idRecargaPlanta) != null
   const registrarRetorno = conRecarga && Boolean(values.guardarBalonesAlmacen)
 
-  const errorRetencion = validarTributoOrigen(retencionOrigen.value, totalParaCuotas.value, 'retencion')
-  if (errorRetencion) { toastWarning(errorRetencion); return }
   const created = await createMutation.mutateAsync({
-    retencion: retencionOrigen.value,
     idUsuarioAuditoria: userId,
     fecha: values.fecha as string,
     serie: String(values.serie ?? '').trim() || undefined,
@@ -2430,8 +2416,6 @@ const onSubmit = handleSubmit(async (values) => {
         : undefined,
     detalles,
   })
-  if (created.retencion) toastSuccess(`Retención ${created.retencion.serie}-${created.retencion.numero} vinculada a la compra, pendiente de emisión`)
-  retencionOrigen.value = undefined
   emit('saved', created.cabecera.id)
 })
 </script>
