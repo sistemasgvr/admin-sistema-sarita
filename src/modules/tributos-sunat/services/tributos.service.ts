@@ -4,6 +4,7 @@ import type {
   EmitirTributoResponse,
   OrigenElegible,
   OrigenesElegiblesFilters,
+  SeriesTributoResponse,
   TipoTributo,
   TributoCatalogos,
   TributoCreado,
@@ -26,6 +27,9 @@ export function createTributoService(tipo: TipoTributo) {
     },
     obtenerCatalogos() {
       return apiGet<TributoCatalogos>(`${api}/catalogos`)
+    },
+    listarSeries(idEmpresa?: number) {
+      return apiGet<SeriesTributoResponse>(`${api}/series`, { params: { idEmpresa } })
     },
     listarOrigenesElegibles(filters: OrigenesElegiblesFilters = {}) {
       return apiGet<OrigenElegible[]>(`${api}/${elegibles}`, { params: filters })

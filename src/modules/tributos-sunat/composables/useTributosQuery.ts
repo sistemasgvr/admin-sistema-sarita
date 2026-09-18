@@ -31,6 +31,19 @@ export function useTributoCatalogosQuery(tipo: TipoTributo) {
   })
 }
 
+/** Series ya usadas por la empresa con su siguiente correlativo, para el select de serie. */
+export function useSeriesTributoQuery(
+  tipo: TipoTributo,
+  idEmpresa: Ref<number | null> | ComputedRef<number | null>,
+) {
+  const service = createTributoService(tipo)
+  return useQuery({
+    queryKey: computed(() => tributosQueryKeys.series(tipo, idEmpresa.value)),
+    queryFn: () => service.listarSeries(idEmpresa.value ?? undefined),
+    enabled: computed(() => idEmpresa.value != null),
+  })
+}
+
 /** Comprobantes/compras sobre los que aún se puede armar el documento; se refresca al cambiar filtros. */
 export function useOrigenesElegiblesQuery(
   tipo: TipoTributo,

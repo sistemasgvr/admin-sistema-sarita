@@ -224,6 +224,15 @@
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
+          <button
+            v-if="canView"
+            type="button"
+            title="Imprimir etiqueta"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="imprimirEtiquetaBalon(row)"
+          >
+            <AppIcon :name="ICONS.printer" :size="15" />
+          </button>
           <AppActionMenu
             data-tutorial="cilindros-acciones"
             :items="actionItemsForRow(row)"
@@ -358,6 +367,7 @@ import {
   ESTADOS_TERMINALES,
   motivoNoDisponible,
 } from '@/modules/balones/cilindros/utils/disponibilidadBalon'
+import { imprimirEtiquetaBalon } from '@/modules/balones/cilindros/utils/imprimirEtiquetaBalon'
 import type {
   Balon,
   BalonListFilters,

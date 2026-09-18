@@ -7,6 +7,8 @@ export const tributosQueryKeys = {
   details: (tipo: TipoTributo) => [...tributosQueryKeys.all(tipo), 'detail'] as const,
   detail: (tipo: TipoTributo, id: number) => [...tributosQueryKeys.details(tipo), id] as const,
   catalogos: (tipo: TipoTributo) => [...tributosQueryKeys.all(tipo), 'catalogos'] as const,
+  series: (tipo: TipoTributo, idEmpresa: number | null) =>
+    [...tributosQueryKeys.all(tipo), 'series', idEmpresa] as const,
   elegibles: (tipo: TipoTributo, filters: OrigenesElegiblesFilters) =>
     [...tributosQueryKeys.all(tipo), 'elegibles', filters] as const,
 }

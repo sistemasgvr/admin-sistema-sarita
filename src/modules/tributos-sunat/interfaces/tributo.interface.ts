@@ -76,18 +76,40 @@ export interface OrigenElegible {
   documento_proveedor?: string | null
 }
 
+/** Tasa registrada para un régimen (catálogo TasaPercepcion / TasaRetencion). */
+export interface TasaRegimen {
+  id: number
+  tasa: number
+  /** Texto del catálogo tal cual («2%», «0.5%»). */
+  etiqueta: string
+}
+
 export interface RegimenOpcion {
   id: number
   nombre: string
   /** Código SUNAT (catálogo 22 / 23). */
   descripcion: string | null
+  /** Tasa propuesta: la menor registrada para el régimen. */
   tasa: number | null
+  tasas: TasaRegimen[]
 }
 
 export interface TributoCatalogos {
   regimenesPercepcion?: RegimenOpcion[]
   regimenesRetencion?: RegimenOpcion[]
   estadosSunat: { id: number; nombre: string; descripcion: string | null }[]
+}
+
+/** Serie disponible con su correlativo, como en el modal de GRE. */
+export interface SerieTributo {
+  serie: string
+  ultimo_numero: string | null
+  siguiente_numero: string
+  total: number
+}
+
+export interface SeriesTributoResponse {
+  series: SerieTributo[]
 }
 
 export interface TributoListFilters {
@@ -152,6 +174,7 @@ export interface TributoConfig {
   origenPlural: string
   /** Momento que origina el tributo (cobro / pago). */
   operacion: string
+  /** Solo de ejemplo: la serie real se elige entre las que devuelve la API. */
   serieEjemplo: string
   seriePrefijo: 'P' | 'R'
   rutas: { lista: string; nueva: string; detalle: string }

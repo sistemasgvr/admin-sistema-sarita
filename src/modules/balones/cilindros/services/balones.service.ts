@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
+import { apiDelete, apiGet, apiGetBlob, apiGetPaginated, apiPatch, apiPost } from '@/shared/api/apiClient'
 import type {
   Balon,
   BalonBaja,
@@ -20,6 +20,11 @@ export const balonesService = {
 
   obtenerPorId(id: number) {
     return apiGet<Balon>(`/balones/${id}`)
+  },
+
+  /** Etiqueta adhesiva 50 × 25 mm con código de barras, lista para la impresora térmica. */
+  obtenerEtiquetaPdf(id: number) {
+    return apiGetBlob(`/balones/${id}/etiqueta.pdf`)
   },
 
   crear(payload: CreateBalonPayload) {

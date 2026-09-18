@@ -5,7 +5,6 @@
     <div v-if="query.isLoading.value" class="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 dark:border-gray-800 dark:bg-white/[0.02]">
       Cargando...
     </div>
-
     <div v-else-if="registro" class="space-y-5">
       <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.02]">
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -21,11 +20,6 @@
             </p>
           </div>
 
-          <!--
-            Percepción y retención responden en el mismo envío (sin ticket): el
-            estado sale del CDR. Aceptada = documentos oficiales; cualquier otro
-            estado permite (re)emitir.
-          -->
           <div class="flex flex-wrap gap-2">
             <template v-if="aceptada">
               <button

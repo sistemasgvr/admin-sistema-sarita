@@ -2,7 +2,7 @@
   <div>
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
-    <div class="mb-5">
+    <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
       <RouterLink
         :to="{ name: 'admin-balones-cilindros' }"
         class="inline-flex items-center gap-1 text-sm font-medium text-gray-500 transition hover:text-gray-800 dark:text-gray-400 dark:hover:text-white/90"
@@ -10,6 +10,16 @@
         <AppIcon :name="ICONS.chevronLeft" :size="16" />
         Volver al libro
       </RouterLink>
+      <button
+        v-if="balon"
+        type="button"
+        class="inline-flex h-10 items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/5"
+        title="Etiqueta adhesiva 50 × 25 mm con código de barras"
+        @click="imprimirEtiquetaBalon(balon)"
+      >
+        <AppIcon :name="ICONS.printer" :size="16" />
+        Imprimir etiqueta
+      </button>
     </div>
 
     <div
@@ -393,6 +403,7 @@ import {
 import type { TipoEventoEstadoBalon } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import { useInventarioMovimientosQuery } from '@/modules/inventario/composables/useInventarioMovimientosQuery'
 import { usePrestamosDetalleQuery } from '@/modules/balones/prestamos/composables/usePrestamosDetalleQuery'
+import { imprimirEtiquetaBalon } from '@/modules/balones/cilindros/utils/imprimirEtiquetaBalon'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'

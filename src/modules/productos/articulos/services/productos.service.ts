@@ -1,6 +1,7 @@
 import {
   apiDelete,
   apiGet,
+  apiGetBlob,
   apiGetPaginated,
   apiPatch,
   apiPost,
@@ -63,5 +64,10 @@ export const productosService = {
 
   imprimirUbicacionesPdf(ids: number[]) {
     return apiPostBlob('/productos/ubicaciones/pdf', { ids })
+  },
+
+  /** Etiqueta adhesiva 50 × 25 mm con código de barras, lista para la impresora térmica. */
+  obtenerEtiquetaPdf(id: number) {
+    return apiGetBlob(`/productos/${id}/etiqueta.pdf`)
   },
 }

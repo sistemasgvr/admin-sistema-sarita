@@ -7,7 +7,6 @@
 import { computed } from 'vue'
 import { AppBadge } from '@/shared/components'
 
-/** Estado SUNAT por evidencia (CDR); sin estado = todavía no se envió al PSE. */
 const props = defineProps<{ estado?: string | null }>()
 
 const color = computed<'success' | 'error' | 'warning'>(() => {

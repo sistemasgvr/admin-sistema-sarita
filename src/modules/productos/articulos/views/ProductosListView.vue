@@ -200,6 +200,15 @@
           >
             <AppIcon :name="ICONS.eye" :size="15" />
           </button>
+          <button
+            v-if="canView"
+            type="button"
+            title="Imprimir etiqueta"
+            class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="imprimirEtiquetaProducto(row)"
+          >
+            <AppIcon :name="ICONS.printer" :size="15" />
+          </button>
 
           <AppActionMenu
             data-tutorial="productos-acciones"
@@ -288,6 +297,7 @@ import type {
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { esProductoSistema } from '@/modules/productos/articulos/utils/productosSistema'
 import { exportarProductosExcel } from '@/modules/productos/articulos/utils/exportarProductosExcel'
+import { imprimirEtiquetaProducto } from '@/modules/productos/articulos/utils/imprimirEtiquetaProducto'
 import { categoriasProductoService } from '@/modules/productos/categorias/services/categorias-producto.service'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { productosBreadcrumbItems } from '@/modules/productos/config/productos-breadcrumb'
