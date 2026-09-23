@@ -104,10 +104,9 @@
               :disabled="isSubmitting || isLoadingBalon"
               :error="errors.paginaLibro"
             />
-            <AppInput
+            <AppDatePicker
               v-model="fechaRegistro"
               label="Fecha registro"
-              type="date"
               v-bind="fechaRegistroAttrs"
               :disabled="isSubmitting || isLoadingBalon"
               :error="errors.fechaRegistro"
@@ -431,7 +430,7 @@ import {
   MES_FABRICACION_OPTIONS,
   toFirstOfMonthIso,
 } from '@/modules/balones/utils/formatMonthYear'
-import { AppCheckbox, AppInput, AppSelect, AppSelectWithCreate, AppTextarea } from '@/shared/components'
+import { AppCheckbox, AppDatePicker, AppInput, AppSelect, AppSelectWithCreate, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'

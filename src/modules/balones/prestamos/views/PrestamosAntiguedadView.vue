@@ -127,11 +127,16 @@
 
     <PrestamoDetailModal v-model="prestamoDetailOpen" :prestamo-id="prestamoToViewId" />
 
-    <PrestamoDevolverModal
-      v-model="devolverModalOpen"
-      :detalle="detalleToDevolver"
-      @saved="onDevolucionSaved"
-    />
+    <!--
+      Devolver / reingresar: deshabilitado, el retorno ahora se controla con
+      la acción "Programar recojo" (actividad de tipo RECOJO). Se deja
+      comentado en vez de borrarse por si hace falta revertir.
+      <PrestamoDevolverModal
+        v-model="devolverModalOpen"
+        :detalle="detalleToDevolver"
+        @saved="onDevolucionSaved"
+      />
+    -->
   </div>
 </template>
 
@@ -141,7 +146,8 @@ import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { balonesBreadcrumbItems } from '@/modules/balones/config/balones-breadcrumb'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
-import PrestamoDevolverModal from '@/modules/balones/prestamos/components/PrestamoDevolverModal.vue'
+// Devolver / reingresar: deshabilitado, ver nota junto al modal comentado en el template.
+// import PrestamoDevolverModal from '@/modules/balones/prestamos/components/PrestamoDevolverModal.vue'
 import { usePrestamosAntiguedadQuery } from '@/modules/balones/prestamos/composables/usePrestamosAntiguedadQuery'
 import type {
   PrestamoAntiguedadFilters,
@@ -149,7 +155,7 @@ import type {
   PrestamoAntiguedadResumen,
   RangoAntiguedadPrestamo,
 } from '@/modules/balones/prestamos/interfaces/prestamo-antiguedad.interface'
-import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
+// import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { formatMonthYear } from '@/modules/balones/utils/formatMonthYear'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -208,14 +214,15 @@ const clientesQuery = useClientesQuery(clientesFilters)
 const prestamoDetailOpen = ref(false)
 const prestamoToViewId = ref<number | null>(null)
 
-const devolverModalOpen = ref(false)
-const detalleToDevolver = ref<PrestamoDetalle | null>(null)
+// Devolver / reingresar: deshabilitado, ver nota junto al modal comentado en el template.
+// const devolverModalOpen = ref(false)
+// const detalleToDevolver = ref<PrestamoDetalle | null>(null)
 
-const canDevolver = computed(
-  () =>
-    authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
-    authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
-)
+// const canDevolver = computed(
+//   () =>
+//     authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
+//     authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
+// )
 const canProgramarRecojo = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
 )
@@ -344,12 +351,14 @@ const rangoBadgeColor = (rango: RangoAntiguedadPrestamo): BadgeColor => {
 function actionItemsForRow(row: PrestamoAntiguedadItem): ActionMenuItem[] {
   const pendiente = !row.fecha_devolucion
   return [
-    {
-      key: 'devolver',
-      label: 'Devolver / reingresar',
-      icon: ICONS.clipboardCheck,
-      hidden: !canDevolver.value || !pendiente,
-    },
+    // Devolver / reingresar: deshabilitado, el retorno ahora se controla con
+    // "Programar recojo" (actividad de tipo RECOJO).
+    // {
+    //   key: 'devolver',
+    //   label: 'Devolver / reingresar',
+    //   icon: ICONS.clipboardCheck,
+    //   hidden: !canDevolver.value || !pendiente,
+    // },
     {
       key: 'programar_recojo',
       label: 'Programar recojo',
@@ -381,21 +390,22 @@ function openPrestamoDetail(row: PrestamoAntiguedadItem) {
   prestamoDetailOpen.value = true
 }
 
-function openDevolver(row: PrestamoAntiguedadItem) {
-  detalleToDevolver.value = {
-    id: row.id_detalle,
-    id_prestamo: row.id_prestamo,
-    id_balon: row.id_balon,
-    codigo_balon: row.codigo_balon,
-    numero_prestamo: row.numero_prestamo,
-    id_cliente: row.id_cliente,
-    id_almacen: row.id_almacen ?? null,
-    fecha_devolucion: row.fecha_devolucion,
-    estado: 1,
-    fecha_creacion: '',
-  }
-  devolverModalOpen.value = true
-}
+// Devolver / reingresar: deshabilitado, ver nota junto al modal comentado en el template.
+// function openDevolver(row: PrestamoAntiguedadItem) {
+//   detalleToDevolver.value = {
+//     id: row.id_detalle,
+//     id_prestamo: row.id_prestamo,
+//     id_balon: row.id_balon,
+//     codigo_balon: row.codigo_balon,
+//     numero_prestamo: row.numero_prestamo,
+//     id_cliente: row.id_cliente,
+//     id_almacen: row.id_almacen ?? null,
+//     fecha_devolucion: row.fecha_devolucion,
+//     estado: 1,
+//     fecha_creacion: '',
+//   }
+//   devolverModalOpen.value = true
+// }
 
 function openProgramarRecojo(row: PrestamoAntiguedadItem) {
   // Un recojo es una actividad: se programa en operativa/actividades con el
@@ -434,9 +444,10 @@ function openClienteMapa(row: PrestamoAntiguedadItem) {
 
 function onActionSelect(key: string, row: PrestamoAntiguedadItem) {
   switch (key) {
-    case 'devolver':
-      openDevolver(row)
-      return
+    // Devolver / reingresar: deshabilitado, ver nota junto al modal comentado en el template.
+    // case 'devolver':
+    //   openDevolver(row)
+    //   return
     case 'programar_recojo':
       openProgramarRecojo(row)
       return
@@ -452,9 +463,10 @@ function onActionSelect(key: string, row: PrestamoAntiguedadItem) {
   }
 }
 
-function onDevolucionSaved() {
-  query.refetch()
-}
+// Devolver / reingresar: deshabilitado, ver nota junto al modal comentado en el template.
+// function onDevolucionSaved() {
+//   query.refetch()
+// }
 
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 

@@ -53,7 +53,7 @@
             @blur="onBlurMonto"
           />
         </AppFormField>
-        <AppInput v-model="fecha" label="Fecha" type="date" required />
+        <AppDatePicker v-model="fecha" label="Fecha" required />
         <AppInput
           v-model="idComprobante"
           label="ID comprobante NC (opcional)"
@@ -99,7 +99,7 @@ import { useDevolverGarantiaMutation } from '@/modules/balones/garantias/composa
 import { useGarantiasQuery } from '@/modules/balones/garantias/composables/useGarantiasQuery'
 import type { GarantiaListFilters } from '@/modules/balones/garantias/interfaces/garantia.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastWarning } from '@/shared/composables/useToast'

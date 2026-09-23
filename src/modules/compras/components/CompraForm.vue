@@ -53,10 +53,9 @@
             </AppSelectWithCreate>
 
             <div data-tutorial="compra-documento" class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              <AppInput
+              <AppDatePicker
                 v-model="fecha"
                 label="Fecha"
-                type="date"
                 required
                 v-bind="fechaAttrs"
                 :disabled="saving"
@@ -276,10 +275,9 @@
                 </div>
 
                 <div v-if="guardarBalonesAlmacen" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <AppInput
+                  <AppDatePicker
                     v-model="fechaLlegadaAlmacen"
                     label="Fecha llegada almacén"
-                    type="date"
                     required
                     :disabled="saving"
                     :error="errors.fechaLlegadaAlmacen"
@@ -973,6 +971,7 @@ import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import {
   AppBadge,
   AppCheckbox,
+  AppDatePicker,
   AppHelpTip,
   AppInput,
   AppSelect,

@@ -38,9 +38,8 @@
         </AppFormField>
 
         <AppFormField label="Fecha de pago" required :error="errores.fechaPago">
-          <AppInput
+          <AppDatePicker
             v-model="form.fechaPago"
-            type="date"
             :min="fechaEmisionMin"
             :state="errores.fechaPago ? 'error' : 'default'"
           />
@@ -118,7 +117,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
-import { AppConfirmDialog, AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppConfirmDialog, AppDatePicker, AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'

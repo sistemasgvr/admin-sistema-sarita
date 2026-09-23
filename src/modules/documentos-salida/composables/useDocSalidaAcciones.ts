@@ -47,6 +47,8 @@ export type DocSalidaAccion =
   | 'consultar'
   | 'historial'
   | 'pdf'
+  | 'pdfSunat'
+  | 'xmlSunat'
   | 'anular'
 
 /**
@@ -193,6 +195,12 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
       Boolean(documento.value?.gre_estado_envio || tieneTicketSunat.value),
   )
 
+  /**
+   * El PDF y el XML oficiales solo existen una vez que SUNAT aceptó la guía
+   * (emitido_sunat pasa a TRUE recién con la aceptación, no con el envío).
+   */
+  const puedeVerArchivosSunat = computed(() => emitido.value)
+
   /** Menú de la fila del listado; el detalle usa los mismos flags en sus botones. */
   const accionesMenu = computed<ActionMenuItem[]>(() => [
     { key: 'ver', label: 'Ver / editar', icon: ICONS.eye },
@@ -242,6 +250,18 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
     },
     { key: 'pdf', label: 'Descargar PDF', icon: ICONS.download },
     {
+      key: 'pdfSunat',
+      label: 'Ver PDF SUNAT',
+      icon: ICONS.fileText,
+      hidden: !puedeVerArchivosSunat.value,
+    },
+    {
+      key: 'xmlSunat',
+      label: 'Ver XML SUNAT',
+      icon: ICONS.fileText,
+      hidden: !puedeVerArchivosSunat.value,
+    },
+    {
       key: 'anular',
       label: 'Anular',
       icon: ICONS.ban,
@@ -263,6 +283,7 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
     puedeEmitir,
     puedeConsultarEstadoSunat,
     puedeVerHistorialSunat,
+    puedeVerArchivosSunat,
     puedeAnular,
     puedeAsociarLote,
     accionesMenu,

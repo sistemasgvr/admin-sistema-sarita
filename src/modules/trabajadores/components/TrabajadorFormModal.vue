@@ -351,17 +351,15 @@
               />
             </div>
             <div class="grid gap-3 sm:grid-cols-2">
-              <AppInput
+              <AppDatePicker
                 v-model="fechaEmisionLicencia"
-                type="date"
                 label="Fecha de emisión"
                 v-bind="fechaEmisionLicenciaAttrs"
                 :disabled="isSubmitting"
                 :error="errors.fechaEmisionLicencia"
               />
-              <AppInput
+              <AppDatePicker
                 v-model="fechaVencimientoLicencia"
-                type="date"
                 label="Fecha de vencimiento"
                 v-bind="fechaVencimientoLicenciaAttrs"
                 :disabled="isSubmitting"

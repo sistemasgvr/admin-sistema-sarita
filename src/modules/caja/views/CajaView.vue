@@ -60,7 +60,7 @@
           >
             <div class="min-w-0 lg:w-[10.5rem]">
               <AppFormField label="Fecha">
-                <AppInput v-model="fecha" type="date" />
+                <AppDatePicker v-model="fecha" />
               </AppFormField>
             </div>
             <div class="min-w-0 lg:w-[12rem]">
@@ -425,8 +425,8 @@ import {
   AppBadge,
   AppCollapsibleSection,
   AppConfirmDialog,
+  AppDatePicker,
   AppHelpTip,
-  AppInput,
   AppSelect,
   AppSummaryCards,
 } from '@/shared/components'

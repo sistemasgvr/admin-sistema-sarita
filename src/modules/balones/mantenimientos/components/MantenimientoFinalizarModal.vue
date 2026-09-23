@@ -36,10 +36,9 @@
         </template>
       </p>
 
-      <AppInput
+      <AppDatePicker
         v-model="fechaSalida"
         :label="esServicioCliente ? 'Fecha de entrega al cliente' : 'Fecha de salida / reingreso'"
-        type="date"
         required
       />
 
@@ -83,7 +82,7 @@ import { computed, ref, watch } from 'vue'
 import { useFinalizarMantenimientoMutation } from '@/modules/balones/mantenimientos/composables/useMantenimientoMutations'
 import type { Mantenimiento } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppTextarea } from '@/shared/components'
+import { AppDatePicker, AppModal, AppTextarea } from '@/shared/components'
 import { toastWarning } from '@/shared/composables/useToast'
 
 const props = defineProps<{

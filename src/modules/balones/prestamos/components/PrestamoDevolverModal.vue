@@ -14,10 +14,9 @@
         al almacén (movimiento de entrada por devolución) y saldrá del pendiente de días en préstamo.
       </p>
 
-      <AppInput
+      <AppDatePicker
         v-model="fechaDevolucion"
         label="Fecha de devolución"
-        type="date"
         required
       />
 
@@ -83,7 +82,7 @@ import { useDevolverPrestamoDetalleMutation } from '@/modules/balones/prestamos/
 import type { PrestamoDetalle } from '@/modules/balones/prestamos/interfaces/prestamo-detalle.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { usePosAlmacenDefault } from '@/modules/ventas/comprobantes/composables/usePosAlmacenDefault'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect } from '@/shared/components'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastInfo, toastWarning } from '@/shared/composables/useToast'
 import { PermisoBanderas } from '@/shared/constants/permissions'

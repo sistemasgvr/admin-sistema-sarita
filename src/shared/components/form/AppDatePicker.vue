@@ -1,5 +1,16 @@
 <template>
-  <AppFormField :label="label" :hint="hint" :error="error" :required="required" :optional="optional" :disabled="disabled" :id="id">
+  <AppFormField
+    :label="label"
+    :hint="hint"
+    :help="help"
+    :error="error"
+    :required="required"
+    :optional="optional"
+    :disabled="disabled"
+    :id="id"
+    :class="$attrs.class"
+    :style="$attrs.style"
+  >
     <template #default="{ id: fieldId }">
       <div ref="triggerWrapRef" class="relative">
         <div
@@ -157,6 +168,7 @@ import {
   parseDdMmYyyyStringToDate,
   parseDateSegmentForCalendarNav,
 } from '@/shared/utils/dateMask'
+import type { FormControlState } from '@/shared/interfaces/form.interface'
 
 type CalendarView = 'day' | 'month' | 'year'
 
@@ -170,6 +182,10 @@ interface AppDatePickerProps {
   disabled?: boolean
   error?: string
   hint?: string
+  /** Ayuda contextual junto al label (tooltip), igual que AppInput/AppTextarea. */
+  help?: string
+  /** Estado visual del campo (p. ej. 'error' sin mensaje), igual que AppInput. */
+  state?: FormControlState
   required?: boolean
   optional?: boolean
   name?: string
@@ -180,6 +196,7 @@ interface AppDatePickerProps {
 
 const props = withDefaults(defineProps<AppDatePickerProps>(), {
   placeholder: 'dd/mm/aaaa',
+  state: 'default',
 })
 
 /** v-model en formato ISO (yyyy-mm-dd), igual que AppInput type="date". */
@@ -269,7 +286,8 @@ const triggerClasses = computed(() => {
   const err =
     'border border-red-500 focus-within:border-red-500 focus-within:ring-red-500/10 dark:border-red-500'
   const dis = 'cursor-not-allowed bg-gray-100 opacity-60 dark:bg-gray-800'
-  return [props.error ? err : base, props.disabled ? dis : ''].filter(Boolean).join(' ')
+  const hayError = Boolean(props.error) || props.state === 'error'
+  return [hayError ? err : base, props.disabled ? dis : ''].filter(Boolean).join(' ')
 })
 
 const currentMonthName = computed(() => MONTH_NAMES[calendarMonth.value])

@@ -68,12 +68,11 @@
                 />
               </td>
               <td class="px-3 py-2">
-                <AppInput v-model="fila.fechaFabricacion" type="date" :disabled="guardando" />
+                <AppDatePicker v-model="fila.fechaFabricacion" :disabled="guardando" />
               </td>
               <td class="px-3 py-2">
-                <AppInput
+                <AppDatePicker
                   v-model="fila.fechaUltimaPruebaHidrostatica"
-                  type="date"
                   :disabled="guardando"
                 />
               </td>
@@ -148,7 +147,7 @@ import { useTiposBalonQuery } from '@/modules/balones/tipos-balon/composables/us
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'

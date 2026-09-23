@@ -6,7 +6,7 @@
       </p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Fecha" required :error="errorFecha">
-          <AppInput v-model="form.fecha" type="date" :disabled="esReapertura" />
+          <AppDatePicker v-model="form.fecha" :disabled="esReapertura" />
         </AppFormField>
         <AppFormField label="Monto inicial" required :error="errorMonto">
           <MoneyInput
@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
-import { AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useAbrirCajaMutation } from '@/modules/caja/composables/useCajaQuery'
 import { useMoneyField } from '@/shared/composables/useMoneyField'

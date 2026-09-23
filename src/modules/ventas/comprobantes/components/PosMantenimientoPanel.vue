@@ -30,7 +30,7 @@
             />
             <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" disabled />
             <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
-            <AppInput v-model="fecha" label="Fecha" type="date" />
+            <AppDatePicker v-model="fecha" label="Fecha" />
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -104,7 +104,7 @@
           help="Queda como PENDIENTE en taller. Al Finalizar en Mantenimientos se entrega el cilindro al cliente (no se mete a stock de almacén)."
         >
           <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <AppInput v-model="fechaIngreso" label="Fecha ingreso" type="date" />
+            <AppDatePicker v-model="fechaIngreso" label="Fecha ingreso" />
             <AppFormField label="Costo / importe" required :error="errorCosto">
               <MoneyInput
                 v-model="costo"
@@ -186,7 +186,7 @@ import {
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
 import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
-import { AppInput, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'

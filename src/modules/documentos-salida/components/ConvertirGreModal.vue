@@ -8,25 +8,22 @@
       -->
       <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-white/5">
         <span class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500">Empresa que emitirá esta guía</span>
-        <span class="text-sm font-semibold text-gray-800 dark:text-white/90">
-          {{ empresaSeleccionadaInfo ? (empresaSeleccionadaInfo.razon_social || empresaSeleccionadaInfo.nombre_comercial) : 'Cargando empresa emisora…' }}
+        <div v-if="empresaSeleccionadaInfo" class="mt-1 flex flex-wrap items-center gap-2">
+          <span class="text-sm font-semibold text-gray-800 dark:text-white/90">
+            {{ empresaSeleccionadaInfo.razon_social || empresaSeleccionadaInfo.nombre_comercial }}
+          </span>
+          <span class="rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-white/10 dark:text-gray-300">RUC: {{ empresaSeleccionadaInfo.ruc }}</span>
+          <span class="rounded-full px-2 py-0.5 text-[11px] font-bold" :class="entornoBadgeClass">
+            {{ documento?.gre_entorno === 'produccion' ? 'PRODUCCIÓN' : 'PRUEBAS (BETA)' }}
+          </span>
+        </div>
+        <span v-else-if="empresasQuery.isLoading.value" class="mt-1 block text-sm text-gray-500">Cargando empresa emisora…</span>
+        <span v-else class="mt-1 flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
+          <AppIcon :name="ICONS.alertTriangle" :size="14" />
+          No hay empresa emisora configurada. Selecciona una empresa activa en Configuración antes de emitir esta guía.
         </span>
-        <span v-if="empresaSeleccionadaInfo" class="ml-2 rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-white/10 dark:text-gray-300">RUC: {{ empresaSeleccionadaInfo.ruc }}</span>
       </div>
       <p class="text-sm text-gray-500">No se puede cambiar el emisor en esta guía: la empresa emisora la define SUNAT. Si necesitas emitir con otra empresa, el cambio se realiza desde SUNAT; mientras tanto, esta guía se emitirá con la empresa mostrada arriba.</p>
-      <div
-        v-if="idEmpresaEmisora && empresaSeleccionadaInfo"
-        class="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs dark:border-gray-700 dark:bg-white/5"
-      >
-        <span class="font-semibold text-gray-800 dark:text-white/90">{{ empresaSeleccionadaInfo.razon_social || empresaSeleccionadaInfo.nombre_comercial }}</span>
-        <span class="rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-white/10 dark:text-gray-300">RUC: {{ empresaSeleccionadaInfo.ruc }}</span>
-        <span
-          class="rounded-full px-2 py-0.5 text-[11px] font-bold"
-          :class="entornoBadgeClass"
-        >
-          {{ documento?.gre_entorno === 'produccion' ? 'PRODUCCIÓN' : 'PRUEBAS (BETA)' }}
-        </span>
-      </div>
       <!-- 1. Tipo de guía: define quién emite y, con eso, qué datos pide SUNAT -->
       <section class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
         <h4 class="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">

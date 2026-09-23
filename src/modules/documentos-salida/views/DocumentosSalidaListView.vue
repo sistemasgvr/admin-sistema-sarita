@@ -388,6 +388,23 @@ async function onAccion(accion: DocSalidaAccion, row: DocSalidaAccionesFuente) {
     return
   }
 
+  if (accion === 'pdfSunat' || accion === 'xmlSunat') {
+    const tipo = accion === 'pdfSunat' ? 'pdf' : 'xml'
+    try {
+      await visualizarArchivo(
+        () =>
+          tipo === 'pdf'
+            ? documentosSalidaService.obtenerPdfOficial(row.id)
+            : documentosSalidaService.obtenerXmlOficial(row.id),
+        `GRE-${row.serie ?? row.id}.${tipo}`,
+        tipo,
+      )
+    } catch (error) {
+      toastApiError(error, `No se pudo abrir el ${tipo.toUpperCase()} del envío`)
+    }
+    return
+  }
+
   // El resto necesita el documento completo para poblar su modal.
   idSeleccionado.value = row.id
   await documentoQuery.refetch()

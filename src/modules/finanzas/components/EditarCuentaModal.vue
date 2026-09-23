@@ -36,9 +36,8 @@
       <!-- Campos "financieros" (solo si no hay restricción) -->
       <template v-if="!restringido">
         <AppFormField label="Fecha de emisión" required :error="errores.fechaEmision">
-          <AppInput
+          <AppDatePicker
             v-model="form.fechaEmision"
-            type="date"
             :state="errores.fechaEmision ? 'error' : 'default'"
           />
         </AppFormField>
@@ -55,9 +54,8 @@
 
       <!-- Fecha vencimiento: solo para cuentas simples -->
       <AppFormField v-if="!esPlan" label="Fecha de vencimiento" optional :error="errores.fechaVencimiento">
-        <AppInput
+        <AppDatePicker
           v-model="form.fechaVencimiento"
-          type="date"
           :min="fechaEmisionMin"
           :state="errores.fechaVencimiento ? 'error' : 'default'"
         />
@@ -111,7 +109,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, toRef, watch } from 'vue'
-import { AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'

@@ -12,6 +12,7 @@
     <template #default="{ id: fieldId }">
       <div class="relative">
         <input
+          ref="inputRef"
           :id="fieldId"
           v-model="model"
           :type="inputType"
@@ -21,6 +22,7 @@
           :readonly="readonly"
           :required="required"
           :autocomplete="autocomplete"
+          :aria-label="ariaLabel"
           :min="min"
           :max="max"
           :step="step"
@@ -67,6 +69,8 @@ interface AppInputProps {
   required?: boolean
   optional?: boolean
   autocomplete?: string
+  /** Sin label visible; va al input (los attrs caen al wrapper y se perderían). */
+  ariaLabel?: string
   min?: string | number
   max?: string | number
   step?: string | number
@@ -89,6 +93,15 @@ const emit = defineEmits<{
 const model = defineModel<string | number | null>({ default: '' })
 
 const showPassword = ref(false)
+
+const inputRef = ref<HTMLInputElement | null>(null)
+
+// Exponer el input nativo para casos que necesitan foco/selección programática
+// (p. ej. las pistolas de código de barras, que reenfocan tras cada escaneo).
+defineExpose({
+  focus: () => inputRef.value?.focus(),
+  select: () => inputRef.value?.select(),
+})
 
 function toFiniteNumber(value: string | number | null | undefined): number | null {
   if (value === '' || value == null) return null

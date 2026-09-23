@@ -17,8 +17,8 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
-        <AppInput v-model="fechaDesde" type="date" class="w-40" />
-        <AppInput v-model="fechaHasta" type="date" class="w-40" />
+        <AppDatePicker v-model="fechaDesde" class="w-40" />
+        <AppDatePicker v-model="fechaHasta" class="w-40" />
       </div>
     </div>
 
@@ -69,7 +69,7 @@
 import { computed, ref } from 'vue'
 import { useRankingActividadesQuery } from '@/modules/operativa/actividades/composables/useRankingActividadesQuery'
 import type { RankingActividadesFilters } from '@/modules/operativa/actividades/interfaces/actividad.interface'
-import { AppInput } from '@/shared/components'
+import { AppDatePicker } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 

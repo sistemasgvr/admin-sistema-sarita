@@ -154,9 +154,8 @@
 
         <div class="space-y-3">
           <div class="grid gap-3 sm:grid-cols-3">
-            <AppInput
+            <AppDatePicker
               v-model="fechaProgramada"
-              type="date"
               label="Fecha programada"
               required
               v-bind="fechaProgramadaAttrs"
@@ -273,10 +272,14 @@
         <div v-if="origenRecojoSeleccionado?.origen === 'PRESTAMO'" class="mt-3 space-y-2">
           <p class="text-sm font-medium">Balones a recoger</p>
           <template v-if="(origenRecojoSeleccionado.balones_disponibles ?? []).length">
-            <label v-for="balon in origenRecojoSeleccionado.balones_disponibles" :key="balon.id_balon" class="flex items-center gap-2 text-sm">
-              <input v-model="idsBalonesRecojo" type="checkbox" :value="balon.id_balon" :disabled="isSubmitting" />
-              {{ balon.codigo_balon }}
-            </label>
+            <AppCheckbox
+              v-for="balon in origenRecojoSeleccionado.balones_disponibles"
+              :key="balon.id_balon"
+              :model-value="idsBalonesRecojo.includes(balon.id_balon)"
+              :label="balon.codigo_balon"
+              :disabled="isSubmitting"
+              @update:model-value="toggleBalonRecojo(balon.id_balon, $event)"
+            />
           </template>
           <p v-else class="text-xs text-gray-500 dark:text-gray-400">
             Sin balones por seleccionar{{
@@ -514,7 +517,7 @@ import {
 import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
 import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppInput, AppSelect, AppTextarea, AppTimePicker } from '@/shared/components'
+import { AppBadge, AppCheckbox, AppDatePicker, AppInput, AppSelect, AppTextarea, AppTimePicker } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -833,6 +836,13 @@ const itemsTablaPreview = computed(() =>
 
 const origenRemoto = ref<OrigenVencidoRecojo | null>(null)
 const idsBalonesRecojo = ref<number[]>([])
+
+/** Marca/desmarca un balón de la selección del recojo (checkbox por balón). */
+function toggleBalonRecojo(idBalon: number, marcado: boolean) {
+  idsBalonesRecojo.value = marcado
+    ? [...new Set([...idsBalonesRecojo.value, idBalon])]
+    : idsBalonesRecojo.value.filter(id => id !== idBalon)
+}
 const origenRecojoSeleccionado = computed<OrigenVencidoRecojo | null>(() => {
   if (origenRemoto.value && `${origenRemoto.value.origen}:${origenRemoto.value.id_origen}` === origenRecojoKey.value) return origenRemoto.value
   const parsed = parseOrigenRecojoKey(origenRecojoKey.value)
@@ -1212,6 +1222,11 @@ watch(docSalidaSeleccionada, (doc) => {
   const clienteId = doc.id_destinatario ?? doc.id_cliente
   if (clienteId && !idCliente.value) {
     setFieldValue('idCliente', clienteId)
+  }
+  // Fecha de entrega de la orden: traslado si ya se definió, si no la de emisión.
+  const fechaEntrega = doc.fecha_traslado ?? doc.fecha
+  if (fechaEntrega && !fechaProgramada.value) {
+    setFieldValue('fechaProgramada', String(fechaEntrega).slice(0, 10))
   }
 })
 

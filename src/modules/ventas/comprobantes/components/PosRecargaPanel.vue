@@ -34,7 +34,7 @@
             />
             <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" disabled />
             <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
-            <AppInput v-model="fecha" label="Fecha" type="date" />
+            <AppDatePicker v-model="fecha" label="Fecha" />
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -237,7 +237,7 @@ import {
   emitirConImpresionTicket,
   imprimirTicketSinEmision,
 } from '@/modules/ventas/comprobantes/utils/imprimirTicketTrasEmision'
-import { AppInput, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'

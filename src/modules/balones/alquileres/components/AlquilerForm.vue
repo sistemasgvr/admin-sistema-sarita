@@ -70,30 +70,27 @@
             help="La vigencia es del accesorio alquilado. El cilindro no se alquila: si se entrega, es un préstamo y su recojo se agenda en Actividades."
           >
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <AppInput
+              <AppDatePicker
                 v-model="fechaInicio"
                 label="Fecha inicio"
-                type="date"
                 required
                 v-bind="fechaInicioAttrs"
                 :disabled="isSubmitting"
                 :error="errors.fechaInicio"
               />
 
-              <AppInput
+              <AppDatePicker
                 v-model="fechaFinPactada"
                 label="Fin pactado"
-                type="date"
                 required
                 v-bind="fechaFinPactadaAttrs"
                 :disabled="isSubmitting"
                 :error="errors.fechaFinPactada"
               />
 
-              <AppInput
+              <AppDatePicker
                 v-model="fechaFinReal"
                 label="Fin real"
-                type="date"
                 optional
                 v-bind="fechaFinRealAttrs"
                 :disabled="isSubmitting"
@@ -252,7 +249,7 @@ import GarantiaRecepcionFields from '@/modules/balones/garantias/components/Gara
 import { garantiasService } from '@/modules/balones/garantias/services/garantias.service'
 import type { AlquilerFormMode } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'

@@ -102,27 +102,24 @@
                 hint="No lo cierres si aún hay cilindros pendientes; usa Devolver."
               />
 
-              <AppInput
+              <AppDatePicker
                 v-model="fechaSalida"
                 :label="labelFechaMovimiento"
-                type="date"
                 v-bind="fechaSalidaAttrs"
                 :disabled="isSubmitting"
               />
 
-              <AppInput
+              <AppDatePicker
                 v-model="fechaRetornoPactada"
                 label="Retorno pactado"
-                type="date"
                 v-bind="fechaRetornoPactadaAttrs"
                 :disabled="isSubmitting"
               />
 
-              <AppInput
+              <AppDatePicker
                 v-if="!isCreateMode"
                 v-model="fechaRetornoReal"
                 label="Retorno real"
-                type="date"
                 v-bind="fechaRetornoRealAttrs"
                 :disabled="isSubmitting"
               />
@@ -369,6 +366,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppActionMenu,
   AppBadge,
+  AppDatePicker,
   AppInput,
   AppModal,
   AppSelect,

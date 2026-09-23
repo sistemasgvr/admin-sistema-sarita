@@ -62,18 +62,16 @@
 
         <DetailSectionCard title="Fechas" :icon="ICONS.calendar">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput
+            <AppDatePicker
               v-model="fechaEntregado"
               label="Fecha entregado"
-              type="date"
               v-bind="fechaEntregadoAttrs"
               :disabled="isSubmitting"
             />
 
-            <AppInput
+            <AppDatePicker
               v-model="fechaPrestamo"
               label="Fecha préstamo"
-              type="date"
               v-bind="fechaPrestamoAttrs"
               :disabled="isSubmitting"
             />
@@ -89,10 +87,9 @@
               :error="errors.diasPrestamo"
             />
 
-            <AppInput
+            <AppDatePicker
               v-model="fechaVencimiento"
               label="Fecha vencimiento"
-              type="date"
               v-bind="fechaVencimientoAttrs"
               :disabled="isSubmitting"
             />
@@ -220,7 +217,7 @@ import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBal
 import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
 import { useDocumentoSalidaQuery } from '@/modules/documentos-salida/composables/useDocumentosSalidaQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppTextarea } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'

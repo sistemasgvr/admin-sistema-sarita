@@ -152,18 +152,16 @@
       </div>
 
       <div data-tutorial="chofer-vigencia" class="grid gap-3 sm:grid-cols-2">
-        <AppInput
+        <AppDatePicker
           v-model="fechaEmision"
-          type="date"
           label="Fecha de emisión"
           v-bind="fechaEmisionAttrs"
           :disabled="isSubmitting"
           :error="errors.fechaEmision"
         />
 
-        <AppInput
+        <AppDatePicker
           v-model="fechaVencimiento"
-          type="date"
           label="Fecha de vencimiento"
           v-bind="fechaVencimientoAttrs"
           :disabled="isSubmitting"
@@ -221,7 +219,7 @@ import type {
   ConsultaRucData,
 } from '@/modules/consultas/interfaces/consulta.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'

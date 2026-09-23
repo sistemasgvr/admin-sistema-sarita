@@ -25,8 +25,12 @@
           <AppTable bare :columns="detalleColumns" :rows="detalleRows" row-key="id">
             <template #cell-rol="{ row }">
               <AppBadge :color="row.rol === 'GARANTIA' ? 'warning' : 'primary'">
-                {{ row.rol === 'GARANTIA' ? 'Garantía' : 'Entregado' }}
+                {{ row.rol === 'GARANTIA' ? 'Garantía' : 'Cilindro prestado' }}
               </AppBadge>
+            </template>
+            <template #cell-nombre_estado_balon="{ row }">
+              <ListaOpcionBadge v-if="row.nombre_estado_balon" :value="row.nombre_estado_balon" />
+              <span v-else class="text-gray-400">—</span>
             </template>
             <template #actions="{ row }">
               <button
@@ -107,10 +111,14 @@ const detalleRows = computed(() => detallesQuery.data.value?.data ?? [])
 const detalleColumns: TableColumn[] = [
   { key: 'codigo_balon', label: 'Cilindro' },
   { key: 'rol', label: 'Rol' },
+  {
+    key: 'nombre_estado_balon',
+    label: 'Estado del cilindro',
+  },
   { key: 'nombre_producto', label: 'Gas' },
   { key: 'fecha_prestamo', label: 'Préstamo' },
   { key: 'fecha_vencimiento', label: 'Vencimiento' },
-  { key: 'nombre_estado', label: 'Estado' },
+  { key: 'nombre_estado', label: 'Estado del préstamo' },
 ]
 
 /**

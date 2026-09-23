@@ -123,9 +123,8 @@
       <!-- Fechas y monto -->
       <div data-tutorial="cuenta-fechas-monto" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Fecha de emisión" required :error="errores.fechaEmision">
-          <AppInput
+          <AppDatePicker
             v-model="form.fechaEmision"
-            type="date"
             :state="errores.fechaEmision ? 'error' : 'default'"
           />
         </AppFormField>
@@ -136,9 +135,8 @@
           optional
           :error="errores.fechaVencimiento"
         >
-          <AppInput
+          <AppDatePicker
             v-model="form.fechaVencimiento"
-            type="date"
             :state="errores.fechaVencimiento ? 'error' : 'default'"
           />
         </AppFormField>
@@ -149,9 +147,8 @@
           required
           :error="errores.fechaPrimeraCuota"
         >
-          <AppInput
+          <AppDatePicker
             v-model="form.fechaPrimeraCuota"
-            type="date"
             :state="errores.fechaPrimeraCuota ? 'error' : 'default'"
           />
         </AppFormField>
@@ -262,7 +259,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
-import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'

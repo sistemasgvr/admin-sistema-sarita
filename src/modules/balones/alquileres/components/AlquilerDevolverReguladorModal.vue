@@ -15,7 +15,7 @@
         contrato; si necesita reparación se abre un mantenimiento del accesorio.
       </p>
 
-      <AppInput v-model="fecha" label="Fecha de devolución" type="date" required />
+      <AppDatePicker v-model="fecha" label="Fecha de devolución" required />
 
       <AppSelect
         v-model="condicion"
@@ -63,7 +63,7 @@ import type {
   CondicionReguladorDevolucion,
 } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea } from '@/shared/components'
+import { AppDatePicker, AppModal, AppSelect, AppTextarea } from '@/shared/components'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { toastWarning } from '@/shared/composables/useToast'
 

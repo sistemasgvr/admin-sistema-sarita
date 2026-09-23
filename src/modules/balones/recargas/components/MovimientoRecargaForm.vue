@@ -32,10 +32,9 @@
           help="Envía cilindros EMPRESA vacíos a planta externa. Al registrar la salida quedan en estado En recarga externa (contenido VACÍO); al indicar fecha de llegada vuelven a En almacén LLENO con residual completo. La compra es solo vínculo documental."
         >
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput
+            <AppDatePicker
               v-model="fechaSalidaAlmacen"
               label="Fecha salida"
-              type="date"
               required
               v-bind="fechaSalidaAlmacenAttrs"
               :disabled="isSubmitting"
@@ -175,10 +174,9 @@
 
         <DetailSectionCard title="Retorno y lote" :icon="ICONS.calendar">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <AppInput
+            <AppDatePicker
               v-model="fechaLlegadaAlmacen"
               label="Fecha llegada almacén"
-              type="date"
               v-bind="fechaLlegadaAlmacenAttrs"
               :disabled="isSubmitting"
             />
@@ -203,18 +201,16 @@
               :error="errors.lote"
             />
 
-            <AppInput
+            <AppDatePicker
               v-model="fechaVencimientoLote"
               label="Vencimiento lote"
-              type="date"
               v-bind="fechaVencimientoLoteAttrs"
               :disabled="isSubmitting"
             />
 
-            <AppInput
+            <AppDatePicker
               v-model="fechaPruebaHidrostatica"
               label="Prueba hidrostática (P.H.)"
-              type="date"
               v-bind="fechaPruebaHidrostaticaAttrs"
               :disabled="isSubmitting"
               help="Referencia documental de la planta. La renovación vigente se registra en Mantenimientos."
@@ -281,7 +277,7 @@ import { useMovimientoRecargaQuery } from '@/modules/balones/recargas/composable
 import type { MovimientoRecargaFormMode } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppSelect, AppTextarea } from '@/shared/components'
+import { AppDatePicker, AppInput, AppSelect, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'

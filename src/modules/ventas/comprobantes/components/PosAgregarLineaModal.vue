@@ -65,8 +65,8 @@
           empty-text="Sin cilindros disponibles en almacén."
         />
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <AppInput v-model="fechaInicio" label="Inicio alquiler" type="date" required />
-          <AppInput v-model="fechaFin" label="Fin pactado" type="date" required />
+          <AppDatePicker v-model="fechaInicio" label="Inicio alquiler" required />
+          <AppDatePicker v-model="fechaFin" label="Fin pactado" required />
         </div>
       </template>
 
@@ -111,7 +111,7 @@ import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitM
 import type { PosLineItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { productoAfectaStock, validarStockParaAgregar } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
-import { AppInput, AppModal, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'

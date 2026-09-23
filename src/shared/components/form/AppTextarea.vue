@@ -19,6 +19,7 @@
         :readonly="readonly"
         :required="required"
         :rows="rows"
+        :maxlength="maxlength"
         :class="textareaClasses"
       />
     </template>
@@ -44,6 +45,7 @@ interface AppTextareaProps {
   required?: boolean
   optional?: boolean
   rows?: number
+  maxlength?: string | number
   state?: FormControlState
 }
 

@@ -32,10 +32,10 @@
 
       <div v-if="modo === 'rango'" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Desde" required :error="errores.desde">
-          <AppInput v-model="rango.start" type="date" :state="errores.desde ? 'error' : 'default'" />
+          <AppDatePicker v-model="rango.start" :state="errores.desde ? 'error' : 'default'" />
         </AppFormField>
         <AppFormField label="Hasta" required :error="errores.hasta">
-          <AppInput v-model="rango.end" type="date" :state="errores.hasta ? 'error' : 'default'" />
+          <AppDatePicker v-model="rango.end" :state="errores.hasta ? 'error' : 'default'" />
         </AppFormField>
       </div>
 
@@ -68,7 +68,7 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { AppInput, AppModal } from '@/shared/components'
+import { AppDatePicker, AppModal } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'

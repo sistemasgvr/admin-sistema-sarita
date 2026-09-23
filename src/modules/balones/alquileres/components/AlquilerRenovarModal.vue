@@ -38,8 +38,8 @@
             @blur="onBlurMonto"
           />
         </AppFormField>
-        <AppInput v-model="fechaInicio" label="Inicio periodo" type="date" />
-        <AppInput v-model="fechaFin" label="Fin periodo" type="date" />
+        <AppDatePicker v-model="fechaInicio" label="Inicio periodo" />
+        <AppDatePicker v-model="fechaFin" label="Fin periodo" />
       </div>
     </div>
 
@@ -72,7 +72,7 @@ import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/comp
 import { usePosComprobanteForm } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppModal, AppSelect, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'

@@ -52,10 +52,9 @@
               :disabled="saving"
             />
           </div>
-          <AppInput
+          <AppDatePicker
             v-model="fecha"
             label="Fecha"
-            type="date"
             :disabled="saving"
             required
           />
@@ -278,6 +277,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import {
   AppCollapsibleSection,
+  AppDatePicker,
   AppHelpTip,
   AppInput,
   AppModal,

@@ -47,17 +47,19 @@
             :disabled="saving"
             required
           />
-          <AppInput
+          <AppDatePicker
             v-model="fecha"
             label="Fecha"
-            type="date"
             :disabled="saving"
             required
           />
-          <label class="flex items-end gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300">
-            <input v-model="emitirTrasCrear" type="checkbox" class="rounded border-gray-300" :disabled="saving" />
-            Emitir a SUNAT al crear
-          </label>
+          <div class="flex items-end pb-2">
+            <AppCheckbox
+              v-model="emitirTrasCrear"
+              label="Emitir a SUNAT al crear"
+              :disabled="saving"
+            />
+          </div>
         </div>
       </DetailSectionCard>
 
@@ -151,7 +153,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
-import { AppInput, AppModal, AppSelect, ListaOpcionBadge } from '@/shared/components'
+import { AppCheckbox, AppDatePicker, AppInput, AppModal, AppSelect, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'

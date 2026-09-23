@@ -31,9 +31,8 @@
         </AppFormField>
 
         <AppFormField label="Fecha" required :error="errores.fecha">
-          <AppInput
+          <AppDatePicker
             v-model="form.fecha"
-            type="date"
             :state="errores.fecha ? 'error' : 'default'"
           />
         </AppFormField>
@@ -83,7 +82,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
-import { AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'

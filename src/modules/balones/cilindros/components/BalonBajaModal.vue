@@ -75,10 +75,9 @@
         </div>
       </template>
 
-      <AppInput
+      <AppDatePicker
         v-model="fechaBaja"
         label="Fecha de baja"
-        type="date"
         v-bind="fechaBajaAttrs"
         :disabled="isSubmitting"
         :error="errors.fechaBaja"
@@ -126,7 +125,7 @@ import { useDarBajaBalonMutation } from '@/modules/balones/cilindros/composables
 import { useBalonQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { ListaIds } from '@/shared/constants/lista-ids'

@@ -319,16 +319,15 @@
         </span>
         ?
       </p>
-      <label class="mt-4 block text-sm font-medium text-gray-700 dark:text-gray-300">
-        Observación (opcional)
-        <textarea
-          v-model="restaurarObservacion"
-          rows="3"
-          maxlength="500"
-          class="mt-1.5 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-          placeholder="Motivo de la reactivación..."
-        />
-      </label>
+      <AppTextarea
+        v-model="restaurarObservacion"
+        label="Observación"
+        optional
+        class="mt-4"
+        :rows="3"
+        :maxlength="500"
+        placeholder="Motivo de la reactivación..."
+      />
 
       <template #footer>
         <button
@@ -391,6 +390,7 @@ import {
   AppPagination,
   AppSummaryCards,
   AppTable,
+  AppTextarea,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'

@@ -7,7 +7,7 @@
   >
     <div class="space-y-4">
       <div data-tutorial="ruta-datos" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppInput v-model="fecha" label="Fecha" type="date" required />
+        <AppDatePicker v-model="fecha" label="Fecha" required />
         <AlmacenSelectField v-model="idAlmacen" searchable required />
         <AppSelect
           v-model="idChofer"
@@ -156,7 +156,7 @@ import { useChoferesQuery } from '@/modules/choferes/composables/useChoferesQuer
 import type { ChoferListFilters } from '@/modules/choferes/interfaces/chofer.interface'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import { useCreateRutaPuebloMutation } from '@/modules/balones/rutas-pueblos/composables/useRutasPueblosMutations'
-import { AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppSelect, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'

@@ -65,10 +65,9 @@
               @update:model-value="(value) => updateRowValue(row, value)"
             />
 
-            <AppInput
+            <AppDatePicker
               v-else-if="fieldDef(row.fieldKey)?.type === 'date'"
               :model-value="asTextValue(row.value)"
-              type="date"
               @update:model-value="(value) => updateDateRowValue(row, value)"
             />
 
@@ -115,7 +114,7 @@
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, toRef, watch } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
-import { AppCheckbox, AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
+import { AppCheckbox, AppDatePicker, AppInput, AppSelect, AppSelectSearch } from '@/shared/components'
 import { useDynamicFilters } from '@/shared/composables/useDynamicFilters'
 import { ICONS } from '@/shared/constants/icons'
 import type {

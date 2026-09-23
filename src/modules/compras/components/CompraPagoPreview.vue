@@ -27,9 +27,8 @@
     </div>
 
     <div v-if="modo === 'credito'" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <AppInput
+      <AppDatePicker
         v-model="fechaVencimientoModel"
-        type="date"
         label="Fecha de vencimiento"
         :disabled="disabled"
       />
@@ -46,9 +45,8 @@
 
     <template v-else>
       <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <AppInput
+        <AppDatePicker
           :model-value="cuotasModel[0]?.fechaPago ?? ''"
-          type="date"
           label="Primera cuota"
           help="Al cambiarla se recalculan las siguientes (mensual)."
           :disabled="disabled"
@@ -89,13 +87,11 @@
                 {{ cuota.numero }} / {{ cuotasModel.length }}
               </td>
               <td class="px-3 py-1.5">
-                <input
-                  :value="cuota.fechaPago"
-                  type="date"
-                  class="w-full min-w-[9.5rem] rounded-lg border border-gray-300 bg-transparent px-2 py-1 tabular-nums focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700"
+                <AppDatePicker
+                  :model-value="cuota.fechaPago"
                   :disabled="disabled"
                   :aria-label="`Vencimiento cuota ${cuota.numero}`"
-                  @input="onFechaRow(index, ($event.target as HTMLInputElement).value)"
+                  @update:model-value="onFechaRow(index, String($event ?? ''))"
                 />
               </td>
               <td class="px-3 py-1.5">
@@ -137,7 +133,7 @@ import {
   aplicarPrimeraCuota,
   type CuotaPreviewItem,
 } from '@/modules/compras/utils/previewCuotasCompra'
-import { AppHelpTip, AppInput, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppHelpTip, AppInput, MoneyInput } from '@/shared/components'
 import {
   mensajeErrorMontoMoneda,
   parseMoneyInput,

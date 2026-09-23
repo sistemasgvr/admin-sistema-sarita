@@ -30,10 +30,9 @@
               :disabled="saving"
               required
             />
-            <AppInput
+            <AppDatePicker
               v-model="fecha"
               label="Fecha"
-              type="date"
               :disabled="saving"
               required
             />
@@ -54,10 +53,13 @@
             :rows="2"
             :disabled="saving"
           />
-          <label class="flex items-end gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input v-model="emitirTrasCrear" type="checkbox" class="rounded border-gray-300" :disabled="saving" />
-            Emitir a SUNAT al crear
-          </label>
+          <div class="flex items-end">
+            <AppCheckbox
+              v-model="emitirTrasCrear"
+              label="Emitir a SUNAT al crear"
+              :disabled="saving"
+            />
+          </div>
         </div>
       </DetailSectionCard>
 
@@ -154,7 +156,7 @@ import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import type { DetailSection } from '@/shared/components/detail/detail.types'
-import { AppInput, AppModal, AppTextarea, ListaOpcionBadge } from '@/shared/components'
+import { AppCheckbox, AppDatePicker, AppInput, AppModal, AppTextarea, ListaOpcionBadge } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'

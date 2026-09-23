@@ -10,7 +10,7 @@
     </AppFormField>
 
     <AppFormField
-      v-if="pideCuenta"no
+      v-if="pideCuenta"
       label="Cuenta de la empresa"
       required
       :error="errorCuenta"

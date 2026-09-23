@@ -97,11 +97,16 @@
 
     <PrestamoDetailModal v-model="detailModalOpen" :prestamo-id="prestamoToViewId" />
 
-    <PrestamoDevolverCilindrosModal
-      v-model="devolverCilindrosModalOpen"
-      :prestamo="prestamoToDevolver"
-      @saved="onDevolucionDesdeLista"
-    />
+    <!--
+      Devolver cilindros: deshabilitado, el retorno ahora se controla con la
+      acción "Programar recojo" (actividad de tipo RECOJO). Se deja comentado
+      en vez de borrarse por si hace falta revertir.
+      <PrestamoDevolverCilindrosModal
+        v-model="devolverCilindrosModalOpen"
+        :prestamo="prestamoToDevolver"
+        @saved="onDevolucionDesdeLista"
+      />
+    -->
 
     <AppModal
       v-model="deleteModalOpen"
@@ -144,7 +149,8 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import PrestamoDetailModal from '@/modules/balones/prestamos/components/PrestamoDetailModal.vue'
-import PrestamoDevolverCilindrosModal from '@/modules/balones/prestamos/components/PrestamoDevolverCilindrosModal.vue'
+// Devolver cilindros: deshabilitado, ver nota junto al modal comentado más abajo.
+// import PrestamoDevolverCilindrosModal from '@/modules/balones/prestamos/components/PrestamoDevolverCilindrosModal.vue'
 import DateRangeBadges from '@/modules/balones/components/DateRangeBadges.vue'
 import { useDeletePrestamoMutation } from '@/modules/balones/prestamos/composables/usePrestamoMutations'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
@@ -201,8 +207,9 @@ const clientesQuery = useClientesQuery(clientesFilters)
 const detailModalOpen = ref(false)
 const prestamoToViewId = ref<number | null>(null)
 
-const devolverCilindrosModalOpen = ref(false)
-const prestamoToDevolver = ref<Prestamo | null>(null)
+// Devolver cilindros: deshabilitado, ver nota junto al modal comentado en el template.
+// const devolverCilindrosModalOpen = ref(false)
+// const prestamoToDevolver = ref<Prestamo | null>(null)
 
 const deleteModalOpen = ref(false)
 const prestamoToDelete = ref<Prestamo | null>(null)
@@ -223,11 +230,12 @@ const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAM
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_ELIMINAR))
-const canDevolver = computed(
-  () =>
-    authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
-    authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
-)
+// Devolver cilindros: deshabilitado, ver nota junto al modal comentado en el template.
+// const canDevolver = computed(
+//   () =>
+//     authStore.hasPermission(PermisoBanderas.PRESTAMOS_DETALLE_EDITAR) ||
+//     authStore.hasPermission(PermisoBanderas.PRESTAMOS_BALON_EDITAR),
+// )
 const canProgramarRecojo = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR),
 )
@@ -336,10 +344,11 @@ const openDeleteModal = (row: Prestamo) => {
   deleteModalOpen.value = true
 }
 
-const openDevolverCilindros = (row: Prestamo) => {
-  prestamoToDevolver.value = row
-  devolverCilindrosModalOpen.value = true
-}
+// Devolver cilindros: deshabilitado, ver nota junto al modal comentado en el template.
+// const openDevolverCilindros = (row: Prestamo) => {
+//   prestamoToDevolver.value = row
+//   devolverCilindrosModalOpen.value = true
+// }
 
 const openProgramarRecojo = (row: Prestamo) => {
   // Un recojo es una actividad: se programa en operativa/actividades con el
@@ -381,13 +390,15 @@ function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
   const tieneCilindros = Number(row.total_detalles ?? 0) > 0
 
   return [
-    {
-      key: 'devolver',
-      label: 'Devolver cilindros',
-      icon: ICONS.clipboardCheck,
-      disabled: busy,
-      hidden: !canDevolver.value || !activo || !tieneCilindros,
-    },
+    // Devolver cilindros: deshabilitado, el retorno ahora se controla con
+    // "Programar recojo" (actividad de tipo RECOJO).
+    // {
+    //   key: 'devolver',
+    //   label: 'Devolver cilindros',
+    //   icon: ICONS.clipboardCheck,
+    //   disabled: busy,
+    //   hidden: !canDevolver.value || !activo || !tieneCilindros,
+    // },
     {
       key: 'programar_recojo',
       label: 'Programar recojo',
@@ -414,15 +425,17 @@ function actionItemsForRow(row: Prestamo): ActionMenuItem[] {
 }
 
 function onActionSelect(key: string, row: Prestamo) {
-  if (key === 'devolver') openDevolverCilindros(row)
+  // Devolver cilindros: deshabilitado, ver nota junto al modal comentado en el template.
+  // if (key === 'devolver') openDevolverCilindros(row)
   if (key === 'programar_recojo') openProgramarRecojo(row)
   if (key === 'edit') goToEdit(row)
   if (key === 'delete') openDeleteModal(row)
 }
 
-function onDevolucionDesdeLista() {
-  void prestamosQuery.refetch()
-}
+// Devolver cilindros: deshabilitado, ver nota junto al modal comentado en el template.
+// function onDevolucionDesdeLista() {
+//   void prestamosQuery.refetch()
+// }
 
 const confirmDelete = async () => {
   const prestamo = prestamoToDelete.value

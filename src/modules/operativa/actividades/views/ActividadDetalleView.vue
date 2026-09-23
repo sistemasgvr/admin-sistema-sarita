@@ -80,6 +80,22 @@
           Culminar recojo
         </button>
 
+        <!--
+          Si algún cilindro volvió con contenido, el ajuste de stock se hace
+          con el flujo normal de movimientos de inventario (Reposición), no
+          con uno aparte: solo se abre pre-cargado y referenciado a esta
+          actividad. Ver TODO en bal_prestamo_aplicar_retorno_cilindro.sql.
+        -->
+        <button
+          v-if="mostrarRegistrarContenidoRecojo"
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03]"
+          @click="contenidoRecojoModalOpen = true"
+        >
+          <AppIcon :name="ICONS.boxes" :size="15" />
+          Registrar contenido recogido
+        </button>
+
         <button
           v-if="puedeTomarAct"
           type="button"
@@ -419,6 +435,11 @@
 
     <ActividadVerificacionModal v-model="verificacionOpen" :actividad="actividad" />
 
+    <InventarioMovimientoCrearModal
+      v-model="contenidoRecojoModalOpen"
+      :prefill="prefillContenidoRecojo"
+    />
+
     <AppModal
       v-model="culminarRecojoOpen"
       title="Culminar recojo"
@@ -431,6 +452,12 @@
         required
         :disabled="culminarRecojoMutation.isPending.value"
       />
+      <!--
+        TODO: si el cilindro vuelve con contenido (gas remanente) no se ajusta el
+        stock; age_culminar_recojo → bal_devolver_prestamo_detalle siempre pasa
+        'VACIO'. Ver TODO en database_sql/funciones/prestamos/
+        bal_prestamo_aplicar_retorno_cilindro.sql.
+      -->
       <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
         Al confirmar, cada cilindro verificado vuelve a ese almacén como disponible.
       </p>
@@ -531,6 +558,10 @@ import {
 } from '@/modules/operativa/actividades/utils/actividadEstado'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
+import { usePrestamoQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
+import InventarioMovimientoCrearModal, {
+  type InventarioMovimientoPrefill,
+} from '@/modules/inventario/components/InventarioMovimientoCrearModal.vue'
 import { tipoBalonBadgeColor } from '@/modules/balones/utils/tipoBalonBadge'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
@@ -791,6 +822,45 @@ const iniciarRecojoMutation = useIniciarRecojoMutation()
 const culminarRecojoMutation = useCulminarRecojoMutation()
 const culminarRecojoOpen = ref(false)
 const idAlmacenDestinoRecojo = ref<number | undefined>()
+
+/**
+ * Precarga el almacén destino con el almacén original del préstamo (de donde
+ * salió el cilindro), para no obligar a elegirlo a mano cada vez; el usuario
+ * lo puede cambiar si el recojo entra a otro almacén.
+ */
+const prestamoOrigenRecojoQuery = usePrestamoQuery(
+  computed(() => (culminarRecojoOpen.value ? (actividad.value?.id_prestamo ?? null) : null)),
+)
+watch(
+  [culminarRecojoOpen, () => prestamoOrigenRecojoQuery.data.value],
+  ([open, prestamo]) => {
+    if (open && prestamo?.id_almacen && !idAlmacenDestinoRecojo.value) {
+      idAlmacenDestinoRecojo.value = prestamo.id_almacen
+    }
+  },
+)
+
+/**
+ * Si algún cilindro vuelve con contenido, el ajuste de stock se registra con
+ * el flujo normal de movimientos de inventario (Reposición): este botón solo
+ * abre ese mismo modal pre-cargado con el almacén del préstamo y referenciado
+ * a esta actividad como documento origen (requiere la opción 'ACTIVIDAD' en
+ * el catálogo TipoDocumentoRef).
+ */
+const contenidoRecojoModalOpen = ref(false)
+const mostrarRegistrarContenidoRecojo = computed(
+  () =>
+    esRecojo.value &&
+    esActividadRealizada(actividad.value?.nombre_estado_actividad) &&
+    authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_CREAR),
+)
+const prefillContenidoRecojo = computed<InventarioMovimientoPrefill>(() => ({
+  naturaleza: 'PRODUCTO',
+  tipo: 'REPOSICION',
+  idAlmacen: idAlmacenDestinoRecojo.value ?? prestamoOrigenRecojoQuery.data.value?.id_almacen ?? undefined,
+  codigoTipoDocumentoOrigen: 'ACTIVIDAD',
+  idDocumentoOrigen: actividad.value?.id,
+}))
 
 const canVerificar = computed(() =>
   authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VERIFICAR),

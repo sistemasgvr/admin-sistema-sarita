@@ -1,6 +1,12 @@
 <template>
   <AppModal v-model="isOpen" title="Registrar movimiento de inventario" size="md">
     <!-- data-tutorial: anclas de la ruta guiada de Soporte (Almacenes › movimientos). -->
+    <p
+      v-if="form.codigoTipoDocumentoOrigen && form.idDocumentoOrigen"
+      class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+    >
+      Este movimiento quedará referenciado a {{ form.codigoTipoDocumentoOrigen }} #{{ form.idDocumentoOrigen }}.
+    </p>
     <form class="space-y-4" @submit.prevent="onSubmit">
       <div data-tutorial="movimiento-naturaleza">
       <AppSelect
@@ -188,10 +194,13 @@ import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 export type InventarioMovimientoPrefill = {
-  tipo?: 'AJUSTE' | 'TRASLADO'
+  tipo?: 'AJUSTE' | 'TRASLADO' | 'REPOSICION'
   idProducto?: number
   idAlmacen?: number
   naturaleza?: 'PRODUCTO' | 'BALON'
+  /** Referencia el movimiento a un documento origen ya existente (p. ej. la actividad de recojo que trajo el contenido). */
+  codigoTipoDocumentoOrigen?: string
+  idDocumentoOrigen?: number
 }
 
 const isOpen = defineModel<boolean>({ default: false })
@@ -265,6 +274,8 @@ const form = reactive<Omit<CreateInventarioMovimientoPayload, 'idUsuarioAuditori
   idCliente: undefined,
   glosa: '',
   sentidoAjuste: undefined,
+  codigoTipoDocumentoOrigen: undefined,
+  idDocumentoOrigen: undefined,
 })
 
 const errors = reactive<Record<string, string>>({})
@@ -326,11 +337,13 @@ const isFormValid = computed(() => {
 function applyPrefill(prefill: InventarioMovimientoPrefill | null | undefined) {
   if (!prefill) return
   form.naturaleza = prefill.naturaleza ?? 'PRODUCTO'
-  if (prefill.tipo === 'AJUSTE' || prefill.tipo === 'TRASLADO') {
+  if (prefill.tipo === 'AJUSTE' || prefill.tipo === 'TRASLADO' || prefill.tipo === 'REPOSICION') {
     form.codigoTipoMovimiento = prefill.tipo
   }
   if (prefill.idProducto) form.idProducto = prefill.idProducto
   if (prefill.idAlmacen) form.idAlmacenOrigen = prefill.idAlmacen
+  if (prefill.codigoTipoDocumentoOrigen) form.codigoTipoDocumentoOrigen = prefill.codigoTipoDocumentoOrigen
+  if (prefill.idDocumentoOrigen) form.idDocumentoOrigen = prefill.idDocumentoOrigen
 }
 
 function validate(): boolean {
@@ -394,6 +407,8 @@ function onSubmit() {
     ...(form.idAlmacenDestino ? { idAlmacenDestino: form.idAlmacenDestino } : {}),
     ...(form.naturaleza === 'BALON' && form.idCliente ? { idCliente: form.idCliente } : {}),
     ...(isAjuste.value && form.sentidoAjuste ? { sentidoAjuste: form.sentidoAjuste } : {}),
+    ...(form.codigoTipoDocumentoOrigen ? { codigoTipoDocumentoOrigen: form.codigoTipoDocumentoOrigen } : {}),
+    ...(form.idDocumentoOrigen ? { idDocumentoOrigen: form.idDocumentoOrigen } : {}),
     ...(form.glosa ? { glosa: form.glosa } : {}),
   }
 
@@ -417,6 +432,8 @@ function resetForm() {
   form.idCliente = undefined
   form.glosa = ''
   form.sentidoAjuste = undefined
+  form.codigoTipoDocumentoOrigen = undefined
+  form.idDocumentoOrigen = undefined
   Object.keys(errors).forEach((k) => delete errors[k])
 }
 

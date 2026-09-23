@@ -6,24 +6,19 @@
     size="sm"
   >
     <form class="space-y-3" autocomplete="off" @submit.prevent="onSubmit">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-        Código
-        <span class="text-error-500" aria-hidden="true">*</span>
-      </label>
-      <input
+      <AppInput
         ref="codigoInputRef"
         v-model="codigo"
-        type="text"
+        label="Código"
         name="codigo-scan"
-        class="form-control w-full"
-        :class="{ 'form-control-error': Boolean(error) }"
+        required
         placeholder="Escanea o escribe el código..."
-        :disabled="loading"
         autocomplete="off"
+        :disabled="loading"
+        :error="error || undefined"
         @keydown.enter.prevent="onSubmit"
       />
-      <p v-if="error" class="text-theme-xs text-error-500">{{ error }}</p>
-      <p v-else class="text-theme-xs text-gray-500 dark:text-gray-400">
+      <p v-if="!error" class="text-theme-xs text-gray-500 dark:text-gray-400">
         Busca por código de barras, código interno o ubicación. La pistola suele
         enviar Enter al final.
       </p>
@@ -63,7 +58,7 @@ import {
   type BuscarProductoPorCodigoFilters,
 } from '@/modules/productos/articulos/utils/buscarProductoPorCodigo'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { AppModal } from '@/shared/components'
+import { AppInput, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { toastError, toastWarning } from '@/shared/composables/useToast'
@@ -86,7 +81,8 @@ const emit = defineEmits<{
 const codigo = ref('')
 const error = ref('')
 const loading = ref(false)
-const codigoInputRef = ref<HTMLInputElement | null>(null)
+// AppInput expone focus()/select() para reenfocar tras cada escaneo.
+const codigoInputRef = ref<InstanceType<typeof AppInput> | null>(null)
 
 function focusInput() {
   void nextTick(() => {

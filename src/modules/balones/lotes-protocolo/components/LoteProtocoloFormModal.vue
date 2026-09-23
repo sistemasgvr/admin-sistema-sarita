@@ -109,28 +109,25 @@
             :disabled="isSubmitting"
           />
 
-          <AppInput
+          <AppDatePicker
             v-model="fechaAnalisis"
             label="Fecha de análisis"
-            type="date"
             v-bind="fechaAnalisisAttrs"
             :error="errors.fechaAnalisis"
             :disabled="isSubmitting"
           />
 
-          <AppInput
+          <AppDatePicker
             v-model="fechaEmision"
             label="Fecha de emisión"
-            type="date"
             v-bind="fechaEmisionAttrs"
             :error="errors.fechaEmision"
             :disabled="isSubmitting"
           />
 
-          <AppInput
+          <AppDatePicker
             v-model="fechaFabricacion"
             label="Fecha de fabricación"
-            type="date"
             v-bind="fechaFabricacionAttrs"
             :error="errors.fechaFabricacion"
             :disabled="isSubmitting"
@@ -190,18 +187,17 @@
                     {{ balon.numeroSerie || '—' }}
                   </td>
                   <td class="px-3 py-2 text-center">
-                    <input
-                      type="radio"
+                    <AppRadio
+                      v-model="idBalonMuestra"
+                      :value="balon.idBalon"
                       name="lote-balon-muestra"
                       class="h-4 w-4 cursor-pointer accent-brand-500 disabled:cursor-not-allowed"
-                      :checked="idBalonMuestra === balon.idBalon"
                       :disabled="isSubmitting || !balon.numeroSerie"
                       :title="
                         balon.numeroSerie
                           ? 'Marcar como cilindro muestreado'
                           : 'Este cilindro no tiene número de serie registrado'
                       "
-                      @change="idBalonMuestra = balon.idBalon"
                     />
                   </td>
                 </tr>
@@ -445,7 +441,7 @@ import type {
   LoteProtocoloPrueba,
 } from '@/modules/balones/lotes-protocolo/interfaces/lote-protocolo.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppBadge, AppFileInput, AppInput, AppModal, AppTextarea } from '@/shared/components'
+import { AppBadge, AppDatePicker, AppFileInput, AppInput, AppModal, AppRadio, AppTextarea } from '@/shared/components'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'

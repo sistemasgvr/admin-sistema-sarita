@@ -315,11 +315,10 @@
               </p>
 
               <div class="grid grid-cols-1 gap-4 pt-1 sm:grid-cols-2">
-                <AppInput v-model="fechaInicio" label="Fecha de entrega" type="date" required />
-                <AppInput
+                <AppDatePicker v-model="fechaInicio" label="Fecha de entrega" required />
+                <AppDatePicker
                   v-model="fechaFin"
                   :label="exigeFechaRetorno ? 'Fecha de retorno pactada' : 'Fecha de devolución'"
-                  type="date"
                   :required="exigeFechaRetorno"
                   :min="fechaInicio || undefined"
                   :error="errorFechaRetorno || undefined"
@@ -356,11 +355,10 @@
                     <span class="text-xs font-semibold text-gray-800 dark:text-white/90">
                       {{ opcion.label }}
                     </span>
-                    <input
+                    <AppRadio
                       v-model="tipoGarantiaPrestamo"
-                      type="radio"
-                      name="pos-garantia-prestamo"
                       :value="opcion.key"
+                      name="pos-garantia-prestamo"
                       class="h-3.5 w-3.5 shrink-0 border-gray-300 text-brand-500 focus:ring-brand-500"
                     />
                   </span>
@@ -475,10 +473,9 @@
                 label="Tipo de cilindro"
                 required
               />
-              <AppInput
+              <AppDatePicker
                 v-model="garantiaBalonFechaUltimaPh"
                 label="Última prueba hidrostática"
-                type="date"
               />
             </div>
             <AppInput
@@ -615,8 +612,8 @@
               @blur="onBlurPrecioUnitario"
             />
           </AppFormField>
-          <AppInput v-model="fechaInicio" label="Desde" type="date" required />
-          <AppInput v-model="fechaFin" label="Hasta (lo devuelve)" type="date" required />
+          <AppDatePicker v-model="fechaInicio" label="Desde" required />
+          <AppDatePicker v-model="fechaFin" label="Hasta (lo devuelve)" required />
         </div>
         <AppFormField
           label="Garantía (dinero que deja)"
@@ -742,7 +739,7 @@
           :options="tipoMantenimientoOptions"
           :loading="tiposMantenimientoQuery.isFetching.value"
         />
-        <AppInput v-model="fechaIngreso" label="Fecha ingreso" type="date" required />
+        <AppDatePicker v-model="fechaIngreso" label="Fecha ingreso" required />
         <AppInput
           v-model="descripcionMantenimiento"
           label="Descripción"
@@ -891,7 +888,7 @@ import {
 } from '@/modules/ventas/comprobantes/utils/stockPos'
 import { validarCantidadSegunUnidad } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppModal, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal, AppRadio, AppSelect, AppSelectSearch, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'

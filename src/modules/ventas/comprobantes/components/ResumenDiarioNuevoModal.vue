@@ -8,10 +8,9 @@
     <div class="space-y-4">
       <DetailSectionCard data-tutorial="rd-filtro" title="Filtro" :icon="ICONS.calendar" :full-width="true">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <AppInput
+          <AppDatePicker
             v-model="fecha"
             label="Fecha del resumen"
-            type="date"
             :disabled="busy"
             required
           />
@@ -152,7 +151,7 @@ import type { ResumenDiarioPreview } from '@/modules/ventas/comprobantes/interfa
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
-import { AppInput, AppModal } from '@/shared/components'
+import { AppDatePicker, AppInput, AppModal } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { getApiErrorMessage, toastApiError } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
