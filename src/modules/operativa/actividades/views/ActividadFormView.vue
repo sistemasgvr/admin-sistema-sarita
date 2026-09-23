@@ -128,7 +128,7 @@ const pageSubtitle = computed(() => {
   if (lockTipoRecojo.value) {
     return 'Programa el recojo a partir del préstamo o alquiler seleccionado.'
   }
-  return 'Programa una actividad de la agenda operativa. Si eliges tipo RECOJO, selecciona un préstamo o alquiler vencido.'
+  return 'Programa una actividad de la agenda operativa. Si eliges tipo RECOJO, selecciona un préstamo o alquiler con devolución pendiente, aunque todavía no venza.'
 })
 
 const breadcrumbItems = computed<BreadcrumbItem[]>(() => [

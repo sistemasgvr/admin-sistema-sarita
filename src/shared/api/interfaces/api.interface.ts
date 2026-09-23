@@ -20,6 +20,5 @@ export interface ApiErrorResponse {
   data: null
   errors: string[] | null
   statusCode: number
-  /** Datos estructurados de un error accionable (ver ApiError.detalle). */
   detalle?: Record<string, unknown>
 }

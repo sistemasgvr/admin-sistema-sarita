@@ -9,7 +9,6 @@ export type YupMontoMonedaOpts = ValidacionMontoMonedaOpts & {
   optional?: boolean
 }
 
-/** Esquema Yup para campos de monto PEN (string). */
 export function yupMontoMoneda(opts: YupMontoMonedaOpts = {}) {
   const { optional = false, ...moneyOpts } = opts
   return yup
@@ -27,7 +26,6 @@ export function yupMontoMoneda(opts: YupMontoMonedaOpts = {}) {
     })
 }
 
-/** Esquema Yup para campos numéricos legacy convertidos a validación de moneda. */
 export function yupNumeroMoneda(opts: YupMontoMonedaOpts = {}) {
   const { optional = false, ...moneyOpts } = opts
   return yup

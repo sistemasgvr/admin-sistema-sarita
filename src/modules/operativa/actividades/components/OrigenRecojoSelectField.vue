@@ -25,6 +25,8 @@ import { origenRecojoKey } from '@/modules/operativa/actividades/utils/origenRec
 import { AppSelectSearch } from '@/shared/components'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
+const emit = defineEmits<{ selected: [row: OrigenVencidoRecojo | null] }>()
+
 const props = withDefaults(
   defineProps<{
     label?: string
@@ -41,7 +43,7 @@ const props = withDefaults(
   }>(),
   {
     label: 'Origen del recojo',
-    placeholder: 'Selecciona préstamo o alquiler vencido...',
+    placeholder: 'Selecciona préstamo o alquiler pendiente...',
     searchPlaceholder: 'Número, cliente o tipo...',
     required: false,
     disabled: false,
@@ -57,9 +59,12 @@ const model = defineModel<string | ''>({ default: '' })
 const search = defineModel<string>('search', { default: '' })
 
 const filters = ref({
+  incluirNoVencidos: true,
   buscar: '',
   pagina: 1,
-  limite: 30,
+  // Todos los activos, no solo los primeros 30: el selector se abre con el
+  // listado completo (la búsqueda por número/cliente/tipo sigue disponible).
+  limite: 200,
 })
 
 let searchTimeout: ReturnType<typeof setTimeout> | undefined
@@ -70,25 +75,61 @@ watch(search, (term) => {
   }, 300)
 })
 
+watch(() => props.prefillLabel, label => {
+  if (label && model.value) filters.value.buscar = label
+}, { immediate: true })
+
 const listQuery = useVencidosRecojoQuery(filters)
 
 function formatLabel(row: OrigenVencidoRecojo) {
   const dias =
-    row.dias_vencido === 1 ? '1 día vencido' : `${row.dias_vencido} días vencidos`
+    !row.fecha_pactada ? 'Sin fecha pactada' : row.dias_vencido > 0 ? `${row.dias_vencido} día(s) vencido(s)` : row.dias_vencido === 0 ? 'Vence hoy' : 'Recojo anticipado disponible'
   const cliente = row.nombre_cliente ? ` · ${row.nombre_cliente}` : ''
   return `${row.numero}${cliente} · ${dias}`
+}
+
+/**
+ * Estado del plazo pactado, para el badge de cada opción:
+ * - más de 3 días de margen → En tiempo (OK)
+ * - vence hoy o dentro de los próximos 3 días → Plazo normal (por vencer)
+ * - ya pasó la fecha → Vencido (Xd)
+ * - sin fecha pactada → sin información
+ */
+function badgesOrigen(row: OrigenVencidoRecojo) {
+  const tipo: { label: string; color: 'primary' | 'warning' } = {
+    label: row.origen === 'ALQUILER' ? 'Alquiler' : 'Préstamo',
+    color: row.origen === 'ALQUILER' ? 'primary' : 'warning',
+  }
+
+  let estado: { label: string; color: 'success' | 'warning' | 'error' | 'neutral' }
+  if (!row.fecha_pactada) {
+    estado = { label: 'Sin fecha pactada', color: 'neutral' }
+  } else if (row.dias_vencido > 0) {
+    estado = { label: `Vencido (${row.dias_vencido}d)`, color: 'error' }
+  } else if (row.dias_vencido >= -3) {
+    estado = {
+      label: row.dias_vencido === 0 ? 'Plazo normal · vence hoy' : `Plazo normal · vence en ${-row.dias_vencido}d`,
+      color: 'warning',
+    }
+  } else {
+    estado = { label: 'En tiempo (OK)', color: 'success' }
+  }
+
+  const recojo = row.recojo_abierto
+    ? [{ label: `Recojo abierto #${row.recojo_abierto}`, color: 'dark' as const }]
+    : []
+
+  return [tipo, estado, ...recojo]
 }
 
 const listOptions = computed<SelectOption[]>(() =>
   (listQuery.data.value?.data ?? []).map((row) => ({
     value: origenRecojoKey(row.origen, row.id_origen),
     label: formatLabel(row),
-    badges: [
-      {
-        label: row.origen === 'ALQUILER' ? 'Alquiler' : 'Préstamo',
-        color: row.origen === 'ALQUILER' ? 'primary' : 'warning',
-      },
-    ],
+    badges: badgesOrigen(row),
+    // Con recojo ya abierto no es elegible: se lista para que se vea el
+    // activo, pero no se puede volver a programar desde aquí.
+    disabled: !!row.recojo_abierto,
   })),
 )
 
@@ -100,18 +141,15 @@ const selectedFromList = computed(() => {
   ) ?? null
 })
 
+watch(selectedFromList, row => emit('selected', row), { immediate: true })
+
 const selectedOption = computed<SelectOption | null>(() => {
   const row = selectedFromList.value
   if (row) {
     return {
       value: origenRecojoKey(row.origen, row.id_origen),
       label: formatLabel(row),
-      badges: [
-        {
-          label: row.origen === 'ALQUILER' ? 'Alquiler' : 'Préstamo',
-          color: row.origen === 'ALQUILER' ? 'primary' : 'warning',
-        },
-      ],
+      badges: badgesOrigen(row),
     }
   }
   if (model.value && props.prefillLabel) {

@@ -44,6 +44,8 @@ export type DocSalidaAccion =
   | 'lote'
   | 'gre'
   | 'emitir'
+  | 'consultar'
+  | 'historial'
   | 'pdf'
   | 'anular'
 
@@ -176,6 +178,21 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
       !anulada.value && authStore.hasPermission(PermisoBanderas.LOTES_PROTOCOLO_EDITAR),
   )
 
+  /**
+   * Verificar el estado contra SUNAT solo tiene sentido con un envío en curso:
+   * una guía ya aceptada (emitida) no vuelve a consultarse desde acá.
+   */
+  const puedeConsultarEstadoSunat = computed(
+    () => tieneTicketSunat.value && !emitido.value && !anulada.value,
+  )
+
+  /** El historial reconstruye qué pasó con cada envío; aparece si hubo alguno. */
+  const puedeVerHistorialSunat = computed(
+    () =>
+      !anulada.value &&
+      Boolean(documento.value?.gre_estado_envio || tieneTicketSunat.value),
+  )
+
   /** Menú de la fila del listado; el detalle usa los mismos flags en sus botones. */
   const accionesMenu = computed<ActionMenuItem[]>(() => [
     { key: 'ver', label: 'Ver / editar', icon: ICONS.eye },
@@ -211,6 +228,18 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
       hidden: !puedeConvertirGre.value,
     },
     { key: 'emitir', label: 'Emitir a SUNAT', icon: ICONS.upload, hidden: !puedeEmitir.value },
+    {
+      key: 'consultar',
+      label: 'Consultar estado SUNAT',
+      icon: ICONS.refreshCw,
+      hidden: !puedeConsultarEstadoSunat.value,
+    },
+    {
+      key: 'historial',
+      label: 'Historial SUNAT',
+      icon: ICONS.history,
+      hidden: !puedeVerHistorialSunat.value,
+    },
     { key: 'pdf', label: 'Descargar PDF', icon: ICONS.download },
     {
       key: 'anular',
@@ -232,6 +261,8 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
     envioEnCurso,
     destinatarioDocumentado,
     puedeEmitir,
+    puedeConsultarEstadoSunat,
+    puedeVerHistorialSunat,
     puedeAnular,
     puedeAsociarLote,
     accionesMenu,

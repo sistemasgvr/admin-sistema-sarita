@@ -10,11 +10,6 @@ const swalOrdenSalida = Swal.mixin({
   buttonsStyling: false,
 })
 
-/**
- * Siempre que una venta entrega un cilindro (préstamo, compra de envase o
- * alquiler con entrega) corresponde preguntar si el traslado requiere una
- * orden de salida (documento de salida / GRE) para el envío.
- */
 export async function confirmarGenerarOrdenSalida(): Promise<boolean> {
   const result = await swalOrdenSalida.fire({
     title: '¿Es para envío?',

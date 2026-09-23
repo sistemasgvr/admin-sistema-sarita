@@ -1,3 +1,4 @@
+import { documentosSalidaQueryKeys } from '@/modules/documentos-salida/constants/documentosSalidaQueryKeys'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { alquileresQueryKeys } from '@/modules/balones/alquileres/constants/alquileresQueryKeys'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
@@ -29,6 +30,7 @@ export function useCreateActividadMutation() {
     mutationFn: (payload: CreateActividadPayload) => actividadesService.crear(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Actividad creada correctamente')
@@ -47,6 +49,7 @@ export function useUpdateActividadMutation() {
       actividadesService.actualizar(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Actividad actualizada correctamente')
@@ -65,6 +68,7 @@ export function useCancelarActividadMutation() {
       actividadesService.cancelar(id, idUsuarioAuditoria),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       invalidateRecojoRelacionados(queryClient)
@@ -84,6 +88,7 @@ export function useMarcarActividadRealizadaMutation() {
       actividadesService.marcarComoRealizada(id, idUsuarioAuditoria),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Actividad marcada como realizada')
@@ -102,6 +107,7 @@ export function useDeleteActividadMutation() {
       actividadesService.eliminar(id, idUsuarioAuditoria),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Actividad eliminada correctamente')
@@ -137,6 +143,7 @@ export function useAsignarResponsableActividadMutation() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.details() })
       toastSuccess('Responsable actualizado')
@@ -155,6 +162,7 @@ export function useVerificarActividadMutation() {
       actividadesService.verificar(id, payload),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
 
       const momento = data.momento === 'SALIDA' ? 'salida' : 'llegada'
@@ -183,6 +191,7 @@ export function useGenerarRecojosMutation() {
     mutationFn: (payload: GenerarRecojosPayload) => actividadesService.generarRecojos(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       invalidateRecojoRelacionados(queryClient)
       if (data.creadas === 0) {
         toastInfo(
@@ -212,6 +221,7 @@ export function useCrearRecojoMutation() {
       actividadesService.crearRecojo(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       invalidateRecojoRelacionados(queryClient)
       toastSuccess(
         data.creada
@@ -233,6 +243,7 @@ export function useCrearRecojoPrestamoMutation() {
       actividadesService.crearRecojoPrestamo(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       invalidateRecojoRelacionados(queryClient)
       toastSuccess(
         data.creada
@@ -259,6 +270,7 @@ export function useIniciarEntregaMutation() {
     }) => actividadesService.iniciarEntrega(id, idUsuarioAuditoria),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
       toastSuccess('Entrega iniciada: la actividad quedó en ruta')
     },
@@ -281,6 +293,7 @@ export function useCulminarEntregaMutation() {
     }) => actividadesService.culminarEntrega(id, idUsuarioAuditoria),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.lists() })
       toastSuccess('Entrega culminada')
@@ -304,6 +317,7 @@ export function useIniciarRecojoMutation() {
     }) => actividadesService.iniciarRecojo(id, idUsuarioAuditoria),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
       invalidateRecojoRelacionados(queryClient)
       toastSuccess('Recojo iniciado: la actividad quedó en ruta')
@@ -333,6 +347,7 @@ export function useCulminarRecojoMutation() {
       }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
       invalidateRecojoRelacionados(queryClient)
       toastSuccess('Recojo culminado: los cilindros ingresaron al almacén')
@@ -356,6 +371,7 @@ export function useIniciarVerificacionMutation() {
     }) => actividadesService.iniciarVerificacion(id, idUsuarioAuditoria),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: documentosSalidaQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.detail(variables.id) })
     },
     onError: (error) => {

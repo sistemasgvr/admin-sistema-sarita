@@ -13,6 +13,13 @@
       </button>
 
       <div class="flex flex-wrap items-center gap-2">
+        <template v-if="puedeProgramarRecojo">
+          <button v-for="prestamo in actividad?.prestamos_recojo ?? []" :key="prestamo.id" type="button"
+            class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+            @click="programarRecojo(prestamo)">
+            Programar recojo · {{ prestamo.numero }}
+          </button>
+        </template>
         <!--
           Flujo de entrega del reparto, aquí mismo: verificar la salida, salir a
           ruta, verificar la llegada y cerrar, sin pasar por el listado.
@@ -678,6 +685,9 @@ watch(idActividad, () => {
 const formatHora = (value?: string | null) => (value ? value.slice(0, 5) : undefined)
 
 const comprobanteLabel = (a: Actividad) => {
+  if (!a.serie_comprobante && a.serie_comprobante_compra && a.numero_comprobante_compra) {
+    return `Compra: ${a.serie_comprobante_compra}-${a.numero_comprobante_compra}`
+  }
   if (a.serie_comprobante && a.numero_comprobante) {
     return `${a.serie_comprobante}-${a.numero_comprobante}`
   }
@@ -824,6 +834,17 @@ const motivoBloqueoOperar = computed(() => {
 const esReparto = computed(() =>
   esTipoRepartoNombre(actividad.value?.nombre_tipo_actividad),
 )
+const puedeProgramarRecojo = computed(() => esReparto.value && actividad.value?.nombre_estado_actividad?.trim().toUpperCase() === 'REALIZADA' && authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR))
+function programarRecojo(prestamo: { id: number; numero: string; id_cliente: number }) {
+  void router.push({ name: 'admin-operativa-actividades-nueva', query: {
+    lockTipoRecojo: '1', tipoOrigenRecojo: 'PRESTAMO', idOrigenRecojo: String(prestamo.id),
+    origenRecojoLabel: prestamo.numero, clienteId: String(prestamo.id_cliente),
+    clienteLabel: actividad.value?.razon_social_cliente ?? '',
+    titulo: `Recojo préstamo ${prestamo.numero}`,
+    fecha: new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Lima' }).format(new Date()),
+  } })
+}
+
 const esRecojo = computed(() =>
   esTipoRecojoNombre(actividad.value?.nombre_tipo_actividad),
 )
@@ -1009,3 +1030,4 @@ async function confirmarCulminarRecojo() {
   }
 }
 </script>
+

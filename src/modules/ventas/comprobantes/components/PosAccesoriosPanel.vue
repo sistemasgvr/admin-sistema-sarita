@@ -326,10 +326,6 @@ const productos = computed(() => {
   return productosBase.value.filter((producto) => producto.marca === marca)
 })
 
-/**
- * IDs vistos en el catálogo de la pestaña (esGas/esServicio ya filtrados).
- * Se acumulan cuando no hay filtro de categoría, para no perder opciones al filtrar.
- */
 const categoriaIdsEnPestana = ref<Set<number>>(new Set())
 const subCategoriaIdsEnPestana = ref<Set<number>>(new Set())
 
@@ -658,11 +654,6 @@ async function guardarComprobante() {
   iniciarAutoLimpieza()
 }
 
-/**
- * Tras guardar, el POS da una ventana corta para emitir en caliente y luego
- * se limpia solo. Sin esto la venta anterior seguía en pantalla y el siguiente
- * cliente empezaba sobre datos viejos.
- */
 const { segundosRestantes, iniciarAutoLimpieza, detenerAutoLimpieza } =
   usePosAutoLimpieza(() => limpiarFormulario())
 

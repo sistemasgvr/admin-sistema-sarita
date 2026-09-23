@@ -1,4 +1,3 @@
-/** Reserva la pestaña durante el clic: evita el bloqueo de ventanas tras await. */
 export async function visualizarArchivo(
   cargar: () => Promise<Blob>,
   nombre: string,
@@ -40,7 +39,6 @@ export async function visualizarArchivo(
     barra.append(titulo, descargar)
     doc.body.replaceChildren(barra)
     if (tipo === 'xml') {
-      // textContent muestra XML sin ejecutar scripts, estilos o recursos externos.
       const pre = doc.createElement('pre')
       pre.style.cssText = 'padding:20px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere'
       pre.textContent = contenido
@@ -62,11 +60,11 @@ export async function visualizarArchivo(
     window.addEventListener('pagehide', limpiar, { once: true })
   } catch (error) {
     if (url) URL.revokeObjectURL(url)
-    if (!tab.closed) {
-      mensaje.textContent = error instanceof Error ? error.message : 'No se pudo obtener el documento. Vuelve al sistema para reintentar.'
-      doc.body.replaceChildren(mensaje)
-      doc.title = `Error — ${nombre}`
-    }
+    // La pestaña se abrió antes de la carga solo para esquivar el bloqueo de
+    // ventanas emergentes. Si la carga falló se cierra para devolver el foco a
+    // la ventana del sistema: así el toast con el motivo (p. ej. los datos de
+    // traslado que faltan) se ve de inmediato en lugar de quedarse tapado.
+    if (!tab.closed) tab.close()
     throw error
   }
 }

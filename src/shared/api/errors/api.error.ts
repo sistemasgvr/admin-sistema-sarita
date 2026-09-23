@@ -1,11 +1,6 @@
 export class ApiError extends Error {
   statusCode: number
   errors: string[] | null
-  /**
-   * Datos estructurados de un error accionable, cuando la API los envía.
-   * Permite ofrecer una salida al usuario (p. ej. confirmar una conversión de stock)
-   * en lugar de limitarse a mostrar el mensaje.
-   */
   detalle: Record<string, unknown> | null
 
   constructor(

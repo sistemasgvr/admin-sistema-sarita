@@ -154,6 +154,35 @@
         </button>
       </template>
     </AppModal>
+    <!-- Historial de intentos y consultas SUNAT: misma vista que tenía el detalle. -->
+    <AppModal v-model="historialGreOpen" title="Historial de envíos a SUNAT" size="lg">
+      <div v-if="historialGreQuery.isLoading.value" class="text-sm text-gray-500">Cargando historial...</div>
+      <div v-else-if="!historialGre.length" class="text-sm text-gray-500">Esta guía aún no tiene intentos de envío.</div>
+      <div v-else class="space-y-3">
+        <div
+          v-for="intento in historialGre"
+          :key="intento.id"
+          class="rounded-xl border border-gray-100 p-3 text-xs dark:border-gray-800"
+        >
+          <div class="flex flex-wrap items-center gap-2">
+            <AppBadge size="sm" :color="estadoIntentoColor(intento.estado)">{{ etiquetaEstadoIntento(intento.estado) }}</AppBadge>
+            <span class="font-medium text-gray-800 dark:text-white/90">Intento #{{ intento.id }}</span>
+            <span class="text-gray-500">{{ formatFechaHora(intento.creado) }}</span>
+            <span v-if="intento.entorno" class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600 dark:bg-white/5 dark:text-gray-300">{{ intento.entorno }}</span>
+            <span v-if="intento.ruc_emisor" class="text-gray-500">RUC {{ intento.ruc_emisor }}</span>
+          </div>
+          <div class="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 text-gray-600 sm:grid-cols-3 dark:text-gray-400">
+            <span>Ticket: <strong>{{ intento.ticket || '—' }}</strong></span>
+            <span>Consultas: {{ intento.consultas }}</span>
+            <span v-if="intento.proxima_consulta && !['ACEPTADO', 'RECHAZADO'].includes(intento.estado)">Próxima consulta automática: {{ formatFechaHora(intento.proxima_consulta) }}</span>
+          </div>
+          <details class="mt-2">
+            <summary class="cursor-pointer text-[11px] text-gray-500 hover:underline">Detalle técnico (respuesta del PSE y consultas)</summary>
+            <pre class="mt-1 max-h-64 overflow-auto rounded-lg bg-gray-50 p-2 text-[10px] text-gray-700 dark:bg-gray-900 dark:text-gray-300">{{ JSON.stringify({ respuesta: intento.respuesta, consultas: intento.consultas_detalle }, null, 2) }}</pre>
+          </details>
+        </div>
+      </div>
+    </AppModal>
   </div>
 </template>
 
@@ -166,10 +195,12 @@ import { createInventarioDocumentosSalidaTutorial } from '@/modules/soporte/tuto
 import {
   useDocumentoSalidaQuery,
   useDocumentosSalidaQuery,
+  useGreHistorialQuery,
 } from '../composables/useDocumentosSalidaQuery'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import {
   useAnularDocSalidaMutation,
+  useConsultarEstadoDocSalidaMutation,
   useGenerarDocSalidaMutation,
 } from '../composables/useDocumentoSalidaMutations'
 import {
@@ -251,6 +282,45 @@ const anularMotivo = ref('')
 
 const generarMutation = useGenerarDocSalidaMutation()
 const anularMutation = useAnularDocSalidaMutation()
+const consultarMutation = useConsultarEstadoDocSalidaMutation()
+
+// ---- Historial SUNAT (acción del menú de la fila) ----
+const historialGreOpen = ref(false)
+const historialGreQuery = useGreHistorialQuery(
+  computed(() => idSeleccionado.value),
+  historialGreOpen,
+)
+const historialGre = computed(() => historialGreQuery.data.value?.intentos ?? [])
+
+function etiquetaEstadoIntento(estado: string) {
+  switch (estado) {
+    case 'ACEPTADO': return 'Aceptada'
+    case 'RECHAZADO': return 'Rechazada'
+    case 'PENDIENTE': return 'En proceso'
+    case 'POR_CONFIRMAR': return 'Resultado por confirmar'
+    case 'ENVIANDO': return 'Enviando'
+    default: return estado
+  }
+}
+
+function estadoIntentoColor(estado: string) {
+  if (estado === 'ACEPTADO') return 'success'
+  if (estado === 'RECHAZADO') return 'error'
+  if (estado === 'PENDIENTE' || estado === 'POR_CONFIRMAR') return 'warning'
+  return 'neutral'
+}
+
+function formatFechaHora(iso: string) {
+  const fecha = new Date(iso)
+  if (Number.isNaN(fecha.getTime())) return iso
+  return fecha.toLocaleString('es-PE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
 
 const filaActiva = ref<DocSalidaAccionesFuente | null>(null)
 const { accionesMenu } = useDocSalidaAcciones(filaActiva)
@@ -303,6 +373,18 @@ async function onAccion(accion: DocSalidaAccion, row: DocSalidaAccionesFuente) {
     } catch (error) {
       toastApiError(error, 'No se pudo generar el PDF')
     }
+    return
+  }
+
+  // La consulta a SUNAT no necesita el documento completo, solo su id.
+  if (accion === 'consultar') {
+    await consultarMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: authStore.user?.id })
+    return
+  }
+
+  if (accion === 'historial') {
+    idSeleccionado.value = row.id
+    historialGreOpen.value = true
     return
   }
 

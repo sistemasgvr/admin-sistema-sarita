@@ -11,22 +11,13 @@ export interface ExcelSheetSpec<T> {
   name: string
   columns: ExcelColumn<T>[]
   rows: T[]
-  /**
-   * Nivel de agrupado (0 = fila "resumen"/visible, 1+ = fila de detalle
-   * colapsable). Si se define, las filas con nivel > 0 se agregan ya
-   * colapsadas y Excel muestra los controles +/- para expandirlas.
-   */
   outlineLevel?: (row: T) => number
-  /** Filas que deben resaltarse en negrita (ej. la primera fila de cada grupo). */
   bold?: (row: T) => boolean
 }
 
-/** Tipografía y paleta compartidas con la web (azul Oxígeno, verde/rojo del logo, grises). */
 export const REPORT_FONT = 'Segoe UI'
 export const REPORT_COLORS = {
-  /** Azul Oxígeno (brand-600): banner principal / títulos de sección. */
   acento: 'FF0D47A1',
-  /** Azul Oxígeno muy claro (brand-50): fondo suave para barras de sección secundarias. */
   acentoSuave: 'FFE3F2FD',
   encabezadoFondo: 'FFFFFFFF',
   encabezadoTexto: 'FF374151', // gray-800
@@ -56,7 +47,6 @@ function addSheet<T>(workbook: import('exceljs').Workbook, spec: ExcelSheetSpec<
   })
 
   if (spec.outlineLevel) {
-    // Resumen arriba de su detalle: colapsar el grupo oculta las filas de abajo.
     sheet.properties.outlineProperties = { summaryBelow: false, summaryRight: false }
   }
 

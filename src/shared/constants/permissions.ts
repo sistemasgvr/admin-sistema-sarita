@@ -1,7 +1,3 @@
-/**
- * Banderas de permiso. Deben coincidir con auth_permisos.nombre en la BD.
- * auth.todo = acceso total (superadmin).
- */
 export const PermisoBanderas = {
   AUTH_TODO: 'auth.todo',
 
@@ -239,8 +235,6 @@ export const PermisoBanderas = {
   COMPROBANTES_EMITIR: 'comprobantes.emitir',
   COMPROBANTES_CONSULTAR_CDR: 'comprobantes.consultar_cdr',
 
-  // Fase 2: reemplaza GUIAS_REMISION_* y la parte de recarga-planta de
-  // MOVIMIENTOS_RECARGA_* (unificadas en doc_salida).
   DOCUMENTOS_SALIDA_LISTAR: 'documentos_salida.listar',
   DOCUMENTOS_SALIDA_VER: 'documentos_salida.ver',
   DOCUMENTOS_SALIDA_CREAR: 'documentos_salida.crear',
@@ -350,12 +344,6 @@ export function hasPermissionFlag(permisos: string[], permission?: string): bool
   return permisos.includes(PermisoBanderas.AUTH_TODO) || permisos.includes(permission)
 }
 
-/**
- * Acceso de menú o ruta.
- * - `anyPermission`: basta con uno (OR)
- * - `permission`: bandera única
- * - sin banderas: visible (p. ej. Dashboard), salvo `requireExplicit`
- */
 export function canAccessByPermissions(
   permisos: string[],
   options?: {

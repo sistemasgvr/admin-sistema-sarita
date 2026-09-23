@@ -61,7 +61,10 @@ apiClient.interceptors.response.use(
       const body: unknown = payload
       // Los endpoints de archivos también devuelven errores JSON; Axios los
       // entrega como Blob por responseType y antes se perdía su mensaje.
-      if (body instanceof Blob && body.size <= 65536 && body.type.includes('json')) {
+      // No se filtra por body.type: un error de estos endpoints puede llegar
+      // rotulado como application/pdf y el mensaje útil se perdía. Se intenta
+      // parsear siempre y, si no es JSON, queda el error HTTP.
+      if (body instanceof Blob && body.size <= 65536) {
         try {
           const parsed: unknown = JSON.parse(await body.text())
           if (parsed && typeof parsed === 'object') payload = parsed as ApiErrorResponse

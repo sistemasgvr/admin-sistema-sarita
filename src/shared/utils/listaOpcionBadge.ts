@@ -1,15 +1,10 @@
 import type { BadgeColor } from '@/shared/interfaces/badge.interface'
 
-/** Normaliza códigos de gen_lista_opciones (mayúsculas, sin espacios). */
 export function normalizeListaOpcionCode(value?: string | null | unknown): string {
   if (typeof value !== 'string') return ''
   return value.trim().toUpperCase().replace(/\s+/g, '_')
 }
 
-/**
- * Colores explícitos por código de catálogo.
- * Cubrir Productos / Balones / Ventas con tonos distinguibles.
- */
 const LISTA_OPCION_BADGE_COLORS: Record<string, BadgeColor> = {
   // TipoMovInv
   INGRESO: 'success',

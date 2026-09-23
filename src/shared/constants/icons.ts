@@ -1,4 +1,3 @@
-/** Nombres de iconos Iconify usados en la app (colección lucide) */
 export const ICONS = {
   dashboard: 'lucide:layout-grid',
   users: 'lucide:users',

@@ -1,7 +1,4 @@
-/**
- * Correcciones ortográficas al humanizar códigos UPPER_SNAKE
- * (p. ej. ENTRADA_DEVOLUCION → "Entrada devolución").
- */
+
 const SPANISH_TOKEN_FIXES: Record<string, string> = {
   hidrostatica: 'hidrostática',
   devolucion: 'devolución',

@@ -437,7 +437,8 @@
                 que sale a la calle es la orden, con su direccion de entrega y
                 sus lineas ya resueltas (venta + cilindros en prestamo). La
                 actividad queda ligada por id_doc_salida y la venta la sigue
-                viendo por JOIN a traves de esta orden.
+                viendo por JOIN a traves de esta orden. Una vez programado, la
+                orden ya no ofrece el botón: el reparto vive en Operativa.
               -->
               <button
                 v-if="puedeAgregarReparto"
@@ -447,24 +448,6 @@
               >
                 <AppIcon :name="ICONS.truck" :size="14" />
                 Agregar a reparto
-              </button>
-              <button
-                v-if="documento.ticket_sunat && !documento.emitido_sunat"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                :disabled="consultarMutation.isPending.value"
-                @click="onConsultarEstado"
-              >
-                {{ consultarMutation.isPending.value ? 'Consultando...' : 'Consultar ahora' }}
-              </button>
-              <button
-                v-if="documento.gre_estado_envio || documento.ticket_sunat"
-                type="button"
-                class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                @click="historialGreOpen = true"
-              >
-                <AppIcon :name="ICONS.fileText" :size="14" class="text-gray-500" />
-                Historial SUNAT
               </button>
               <button
                 v-if="puedeRegistrarRetorno"
@@ -483,7 +466,7 @@
                 Ver PDF local
               </button>
               <button
-                v-if="documento.serie && documento.numero_sunat"
+                v-if="documento.emitido_sunat"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-xs font-medium text-brand-700 shadow-theme-xs transition hover:bg-brand-100 disabled:opacity-70 dark:border-brand-700 dark:bg-brand-900/30 dark:text-brand-300"
                 :disabled="archivoAbriendo !== null"
@@ -493,7 +476,7 @@
                 {{ archivoAbriendo === 'pdf' ? 'Cargando PDF…' : 'Ver PDF del envío' }}
               </button>
               <button
-                v-if="documento.serie && documento.numero_sunat"
+                v-if="documento.emitido_sunat"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-xs font-medium text-brand-700 disabled:opacity-70 dark:border-brand-700 dark:bg-brand-900/30 dark:text-brand-300"
                 :disabled="archivoAbriendo !== null"
@@ -987,35 +970,10 @@
       </template>
     </AppModal>
 
-    <!-- Historial de intentos y consultas SUNAT: reconstruye qué pasó con cada envío. -->
-    <AppModal v-model="historialGreOpen" title="Historial de envíos a SUNAT" size="lg">
-      <div v-if="historialGreQuery.isLoading.value" class="text-sm text-gray-500">Cargando historial...</div>
-      <div v-else-if="!historialGre.length" class="text-sm text-gray-500">Esta guía aún no tiene intentos de envío.</div>
-      <div v-else class="space-y-3">
-        <div
-          v-for="intento in historialGre"
-          :key="intento.id"
-          class="rounded-xl border border-gray-100 p-3 text-xs dark:border-gray-800"
-        >
-          <div class="flex flex-wrap items-center gap-2">
-            <AppBadge size="sm" :color="estadoIntentoColor(intento.estado)">{{ etiquetaEstadoIntento(intento.estado) }}</AppBadge>
-            <span class="font-medium text-gray-800 dark:text-white/90">Intento #{{ intento.id }}</span>
-            <span class="text-gray-500">{{ formatFechaHora(intento.creado) }}</span>
-            <span v-if="intento.entorno" class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600 dark:bg-white/5 dark:text-gray-300">{{ intento.entorno }}</span>
-            <span v-if="intento.ruc_emisor" class="text-gray-500">RUC {{ intento.ruc_emisor }}</span>
-          </div>
-          <div class="mt-1.5 grid grid-cols-1 gap-x-4 gap-y-1 text-gray-600 sm:grid-cols-3 dark:text-gray-400">
-            <span>Ticket: <strong>{{ intento.ticket || '—' }}</strong></span>
-            <span>Consultas: {{ intento.consultas }}</span>
-            <span v-if="intento.proxima_consulta && !['ACEPTADO', 'RECHAZADO'].includes(intento.estado)">Próxima consulta automática: {{ formatFechaHora(intento.proxima_consulta) }}</span>
-          </div>
-          <details class="mt-2">
-            <summary class="cursor-pointer text-[11px] text-gray-500 hover:underline">Detalle técnico (respuesta del PSE y consultas)</summary>
-            <pre class="mt-1 max-h-64 overflow-auto rounded-lg bg-gray-50 p-2 text-[10px] text-gray-700 dark:bg-gray-900 dark:text-gray-300">{{ JSON.stringify({ respuesta: intento.respuesta, consultas: intento.consultas_detalle }, null, 2) }}</pre>
-          </details>
-        </div>
-      </div>
-    </AppModal>
+    <!--
+      Consultar estado y Historial SUNAT ya no viven en el detalle: son
+      acciones del menú del listado (ver useDocSalidaAcciones).
+    -->
 
     <!-- Modal: Finalizar recarga -->
     <FinalizarRecargaModal v-model="finalizarModalOpen" :documento="documento" />
@@ -1064,14 +1022,13 @@ import ConvertirGreModal from '../components/ConvertirGreModal.vue'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import DocSalidaDetalleEditor from '@/modules/documentos-salida/components/DocSalidaDetalleEditor.vue'
-import { useDocumentoSalidaQuery, useGreHistorialQuery } from '../composables/useDocumentosSalidaQuery'
+import { useDocumentoSalidaQuery } from '../composables/useDocumentosSalidaQuery'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import {
   useActualizarDetalleDocSalidaMutation,
   useActualizarDocSalidaMutation,
   useAgregarDetalleDocSalidaMutation,
   useAnularDocSalidaMutation,
-  useConsultarEstadoDocSalidaMutation,
   useCreateDocumentoSalidaMutation,
   useEliminarDetalleDocSalidaMutation,
   useEmitirSunatDocSalidaMutation,
@@ -1079,6 +1036,7 @@ import {
   useValidarGreMutation,
 } from '../composables/useDocumentoSalidaMutations'
 import { visualizarArchivo } from '@/shared/utils/visualizarArchivo'
+import { faltantesTrasladoPdf, mensajeFaltantesTraslado } from '../utils/faltantesTraslado'
 import { documentosSalidaService } from '../services/documentos-salida.service'
 import type {
   CodigoTipoOrdenSalida,
@@ -1101,7 +1059,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import { toastApiError, toastError, toastSuccess } from '@/shared/composables/useToast'
 
 const route = useRoute()
 const router = useRouter()
@@ -1503,7 +1461,7 @@ const lineasDocumentoDetalle = computed<DocSalidaDetalleLinea[]>(() =>
     unidadCapacidadBalon: linea.unidad_capacidad_balon,
     nombreProducto: linea.nombre_producto ?? linea.descripcion,
     codigoProducto: linea.codigo_producto,
-    nombreUnidadMedida: linea.nombre_unidad_medida,
+    nombreUnidadMedida: linea.nombre_unidad_medida ?? linea.unidad_capacidad_balon,
     // Las líneas que vienen de la venta o del préstamo no se editan aquí.
     removible: linea.origen_detalle === 'PROPIO',
   })),
@@ -1663,6 +1621,9 @@ const puedeAgregarReparto = computed(() => {
   const doc = documento.value
   if (!doc) return false
 
+  // Ya tiene reparto programado: no se ofrece generarlo otra vez (la actividad
+  // se consulta desde Operativa › Actividades).
+  if (doc.id_actividad_reparto) return false
   const estado = doc.nombre_estado_ciclo
   // Solo órdenes ya generadas (o emitidas a SUNAT); no borrador ni anulada.
   if (estado !== 'GENERADA' && estado !== 'EMITIDA_SUNAT') return false
@@ -1686,11 +1647,17 @@ const puedeAgregarReparto = computed(() => {
 function abrirReparto() {
   const doc = documento.value
   if (!doc) return
+  if (doc.id_actividad_reparto) {
+    void router.push({ name: 'admin-operativa-actividades-detalle', params: { id: doc.id_actividad_reparto } })
+    return
+  }
   void router.push({
     name: 'admin-operativa-actividades-nueva',
     query: {
       lockTipoReparto: '1',
-      fecha: hoyISO(),
+      // La fecha programada del reparto arranca con la fecha de entrega de la
+      // orden (fecha de traslado); si aún no tiene, con hoy.
+      fecha: (doc.fecha_traslado ?? hoyISO()).slice(0, 10),
       idDocSalida: String(doc.id),
       titulo: `Reparto ${doc.numero}`,
       ...(doc.id_destinatario ?? doc.id_cliente
@@ -1754,7 +1721,7 @@ async function abrirEmitir() {
 const CAMPOS_MODAL_GRE = new Set([
   'idTipoGuiaRemision', 'serie', 'fechaEmisionGre', 'fechaTraslado', 'idMotivoTraslado', 'idModalidadTraslado',
   'direccionOrigen', 'idDistritoOrigen', 'direccionLlegada', 'idDistritoLlegada', 'pesoBruto', 'numeroBultos',
-  'idChofer', 'idVehiculo', 'idTransportista', 'empresa',
+  'idChofer', 'idVehiculo', 'idTransportista',
 ])
 function campoEditableEnGre(campo: string) {
   return CAMPOS_MODAL_GRE.has(campo)
@@ -1779,36 +1746,8 @@ async function onEmitir() {
   }
 }
 
-// ---- Historial de intentos/consultas ----
-const historialGreOpen = ref(false)
-const historialGreQuery = useGreHistorialQuery(documentoId, historialGreOpen)
-const historialGre = computed(() => historialGreQuery.data.value?.intentos ?? [])
-
-function etiquetaEstadoIntento(estado: string) {
-  switch (estado) {
-    case 'ACEPTADO': return entornoResuelto.value === 'beta' ? 'Aceptada en pruebas' : 'Aceptada'
-    case 'RECHAZADO': return 'Rechazada'
-    case 'PENDIENTE': return 'En proceso'
-    case 'POR_CONFIRMAR': return 'Resultado por confirmar'
-    case 'ENVIANDO': return 'Enviando'
-    default: return estado
-  }
-}
-function estadoIntentoColor(estado: string): 'success' | 'error' | 'warning' | 'neutral' {
-  if (estado === 'ACEPTADO') return 'success'
-  if (estado === 'RECHAZADO') return 'error'
-  if (estado === 'PENDIENTE' || estado === 'POR_CONFIRMAR') return 'warning'
-  return 'neutral'
-}
-
-const consultarMutation = useConsultarEstadoDocSalidaMutation()
-async function onConsultarEstado() {
-  if (!documento.value) return
-  await consultarMutation.mutateAsync({
-    id: documento.value.id,
-    idUsuarioAuditoria: idUsuarioAuditoria.value,
-  })
-}
+// ---- Historial / consulta de estado SUNAT ----
+// Viven en el menú de acciones del listado (DocumentosSalidaListView), no acá.
 
 // ---- Archivos del intento original ----
 const archivoAbriendo = ref<'pdf' | 'xml' | null>(null)
@@ -1929,6 +1868,13 @@ function formatFechaHora(iso: string) {
 // ---- PDF ----
 async function onDescargarPdf() {
   if (!documento.value) return
+  // La API responde 400 con lo que falta; avisar acá evita abrir una pestaña
+  // que solo mostraría un error.
+  const faltantes = faltantesTrasladoPdf(documento.value)
+  if (faltantes.length) {
+    toastError(mensajeFaltantesTraslado(faltantes))
+    return
+  }
   try {
     const id = documento.value.id
     await visualizarArchivo(() => documentosSalidaService.obtenerPdf(id), `Documento-${id}.pdf`, 'pdf')

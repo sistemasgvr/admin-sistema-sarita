@@ -1,8 +1,3 @@
-/**
- * IDs de `gen_lista` para GET /catalogos/listas/:idLista/opciones
- *
- * Fuente: SELECT id, nombre FROM gen_lista ORDER BY id;
- */
 export const ListaIds = {
   /** gen_lista.nombre = TipoPersona */
   TIPO_PERSONA: 1,

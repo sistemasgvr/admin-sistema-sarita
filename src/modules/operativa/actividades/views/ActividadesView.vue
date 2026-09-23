@@ -12,10 +12,6 @@
         @filter-change="onFiltersChange"
       >
         <template #actions>
-          <!--
-            Programa de una vez los recojos de los préstamos vencidos o por
-            vencer. Es idempotente: si ya tienen recojo abierto, no duplica.
-          -->
           <button
             v-if="canCreate"
             type="button"
@@ -146,11 +142,25 @@
         </template>
 
         <template #cell-responsable="{ row }">
-          <p v-if="row.nombre_chofer_responsable" class="truncate text-gray-800 dark:text-white/90">
-            {{ row.nombre_chofer_responsable }}
+          <!-- Bajo el encabezado «Responsable» va el responsable de la
+               actividad; el chofer solo aparece si no hay nadie asignado. -->
+          <p
+            v-if="row.nombre_trabajador_responsable"
+            class="truncate text-gray-800 dark:text-white/90"
+          >
+            {{ row.nombre_trabajador_responsable }}
           </p>
-          <p v-else-if="row.nombre_usuario_responsable" class="truncate text-gray-800 dark:text-white/90">
+          <p
+            v-else-if="row.nombre_usuario_responsable"
+            class="truncate text-gray-800 dark:text-white/90"
+          >
             {{ row.nombre_usuario_responsable }}
+          </p>
+          <p
+            v-else-if="row.nombre_chofer_responsable"
+            class="truncate text-gray-800 dark:text-white/90"
+          >
+            {{ row.nombre_chofer_responsable }}
           </p>
           <span v-else class="text-gray-400">Sin asignar</span>
         </template>

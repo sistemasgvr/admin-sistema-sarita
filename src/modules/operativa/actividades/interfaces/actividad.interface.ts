@@ -70,6 +70,7 @@ export interface DetalleOrigenActividad {
 }
 
 export interface OrigenVencidoRecojo {
+  balones_disponibles?: { id_detalle: number; id_balon: number; id_producto: number | null; codigo_balon: string }[]
   origen: TipoOrigenRecojo
   id_origen: number
   numero: string
@@ -80,6 +81,8 @@ export interface OrigenVencidoRecojo {
   cilindros_pendientes?: number | null
   garantias_activas?: number | null
   regulador_pendiente?: boolean | null
+  /** Actividad RECOJO vigente del origen (si ya tiene una), para no duplicarla. */
+  recojo_abierto?: number | null
 }
 
 export interface Actividad {
@@ -107,6 +110,9 @@ export interface Actividad {
   /** Segunda persona de la entrega: acompaña al responsable a subir los balones. */
   id_trabajador_apoyo?: number | null
   nombre_trabajador_apoyo?: string | null
+  id_comprobante_compra?: number | null
+  serie_comprobante_compra?: string | null
+  numero_comprobante_compra?: string | null
   id_comprobante?: number | null
   serie_comprobante?: string | null
   numero_comprobante?: string | null
@@ -114,6 +120,7 @@ export interface Actividad {
   serie_doc_salida?: string | null
   numero_sunat_doc_salida?: string | null
   numero_doc_salida?: string | null
+  prestamos_recojo?: { id: number; numero: string; id_cliente: number }[]
   id_prestamo?: number | null
   numero_prestamo?: string | null
   fecha_retorno_pactada_prestamo?: string | null
@@ -161,6 +168,7 @@ export interface ActividadItemPayload {
 
 /** Body compartido por POST y PATCH /operativa/actividades */
 export interface ActividadPayload {
+  idChoferResponsable?: number
   idUsuarioAuditoria: number
   titulo: string
   descripcion?: string
@@ -244,6 +252,7 @@ export interface VerificarActividadResult {
 }
 
 export interface CrearRecojoOrigenPayload {
+  idsBalones?: number[]
   tipoOrigen: TipoOrigenRecojo
   idOrigen: number
   fechaProgramada?: string
@@ -269,6 +278,7 @@ export interface CrearRecojoResult {
 }
 
 export interface OrigenVencidoRecojoFilters {
+  incluirNoVencidos?: boolean
   buscar?: string
   pagina?: number
   limite?: number

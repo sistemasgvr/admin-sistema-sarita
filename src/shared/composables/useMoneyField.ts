@@ -7,10 +7,6 @@ import {
   type ValidacionMontoMonedaOpts,
 } from '@/shared/utils/currency'
 
-/**
- * Validación reactiva para un campo de monto PEN (string v-model).
- * No redondea valores con más de 2 decimales; expone error y estado válido.
- */
 export function useMoneyField(
   model: Ref<string | undefined>,
   opts: ValidacionMontoMonedaOpts = {},
@@ -36,7 +32,6 @@ export function useMoneyField(
     actualizarError()
   }
 
-  /** Formatea a 2 decimales solo si el valor ya es válido; si no, conserva el texto y el error. */
   function onBlur() {
     enfocado.value = false
     const raw = model.value ?? ''

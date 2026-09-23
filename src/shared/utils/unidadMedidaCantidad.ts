@@ -25,10 +25,6 @@ export function normalizarNombreUnidadMedida(nombre?: string | null): string {
     .replace(/\.+$/, '')
 }
 
-/**
- * Piezas (UNID, NIU, …) exigen enteros.
- * Gases pueden ser decimales aunque la U.M. esté mal catalogada como UNID.
- */
 export function unidadRequiereCantidadEntera(
   nombreUnidad?: string | null,
   esGas?: boolean | null,
@@ -46,10 +42,6 @@ export function stepCantidadPorUnidad(
     : NUMBER_STEP.measure
 }
 
-/**
- * Step del input: `any` evita el tooltip nativo del navegador;
- * la validación (vee-validate / yup) marca el error en el campo.
- */
 export function stepInputCantidadPorUnidad(
   _nombreUnidad?: string | null,
   _esGas?: boolean | null,
@@ -66,22 +58,16 @@ export function minCantidadPorUnidad(
     : NUMBER_MIN.measurePositive
 }
 
-/** true si la cantidad es un entero (tolera 1.0). Permite 0. */
 export function esCantidadEnteraIncluyeCero(cantidad: number): boolean {
   if (!Number.isFinite(cantidad)) return false
   return Math.abs(cantidad - Math.round(cantidad)) < 1e-9
 }
 
-/** true si la cantidad es un entero positivo (tolera 1.0). */
 export function esCantidadEntera(cantidad: number): boolean {
   if (!Number.isFinite(cantidad) || cantidad <= 0) return false
   return esCantidadEnteraIncluyeCero(cantidad)
 }
 
-/**
- * Valida cantidad de venta/movimiento (> 0) según U.M.
- * Devuelve mensaje de error o null si es válida.
- */
 export function validarCantidadSegunUnidad(
   cantidad: number,
   nombreUnidad?: string | null,
@@ -98,9 +84,7 @@ export function validarCantidadSegunUnidad(
   return null
 }
 
-/**
- * Valida stock / stock mínimo (>= 0) según U.M.
- */
+
 export function validarStockSegunUnidad(
   cantidad: number,
   nombreUnidad?: string | null,
@@ -119,7 +103,6 @@ export function validarStockSegunUnidad(
   return null
 }
 
-/** Schema yup para cantidades de venta/movimiento (> 0). */
 export function cantidadPorUnidadMedidaSchema(
   nombreUnidad?: string | null,
   esGas?: boolean | null,

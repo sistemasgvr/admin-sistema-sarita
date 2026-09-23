@@ -8,10 +8,6 @@ export function parsePositiveIntQuery(value: unknown): number | null {
   return Number.isInteger(id) && id > 0 ? id : null
 }
 
-/**
- * Abre un recurso cuando la ruta trae `?id=` (u otra key) y limpia el query
- * para no reabrir al cerrar el modal.
- */
 export function useOpenIdFromRouteQuery(options: {
   queryKey?: string
   onOpen: (id: number) => void | Promise<void>

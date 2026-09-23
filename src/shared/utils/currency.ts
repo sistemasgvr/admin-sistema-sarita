@@ -30,38 +30,22 @@ export function tieneSaldoPendiente(value?: number | string | null): boolean {
   return roundMoney(value) >= 0.01
 }
 
-/**
- * Parsea un texto de monto tolerando el formato que la propia app usa para
- * mostrar cifras (ej. "1,234.56", "S/ 1,234.56", "3,200"). La coma SIEMPRE
- * es tratada como separador de miles; el punto como decimal. Devuelve
- * `null` si el texto es vacío o no representa un número válido.
- */
+
 export function parseMoneyInput(raw: unknown): number | null {
   if (raw == null) return null
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null
 
   const texto = String(raw).trim()
   if (!texto) return null
-
-  // Quitar espacios y símbolo de moneda; solo se conservan dígitos, coma, punto y signo
   const limpio = texto.replace(/[\sS/]/gi, '')
 
-  // Si tiene punto: la coma es SIEMPRE separador de miles → quitarla
-  // Si NO tiene punto pero tiene coma: la coma también se trata como miles
-  //   (regla clara y consistente con lo que muestra la UI: nunca decimal-coma)
   const sinComas = limpio.replace(/,/g, '')
-
-  // Validación estricta: dígitos opcional-punto-dígitos
   if (!/^-?\d+(\.\d+)?$/.test(sinComas)) return null
 
   const n = Number(sinComas)
   return Number.isFinite(n) ? n : null
 }
 
-/**
- * Normaliza un monto a 2 decimales fijos como string ("1234.56"). Devuelve
- * `''` si no es válido. Ideal para usar en el `focusout` de inputs de monto.
- */
 export function normalizeMoneyInput(raw: unknown): string {
   const n = parseMoneyInput(raw)
   if (n == null || n < 0) return ''
@@ -69,12 +53,10 @@ export function normalizeMoneyInput(raw: unknown): string {
   return roundMoney(n).toFixed(2)
 }
 
-/** Texto numérico limpio (sin espacios, S/, comas miles). */
 function limpiarTextoMonto(raw: string): string {
   return raw.replace(/[\sS/]/gi, '').replace(/,/g, '')
 }
 
-/** Cuenta dígitos después del punto decimal en el texto del input. */
 export function contarDecimalesEnTexto(raw: unknown): number | null {
   if (raw == null) return null
   const texto = limpiarTextoMonto(String(raw).trim())
@@ -84,7 +66,6 @@ export function contarDecimalesEnTexto(raw: unknown): number | null {
   return match[1]?.length ?? 0
 }
 
-/** Indica si un monto parseado tiene como máximo 2 decimales (moneda PEN). */
 export function tieneMaxDosDecimalesMoneda(raw: unknown): boolean {
   if (raw == null || String(raw).trim() === '') return false
 

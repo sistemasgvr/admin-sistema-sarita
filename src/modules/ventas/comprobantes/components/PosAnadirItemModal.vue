@@ -2473,10 +2473,16 @@ async function confirmar() {
     return
   }
 
+  // En el préstamo manda la modalidad elegida, no el monto: prefillMontoGarantia
+  // deja un sugerido en montoGarantia aunque la garantía sea "ninguna" o "balón",
+  // y ese campo ni siquiera se muestra, así que exigir el medio de pago por monto
+  // dejaba el ítem imposible de confirmar. El payload ya manda 0 salvo en "dinero".
   const cobraGarantia =
     montoNumerico(montoGarantia.value) > 0 &&
     (tipo.value === 'alquiler' ||
-      (tipo.value === 'gas' && escenarioGas.value === 'entregar_prestamo'))
+      (tipo.value === 'gas' &&
+        escenarioGas.value === 'entregar_prestamo' &&
+        tipoGarantiaPrestamo.value === 'dinero'))
   if (cobraGarantia && !montoGarantiaValido.value) {
     toastWarning('La garantía solo admite hasta 2 decimales')
     return

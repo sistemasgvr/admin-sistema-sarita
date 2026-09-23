@@ -1,6 +1,5 @@
 import { apiPost } from '@/shared/api/apiClient'
 
-/** Registro de gen_archivo que el backend crea junto con la subida. */
 export interface StorageArchivo {
   id: number
   nombre_original: string
@@ -17,7 +16,6 @@ export interface StorageUploadResponse {
   path?: string
   bucket: string
   id?: number
-  /** Metadatos del archivo registrado; de aquí sale el idArchivo que guardan los módulos. */
   archivo?: StorageArchivo | null
 }
 

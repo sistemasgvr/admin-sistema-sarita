@@ -32,6 +32,7 @@ export interface DocumentoSalidaDetalle {
   /** Gas del cilindro: una ficha de lote y protocolo cubre un solo gas. */
   id_producto_gas_balon?: number | null
   nombre_producto_gas_balon?: string | null
+  codigo_producto_gas_balon?: string | null
   numero_serie_balon?: string | null
   id_lote_protocolo_vigente?: number | null
   cantidad: number
@@ -61,6 +62,7 @@ export interface DocumentoSalidaReferencia {
 }
 
 export interface DocumentoSalida {
+  id_actividad_reparto?: number | null
   id_empresa?: number | null;
   id: number
   numero: string
@@ -124,6 +126,8 @@ export interface DocumentoSalida {
   nombre_motivo_traslado: string | null
   id_modalidad_traslado: number | null
   nombre_modalidad_traslado: string | null
+  /** Código SUNAT de la modalidad (01 público / 02 privado). */
+  codigo_modalidad_traslado?: string | null
   id_unidad_medida: number | null
   nombre_unidad_medida: string | null
   peso_bruto: number | null
@@ -360,6 +364,11 @@ export interface FinalizarRecargaPayload {
 }
 
 export interface ActualizarTrasladoPayload {
+  idTipoGuiaRemision?: number
+  idChofer?: number
+  idVehiculo?: number
+  idTransportista?: number
+  fechaTraslado?: string
   idMotivoTraslado?: number
   idModalidadTraslado?: number
   pesoBruto?: number

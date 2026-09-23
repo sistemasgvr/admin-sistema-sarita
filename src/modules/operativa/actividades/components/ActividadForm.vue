@@ -71,6 +71,17 @@
             :error="errors.idTrabajadorResponsable"
             :search-fn="searchResponsable"
           />
+          <SearchableSelect
+            v-if="esTipoReparto || idDocSalidaEfectivo"
+            v-model="idChoferSeleccionado"
+            label="Chofer / repartidor"
+            placeholder="Busca chofer..."
+            :model-label="choferLabelActual"
+            :search-fn="searchChoferes"
+            :clearable="false"
+            :disabled="isSubmitting || estadoActividadBloqueado"
+            @update:model-value="choferEditado = true"
+          />
         </div>
       </section>
 
@@ -182,9 +193,9 @@
             v-model="fechaHoraCierre"
             type="datetime-local"
             label="Fecha y hora de cierre"
-            hint="Déjalo vacío si la actividad aún no se ha cerrado."
+            hint="Se registra automáticamente al culminar la actividad; aquí solo se consulta."
             v-bind="fechaHoraCierreAttrs"
-            :disabled="isSubmitting"
+            disabled
             :error="errors.fechaHoraCierre"
           />
         </div>
@@ -230,22 +241,51 @@
           <div>
             <h4 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Origen del recojo</h4>
             <p class="text-xs text-gray-500 dark:text-gray-400">
-              Préstamo o alquiler vencido con cilindros pendientes de devolver
+              Todos los préstamos y alquileres activos, con el badge del plazo (En tiempo, plazo normal o
+              vencido). Los que ya tienen recojo pendiente se marcan "Recojo abierto".
             </p>
           </div>
         </header>
 
         <OrigenRecojoSelectField
           v-model="origenRecojoKey"
-          label="Préstamo / alquiler vencido"
-          placeholder="Selecciona un origen vencido..."
+          label="Préstamo / alquiler pendiente"
+          placeholder="Selecciona un origen pendiente..."
           search-placeholder="Número o cliente..."
           :required="true"
           :disabled="isSubmitting || lockOrigenRecojo"
           :error="errorOrigenRecojo"
           :prefill-label="prefillOrigenRecojoLabel"
+          @selected="origenRemoto = $event"
         />
 
+        <div
+          v-if="origenRecojoSeleccionado?.recojo_abierto"
+          class="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+        >
+          <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
+          <span>
+            Este origen ya tiene el recojo #{{ origenRecojoSeleccionado.recojo_abierto }} pendiente; al
+            guardar se usará esa actividad y no se creará otra.
+          </span>
+        </div>
+
+        <div v-if="origenRecojoSeleccionado?.origen === 'PRESTAMO'" class="mt-3 space-y-2">
+          <p class="text-sm font-medium">Balones a recoger</p>
+          <template v-if="(origenRecojoSeleccionado.balones_disponibles ?? []).length">
+            <label v-for="balon in origenRecojoSeleccionado.balones_disponibles" :key="balon.id_balon" class="flex items-center gap-2 text-sm">
+              <input v-model="idsBalonesRecojo" type="checkbox" :value="balon.id_balon" :disabled="isSubmitting" />
+              {{ balon.codigo_balon }}
+            </label>
+          </template>
+          <p v-else class="text-xs text-gray-500 dark:text-gray-400">
+            Sin balones por seleccionar{{
+              origenRecojoSeleccionado.recojo_abierto
+                ? ': ya están reservados en el recojo abierto.'
+                : ', no hay cilindros entregados pendientes de devolución.'
+            }}
+          </p>
+        </div>
         <dl
           v-if="origenRecojoSeleccionado"
           class="mt-3 grid gap-2 rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-sm dark:border-gray-800 dark:bg-white/[0.03] sm:grid-cols-3"
@@ -573,6 +613,14 @@ const searchClientes = async (query: string): Promise<SelectOption[]> => {
 const getTrabajadorNombre = (t: Trabajador) =>
   [t.nombres, t.apellido_paterno, t.apellido_materno].filter(Boolean).join(' ').trim() || t.nombres
 
+const idChoferSeleccionado = ref<number | undefined>()
+const choferEditado = ref(false)
+const choferLabelActual = computed(() => actividadActual.value?.nombre_chofer_responsable || docSalidaSeleccionada.value?.nombre_chofer || props.defaultChoferLabel || null)
+const searchChoferes = async (buscar: string): Promise<SelectOption[]> => {
+  const response = await choferesService.listar({ buscar: buscar || undefined, pagina: 1, limite: 30, isActivos: 1 })
+  return response.data.map(c => ({ value: c.id, label: [c.nombres, c.apellido_paterno, c.apellido_materno].filter(Boolean).join(' ') }))
+}
+
 const searchResponsable = async (query: string): Promise<SelectOption[]> => {
   const response = await trabajadoresService.listar({
     buscar: query || undefined,
@@ -666,9 +714,11 @@ const responsableLabelActual = computed(
 )
 
 const comprobanteLabel = computed(() => {
-  const serie = actividadActual.value?.serie_comprobante
-  const numero = actividadActual.value?.numero_comprobante
+  const serie = actividadActual.value?.serie_comprobante ?? docSalidaSeleccionada.value?.serie_venta
+  const numero = actividadActual.value?.numero_comprobante ?? docSalidaSeleccionada.value?.numero_venta
   if (serie && numero) return `${serie}-${numero}`
+  const a = actividadActual.value
+  if (a?.serie_comprobante_compra && a.numero_comprobante_compra) return `Compra: ${a.serie_comprobante_compra}-${a.numero_comprobante_compra}`
   return props.defaultIdComprobante ? `Comprobante #${props.defaultIdComprobante}` : null
 })
 
@@ -690,7 +740,7 @@ const lockOrigenRecojo = computed(
 
 const prefillOrigenRecojoLabel = computed(() => props.defaultOrigenRecojoLabel ?? null)
 
-const vencidosFilters = ref({ buscar: '', pagina: 1, limite: 30 })
+const vencidosFilters = ref({ incluirNoVencidos: true, buscar: '', pagina: 1, limite: 30 })
 const vencidosQuery = useVencidosRecojoQuery(
   vencidosFilters,
   computed(() => props.mode === 'create'),
@@ -704,7 +754,7 @@ const idDocSalidaEfectivo = computed(() => {
 })
 
 const idDocSalidaQueryRef = computed(() =>
-  props.mode === 'create' && idDocSalidaEfectivo.value ? idDocSalidaEfectivo.value : null,
+  idDocSalidaEfectivo.value ?? null,
 )
 const docSalidaQuery = useDocumentoSalidaQuery(idDocSalidaQueryRef)
 const docSalidaSeleccionada = computed(() => docSalidaQuery.data.value ?? null)
@@ -781,7 +831,10 @@ const itemsTablaPreview = computed(() =>
   itemsPreview.value.length ? itemsPreview.value : detalleOrigenPreview.value,
 )
 
+const origenRemoto = ref<OrigenVencidoRecojo | null>(null)
+const idsBalonesRecojo = ref<number[]>([])
 const origenRecojoSeleccionado = computed<OrigenVencidoRecojo | null>(() => {
+  if (origenRemoto.value && `${origenRemoto.value.origen}:${origenRemoto.value.id_origen}` === origenRecojoKey.value) return origenRemoto.value
   const parsed = parseOrigenRecojoKey(origenRecojoKey.value)
   if (!parsed) return null
   return (
@@ -978,6 +1031,8 @@ function limpiarVinculoOrigenRecojo() {
 
 const syncFormValues = () => {
   const a = actividadActual.value
+  choferEditado.value = false
+  idChoferSeleccionado.value = a?.id_chofer_responsable ?? docSalidaSeleccionada.value?.id_chofer ?? props.defaultChoferId ?? undefined
 
   resetForm({
     values: {
@@ -1039,13 +1094,25 @@ const onSubmit = handleSubmit(async (values) => {
   if (props.mode === 'create' && esRecojoSeleccionado(values.idTipoActividad)) {
     const parsed = parseOrigenRecojoKey(origenRecojoKey.value)
     if (!parsed) {
-      errorOrigenRecojo.value = 'Selecciona un préstamo o alquiler vencido'
+      errorOrigenRecojo.value = 'Selecciona un préstamo o alquiler pendiente'
+      return
+    }
+    // Con un recojo ya abierto no quedan balones "disponibles" (están
+    // reservados por esa actividad): el backend responde idempotente con la
+    // actividad existente, así que no exigimos selección.
+    if (
+      parsed.tipoOrigen === 'PRESTAMO'
+      && !idsBalonesRecojo.value.length
+      && !origenRecojoSeleccionado.value?.recojo_abierto
+    ) {
+      errorOrigenRecojo.value = 'Selecciona al menos un balón disponible para recoger'
       return
     }
     errorOrigenRecojo.value = undefined
 
     try {
       await crearRecojoMutation.mutateAsync({
+        idsBalones: parsed.tipoOrigen === 'PRESTAMO' ? idsBalonesRecojo.value : undefined,
         tipoOrigen: parsed.tipoOrigen,
         idOrigen: parsed.idOrigen,
         fechaProgramada: values.fechaProgramada || undefined,
@@ -1075,6 +1142,7 @@ const onSubmit = handleSubmit(async (values) => {
       idTrabajadorResponsable: values.idTrabajadorResponsable
         ? Number(values.idTrabajadorResponsable)
         : undefined,
+      idChoferResponsable: estadoActividadBloqueado.value ? undefined : idChoferSeleccionado.value,
       idComprobante: idDocSalida ? undefined : (defaultIdComprobante.value ?? undefined),
       idDocSalida,
       idTipoActividad: Number(values.idTipoActividad),
@@ -1087,8 +1155,9 @@ const onSubmit = handleSubmit(async (values) => {
       fechaProgramada: values.fechaProgramada,
       horaInicioEstimada: values.horaInicioEstimada,
       horaFinEstimada: values.horaFinEstimada,
-      fechaHoraCierre: values.fechaHoraCierre || undefined,
       observaciones: values.observaciones || undefined,
+      // fechaHoraCierre lo cierra el backend (age_actualizar_actividad); la API
+      // no lo acepta en el body y lo rechazaría como propiedad desconocida.
     }
 
     if (props.mode === 'create') {
@@ -1133,6 +1202,9 @@ watch(
 )
 
 watch(docSalidaSeleccionada, (doc) => {
+  if (doc && !choferEditado.value && !actividadActual.value?.id_chofer_responsable) {
+    idChoferSeleccionado.value = doc.id_chofer ?? props.defaultChoferId ?? undefined
+  }
   if (props.mode !== 'create' || !doc || !esTipoReparto.value) return
   if (!titulo.value?.trim()) {
     setFieldValue('titulo', `Reparto ${doc.numero}`)
@@ -1143,7 +1215,10 @@ watch(docSalidaSeleccionada, (doc) => {
   }
 })
 
-watch(origenRecojoSeleccionado, (origen) => {
+watch(origenRecojoSeleccionado, (origen, anterior) => {
+  if (origen?.id_origen !== anterior?.id_origen || origen?.origen !== anterior?.origen) {
+    idsBalonesRecojo.value = origen?.balones_disponibles?.map(b => b.id_balon) ?? []
+  }
   if (props.mode !== 'create' || !origen || !esTipoRecojo.value) return
   const prefijo = origen.origen === 'ALQUILER' ? 'Recojo alquiler' : 'Recojo préstamo'
   if (!titulo.value?.trim() || titulo.value.startsWith('Recojo ')) {

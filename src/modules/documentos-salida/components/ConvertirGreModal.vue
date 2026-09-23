@@ -1,8 +1,19 @@
 <template>
   <AppModal v-model="open" :title="tituloModal" size="xl" @close="handleClose">
     <div class="space-y-5">
-      <AppSelect v-model="idEmpresaEmisora" label="Empresa emisora de esta guía" :options="empresaOptions" placeholder="Selecciona la empresa emisora" :disabled="(!!documento?.id_empresa && !!documento?.numero_sunat) || mutation.isPending.value" />
-      <p class="text-sm text-gray-500">Comprueba la razón social y el RUC. La guía conservará esta empresa para el PDF, la emisión y las consultas SUNAT.</p>
+      <!--
+        El emisor no se elige acá: la guía sale con la empresa que está
+        registrada ante SUNAT (empresa activa o ya guardada en la orden).
+        Solo se muestra, a modo informativo, quién la emitirá.
+      -->
+      <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-700 dark:bg-white/5">
+        <span class="block text-[11px] font-semibold uppercase tracking-wider text-gray-500">Empresa que emitirá esta guía</span>
+        <span class="text-sm font-semibold text-gray-800 dark:text-white/90">
+          {{ empresaSeleccionadaInfo ? (empresaSeleccionadaInfo.razon_social || empresaSeleccionadaInfo.nombre_comercial) : 'Cargando empresa emisora…' }}
+        </span>
+        <span v-if="empresaSeleccionadaInfo" class="ml-2 rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-white/10 dark:text-gray-300">RUC: {{ empresaSeleccionadaInfo.ruc }}</span>
+      </div>
+      <p class="text-sm text-gray-500">No se puede cambiar el emisor en esta guía: la empresa emisora la define SUNAT. Si necesitas emitir con otra empresa, el cambio se realiza desde SUNAT; mientras tanto, esta guía se emitirá con la empresa mostrada arriba.</p>
       <div
         v-if="idEmpresaEmisora && empresaSeleccionadaInfo"
         class="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs dark:border-gray-700 dark:bg-white/5"
@@ -469,7 +480,6 @@ const CODIGO_MODALIDAD_PRIVADO = '02'
 const empresaActiva = useEmpresaSeleccionada()
 const idEmpresaEmisora = ref<number | undefined>()
 const empresasQuery = useEmpresasQuery(ref({ pagina: 1, limite: 100 }))
-const empresaOptions = computed(() => (empresasQuery.data.value?.data ?? []).map(e => ({ value: e.id, label: `${e.razon_social || e.nombre_comercial || 'Empresa'} · ${e.ruc}` })))
 
 const empresaSeleccionadaInfo = computed(() => {
   if (!idEmpresaEmisora.value) return null
@@ -989,7 +999,7 @@ const mutation = useConvertirAGreMutation()
 
 async function onGuardar() {
   if (!props.documento || !form.serie || errorSerie.value) return
-  if (!idEmpresaEmisora.value) { toastWarning('Selecciona la empresa emisora de la guía'); return }
+  if (!idEmpresaEmisora.value) { toastWarning('La guía necesita una empresa emisora'); return }
   const modalidadId = esGreTransportista.value
     ? (idPorCodigo(modalidadesQuery.data.value, CODIGO_MODALIDAD_PUBLICO) ?? undefined)
     : form.idModalidadTraslado
@@ -999,6 +1009,8 @@ async function onGuardar() {
     await mutation.mutateAsync({
       id: props.documento.id,
       payload: {
+        // El emisor no se envía como dato editable: la API usa la empresa
+        // emisora ya guardada en la orden (idEmpresa solo sirve si aún no hay).
         idEmpresa: idEmpresaEmisora.value,
         serie: form.serie.toUpperCase(),
         idTipoGuiaRemision: form.idTipoGuiaRemision ? Number(form.idTipoGuiaRemision) : undefined,

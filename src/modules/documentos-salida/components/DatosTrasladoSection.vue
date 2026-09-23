@@ -127,7 +127,15 @@
 
     <!-- Edición en el mismo sitio, sin sacar al usuario de la página -->
     <div v-else class="space-y-4 px-6 py-4">
+      <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <AppSelect v-model="form.idTipoGuiaRemision" label="Tipo de guía" :options="tipoOptions" :disabled="mutation.isPending.value || !!documento?.serie" />
+        <AppDatePicker v-model="form.fechaTraslado" label="Fecha de traslado" />
+        <template v-if="flotaEnEdicion">
+          <SearchableSelect v-model="form.idChofer" label="Chofer" :model-label="documento?.nombre_chofer" :search-fn="searchChoferes" />
+          <SearchableSelect v-model="form.idVehiculo" label="Vehículo" :model-label="documento?.placa_vehiculo" :search-fn="searchVehiculos" />
+        </template>
+        <ClienteSelectField v-else v-model="form.idTransportista" label="Transportista" searchable />
         <AppSelect
           v-model="form.idMotivoTraslado"
           label="Motivo de traslado"
@@ -140,12 +148,8 @@
           label="Modalidad"
           :placeholder="modalidadesQuery.isLoading.value ? 'Cargando...' : 'Selecciona...'"
           :options="modalidadOptions"
-          :disabled="modalidadesQuery.isLoading.value || mutation.isPending.value || esGreTransportista"
-          :hint="
-            esGreTransportista
-              ? 'En la guía de transportista es siempre pública'
-              : 'Chofer, vehículo o transportista se cambian en «Editar datos GRE»'
-          "
+          :disabled="modalidadesQuery.isLoading.value || mutation.isPending.value || tipoEnEdicion === '31'"
+
         />
         <AppInput
           v-model.number="form.pesoBruto"
@@ -188,16 +192,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { useActualizarTrasladoMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
 import type { DocumentoSalida } from '@/modules/documentos-salida/interfaces/documento-salida.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { AppInput, AppSelect } from '@/shared/components'
+import { AppDatePicker, AppInput, AppSelect } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+
+import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
+import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
+import { choferesService } from '@/modules/choferes/services/choferes.service'
+import { vehiculosService } from '@/modules/vehiculos/services/vehiculos.service'
 
 const props = defineProps<{
   documento: DocumentoSalida | null | undefined
@@ -207,22 +216,49 @@ const props = defineProps<{
 const authStore = useAuthStore()
 const motivosQuery = useListaOpcionesQuery(ref(ListaIds.MOTIVO_TRASLADO))
 const modalidadesQuery = useListaOpcionesQuery(ref(ListaIds.MODALIDAD_TRASLADO))
+const tiposQuery = useListaOpcionesQuery(ref(ListaIds.TIPO_GUIA_REMISION))
 const mutation = useActualizarTrasladoMutation()
 
 const editando = ref(false)
 
 const form = reactive<{
+  idTipoGuiaRemision: number | ''
+  fechaTraslado: string
+  idChofer: number | undefined
+  idVehiculo: number | undefined
+  idTransportista: number | undefined
   idMotivoTraslado: number | ''
   idModalidadTraslado: number | ''
   pesoBruto: number | ''
   numeroBultos: number | ''
 }>({
+  idTipoGuiaRemision: '',
+  fechaTraslado: '',
+  idChofer: undefined,
+  idVehiculo: undefined,
+  idTransportista: undefined,
   idMotivoTraslado: '',
   idModalidadTraslado: '',
   pesoBruto: '',
   numeroBultos: '',
 })
 
+const tipoOptions = computed(() => tiposQuery.data.value?.filter(o => ['09', '31'].includes(o.descripcion?.trim() ?? '')).map(o => ({ value: o.id, label: formatListaOpcionLabel(o.nombre, o.descripcion) })) ?? [])
+const tipoEnEdicion = computed(() => tiposQuery.data.value?.find(o => o.id === Number(form.idTipoGuiaRemision))?.descripcion?.trim())
+const modalidadEnEdicion = computed(() => modalidadesQuery.data.value?.find(o => o.id === Number(form.idModalidadTraslado))?.descripcion?.trim())
+const flotaEnEdicion = computed(() => tipoEnEdicion.value === '31' || modalidadEnEdicion.value === '02')
+watch([tipoEnEdicion, () => modalidadesQuery.data.value], () => {
+  if (editando.value && tipoEnEdicion.value === '31') form.idModalidadTraslado = modalidadesQuery.data.value?.find(o => o.descripcion?.trim() === '01')?.id ?? ''
+})
+const error = ref('')
+async function searchChoferes(buscar: string) {
+  const r = await choferesService.listar({ buscar: buscar || undefined, pagina: 1, limite: 30, isActivos: 1 })
+  return r.data.map(c => ({ value: c.id, label: `${c.nombres} ${c.apellido_paterno ?? ''}`.trim() }))
+}
+async function searchVehiculos(buscar: string) {
+  const r = await vehiculosService.listar({ buscar: buscar || undefined, pagina: 1, limite: 30 })
+  return r.data.map(v => ({ value: v.id, label: v.placa }))
+}
 const motivoOptions = computed(
   () =>
     motivosQuery.data.value?.map((o) => ({
@@ -264,6 +300,12 @@ const flotaPropia = computed(
 
 function empezarEdicion() {
   const d = props.documento
+  error.value = ''
+  form.idTipoGuiaRemision = d?.id_tipo_guia_remision ?? tiposQuery.data.value?.find(o => o.descripcion?.trim() === '09')?.id ?? ''
+  form.fechaTraslado = (d?.fecha_traslado ?? d?.fecha ?? '').slice(0, 10)
+  form.idChofer = d?.id_chofer ?? undefined
+  form.idVehiculo = d?.id_vehiculo ?? undefined
+  form.idTransportista = d?.id_transportista ?? undefined
   form.idMotivoTraslado = d?.id_motivo_traslado ?? ''
   form.idModalidadTraslado = d?.id_modalidad_traslado ?? ''
   form.pesoBruto = d?.peso_bruto ?? ''
@@ -273,13 +315,27 @@ function empezarEdicion() {
 
 async function onGuardar() {
   if (!props.documento) return
+  error.value = ''
+  if (!form.idTipoGuiaRemision || !form.idMotivoTraslado || !form.idModalidadTraslado || !form.fechaTraslado || !(Number(form.pesoBruto) > 0) || !Number.isInteger(Number(form.numeroBultos)) || !(Number(form.numeroBultos) > 0)) {
+    error.value = 'Completa el tipo de guía, motivo, modalidad, fecha, peso mayor a cero y bultos enteros mayores a cero.'
+    return
+  }
+  if (flotaEnEdicion.value ? !form.idChofer || !form.idVehiculo : !form.idTransportista) {
+    error.value = flotaEnEdicion.value ? 'Selecciona el chofer y el vehículo.' : 'Selecciona el transportista.'
+    return
+  }
   try {
     await mutation.mutateAsync({
       id: props.documento.id,
       payload: {
-        idMotivoTraslado: form.idMotivoTraslado === '' ? undefined : Number(form.idMotivoTraslado),
+        idTipoGuiaRemision: Number(form.idTipoGuiaRemision),
+        fechaTraslado: form.fechaTraslado,
+        idChofer: flotaEnEdicion.value ? form.idChofer : undefined,
+        idVehiculo: flotaEnEdicion.value ? form.idVehiculo : undefined,
+        idTransportista: flotaEnEdicion.value ? undefined : form.idTransportista,
+        idMotivoTraslado: Number(form.idMotivoTraslado),
         idModalidadTraslado:
-          form.idModalidadTraslado === '' ? undefined : Number(form.idModalidadTraslado),
+          Number(form.idModalidadTraslado),
         pesoBruto: form.pesoBruto === '' ? undefined : Number(form.pesoBruto),
         numeroBultos: form.numeroBultos === '' ? undefined : Number(form.numeroBultos),
         idUsuarioAuditoria: authStore.user?.id,

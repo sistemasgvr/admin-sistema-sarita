@@ -1,13 +1,6 @@
-/**
- * Pasos estándar para inputs type="number".
- * Evitar step="0.0001": la flecha del navegador sube en milésimas y parece un bug.
- */
 export const NUMBER_STEP = {
-  /** Piezas / unidades enteras (stock, accesorios, IDs, días). */
   unit: '1',
-  /** Dinero (S/) y porcentajes. */
   money: '0.01',
-  /** Medidas (m³, kg, capacidad): decimal usable sin milésimas. */
   measure: '0.01',
 } as const
 
