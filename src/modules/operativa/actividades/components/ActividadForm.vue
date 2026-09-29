@@ -507,6 +507,7 @@ import {
 import { clientesService } from '@/modules/clientes/services/clientes.service'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
+import { fetchAllPaginated } from '@/shared/utils/pagination'
 import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.interface'
 import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
 import OrigenRecojoSelectField from '@/modules/operativa/actividades/components/OrigenRecojoSelectField.vue'
@@ -598,20 +599,16 @@ const getClienteNombre = (cliente: Cliente) => {
 }
 
 const searchClientes = async (query: string): Promise<SelectOption[]> => {
-  const response = await clientesService.listar({
+  const clientes = await fetchAllPaginated(clientesService.listar, {
     buscar: query || undefined,
-    pagina: 1,
-    limite: 20,
     soloActivos: 1,
   })
 
-  return response.data.map((cliente) => ({
+  return clientes.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
   }))
 }
-
-
 
 const getTrabajadorNombre = (t: Trabajador) =>
   [t.nombres, t.apellido_paterno, t.apellido_materno].filter(Boolean).join(' ').trim() || t.nombres
@@ -620,18 +617,22 @@ const idChoferSeleccionado = ref<number | undefined>()
 const choferEditado = ref(false)
 const choferLabelActual = computed(() => actividadActual.value?.nombre_chofer_responsable || docSalidaSeleccionada.value?.nombre_chofer || props.defaultChoferLabel || null)
 const searchChoferes = async (buscar: string): Promise<SelectOption[]> => {
-  const response = await choferesService.listar({ buscar: buscar || undefined, pagina: 1, limite: 30, isActivos: 1 })
-  return response.data.map(c => ({ value: c.id, label: [c.nombres, c.apellido_paterno, c.apellido_materno].filter(Boolean).join(' ') }))
+  const choferes = await fetchAllPaginated(choferesService.listar, {
+    buscar: buscar || undefined,
+    isActivos: 1,
+  })
+  return choferes.map((c) => ({
+    value: c.id,
+    label: [c.nombres, c.apellido_paterno, c.apellido_materno].filter(Boolean).join(' '),
+  }))
 }
 
 const searchResponsable = async (query: string): Promise<SelectOption[]> => {
-  const response = await trabajadoresService.listar({
+  const trabajadores = await fetchAllPaginated(trabajadoresService.listar, {
     buscar: query || undefined,
-    pagina: 1,
-    limite: 20,
     estado: 1,
   })
-  return response.data.map((t) => ({
+  return trabajadores.map((t) => ({
     value: t.id,
     label: getTrabajadorNombre(t),
     badges: [

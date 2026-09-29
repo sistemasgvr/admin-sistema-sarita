@@ -32,9 +32,18 @@ function esCondicionContado(c: CondicionPago): boolean {
   return Number(c.dias_credito ?? 0) === 0 && Number(c.numero_cuotas ?? 1) <= 1
 }
 
+function tieneCodigoContado(lista: CondicionPago[]): boolean {
+  return lista.some((c) => (c.codigo ?? '').toUpperCase() === 'CONTADO')
+}
+
+/** Solo Contado real; no caer en el primer ítem del catálogo (p.ej. cuotas). */
 function resolverCondicionContado(lista: CondicionPago[]): CondicionPago | null {
   if (!lista.length) return null
-  return lista.find(esCondicionContado) ?? lista[0]
+  return (
+    lista.find((c) => (c.codigo ?? '').toUpperCase() === 'CONTADO') ??
+    lista.find(esCondicionContado) ??
+    null
+  )
 }
 
 export {
@@ -234,10 +243,29 @@ export function usePosComprobanteForm(options?: {
 
   watch(
     () => condicionesPagoQuery.data.value?.data,
-    (lista) => {
-      if (!lista?.length || idCondicionPago.value) return
+    (lista, prevLista) => {
+      if (!lista?.length) return
       const contado = resolverCondicionContado(lista)
-      if (contado) idCondicionPago.value = contado.id
+      if (!contado) return
+
+      // Vacío → Contado por defecto
+      if (!idCondicionPago.value) {
+        idCondicionPago.value = contado.id
+        return
+      }
+
+      // Catálogo acaba de incluir CONTADO (antes no estaba): forzar default Contado
+      const prev = prevLista ?? []
+      if (!tieneCodigoContado(prev) && tieneCodigoContado(lista)) {
+        idCondicionPago.value = contado.id
+        return
+      }
+
+      // Selección inválida / fuera del catálogo → Contado
+      const sigueEnCatalogo = lista.some((c) => c.id === Number(idCondicionPago.value))
+      if (!sigueEnCatalogo) {
+        idCondicionPago.value = contado.id
+      }
     },
     { immediate: true },
   )

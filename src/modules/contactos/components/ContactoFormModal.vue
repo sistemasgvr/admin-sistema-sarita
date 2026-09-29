@@ -95,6 +95,7 @@ import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import { fetchAllPaginated } from '@/shared/utils/pagination'
 import { optionalPhone, optionalString, requiredPhone, requiredString } from '@/shared/validation'
 
 interface ContactoFormModalProps {
@@ -126,14 +127,12 @@ const contactoActual = computed<Contacto | null>(
 const getClienteNombre = (cliente: Cliente) => getClienteNombrePrincipal(cliente)
 
 const searchClientes = async (query: string): Promise<SelectOption[]> => {
-  const response = await clientesService.listar({
+  const clientes = await fetchAllPaginated(clientesService.listar, {
     buscar: query || undefined,
-    pagina: 1,
-    limite: 20,
     soloActivos: 1,
   })
 
-  return response.data.map((cliente) => ({
+  return clientes.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
   }))
