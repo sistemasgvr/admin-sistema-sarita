@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { trabajadoresQueryKeys } from '@/modules/trabajadores/constants/trabajadoresQueryKeys'
+import { usuariosQueryKeys } from '@/modules/usuarios/constants/usuariosQueryKeys'
 import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
 import type {
   CreateTrabajadorPayload,
@@ -9,6 +10,7 @@ import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
 function invalidateTrabajadores(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: trabajadoresQueryKeys.all })
+  void queryClient.invalidateQueries({ queryKey: usuariosQueryKeys.all })
 }
 
 export function useCreateTrabajadorMutation() {

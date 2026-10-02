@@ -3,7 +3,7 @@
     v-model="open"
     :title="mode === 'create' ? 'Nuevo trabajador' : 'Editar trabajador'"
     subtitle="Registra los datos del trabajador en el padrón de personal (RR.HH.)."
-    size="xl"
+    size="lg"
     @close="handleClose"
   >
    
@@ -254,7 +254,7 @@
 
         <div class="space-y-3">
           <!-- Toggle: crear usuario -->
-          <label
+          <div
             class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
             :class="crearUsuario
               ? 'border-brand-300 bg-brand-50/60 dark:border-brand-500/40 dark:bg-brand-500/10'
@@ -262,7 +262,7 @@
           >
             <AppCheckbox
               v-model="crearUsuario"
-              :disabled="isSubmitting || Boolean(trabajadorActual?.es_usuario)"
+              :disabled="isSubmitting || Boolean(trabajadorActual?.es_usuario) || !puedeCrearUsuario"
               class="mt-0.5"
             />
             <AppIcon :name="ICONS.userCheck" :size="18" class="mt-0.5 shrink-0 text-gray-400" />
@@ -272,7 +272,16 @@
                 Se generará un usuario con el correo y el número de documento como contraseña inicial.
               </span>
             </span>
-          </label>
+          </div>
+
+          <p v-if="!puedeCrearUsuario && !trabajadorActual?.es_usuario" class="text-xs text-gray-500">
+            Necesitas permiso para crear usuarios de acceso.
+          </p>
+          <button v-if="trabajadorActual?.id_usuario && puedeEditarUsuario" type="button"
+            class="text-sm font-medium text-brand-500" :disabled="cargandoUsuario || isSubmitting"
+            @click="editarUsuarioVinculado">
+            {{ cargandoUsuario ? 'Cargando usuario...' : 'Editar usuario y roles' }}
+          </button>
 
           <AppSelect
             v-if="crearUsuario"
@@ -282,7 +291,12 @@
             :options="rolOptions"
             :disabled="isSubmitting || rolQuery.isLoading.value"
             :error="errors.idRol"
+            required
           />
+          <p v-if="crearUsuario && errorRoles" class="text-sm text-error-500">
+            {{ errorRoles }}
+            <button type="button" class="underline" @click="cargarRoles">Reintentar</button>
+          </p>
 
           <label
             class="flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
@@ -408,6 +422,8 @@
     />
   </AppModal>
 
+  <UsuarioFormModal v-model="usuarioModalOpen" mode="edit" :usuario="usuarioVinculado" />
+
   <AppModal
     v-model="credencialesModalOpen"
     title="Usuario de acceso creado"
@@ -429,7 +445,7 @@
 
       <div class="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
         <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
-        <p>No olvide asignar permisos a este usuario desde el módulo de <strong>Usuarios / Roles</strong>.</p>
+        <p>El usuario ya tiene asignado el rol seleccionado. Sus permisos se administran desde <strong>Usuarios / Roles</strong>.</p>
       </div>
 
       <div class="flex justify-end">
@@ -479,6 +495,11 @@ import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalString, requiredString } from '@/shared/validation'
 import { direccionesService } from '@/modules/direcciones/services/direcciones.service'
 import { rolesService } from '@/modules/roles/services/roles.service'
+import UsuarioFormModal from '@/modules/usuarios/components/UsuarioFormModal.vue'
+import { usuariosService } from '@/modules/usuarios/services/usuarios.service'
+import type { Usuario } from '@/modules/usuarios/interfaces/usuario.interface'
+import { PermisoBanderas } from '@/shared/constants/permissions'
+import { toastApiError } from '@/shared/composables/useToast'
 
 interface TrabajadorFormModalProps {
   mode: TrabajadorFormMode
@@ -494,6 +515,24 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const puedeCrearUsuario = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_CREAR))
+const puedeEditarUsuario = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_VER) && authStore.hasPermission(PermisoBanderas.USUARIOS_EDITAR))
+const usuarioModalOpen = ref(false)
+const usuarioVinculado = ref<Usuario | null>(null)
+const cargandoUsuario = ref(false)
+async function editarUsuarioVinculado() {
+  const id = trabajadorActual.value?.id_usuario
+  if (!id) return
+  cargandoUsuario.value = true
+  try {
+    usuarioVinculado.value = await usuariosService.obtenerPorId(id)
+    usuarioModalOpen.value = true
+  } catch (error) {
+    toastApiError(error, 'No se pudo cargar el usuario vinculado')
+  } finally {
+    cargandoUsuario.value = false
+  }
+}
 
 const createMutation = useCreateTrabajadorMutation()
 const updateMutation = useUpdateTrabajadorMutation()
@@ -533,7 +572,10 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
           then: (s) => s.required('El correo es obligatorio para crear el usuario'),
         }),
       crearUsuario: yup.boolean().optional(),
-      idRol: yup.number().optional().nullable(),
+      idRol: yup.number().nullable().when('crearUsuario', {
+        is: true,
+        then: (s) => s.required('Selecciona un rol de acceso'),
+      }),
       esChofer: yup.boolean().optional(),
       codigoLicencia: optionalString(),
       telefonoChofer: optionalString(),
@@ -639,6 +681,7 @@ const categoriaLicenciaOptions = computed(() => toSelectOptions(categoriaLicenci
 const sanitizeSoloNumeros = (raw: string) => raw.replace(/\D/g, '').slice(0, 9)
 
 const rolesLoading = ref(false)
+const errorRoles = ref('')
 const rolQuery = { isLoading: rolesLoading }
 const rolesList = ref<{ id: number; nombre: string }[]>([])
 const rolOptions = computed<SelectOption[]>(
@@ -653,9 +696,13 @@ const onAreaCreada = (opcion: ListaOpcion) => {
 const cargarRoles = async () => {
   if (rolesList.value.length) return
   rolesLoading.value = true
+  errorRoles.value = ''
   try {
     const result = await rolesService.listar({ pagina: 1, limite: 100 })
     rolesList.value = result.data
+  } catch (error) {
+    errorRoles.value = 'No se pudieron cargar los roles. Verifica que tengas permiso para listarlos.'
+    toastApiError(error, 'No se pudieron cargar los roles')
   } finally {
     rolesLoading.value = false
   }
@@ -853,7 +900,7 @@ const onSubmit = handleSubmit(async (values) => {
     emit('saved', guardado)
     open.value = false
 
-    if (values.crearUsuario && values.correo) {
+    if (values.crearUsuario && values.correo && guardado?.es_usuario) {
       credencialesInfo.value = { correo: values.correo, numeroDocumento: values.numeroDocumento }
       credencialesModalOpen.value = true
     }
@@ -873,6 +920,7 @@ watch(
       cargarRoles()
     }
   },
+  { immediate: true },
 )
 watch(
   () => trabajadorDetailQuery.data.value,

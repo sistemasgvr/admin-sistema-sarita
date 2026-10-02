@@ -10,6 +10,7 @@ export interface Usuario {
   correo: string
   estado: boolean
   id_trabajador?: number | null
+  nombre_trabajador?: string | null
   fecha_creacion: string
   fecha_modificacion: string
   roles: UsuarioRol[]

@@ -153,6 +153,8 @@ const locationError = ref<string | null>(null)
 
 let map: L.Map | null = null
 let marker: L.Marker | null = null
+let resizeObserver: ResizeObserver | null = null
+let resizeFrame: number | null = null
 let resolveSeq = 0
 /** Evita que el watch de props recentre/aleje el mapa tras un click propio. */
 let ignoreNextPropCenter = false
@@ -195,7 +197,18 @@ function initMap() {
     })
   }
 
-  setTimeout(() => map?.invalidateSize(), 300)
+  // El mapa puede montarse oculto por v-show dentro de un modal o sección.
+  // Recalcular cuando el contenedor aparece o cambia de tamaño, no por un plazo fijo.
+  resizeObserver = new ResizeObserver(() => {
+    if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = null
+      const container = mapContainer.value
+      if (!container?.clientWidth || !container.clientHeight) return
+      map?.invalidateSize({ animate: false, debounceMoveend: true })
+    })
+  })
+  resizeObserver.observe(mapContainer.value)
 }
 
 function createMarkerIcon() {
@@ -504,6 +517,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   resolveSeq += 1
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
+  resizeFrame = null
   if (map) {
     map.remove()
     map = null

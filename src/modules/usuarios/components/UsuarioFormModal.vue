@@ -18,15 +18,37 @@
     >
       <!-- data-tutorial: anclas de la ruta guiada de Soporte (Sistema › usuarios). -->
       <div data-tutorial="usuario-datos" class="space-y-4">
+        <SearchableSelect
+          v-model="idTrabajador"
+          data-tutorial="usuario-trabajador"
+          label="Trabajador vinculado"
+          placeholder="Buscar trabajador..."
+          empty-option-label="Sin trabajador asignado"
+          :model-label="trabajadorLabelActual"
+          :search-fn="searchTrabajadores"
+          :disabled="isSubmitting || Boolean(props.usuario?.id_trabajador)"
+          :error="errors.idTrabajador"
+        />
+
         <AppInput
           v-model="nombre"
-          label="Nombre"
-          placeholder="Nombre completo"
+          label="Nombre de usuario"
+          placeholder="Ej. jperez"
           required
           v-bind="nombreAttrs"
           :disabled="isSubmitting"
           :error="errors.nombre"
         />
+
+        <button
+          v-if="trabajadorSeleccionado"
+          type="button"
+          class="text-sm text-brand-500"
+          :disabled="isSubmitting"
+          @click="generarNombreUsuario"
+        >
+          Sugerir nombre de usuario
+        </button>
 
         <AppInput
           v-model="correo"
@@ -53,18 +75,6 @@
           :disabled="isSubmitting"
           :error="errors.contrasena"
           :hint="mode === 'edit' ? 'Solo completa si deseas cambiar la contraseña.' : undefined"
-        />
-
-        <SearchableSelect
-          v-model="idTrabajador"
-          data-tutorial="usuario-trabajador"
-          label="Trabajador vinculado"
-          placeholder="Buscar trabajador..."
-          empty-option-label="Sin trabajador asignado"
-          :model-label="trabajadorLabelActual"
-          :search-fn="searchTrabajadores"
-          :disabled="isSubmitting"
-          :error="errors.idTrabajador"
         />
       </div>
 
@@ -166,6 +176,7 @@ import {
   requiredPasswordMin,
   requiredString,
 } from '@/shared/validation'
+import { sugerirNombreUsuario } from '@/modules/usuarios/utils/sugerirNombreUsuario'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
 interface UsuarioFormModalProps {
@@ -227,6 +238,26 @@ const [nombre, nombreAttrs] = defineField('nombre')
 const [correo, correoAttrs] = defineField('correo')
 const [contrasena, contrasenaAttrs] = defineField('contrasena')
 const [idTrabajador] = defineField('idTrabajador')
+
+const trabajadorSeleccionado = ref<Trabajador | null>(null)
+function generarNombreUsuario() {
+  const t = trabajadorSeleccionado.value
+  if (t) nombre.value = sugerirNombreUsuario(t.nombres, t.apellido_paterno)
+}
+watch(idTrabajador, async (id) => {
+  trabajadorSeleccionado.value = null
+  if (!id) return
+  try {
+    const t = await trabajadoresService.obtenerPorId(id)
+    if (idTrabajador.value !== id) return
+    trabajadorSeleccionado.value = t
+    trabajadorLabelActual.value = getTrabajadorNombre(t)
+    if (props.mode === 'create' && !nombre.value) generarNombreUsuario()
+    if (props.mode === 'create' && !correo.value) correo.value = t.correo ?? ''
+  } catch {
+    // El nombre del vínculo también llega en el listado y detalle del usuario.
+  }
+})
 
 const getTrabajadorNombre = (t: Trabajador) =>
   [t.nombres, t.apellido_paterno, t.apellido_materno].filter(Boolean).join(' ').trim() || t.nombres
@@ -327,18 +358,7 @@ const syncFormValues = () => {
     },
   })
 
-  if (props.usuario?.id_trabajador) {
-    trabajadoresService
-      .obtenerPorId(props.usuario.id_trabajador)
-      .then((t) => {
-        trabajadorLabelActual.value = getTrabajadorNombre(t)
-      })
-      .catch(() => {
-        trabajadorLabelActual.value = null
-      })
-  } else {
-    trabajadorLabelActual.value = null
-  }
+  trabajadorLabelActual.value = props.usuario?.nombre_trabajador ?? (props.usuario?.id_trabajador ? 'Trabajador #' + props.usuario.id_trabajador : null)
 
   if (props.mode === 'edit') {
     initRolesFromUsuario()
@@ -393,7 +413,7 @@ const onSubmit = handleSubmit(async (values) => {
       } = {
         nombre: values.nombre,
         correo: values.correo,
-        idTrabajador: values.idTrabajador ?? undefined,
+        idTrabajador: props.usuario.id_trabajador ?? values.idTrabajador ?? undefined,
       }
 
       if (values.contrasena) {
