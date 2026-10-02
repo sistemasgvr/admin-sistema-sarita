@@ -3,8 +3,9 @@ import type { PaginationItem, PaginationSummary } from '@/shared/interfaces/pagi
 
 /** Trae todas las páginas de un listado paginado (selects / exports). */
 export async function fetchAllPaginated<F extends { pagina?: number; limite?: number }, X>(
-  listar: (filters: F) => Promise<PaginatedResult<X[]>>,
-  baseFilters: F,
+  listar: (filters?: F) => Promise<PaginatedResult<X[]>>,
+  // Inferir los filtros desde el servicio, no desde el objeto parcial del buscador.
+  baseFilters: NoInfer<F>,
   pageSize = 500,
 ): Promise<X[]> {
   const primera = await listar({ ...baseFilters, pagina: 1, limite: pageSize })
