@@ -154,7 +154,8 @@ const resolvedDefaultTipoCliente = computed(
 function baseFilters(extra: Partial<ClienteListFilters> = {}): ClienteListFilters {
   return {
     pagina: 1,
-    limite: 80,
+    // Sin tope práctico: el select debe poder listar todo el padrón activo
+    limite: 10000,
     soloActivos: 1,
     buscar: search.value.trim() || undefined,
     ...extra,

@@ -188,6 +188,7 @@ import { AppInput, AppModal, AppSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import { fetchAllPaginated } from '@/shared/utils/pagination'
 import { optionalString, requiredString } from '@/shared/validation'
 
 interface VehiculoFormModalProps {
@@ -230,14 +231,12 @@ const tipoVehiculoOptions = computed(() => toSelectOptions(tipoVehiculoQuery.dat
 const getClienteNombre = (cliente: Cliente) => getClienteNombrePrincipal(cliente)
 
 const searchClientes = async (query: string): Promise<SelectOption[]> => {
-  const response = await clientesService.listar({
+  const clientes = await fetchAllPaginated(clientesService.listar, {
     buscar: query || undefined,
-    pagina: 1,
-    limite: 20,
     soloActivos: 1,
   })
 
-  return response.data.map((cliente) => ({
+  return clientes.map((cliente) => ({
     value: cliente.id,
     label: getClienteNombre(cliente),
   }))

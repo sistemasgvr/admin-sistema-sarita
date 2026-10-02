@@ -1,4 +1,23 @@
+import type { PaginatedResult } from '@/shared/api/interfaces/api.interface'
 import type { PaginationItem, PaginationSummary } from '@/shared/interfaces/pagination.interface'
+
+/** Trae todas las páginas de un listado paginado (selects / exports). */
+export async function fetchAllPaginated<F extends { pagina?: number; limite?: number }, X>(
+  listar: (filters: F) => Promise<PaginatedResult<X[]>>,
+  baseFilters: F,
+  pageSize = 500,
+): Promise<X[]> {
+  const primera = await listar({ ...baseFilters, pagina: 1, limite: pageSize })
+  const registros = [...primera.data]
+  const totalPaginas = Math.ceil((primera.meta.total || registros.length) / pageSize)
+
+  for (let pagina = 2; pagina <= totalPaginas; pagina++) {
+    const siguiente = await listar({ ...baseFilters, pagina, limite: pageSize })
+    registros.push(...siguiente.data)
+  }
+
+  return registros
+}
 
 export function getTotalPages(total: number, limite: number): number {
   if (limite <= 0 || total <= 0) return 0
