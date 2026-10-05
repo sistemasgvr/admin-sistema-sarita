@@ -20,7 +20,7 @@ export const comprasRoutes: RouteRecordRaw[] = [
       title: 'Gastos de caja',
       module: 'compras',
       permission: PermisoBanderas.CAJA_VER,
-    },
+    },  
   },
   {
     path: 'compras/nuevo',

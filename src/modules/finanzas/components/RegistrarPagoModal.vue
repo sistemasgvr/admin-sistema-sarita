@@ -28,6 +28,20 @@
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <AppSelect
+          v-model="idSucursalSelect"
+          label="Caja abierta"
+          required
+          :options="sucursalOptions"
+          :placeholder="cargandoCajas ? 'Consultando cajas abiertas...' : 'Selecciona una caja'"
+          :disabled="mutation.isPending.value || cargandoCajas"
+          :error="errorCajas || errores.idSucursal"
+          hint="Se precarga si hay una sola caja abierta para la fecha del pago."
+        />
+        <button v-if="errorCajas" type="button" class="text-sm text-brand-500" @click="recargaCajas++">
+          Volver a consultar cajas
+        </button>
+
         <AppFormField label="Monto" required :error="errorMontoDisplay">
           <MoneyInput
             v-model="form.monto"
@@ -117,7 +131,10 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, toRef, watch } from 'vue'
-import { AppConfirmDialog, AppDatePicker, AppInput, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
+import { AppConfirmDialog, AppDatePicker, AppInput, AppModal, AppSelect, AppTextarea, MoneyInput } from '@/shared/components'
+import { cajaService } from '@/modules/caja/services/caja.service'
+import type { CajaSesion } from '@/modules/caja/interfaces/caja.interface'
+import { fetchAllPaginated } from '@/shared/utils/pagination'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -136,7 +153,7 @@ import {
   parseMoneyInput,
   roundMoney,
 } from '@/shared/utils/currency'
-import { formatListDate } from '@/shared/utils/date'
+import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 
 const props = defineProps<{
   cuenta: CuentaFinanciera | null
@@ -158,11 +175,12 @@ const subtitulo = computed(() =>
 const ctaLabel = computed(() => (esCobrar.value ? 'Registrar cobranza' : 'Registrar pago'))
 const terceroLabel = computed(() => (esCobrar.value ? 'Cliente' : 'Proveedor'))
 
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = hoyIsoLima
 
 const fechaEmisionMin = computed(() => props.cuenta?.fecha_emision ?? undefined)
 
 const form = reactive({
+  idSucursal: null as number | null,
   monto: '',
   fechaPago: hoy(),
   idMedioPago: null as number | null,
@@ -175,7 +193,24 @@ const form = reactive({
 const pagoValido = ref(true)
 const intentoEnvio = ref(false)
 
-const errores = reactive<{ monto?: string; fechaPago?: string }>({})
+const errores = reactive<{ monto?: string; fechaPago?: string; idSucursal?: string }>({})
+const cajasAbiertas = ref<CajaSesion[]>([])
+const cargandoCajas = ref(false)
+const errorCajas = ref('')
+const recargaCajas = ref(0)
+const sucursalOptions = computed(() =>
+  cajasAbiertas.value.map((s) => ({
+    value: s.idSucursal!,
+    label: `${s.nombreSucursal || `Sucursal ${s.idSucursal}`} · Caja #${s.id}`,
+  })),
+)
+const idSucursalSelect = computed({
+  get: () => form.idSucursal ?? '',
+  set: (value: string | number | null) => {
+    form.idSucursal = value === '' || value == null ? null : Number(value)
+    errores.idSucursal = undefined
+  },
+})
 
 const moneyOpts = { min: 0.01 } as const
 const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoneyField(
@@ -186,12 +221,16 @@ const errorMontoDisplay = computed(() => errores.monto || errorMonto.value)
 const formularioValido = computed(
   () =>
     montoValido.value &&
+    form.idSucursal != null &&
+    !cargandoCajas.value && !errorCajas.value &&
     pagoValido.value &&
     Boolean(form.fechaPago) &&
     (!props.cuenta?.fecha_emision || form.fechaPago >= props.cuenta.fecha_emision),
 )
 
 const resetForm = () => {
+  form.idSucursal = null
+  errores.idSucursal = undefined
   form.monto = props.cuenta ? roundMoney(props.cuenta.saldo).toFixed(2) : ''
   // Si hoy es anterior a la emisión (caso raro), usa la fecha de emisión
   const h = hoy()
@@ -210,7 +249,40 @@ const resetForm = () => {
 
 watch(open, (isOpen) => {
   if (isOpen) resetForm()
-})
+}, { immediate: true })
+
+watch(
+  [open, () => form.fechaPago, recargaCajas],
+  async ([isOpen, fecha], _previous, onCleanup) => {
+    let vigente = true
+    onCleanup(() => { vigente = false })
+    form.idSucursal = null
+    cajasAbiertas.value = []
+    errorCajas.value = ''
+    cargandoCajas.value = false
+    if (!isOpen || !fecha) return
+    cargandoCajas.value = true
+    try {
+      const sesiones = await fetchAllPaginated(cajaService.listarSesiones, {
+        fechaDesde: fecha,
+        fechaHasta: fecha,
+        estadoCaja: 'ABIERTA',
+      }, 100)
+      if (!vigente) return
+      cajasAbiertas.value = sesiones.filter((s) => s.idSucursal != null && s.estadoCaja === 'ABIERTA')
+      if (cajasAbiertas.value.length === 1) {
+        form.idSucursal = cajasAbiertas.value[0]!.idSucursal!
+      } else if (!cajasAbiertas.value.length) {
+        errorCajas.value = 'No hay cajas abiertas con sucursal para esta fecha. Abre la caja en Ventas → Caja.'
+      }
+    } catch {
+      if (vigente) errorCajas.value = 'No se pudieron consultar las cajas abiertas. Vuelve a intentarlo.'
+    } finally {
+      if (vigente) cargandoCajas.value = false
+    }
+  },
+  { immediate: true },
+)
 
 watch(
   () => form.fechaPago,
@@ -221,9 +293,15 @@ watch(
 )
 
 const validar = (): boolean => {
+  errores.idSucursal = undefined
   errores.monto = undefined
   errores.fechaPago = undefined
   let ok = true
+
+  if (cargandoCajas.value || errorCajas.value || !cajasAbiertas.value.some((s) => s.idSucursal === form.idSucursal)) {
+    errores.idSucursal = 'Selecciona una caja abierta para el pago'
+    ok = false
+  }
 
   const msgMonto = mensajeErrorMontoMoneda(form.monto, moneyOpts)
   if (msgMonto) {
@@ -258,11 +336,13 @@ const canForzarDuplicado = computed(() =>
 
 const ejecutarPago = async (forzar: boolean) => {
   if (mensajeErrorMontoMoneda(form.monto, moneyOpts) || !props.cuenta) return
+  if (!validar()) return
   const montoFinal = roundMoney(parseMoneyInput(form.monto))
 
   try {
     await mutation.mutateAsync({
       idCuenta: props.cuenta.id,
+      idSucursal: form.idSucursal ?? undefined,
       monto: montoFinal,
       fechaPago: form.fechaPago || undefined,
       idMedioPago: form.idMedioPago ?? undefined,
