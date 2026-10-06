@@ -18,6 +18,9 @@ import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 export type PosBalonSelectMode = 'cliente' | 'alquiler' | 'general'
 
+/** Propietarios ajenos cuyos envases en nuestro almacén se pueden prestar (`incluirCustodiaCliente`). */
+const PROPIETARIOS_EN_CUSTODIA = new Set(['CLIENTE', 'PLANTA'])
+
 /** Propietario de stock propio (legado PROPIA = EMPRESA). */
 export function esPropietarioEmpresaStock(nombre?: string | null): boolean {
   const n = (nombre ?? '').trim().toUpperCase()
@@ -240,16 +243,15 @@ export function usePosBalonSelect(options: {
 
     // Stock entregable = envases de la empresa (EMPRESA | PROPIA legado) y, si el
     // campo lo pide con `incluirCustodiaCliente`, también los de propietario
-    // CLIENTE que tenemos en custodia: los dejados en garantía son stock
-    // utilizable mientras estén con nosotros. Lo que delimita "tenerlos" es el
-    // filtro de la consulta (estado DISPONIBLE + almacén), no de quién es el
-    // envase: uno que está en casa del cliente queda en EN_PODER_CLIENTE /
-    // PRESTADO_CLIENTE y no aparece.
+    // CLIENTE o PLANTA que tenemos en custodia: los dejados en garantía y los del
+    // proveedor son stock utilizable para prestar mientras estén con nosotros. Lo
+    // que delimita "tenerlos" es el filtro de la consulta (estado DISPONIBLE +
+    // almacén), no de quién es el envase: uno que está en casa del cliente queda
+    // en EN_PODER_CLIENTE / PRESTADO_CLIENTE y no aparece.
     //
     // Es opt-in a propósito. En "Cilindro a vender" transferimos la propiedad,
-    // así que ahí solo pueden salir envases nuestros: vender el de otro cliente
-    // sería regalar algo que no es nuestro. Tampoco entra PLANTA, que es del
-    // proveedor y hay que devolvérselo.
+    // así que ahí solo pueden salir envases nuestros: vender el de otro cliente o
+    // el del proveedor sería regalar algo que no es nuestro.
     if (options.mode === 'alquiler') {
       const admiteCustodiaCliente = options.incluirCustodiaCliente?.value === true
       rows = rows.filter(
@@ -266,7 +268,9 @@ export function usePosBalonSelect(options: {
           ) &&
           (esPropietarioEmpresaStock(balon.nombre_propietario) ||
             (admiteCustodiaCliente &&
-              (balon.nombre_propietario ?? '').trim().toUpperCase() === 'CLIENTE')),
+              PROPIETARIOS_EN_CUSTODIA.has(
+                (balon.nombre_propietario ?? '').trim().toUpperCase(),
+              ))),
       )
     }
 
