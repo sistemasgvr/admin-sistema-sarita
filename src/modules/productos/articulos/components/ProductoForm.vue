@@ -106,11 +106,20 @@
                 label="Código de barras"
                 optional
                 placeholder="Opcional"
-                help="Puedes escanearlo con la pistola usando el botón de al lado."
+                help="Escanéalo con la pistola o usa Generar si el producto no trae uno. Es el número que sale en la etiqueta y el que busca el POS."
                 v-bind="codigoBarraAttrs"
                 :disabled="isSubmitting"
               />
             </div>
+            <button
+              type="button"
+              class="mt-[1.625rem] inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-brand-500 px-3.5 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="isSubmitting || isGeneratingCodigoBarra"
+              title="Generar código de barras"
+              @click="generarCodigoBarra"
+            >
+              {{ isGeneratingCodigoBarra ? '…' : 'Generar' }}
+            </button>
             <button
               type="button"
               title="Escanear con pistola"
@@ -527,6 +536,7 @@ const tipoItem = ref<TipoItem>('producto')
 const pendingImages = ref<File[]>([])
 const isGeneratingUbicacion = ref(false)
 const isGeneratingCodigo = ref(false)
+const isGeneratingCodigoBarra = ref(false)
 const barcodeScanOpen = ref(false)
 const formHydrated = ref(false)
 const categoriaModalOpen = ref(false)
@@ -824,6 +834,25 @@ async function loadCatalogos() {
 function onCodigoBarraScanned(codigo: string) {
   codigoBarra.value = codigo
   toastSuccess(`Código de barras: ${codigo}`)
+}
+
+async function generarCodigoBarra() {
+  if (
+    codigoBarra.value?.trim() &&
+    !window.confirm('El producto ya tiene código de barras. ¿Reemplazarlo por uno nuevo?')
+  ) {
+    return
+  }
+  isGeneratingCodigoBarra.value = true
+  try {
+    const result = await productosService.generarCodigoBarra()
+    codigoBarra.value = result.codigo_barra
+    toastSuccess(`Código de barras: ${result.codigo_barra}. Guarda el producto para conservarlo.`)
+  } catch (error) {
+    toastApiError(error, 'No se pudo generar el código de barras')
+  } finally {
+    isGeneratingCodigoBarra.value = false
+  }
 }
 
 function onCategoriaCreated(categoria: CategoriaProducto) {

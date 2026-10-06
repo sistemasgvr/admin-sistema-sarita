@@ -62,6 +62,11 @@ export const productosService = {
     return apiPost<{ codigo: string }>('/productos/codigo/generar', payload)
   },
 
+  /** Siguiente código de barras interno (solo dígitos); no lo guarda en el producto. */
+  generarCodigoBarra() {
+    return apiPost<{ codigo_barra: string }>('/productos/codigo-barra/generar', {})
+  },
+
   imprimirUbicacionesPdf(ids: number[]) {
     return apiPostBlob('/productos/ubicaciones/pdf', { ids })
   },
