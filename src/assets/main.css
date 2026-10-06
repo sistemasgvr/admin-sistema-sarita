@@ -50,6 +50,19 @@ layer(base);
   --color-error-500: #e53935;
   --color-error-600: #c62828;
 
+  /* Ámbar — avisos y acciones irreversibles (p. ej. «Emitir en producción»).
+     Sin esta paleta las clases warning-* no generan CSS y un botón
+     bg-warning-500 text-white queda blanco sobre blanco. */
+  --color-warning-50: #fffaeb;
+  --color-warning-100: #fef0c7;
+  --color-warning-200: #fedf89;
+  --color-warning-300: #fec84b;
+  --color-warning-400: #fdb022;
+  --color-warning-500: #f79009;
+  --color-warning-600: #dc6803;
+  --color-warning-700: #b54708;
+  --color-warning-800: #93370d;
+
   /* Grises del logo */
   --color-gray-50: #fafafa;
   --color-gray-100: #f3f4f6;
