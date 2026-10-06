@@ -128,7 +128,7 @@ export type ListaIdKey = keyof typeof ListaIds
 
 export const TipoClienteIds = {
   /** gen_lista_opciones.nombre = Proveedor (lista TipoCliente) */
-  PROVEEDOR: 5,
+  PROVEEDOR: 3,
   /** gen_lista_opciones.nombre = Cliente / Proveedor (lista TipoCliente) */
-  CLIENTE_PROVEEDOR: 6,
+  CLIENTE_PROVEEDOR: 175,
 } as const

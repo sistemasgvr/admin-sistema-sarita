@@ -12,7 +12,7 @@ import {
   ESTADOS_FUERA_DEL_ALMACEN,
   ESTADOS_NO_ENTREGABLES,
 } from '@/modules/balones/cilindros/utils/disponibilidadBalon'
-import { ListaIds } from '@/shared/constants/lista-ids'
+import { ListaIds } from '@/shared/constants/s'
 import type { SelectOption, SelectOptionBadge } from '@/shared/interfaces/form.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
