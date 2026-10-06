@@ -402,6 +402,8 @@ export interface EmitirDocumentoSalidaResponse {
     hash?: string | null
     ticket?: string | null
     respuesta?: unknown
+    /** Explicación cuando SUNAT no recibió la guía (p. ej. 401 por credenciales). */
+    mensaje?: string | null
   }
 }
 

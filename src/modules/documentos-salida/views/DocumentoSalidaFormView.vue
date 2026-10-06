@@ -432,6 +432,16 @@
                 <AppIcon :name="entornoEsProduccion ? ICONS.alertTriangle : ICONS.info" :size="14" />
                 {{ validarGreMutation.isPending.value ? 'Validando...' : entornoEsProduccion ? 'Emitir a SUNAT (Producción)' : 'Emitir prueba (BETA)' }}
               </button>
+              <button
+                v-if="puedeConsultarEstadoSunat"
+                type="button"
+                class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                :disabled="consultarMutation.isPending.value"
+                @click="onConsultarEstado"
+              >
+                <AppIcon :name="ICONS.refreshCw" :size="14" />
+                {{ consultarMutation.isPending.value ? 'Consultando...' : 'Consultar estado SUNAT' }}
+              </button>
               <!--
                 El reparto se programa desde aqui y no desde el comprobante: lo
                 que sale a la calle es la orden, con su direccion de entrega y
@@ -1032,6 +1042,7 @@ import {
   useCreateDocumentoSalidaMutation,
   useEliminarDetalleDocSalidaMutation,
   useEmitirSunatDocSalidaMutation,
+  useConsultarEstadoDocSalidaMutation,
   useGenerarDocSalidaMutation,
   useValidarGreMutation,
 } from '../composables/useDocumentoSalidaMutations'
@@ -1426,6 +1437,7 @@ const {
   puedeRegistrarRetorno,
   puedeConvertirGre,
   puedeEmitir,
+  puedeConsultarEstadoSunat,
   puedeAnular,
   puedeAsociarLote: puedeRegistrarLote,
 } = useDocSalidaAcciones(documento)
@@ -1674,6 +1686,19 @@ function abrirReparto() {
 const greModalOpen = ref(false)
 
 const emitirMutation = useEmitirSunatDocSalidaMutation()
+const consultarMutation = useConsultarEstadoDocSalidaMutation()
+
+async function onConsultarEstado() {
+  if (!documento.value) return
+  try {
+    await consultarMutation.mutateAsync({
+      id: documento.value.id,
+      idUsuarioAuditoria: idUsuarioAuditoria.value,
+    })
+  } catch {
+    // toast en la mutation
+  }
+}
 const emitirConfirmOpen = ref(false)
 
 /** Qué guía y qué transporte se enviará, para confirmar antes de emitir. */

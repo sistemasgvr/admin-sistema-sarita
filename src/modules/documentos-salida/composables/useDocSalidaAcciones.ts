@@ -182,10 +182,17 @@ export function useDocSalidaAcciones(documento: Ref<DocSalidaAccionesFuente | nu
 
   /**
    * Verificar el estado contra SUNAT solo tiene sentido con un envío en curso:
-   * una guía ya aceptada (emitida) no vuelve a consultarse desde acá.
+   * una guía ya aceptada (emitida) no vuelve a consultarse desde acá. Sin
+   * ticket también se ofrece mientras el envío figure en curso: la API revisa
+   * la respuesta del envío y, si SUNAT no lo recibió (p. ej. 401), lo libera
+   * para volver a emitir.
    */
   const puedeConsultarEstadoSunat = computed(
-    () => tieneTicketSunat.value && !emitido.value && !anulada.value,
+    () =>
+      !emitido.value &&
+      !anulada.value &&
+      (tieneTicketSunat.value || envioEnCurso.value) &&
+      authStore.hasPermission(PermisoBanderas.DOCUMENTOS_SALIDA_EMITIR),
   )
 
   /** El historial reconstruye qué pasó con cada envío; aparece si hubo alguno. */

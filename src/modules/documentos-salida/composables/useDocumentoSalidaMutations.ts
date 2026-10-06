@@ -22,7 +22,7 @@ import type {
 } from '@/modules/documentos-salida/interfaces/documento-salida.interface'
 import { toastApiError, toastError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 
-function toastEstadoSunat(prefix: string, estado: string) {
+function toastEstadoSunat(prefix: string, estado: string, mensaje?: string | null) {
   const normalized = (estado ?? '').toUpperCase()
   if (normalized === 'ACEPTADO') {
     toastSuccess(`${prefix}: ACEPTADO`)
@@ -32,7 +32,7 @@ function toastEstadoSunat(prefix: string, estado: string) {
     toastWarning(`${prefix}: PENDIENTE — usa «Consultar estado» en unos segundos`)
     return
   }
-  toastError(`${prefix}: ${estado || 'RECHAZADO'}`)
+  toastError(mensaje ? `${prefix}: ${mensaje}` : `${prefix}: ${estado || 'RECHAZADO'}`)
 }
 
 function invalidateAll(queryClient: ReturnType<typeof useQueryClient>, id?: number) {
@@ -188,7 +188,7 @@ export function useEmitirSunatDocSalidaMutation() {
       documentosSalidaService.emitirSunat(id, idUsuarioAuditoria),
     onSuccess: (data, variables) => {
       invalidateAll(queryClient, variables.id)
-      toastEstadoSunat('Emisión', data.sunat.estado)
+      toastEstadoSunat('Emisión', data.sunat.estado, data.sunat.mensaje)
     },
     onError: (error) => toastApiError(error, 'No se pudo emitir a SUNAT'),
   })
@@ -201,7 +201,7 @@ export function useConsultarEstadoDocSalidaMutation() {
       documentosSalidaService.consultarEstado(id, idUsuarioAuditoria),
     onSuccess: (data, variables) => {
       invalidateAll(queryClient, variables.id)
-      toastEstadoSunat('Estado SUNAT', data.sunat.estado)
+      toastEstadoSunat('Estado SUNAT', data.sunat.estado, data.sunat.mensaje)
     },
     onError: (error) => toastApiError(error, 'No se pudo consultar el estado'),
   })
