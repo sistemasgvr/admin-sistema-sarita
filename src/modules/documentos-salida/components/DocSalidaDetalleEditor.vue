@@ -37,7 +37,7 @@
           <button
             type="button"
             class="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
-            :disabled="!idBalon || disabled"
+            :disabled="!balonSeleccionado || disabled"
             @click="onAgregarBalon"
           >
             <AppIcon :name="ICONS.plus" :size="14" />
@@ -481,6 +481,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useBalonSeleccionado } from '@/modules/documentos-salida/composables/useBalonSeleccionado'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { esBalonEntregable } from '@/modules/balones/cilindros/utils/disponibilidadBalon'
 import type { BalonListFilters } from '@/modules/balones/cilindros/interfaces/balon.interface'
@@ -868,14 +869,15 @@ const balonOptions = computed(() =>
     })),
 )
 
-const balonSeleccionado = computed(() => {
-  if (idBalon.value === '') return null
-  return balonesDisponibles.value.find((balon) => balon.id === Number(idBalon.value)) ?? null
-})
+const balonSeleccionado = useBalonSeleccionado(
+  idBalon,
+  computed(() => balonesQuery.data.value?.data ?? []),
+  computed(() => props.idAlmacen),
+)
 
 function onAgregarBalon() {
   const balon = balonSeleccionado.value
-  if (!balon || props.disabled) return
+  if (!balon || props.disabled || props.readonly || idsBalonUsados.value.has(balon.id)) return
 
   emit('agregar-balon', {
     idBalon: balon.id,
