@@ -1115,8 +1115,8 @@ const almacenOptions = computed(() => {
 // de envío.
 const tipoOrdenOptions = computed(() =>
   (tiposOrdenQuery.data.value ?? [])
-    .filter((o) => o.descripcion !== 'ORDEN_SALIDA_VENTA')
-    .map((o) => ({ value: o.descripcion ?? '', label: `${o.descripcion ?? ''} - ${o.nombre}` })),
+    .filter((o) => o.nombre !== 'ORDEN_SALIDA_VENTA')
+    .map((o) => ({ value: o.nombre, label: o.descripcion || o.nombre })),
 )
 
 const TIPO_LABELS: Record<string, string> = {
