@@ -525,6 +525,7 @@ export interface SiguienteCorrelativoResumenResponse {
 }
 
 export interface PosLineItem {
+  montoDirecto?: number
   key: string
   idProducto: number
   codigo: string

@@ -505,18 +505,19 @@
               <PosGasCobroFields
                 v-model:cantidad="cantidad"
                 v-model:precio="precioUnitario"
-                class="lg:col-span-3"
+                v-model:monto-directo="montoDirecto"
+                class="lg:col-span-5"
                 :nombre-unidad="producto.nombre_unidad_medida"
                 :cantidad-bloqueada="cantidadBloqueadaPorBalon"
                 :error-cantidad="errorCantidadGas"
                 :hint-cantidad="hintCantidadBalon"
                 :error-precio="errorPrecioUnitario"
                 @blur-precio="onBlurPrecioUnitario"
-              />
-              <!-- Es la nota de esta línea (el gas): aquí queda junto a lo que describe. -->
-              <div class="lg:col-span-2">
-                <AppInput v-model="observacion" label="Nota del ítem" placeholder="Opcional" />
-              </div>
+              >
+                <div>
+                  <AppInput v-model="observacion" label="Nota del ítem" placeholder="Opcional" />
+                </div>
+              </PosGasCobroFields>
             </div>
           </section>
         </template>
@@ -584,6 +585,7 @@
           v-if="escenarioGas && !esConfigPrestamo"
           v-model:cantidad="cantidad"
           v-model:precio="precioUnitario"
+                v-model:monto-directo="montoDirecto"
           :nombre-unidad="producto.nombre_unidad_medida"
           :cantidad-bloqueada="cantidadBloqueadaPorBalon"
           :error-cantidad="errorCantidadGas"
@@ -872,6 +874,7 @@ import BalonBarcodeScanButton from '@/modules/balones/cilindros/components/Balon
 import CantidadUnidadInput from '@/modules/ventas/comprobantes/components/CantidadUnidadInput.vue'
 import PosBalonSelectField from '@/modules/ventas/comprobantes/components/PosBalonSelectField.vue'
 import PosGasCobroFields from '@/modules/ventas/comprobantes/components/PosGasCobroFields.vue'
+import { precioGasDesdeTotal } from '@/modules/ventas/comprobantes/utils/precioGas'
 import PosProductPicker from '@/modules/ventas/comprobantes/components/PosProductPicker.vue'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import {
@@ -912,6 +915,7 @@ export interface PosLineaConfirmada {
   tipo: PosAnadirTipo | 'mantenimiento'
   producto: Producto
   cantidad: number
+  montoDirecto?: number
   precioUnitario: number
   idBalon?: number
   idBalonOrigen?: number
@@ -1008,6 +1012,12 @@ let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const cantidad = ref(1)
 const precioUnitario = ref('')
+const montoDirecto = ref(false)
+watch(montoDirecto, (directo) => {
+  const valor = montoNumerico(precioUnitario.value)
+  const volumen = Number(cantidad.value || 0)
+  if (volumen > 0) precioUnitario.value = montoAString(directo ? valor * volumen : valor / volumen)
+}, { flush: 'sync' })
 const {
   error: errorPrecioUnitario,
   valido: precioUnitarioValido,
@@ -1446,7 +1456,7 @@ async function refrescarOrigenesRecarga() {
 }
 
 const importeGas = computed(() => {
-  if (esTallerProducto.value) return montoNumerico(precioUnitario.value)
+  if (esTallerProducto.value || (tipo.value === 'gas' && montoDirecto.value)) return montoNumerico(precioUnitario.value)
   return Number(cantidad.value || 0) * montoNumerico(precioUnitario.value)
 })
 
@@ -2171,9 +2181,10 @@ function onFiltersChange() {
 }
 
 function resetConfig(fromProducto?: Producto | null, fromLinea?: PosLineItem | null) {
+  montoDirecto.value = fromLinea?.montoDirecto != null
   if (fromLinea) {
     cantidad.value = Math.max(1, Number(fromLinea.cantidad || 1))
-    precioUnitario.value = montoAString(fromLinea.precioUnitario)
+    precioUnitario.value = montoAString(fromLinea.montoDirecto ?? fromLinea.precioUnitario)
     idBalon.value = fromLinea.idBalon ?? ''
     etiquetaBalon.value = fromLinea.etiquetaBalon ?? ''
     idBalonOrigen.value = fromLinea.idBalonOrigen ?? ''
@@ -2393,7 +2404,13 @@ async function confirmar() {
   onBlurPrecioUnitario()
   onBlurMontoGarantia()
   onBlurPrecioBalon()
-  const precio = roundMoney(parseMoneyInput(precioUnitario.value) ?? 0)
+  const monto = roundMoney(parseMoneyInput(precioUnitario.value) ?? 0)
+  const directo = tipo.value === 'gas' && montoDirecto.value
+  const precio = directo ? precioGasDesdeTotal(monto, cant) : monto
+  if (precio == null) {
+    toastWarning('El monto no puede representarse para esta cantidad de gas; ajusta el monto o la cantidad')
+    return
+  }
   if (!precioUnitarioValido.value) {
     toastWarning('El precio solo admite hasta 2 decimales')
     return
@@ -2500,6 +2517,7 @@ async function confirmar() {
     producto: producto.value,
     cantidad: cant,
     precioUnitario: precio,
+    montoDirecto: directo ? monto : undefined,
     observacionLinea: observacion.value.trim() || undefined,
   }
 

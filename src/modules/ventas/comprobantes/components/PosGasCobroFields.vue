@@ -1,5 +1,13 @@
 <template>
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2" :class="$slots.default ? 'lg:grid-cols-3' : ''">
+    <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:col-span-2" :class="$slots.default ? 'lg:col-span-3' : ''">
+      <input v-model="montoDirecto" type="checkbox" role="switch" class="peer sr-only" />
+      <span class="relative h-6 w-11 rounded-full bg-gray-300 transition peer-checked:bg-brand-500 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition peer-checked:after:translate-x-5" aria-hidden="true" />
+      <span>
+        {{ montoDirecto ? 'Cobro por monto total' : 'Cobro por m³' }}
+        <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ montoDirecto ? 'Ingresa el total a cobrar por el gas.' : 'El total se calcula con la cantidad y el precio por m³.' }}</span>
+      </span>
+    </label>
     <CantidadUnidadInput
       v-if="!cantidadBloqueada"
       v-model="cantidad"
@@ -10,8 +18,11 @@
       :error="errorCantidad || undefined"
       :hint="hintCantidad"
     />
-    <div :class="cantidadBloqueada ? 'sm:col-span-2' : ''">
-      <AppFormField label="Precio por m³" required :error="errorPrecio">
+    <p v-if="cantidadBloqueada" class="self-center text-sm text-gray-600 dark:text-gray-300">
+      Cantidad de gas: <strong>{{ cantidad }} m³</strong>
+    </p>
+    <div>
+      <AppFormField :label="montoDirecto ? 'Monto total del gas' : 'Precio por m³'" required :error="errorPrecio">
         <MoneyInput
           v-model="precio"
           placeholder="0.00"
@@ -20,6 +31,7 @@
         />
       </AppFormField>
     </div>
+    <slot />
   </div>
 </template>
 
@@ -55,6 +67,7 @@ withDefaults(
 
 const emit = defineEmits<{ blurPrecio: [] }>()
 
+const montoDirecto = defineModel<boolean>('montoDirecto', { default: false })
 const cantidad = defineModel<number>('cantidad', { default: 1 })
 const precio = defineModel<string>('precio', { default: '' })
 </script>

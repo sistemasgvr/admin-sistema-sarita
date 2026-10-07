@@ -520,7 +520,7 @@ function puedePdf(row: ComprobanteListItem) {
 
 function puedeConsultarCdr(row: ComprobanteListItem) {
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
-  return row.nombre_estado_sunat === 'PENDIENTE' || row.nombre_estado_sunat === 'ACEPTADO'
+  return ['01', '03'].includes(String(row.codigo_tipo_comprobante)) && row.nombre_estado_sunat === 'ACEPTADO'
 }
 
 function puedeNotaCredito(row: ComprobanteListItem) {
@@ -605,6 +605,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !(canAnular.value && puedeAnular(row)),
     },
     {
+      key: 'xml',
+      label: 'Descargar XML',
+      icon: ICONS.download,
+      disabled: busy,
+      hidden: !(canView.value && ['01', '03'].includes(String(row.codigo_tipo_comprobante)) && ['ACEPTADO', 'BAJA'].includes(row.nombre_estado_sunat ?? '')),
+    },
+    {
       key: 'pdf-a4',
       label: 'Descargar PDF A4',
       icon: ICONS.download,
@@ -670,6 +677,8 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
     case 'anular':
       openAnularModal(row)
       return
+    case 'xml':
+      return descargarXml(row)
     case 'pdf-a4':
       return descargarPdf(row, 'a4')
     case 'print-a4':
@@ -681,6 +690,18 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
     case 'delete':
       openDeleteModal(row)
       return
+  }
+}
+
+async function descargarXml(row: ComprobanteListItem) {
+  pdfBusyId.value = row.id
+  try {
+    const blob = await comprobantesService.obtenerXml(row.id)
+    downloadBlob(blob, `${row.serie}-${row.numero}.xml`)
+  } catch (error) {
+    toastApiError(error, 'No se pudo descargar el XML del comprobante')
+  } finally {
+    pdfBusyId.value = null
   }
 }
 

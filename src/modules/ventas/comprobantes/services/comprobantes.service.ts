@@ -28,6 +28,10 @@ import type {
 import type { ComprobantePdfFormato } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 
 export const comprobantesService = {
+  obtenerXml(id: number) {
+    return apiGetBlob(`/comprobantes/${id}/xml`)
+  },
+
   listar(filters: ComprobanteListFilters) {
     return apiGetPaginated<ComprobanteListItem>('/comprobantes', { params: filters })
   },

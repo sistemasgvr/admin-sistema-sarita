@@ -727,7 +727,7 @@ const hayEntregaDeBalon = computed(
 )
 
 function importeGasLinea(linea: PosLineItem) {
-  return Number(linea.cantidad || 0) * Number(linea.precioUnitario || 0)
+  return linea.montoDirecto ?? Number(linea.cantidad || 0) * Number(linea.precioUnitario || 0)
 }
 
 /**
@@ -953,7 +953,7 @@ function abrirEditarLinea(linea: PosLineItem) {
 }
 
 function onConfirmLinea(payload: PosLineaConfirmada) {
-  const precioNormalizado = roundMoney(payload.precioUnitario)
+  const precioNormalizado = payload.montoDirecto != null ? payload.precioUnitario : roundMoney(payload.precioUnitario)
   const payloadNormalizado = { ...payload, precioUnitario: precioNormalizado }
   const { producto, tipo } = payloadNormalizado
   productosPorId.value.set(producto.id, producto)
@@ -992,7 +992,8 @@ function onConfirmLinea(payload: PosLineaConfirmada) {
 
 function aplicarPayloadALinea(linea: PosLineItem, payload: PosLineaConfirmada) {
   linea.cantidad = payload.cantidad
-  linea.precioUnitario = roundMoney(payload.precioUnitario)
+  linea.montoDirecto = payload.montoDirecto
+  linea.precioUnitario = payload.montoDirecto != null ? payload.precioUnitario : roundMoney(payload.precioUnitario)
   linea.idBalon = payload.idBalon
   linea.etiquetaBalon = payload.etiquetaBalon
   linea.idBalonOrigen = payload.idBalonOrigen
@@ -1295,7 +1296,7 @@ try {
       const base = {
         idProducto: Number(linea.idProducto),
         cantidad: Number(linea.cantidad),
-        precioUnitario: roundMoney(Number(linea.precioUnitario)),
+        precioUnitario: linea.montoDirecto != null ? Number(linea.precioUnitario) : roundMoney(Number(linea.precioUnitario)),
         descuento: 0,
         porcentajeIgv: 18,
         idAfectacionIgv: linea.idAfectacionIgv ?? idAfectacionGravado.value,
