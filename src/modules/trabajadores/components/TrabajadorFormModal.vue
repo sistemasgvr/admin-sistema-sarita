@@ -833,12 +833,12 @@ const syncFormValues = () => {
       crearUsuario: false,
       idRol: undefined,
       esChofer: Boolean(t?.es_chofer),
-      codigoLicencia: '',
-      telefonoChofer: '',
-      idTipoLicencia: undefined,
-      idCategoriaLicencia: undefined,
-      fechaEmisionLicencia: '',
-      fechaVencimientoLicencia: '',
+      codigoLicencia: t?.codigo_licencia ?? '',
+      telefonoChofer: t?.telefono_chofer ?? '',
+      idTipoLicencia: t?.id_tipo_licencia ?? undefined,
+      idCategoriaLicencia: t?.id_categoria_licencia ?? undefined,
+      fechaEmisionLicencia: t?.fecha_emision_licencia ?? '',
+      fechaVencimientoLicencia: t?.fecha_vencimiento_licencia ?? '',
     },
   })
 }
