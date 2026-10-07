@@ -412,6 +412,22 @@ export interface EmitirComprobanteResponse {
   }
 }
 
+/** Boleta ↔ factura sobre el mismo comprobante (POST /comprobantes/:id/convertir-tipo). */
+export interface ConvertirTipoComprobantePayload {
+  codigoTipoDestino: '01' | '03'
+  /** F### / B###; si se omite la API usa la misma numeración (B001 → F001). */
+  serie?: string
+}
+
+export interface ConvertirTipoComprobanteResponse {
+  id: number
+  codigo_tipo_comprobante: '01' | '03'
+  serie: string
+  numero: string
+  serie_anterior: string
+  numero_anterior: string
+}
+
 export interface SiguienteNumeroResponse {
   serie: string
   id_tipo_comprobante: number

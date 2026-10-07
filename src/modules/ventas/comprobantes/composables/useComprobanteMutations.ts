@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { comprobantesQueryKeys } from '@/modules/ventas/comprobantes/constants/comprobantesQueryKeys'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import type {
+  ConvertirTipoComprobantePayload,
   CreateComprobantePayload,
   EnviarResumenDiarioPayload,
   UpdateComprobantePayload,
@@ -27,6 +28,27 @@ export function useCreateComprobanteMutation() {
     },
     onError: (error) => {
       toastApiError(error, 'No se pudo registrar el comprobante')
+    },
+  })
+}
+
+export function useConvertirTipoComprobanteMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ConvertirTipoComprobantePayload }) =>
+      comprobantesService.convertirTipo(id, payload),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
+      void invalidateCajaQueries(queryClient)
+      const tipo = data.codigo_tipo_comprobante === '01' ? 'factura' : 'boleta'
+      toastSuccess(
+        `${data.serie_anterior}-${data.numero_anterior} ahora es la ${tipo} ${data.serie}-${data.numero}`,
+      )
+    },
+    onError: (error) => {
+      toastApiError(error, 'No se pudo convertir el comprobante')
     },
   })
 }

@@ -221,7 +221,7 @@
           data-tutorial="balon-ph"
           title="P.H. y datos técnicos"
           :icon="ICONS.gauge"
-          help="Mes y año del lomo: el vencimiento se calcula con la vigencia del tipo (5 u 10 años). Las renovaciones van en Mantenimientos (P.H. / Recertificación)."
+          help="Mes y año del lomo + vigencia P.H. en años = vencimiento. Si dejas la vigencia vacía se usa la del tipo de balón. Las renovaciones van en Mantenimientos (P.H. / Recertificación)."
         >
           <div class="grid grid-cols-1 !gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <AppSelect
@@ -246,6 +246,20 @@
               :disabled="isSubmitting || isLoadingBalon"
               :error="errors.anioFabricacion"
             />
+            <AppInput
+              v-model="vigenciaPhAnios"
+              label="Vigencia P.H. (años)"
+              optional
+              type="number"
+              min="1"
+              max="30"
+              step="1"
+              :placeholder="vigenciaTipoAnios ? `Del tipo: ${vigenciaTipoAnios}` : 'Ej. 10'"
+              help="Años desde la fabricación hasta el vencimiento. Vacío = la vigencia del tipo de balón."
+              v-bind="vigenciaPhAniosAttrs"
+              :disabled="isSubmitting || isLoadingBalon"
+              :error="errors.vigenciaPhAnios"
+            />
             <div
               class="flex min-h-11 flex-col justify-center rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm dark:border-gray-700 dark:bg-white/[0.03] sm:mt-[1.625rem]"
             >
@@ -255,8 +269,8 @@
               <span class="font-medium text-gray-800 dark:text-white/90">
                 {{ vencimientoPhEstimado }}
               </span>
-              <span v-if="vigenciaTipoAnios" class="text-theme-xs text-gray-500">
-                Vigencia tipo: {{ vigenciaTipoAnios }} años
+              <span class="text-theme-xs text-gray-500">
+                {{ detalleVigenciaPh }}
               </span>
             </div>
             <AppInput
@@ -591,6 +605,10 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
       organoInspectorNoAplica: yup.boolean().optional(),
       mesFabricacion: optionalNumber(),
       anioFabricacion: optionalNumber(),
+      vigenciaPhAnios: optionalNumber()
+        .integer('La vigencia debe ser un número entero de años')
+        .min(1, 'La vigencia mínima es 1 año')
+        .max(30, 'La vigencia máxima es 30 años'),
       presionActual: optionalNumber(),
       observacion: optionalString().max(500, 'Máximo 500 caracteres'),
     }),
@@ -619,6 +637,7 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     organoInspectorNoAplica: true,
     mesFabricacion: undefined as number | undefined,
     anioFabricacion: undefined as number | undefined,
+    vigenciaPhAnios: undefined as number | undefined,
     presionActual: undefined as number | undefined,
     observacion: '',
   },
@@ -647,6 +666,7 @@ const [idOrganoInspector, idOrganoInspectorAttrs] = defineField('idOrganoInspect
 const [organoInspectorNoAplica] = defineField('organoInspectorNoAplica')
 const [mesFabricacion, mesFabricacionAttrs] = defineField('mesFabricacion')
 const [anioFabricacion, anioFabricacionAttrs] = defineField('anioFabricacion')
+const [vigenciaPhAnios, vigenciaPhAniosAttrs] = defineField('vigenciaPhAnios')
 const [presionActual, presionActualAttrs] = defineField('presionActual')
 const [observacion, observacionAttrs] = defineField('observacion')
 
@@ -737,8 +757,26 @@ const vigenciaTipoAnios = computed(
   () => tipoSeleccionado.value?.vigencia_ph_anios ?? undefined,
 )
 
+/** Vigencia manual del cilindro si se escribió; si no, la del tipo (y 5 como último recurso, igual que la API). */
+const vigenciaManualAnios = computed(() => {
+  const valor = vigenciaPhAnios.value
+  if (valor == null || String(valor).trim() === '') return undefined
+  const n = Number(valor)
+  return Number.isInteger(n) && n > 0 ? n : undefined
+})
+const vigenciaEfectivaAnios = computed(() => vigenciaManualAnios.value ?? vigenciaTipoAnios.value ?? 5)
+
+const detalleVigenciaPh = computed(() => {
+  if (anioFabricacion.value != null && String(anioFabricacion.value) !== '' && mesFabricacion.value == null) {
+    return 'Indica también el mes del lomo para calcularlo'
+  }
+  if (vigenciaManualAnios.value) return `Vigencia: ${vigenciaManualAnios.value} años (indicada)`
+  if (vigenciaTipoAnios.value) return `Vigencia: ${vigenciaTipoAnios.value} años (del tipo)`
+  return 'Vigencia: 5 años (por defecto)'
+})
+
 const vencimientoPhEstimado = computed(() => {
-  const years = vigenciaTipoAnios.value ?? 5
+  const years = vigenciaEfectivaAnios.value
   const next = addYearsMonthYear(
     mesFabricacion.value != null ? Number(mesFabricacion.value) : null,
     anioFabricacion.value != null ? Number(anioFabricacion.value) : null,
@@ -814,6 +852,7 @@ const buildPayload = (
     organoInspectorNoAplica?: boolean
     mesFabricacion?: number
     anioFabricacion?: number
+    vigenciaPhAnios?: number
     presionActual?: number
     observacion: string
   },
@@ -855,7 +894,10 @@ const buildPayload = (
     fechaFabricacion: toFirstOfMonthIso(mes, anio),
     mesFabricacion: mes,
     anioFabricacion: anio,
-    vigenciaPruebaHidrostaticaAnios: vigenciaTipoAnios.value,
+    vigenciaPruebaHidrostaticaAnios:
+      values.vigenciaPhAnios != null && String(values.vigenciaPhAnios) !== ''
+        ? Number(values.vigenciaPhAnios)
+        : vigenciaTipoAnios.value,
     presionActual: values.presionActual,
     observacion: values.observacion || undefined,
   }
@@ -893,6 +935,7 @@ const syncFormValues = () => {
         data?.organo_inspector_no_aplica ?? !data?.id_organo_inspector,
       mesFabricacion: mesFromDate,
       anioFabricacion: data?.anio_fabricacion ?? undefined,
+      vigenciaPhAnios: data?.vigencia_prueba_hidrostatica_anios ?? undefined,
       presionActual: data?.presion_actual ?? undefined,
       observacion: data?.observacion ?? '',
     },
@@ -971,6 +1014,7 @@ const applyCreateForm = () => {
       organoInspectorNoAplica: true,
       mesFabricacion: undefined,
       anioFabricacion: undefined,
+      vigenciaPhAnios: undefined,
       presionActual: undefined,
       observacion: '',
     },

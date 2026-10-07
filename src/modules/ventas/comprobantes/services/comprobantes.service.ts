@@ -13,6 +13,8 @@ import type {
   ComprobanteListFilters,
   ComprobanteListItem,
   ConsultarEstadoResumenResponse,
+  ConvertirTipoComprobantePayload,
+  ConvertirTipoComprobanteResponse,
   CreateComprobantePayload,
   EmitirComprobanteResponse,
   EnviarResumenDiarioPayload,
@@ -52,6 +54,11 @@ export const comprobantesService = {
 
   actualizar(id: number, payload: UpdateComprobantePayload) {
     return apiPatch<Comprobante>(`/comprobantes/${id}`, payload)
+  },
+
+  /** Boleta ↔ factura en el mismo comprobante, con el siguiente correlativo de la serie destino. */
+  convertirTipo(id: number, payload: ConvertirTipoComprobantePayload) {
+    return apiPost<ConvertirTipoComprobanteResponse>(`/comprobantes/${id}/convertir-tipo`, payload)
   },
 
   /** Completa la referencia del cobro (voucher) de una venta ya emitida. */

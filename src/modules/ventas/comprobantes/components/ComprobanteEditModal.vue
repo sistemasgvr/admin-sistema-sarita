@@ -41,6 +41,81 @@
         </div>
       </div>
 
+      <!-- Cambio de tipo: boleta ↔ factura en el mismo comprobante -->
+      <div
+        v-if="puedeConvertirTipo"
+        class="rounded-xl border border-gray-200 px-4 py-3 dark:border-gray-800"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+              ¿Debía ser {{ etiquetaTipoDestino }}?
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              Se convierte este mismo comprobante: se conservan stock, cilindros, cobros y la orden de salida.
+            </p>
+          </div>
+          <button
+            v-if="!convertirOpen"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3.5 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            :disabled="saving || convirtiendo"
+            @click="abrirConvertir"
+          >
+            <AppIcon :name="ICONS.refreshCw" :size="14" />
+            Convertir a {{ etiquetaTipoDestino }}
+          </button>
+        </div>
+
+        <div v-if="convertirOpen" class="mt-3 space-y-3 border-t border-gray-100 pt-3 dark:border-gray-800">
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <AppInput
+              v-model="serieDestino"
+              label="Serie destino"
+              :placeholder="serieDestinoSugerida"
+              :disabled="convirtiendo"
+            />
+            <div>
+              <p class="mb-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">Quedará como</p>
+              <p class="flex h-11 items-center text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
+                {{ previewNumeroDestino }}
+              </p>
+            </div>
+          </div>
+
+          <p
+            v-if="errorConversion"
+            class="rounded-lg bg-error-50 px-3 py-2 text-xs font-medium text-error-600 dark:bg-error-500/10 dark:text-error-400"
+          >
+            {{ errorConversion }}
+          </p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Toma el siguiente correlativo libre de la serie. El número
+            {{ comprobanteDetalle.serie }}-{{ comprobanteDetalle.numero }} queda sin usar (nunca llegó a SUNAT).
+            Guarda antes cualquier otro cambio del formulario: al convertir se recarga el comprobante.
+          </p>
+
+          <div class="flex justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-lg border border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
+              :disabled="convirtiendo"
+              @click="convertirOpen = false"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="convirtiendo || Boolean(errorConversion)"
+              @click="onConvertirTipo"
+            >
+              {{ convirtiendo ? 'Convirtiendo...' : `Convertir a ${etiquetaTipoDestino}` }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 1. Cabecera -->
       <DetailSectionCard title="Cabecera" :icon="ICONS.receipt" :full-width="true">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -257,7 +332,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
-import { useUpdateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import {
+  useConvertirTipoComprobanteMutation,
+  useUpdateComprobanteMutation,
+} from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
+import { ListaIds } from '@/shared/constants/lista-ids'
 import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import {
   esVentaSinDocumentoTipo,
@@ -438,8 +519,114 @@ const modalTitle = computed(() =>
 )
 
 const comprobanteLabel = computed(() => {
-  if (!props.comprobante) return undefined
-  return `${props.comprobante.serie}-${props.comprobante.numero}`
+  // El detalle va primero: tras convertir el tipo, la fila del listado aún trae el número viejo.
+  const doc = comprobanteDetalle.value ?? props.comprobante
+  if (!doc) return undefined
+  return `${doc.serie}-${doc.numero}`
+})
+
+// ---- Boleta ↔ factura en el mismo comprobante ----
+// La API (ven_convertir_tipo_comprobante) valida todo de nuevo; aquí solo se
+// adelantan los motivos obvios para no ofrecer un botón que va a fallar.
+const convertirMutation = useConvertirTipoComprobanteMutation()
+const convirtiendo = computed(() => convertirMutation.isPending.value)
+const convertirOpen = ref(false)
+const serieDestino = ref('')
+const numeroDestinoPreview = ref<string | null>(null)
+const tiposComprobanteQuery = useListaOpcionesQuery(ref(ListaIds.TIPO_COMPROBANTE))
+
+const codigoTipoActual = computed(() => comprobanteDetalle.value?.codigo_tipo_comprobante ?? '')
+const codigoTipoDestino = computed<'01' | '03'>(() => (codigoTipoActual.value === '01' ? '03' : '01'))
+const etiquetaTipoDestino = computed(() => (codigoTipoDestino.value === '01' ? 'factura' : 'boleta'))
+
+const puedeConvertirTipo = computed(() => {
+  const doc = comprobanteDetalle.value
+  if (!doc || !['01', '03'].includes(codigoTipoActual.value)) return false
+  const estado = doc.nombre_estado_sunat ?? ''
+  if (estado === 'ACEPTADO' || estado === 'BAJA') return false
+  // Con un envío cuyo resultado no está confirmado, SUNAT podría tenerlo.
+  const huboEnvio = Boolean(doc.hash_documento || doc.xml_firmado || (doc.ticket_sunat ?? '').trim())
+  return !huboEnvio || estado === 'RECHAZADO'
+})
+
+const serieDestinoSugerida = computed(() => {
+  const actual = (comprobanteDetalle.value?.serie ?? '').trim().toUpperCase()
+  const prefijo = codigoTipoDestino.value === '01' ? 'F' : 'B'
+  return prefijo + (/^[FB]\d{3}$/.test(actual) ? actual.slice(1) : '001')
+})
+const serieDestinoFinal = computed(() =>
+  (serieDestino.value.trim() || serieDestinoSugerida.value).toUpperCase(),
+)
+
+const errorConversion = computed(() => {
+  const doc = comprobanteDetalle.value
+  if (!doc) return null
+  const serie = serieDestinoFinal.value
+  const prefijo = codigoTipoDestino.value === '01' ? 'F' : 'B'
+  if (serie.length !== 4 || !serie.startsWith(prefijo)) {
+    return `La serie de ${etiquetaTipoDestino.value} debe tener 4 caracteres y empezar con ${prefijo} (ej. ${prefijo}001).`
+  }
+  if (idCliente.value !== doc.id_cliente) {
+    return 'Cambiaste el cliente: guarda primero los cambios y luego convierte.'
+  }
+  if (codigoTipoDestino.value === '01' && !/^\d{11}$/.test((doc.documento_cliente ?? '').trim())) {
+    return 'La factura requiere un cliente con RUC (11 dígitos). Cambia el cliente, guarda y luego convierte.'
+  }
+  return null
+})
+
+const previewNumeroDestino = computed(
+  () => `${serieDestinoFinal.value}-${numeroDestinoPreview.value ?? '…'}`,
+)
+
+let previewTimeout: ReturnType<typeof setTimeout> | undefined
+watch(
+  [convertirOpen, serieDestinoFinal, codigoTipoDestino, () => tiposComprobanteQuery.data.value],
+  () => {
+    numeroDestinoPreview.value = null
+    clearTimeout(previewTimeout)
+    if (!convertirOpen.value || serieDestinoFinal.value.length !== 4) return
+    const idTipo = tiposComprobanteQuery.data.value?.find(
+      (tipo) => tipo.descripcion === codigoTipoDestino.value,
+    )?.id
+    if (!idTipo) return
+    const serie = serieDestinoFinal.value
+    previewTimeout = setTimeout(async () => {
+      try {
+        const r = await comprobantesService.obtenerSiguienteNumero(idTipo, serie)
+        if (serie === serieDestinoFinal.value) numeroDestinoPreview.value = r.numero
+      } catch {
+        // Solo es una vista previa: la API asigna el número al convertir.
+      }
+    }, 300)
+  },
+)
+
+function abrirConvertir() {
+  serieDestino.value = serieDestinoSugerida.value
+  convertirOpen.value = true
+}
+
+async function onConvertirTipo() {
+  const doc = comprobanteDetalle.value
+  if (!doc || errorConversion.value) return
+  const confirmado = window.confirm(
+    `Se convertirá ${doc.serie}-${doc.numero} en ${etiquetaTipoDestino.value} ${previewNumeroDestino.value}. ¿Continuar?`,
+  )
+  if (!confirmado) return
+  try {
+    await convertirMutation.mutateAsync({
+      id: doc.id,
+      payload: { codigoTipoDestino: codigoTipoDestino.value, serie: serieDestinoFinal.value },
+    })
+    convertirOpen.value = false
+  } catch {
+    // toast en la mutation
+  }
+}
+
+watch(comprobanteId, () => {
+  convertirOpen.value = false
 })
 
 const tieneNotas = computed(
