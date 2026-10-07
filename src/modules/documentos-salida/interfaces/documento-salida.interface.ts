@@ -404,7 +404,17 @@ export interface EmitirDocumentoSalidaResponse {
     respuesta?: unknown
     /** Explicación cuando SUNAT no recibió la guía (p. ej. 401 por credenciales). */
     mensaje?: string | null
+    diagnostico?: GreDiagnostico
   }
+}
+
+export interface GreDiagnostico {
+  tipo: 'aceptacion' | 'rechazo' | 'acceso' | 'validacion' | 'pendiente'
+  titulo: string
+  mensaje: string
+  accion: string
+  codigo: string | null
+  problemas: string[]
 }
 
 export type GreSeveridad = 'error' | 'advertencia'
@@ -454,6 +464,7 @@ export interface GreIntento {
   creado: string
   actualizado: string
   respuesta: unknown
+  diagnostico?: GreDiagnostico
   consultas_detalle: { id: number; creado: string; respuesta: unknown }[]
 }
 

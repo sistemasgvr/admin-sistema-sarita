@@ -461,7 +461,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
@@ -761,13 +761,18 @@ const toNum = (v: unknown): number | undefined => {
   return Number.isNaN(n) ? undefined : n
 }
 
+// La hidratación no es un cambio de ubicación hecho por el usuario.
+let isSyncingUbigeo = false
 watch(idPais, () => {
+  if (isSyncingUbigeo) return
   resetForm({ values: { ...currentValues(), idDepartamento: undefined, idProvincia: undefined, idDistrito: undefined } })
 })
 watch(idDepartamento, () => {
+  if (isSyncingUbigeo) return
   resetForm({ values: { ...currentValues(), idProvincia: undefined, idDistrito: undefined } })
 })
 watch(idProvincia, () => {
+  if (isSyncingUbigeo) return
   resetForm({ values: { ...currentValues(), idDistrito: undefined } })
 })
 
@@ -808,6 +813,7 @@ const currentValues = () => ({
 })
 
 const syncFormValues = () => {
+  isSyncingUbigeo = true
   const t = trabajadorActual.value
   resetForm({
     values: {
@@ -833,14 +839,15 @@ const syncFormValues = () => {
       crearUsuario: false,
       idRol: undefined,
       esChofer: Boolean(t?.es_chofer),
-      codigoLicencia: '',
-      telefonoChofer: '',
-      idTipoLicencia: undefined,
-      idCategoriaLicencia: undefined,
-      fechaEmisionLicencia: '',
-      fechaVencimientoLicencia: '',
+      codigoLicencia: t?.codigo_licencia ?? '',
+      telefonoChofer: t?.telefono_chofer ?? '',
+      idTipoLicencia: t?.id_tipo_licencia ?? undefined,
+      idCategoriaLicencia: t?.id_categoria_licencia ?? undefined,
+      fechaEmisionLicencia: t?.fecha_emision_licencia ?? '',
+      fechaVencimientoLicencia: t?.fecha_vencimiento_licencia ?? '',
     },
   })
+  void nextTick(() => { isSyncingUbigeo = false })
 }
 
 const handleClose = () => {

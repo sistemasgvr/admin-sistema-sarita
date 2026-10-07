@@ -165,7 +165,7 @@
           class="rounded-xl border border-gray-100 p-3 text-xs dark:border-gray-800"
         >
           <div class="flex flex-wrap items-center gap-2">
-            <AppBadge size="sm" :color="estadoIntentoColor(intento.estado)">{{ etiquetaEstadoIntento(intento.estado) }}</AppBadge>
+            <AppBadge size="sm" :color="estadoIntentoColor(intento.estado)">{{ intento.diagnostico?.tipo === 'acceso' ? 'Error de acceso' : intento.estado === 'RECHAZADO' && intento.diagnostico?.tipo === 'pendiente' ? 'Envío sin confirmar' : etiquetaEstadoIntento(intento.estado) }}</AppBadge>
             <span class="font-medium text-gray-800 dark:text-white/90">Intento #{{ intento.id }}</span>
             <span class="text-gray-500">{{ formatFechaHora(intento.creado) }}</span>
             <span v-if="intento.entorno" class="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-gray-600 dark:bg-white/5 dark:text-gray-300">{{ intento.entorno }}</span>
@@ -175,6 +175,15 @@
             <span>Ticket: <strong>{{ intento.ticket || '—' }}</strong></span>
             <span>Consultas: {{ intento.consultas }}</span>
             <span v-if="intento.proxima_consulta && !['ACEPTADO', 'RECHAZADO'].includes(intento.estado)">Próxima consulta automática: {{ formatFechaHora(intento.proxima_consulta) }}</span>
+          </div>
+          <div v-if="intento.diagnostico" class="mt-3 rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-900" role="status">
+            <p class="font-semibold text-gray-900 dark:text-white">{{ intento.diagnostico.titulo }}</p>
+            <p class="mt-1 text-gray-700 dark:text-gray-300">{{ intento.diagnostico.mensaje }}</p>
+            <ul v-if="intento.diagnostico.problemas.length" class="mt-2 list-disc space-y-1 pl-5 text-gray-700 dark:text-gray-300">
+              <li v-for="problema in intento.diagnostico.problemas" :key="problema">{{ problema }}</li>
+            </ul>
+            <p class="mt-2 font-medium text-gray-800 dark:text-gray-200">{{ intento.diagnostico.accion }}</p>
+            <p v-if="intento.diagnostico.codigo && intento.diagnostico.codigo !== '0'" class="mt-2 text-xs text-gray-500">Código de respuesta: {{ intento.diagnostico.codigo }}</p>
           </div>
           <details class="mt-2">
             <summary class="cursor-pointer text-[11px] text-gray-500 hover:underline">Detalle técnico (respuesta del PSE y consultas)</summary>

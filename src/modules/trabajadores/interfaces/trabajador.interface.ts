@@ -33,6 +33,13 @@ export interface Trabajador {
   id_chofer?: number | null
   nombre_chofer?: string | null
   es_chofer?: boolean | null
+  telefono_chofer?: string | null
+  id_licencia?: number | null
+  codigo_licencia?: string | null
+  id_tipo_licencia?: number | null
+  id_categoria_licencia?: number | null
+  fecha_emision_licencia?: string | null
+  fecha_vencimiento_licencia?: string | null
   estado: number
   id_usuario_creacion?: number | null
   nombre_usuario_creacion?: string | null
