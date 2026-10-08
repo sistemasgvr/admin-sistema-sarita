@@ -64,7 +64,7 @@ export function createVentasCajaTutorial(options: TutorialOptions = {}) {
     {
       element: '[data-tutorial="caja-arqueo"]',
       popover: {
-        title: '6. Dinero que debería haber',
+        title: '6. Efectivo que debería haber',
         description:
           'Suma lo que entró (fondo, ventas y cobros en efectivo) y resta lo que salió (depósitos, gastos, devoluciones de garantía). Es el monto contra el que se compara el conteo al cerrar.',
         side: 'left',

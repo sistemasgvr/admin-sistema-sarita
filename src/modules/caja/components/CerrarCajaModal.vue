@@ -2,12 +2,13 @@
   <AppModal v-model="open" title="Cerrar caja / arqueo" size="md">
     <div class="space-y-4">
       <p class="text-theme-sm text-gray-500 dark:text-gray-400">
-        Cierre diario (arqueo Z): cuenta el efectivo físico y compáralo con lo esperado. Si hay
-        diferencia, regístrala con una observación.
+        Cierre diario (arqueo Z): cuenta los billetes y monedas del cajón y compáralo con lo
+        esperado. Yape, Plin y transferencias no se cuentan aquí: revísalos en el resumen por
+        medio de pago. Si hay diferencia, regístrala con una observación.
       </p>
       <p class="text-theme-sm text-gray-500 dark:text-gray-400">
-        Caja esperada (según movimientos):
-        <strong class="text-gray-800 dark:text-white/90">{{ formatCurrency(cajaEsperada) }}</strong>
+        Efectivo esperado en cajón:
+        <strong class="text-gray-800 dark:text-white/90">{{ formatCurrency(efectivoEsperado) }}</strong>
       </p>
       <AppFormField label="Efectivo contado" required :error="errorMonto">
         <MoneyInput
@@ -76,7 +77,7 @@ import {
 import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
 
 const open = defineModel<boolean>({ default: false })
-const props = defineProps<{ idSesion: number; cajaEsperada: number }>()
+const props = defineProps<{ idSesion: number; efectivoEsperado: number }>()
 const emit = defineEmits<{ saved: [] }>()
 
 const form = reactive({ monto: '', observacion: '' })
@@ -92,7 +93,7 @@ const { error: errorMonto, valido: formularioValido, onBlur: onBlurMonto } = use
 const diferenciaPreview = computed(() => {
   const m = parseMoneyInput(form.monto)
   if (m == null || !formularioValido.value) return null
-  return roundMoney(m) - props.cajaEsperada
+  return roundMoney(m) - props.efectivoEsperado
 })
 
 const requiereObservacion = computed(() => {
@@ -109,8 +110,9 @@ const diffClass = computed(() => {
 
 watch(open, (v) => {
   if (v) {
-    const esperada = roundMoney(props.cajaEsperada ?? 0)
-    form.monto = esperada > 0 ? esperada.toFixed(2) : ''
+    // Vacío a propósito: pre-llenarlo con el esperado hacía que se cerrara con
+    // diferencia 0 sin contar el cajón.
+    form.monto = ''
     form.observacion = ''
     errorObs.value = ''
   }

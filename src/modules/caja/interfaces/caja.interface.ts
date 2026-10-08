@@ -25,6 +25,31 @@ export interface CajaTotales {
   garantiasCobroMediosCaja?: number
   garantiasDevolucion?: number
   garantiasDevolucionMediosCaja?: number
+  /** Neto del día en billetes (fila EFECTIVO de porMedio), sin el fondo inicial. */
+  efectivoNeto?: number
+  /** Una fila por medio de pago con movimiento; los medios de crédito no entran. */
+  porMedio?: CajaTotalesMedio[]
+}
+
+/**
+ * Movimiento del día de un medio de pago. Efectivo se cuadra contando el cajón;
+ * Yape, Plin y transferencia contra la app o el estado de cuenta.
+ */
+export interface CajaTotalesMedio {
+  idMedioPago: number | null
+  medioPago: string
+  esEfectivo: boolean
+  afectaCaja: boolean
+  ventas: number
+  cobranzas: number
+  garantiasCobro: number
+  gastos: number
+  pagosProveedor: number
+  garantiasDevolucion: number
+  depositos: number
+  ingresos: number
+  egresos: number
+  neto: number
 }
 
 export interface CajaMovimientoGasto {
@@ -87,7 +112,8 @@ export interface CajaSesion {
   idUsuarioCierre?: number | null
   usuarioCierre?: string | null
   totales?: CajaTotales
-  cajaEsperada?: number
+  /** Billetes que debería haber en el cajón: fondo + totales.efectivoNeto. */
+  efectivoEsperado?: number
   gastos?: CajaMovimientoGasto[]
   depositos?: CajaMovimientoDeposito[]
 }

@@ -212,10 +212,10 @@
           >
           <div class="mb-3 flex items-center gap-2">
             <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90">
-              Dinero que debería haber
+              Efectivo que debería haber
             </h4>
             <AppHelpTip
-              text="Suma lo que entra a caja (fondo, ventas, cobranzas y cobros de garantía en efectivo/Yape/Plin) y resta lo que sale (depósitos al banco, gastos menudos y devoluciones de garantía)."
+              text="Solo billetes y monedas: fondo más lo cobrado en efectivo, menos lo pagado en efectivo y lo depositado al banco. Es lo que se cuenta al cerrar. Yape, Plin y transferencias están en el resumen por medio de pago."
             />
           </div>
 
@@ -365,6 +365,115 @@
             </p>
           </AppCollapsibleSection>
         </div>
+
+        <div
+          v-if="totales"
+          data-tutorial="caja-por-medio"
+          class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]"
+        >
+          <div class="mb-3 flex items-center gap-2">
+            <h4 class="text-sm font-semibold text-gray-800 dark:text-white/90">
+              Resumen por medio de pago
+            </h4>
+            <AppHelpTip
+              text="Cuánto entró y salió hoy por cada medio. El efectivo se cuadra contando el cajón; Yape, Plin y transferencias se cuadran con la app o el estado de cuenta del banco."
+            />
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[32rem] text-theme-sm">
+              <thead>
+                <tr class="border-b border-gray-200 dark:border-gray-800">
+                  <th class="py-2 pr-3 text-left font-medium text-gray-500 dark:text-gray-400">
+                    Concepto
+                  </th>
+                  <th
+                    v-for="m in mediosResumen"
+                    :key="m.idMedioPago ?? m.medioPago"
+                    class="px-3 py-2 text-right font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {{ nombreMedio(m.medioPago) }}
+                    <span class="block text-[11px] font-normal text-gray-400">
+                      {{ m.esEfectivo ? 'se cuenta en cajón' : 'app / banco' }}
+                    </span>
+                  </th>
+                  <th class="py-2 pl-3 text-right font-medium text-gray-700 dark:text-gray-300">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                <tr v-for="f in filasResumenMedio" :key="f.key">
+                  <td class="py-1.5 pr-3 text-gray-600 dark:text-gray-400">
+                    <span class="flex items-center gap-2">
+                      <span
+                        class="inline-flex h-5 w-5 items-center justify-center rounded text-xs font-bold"
+                        :class="
+                          f.signo === '+'
+                            ? 'bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-300'
+                            : 'bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300'
+                        "
+                      >
+                        {{ f.signo }}
+                      </span>
+                      {{ f.label }}
+                    </span>
+                  </td>
+                  <td
+                    v-for="m in mediosResumen"
+                    :key="m.idMedioPago ?? m.medioPago"
+                    class="px-3 py-1.5 text-right tabular-nums text-gray-800 dark:text-white/90"
+                  >
+                    {{ f.valor(m) == null ? '—' : formatCurrency(f.valor(m) ?? 0) }}
+                  </td>
+                  <td class="py-1.5 pl-3 text-right font-medium tabular-nums text-gray-800 dark:text-white/90">
+                    {{ formatCurrency(f.total) }}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="border-t-2 border-gray-200 dark:border-gray-700">
+                  <td class="py-2 pr-3 font-semibold text-gray-800 dark:text-white/90">
+                    Total esperado
+                  </td>
+                  <td
+                    v-for="m in mediosResumen"
+                    :key="m.idMedioPago ?? m.medioPago"
+                    class="px-3 py-2 text-right text-base font-semibold tabular-nums"
+                    :class="
+                      saldoMedio(m) < 0
+                        ? 'text-error-600 dark:text-error-400'
+                        : 'text-brand-600 dark:text-brand-400'
+                    "
+                  >
+                    {{ formatCurrency(saldoMedio(m)) }}
+                  </td>
+                  <td
+                    class="py-2 pl-3 text-right text-base font-semibold tabular-nums"
+                    :class="
+                      saldoTotalMedios < 0
+                        ? 'text-error-600 dark:text-error-400'
+                        : 'text-gray-800 dark:text-white/90'
+                    "
+                  >
+                    {{ formatCurrency(saldoTotalMedios) }}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="mt-3 space-y-1 text-[11px] text-gray-400 dark:text-gray-500">
+            <p>
+              Un total en negativo indica que ese día salió más de lo que entró por ese medio (por
+              ejemplo, pagos por transferencia hechos con el saldo que ya había en el banco).
+            </p>
+            <p v-if="ventasCredito >= 0.005">
+              Ventas al crédito: {{ formatCurrency(ventasCredito) }}. No entran en ningún medio: se
+              suman cuando se cobran, como cobranza.
+            </p>
+          </div>
+        </div>
       </template>
 
       <AbrirCajaModal
@@ -379,7 +488,7 @@
         v-if="sesion?.id"
         v-model="showCerrar"
         :id-sesion="sesion.id"
-        :caja-esperada="cajaEsperada"
+        :efectivo-esperado="efectivoEsperado"
       />
       <RegistrarGastoCajaModal
         v-model="showGasto"
@@ -447,6 +556,7 @@ import {
 import type {
   CajaMovimientoDeposito,
   CajaMovimientoGasto,
+  CajaTotalesMedio,
 } from '@/modules/caja/interfaces/caja.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
@@ -580,35 +690,117 @@ const gastos = computed(() => sesion.value?.gastos ?? [])
 const depositos = computed(() => sesion.value?.depositos ?? [])
 
 const montoInicial = computed(() => Number(sesion.value?.montoInicial ?? 0))
-const ventasMediosCaja = computed(() => Number(totales.value?.ventasMediosCaja ?? 0))
-const cobranzasMediosCaja = computed(() => Number(totales.value?.cobranzasMediosCaja ?? 0))
-const garantiasCobroMediosCaja = computed(() =>
-  Number(totales.value?.garantiasCobroMediosCaja ?? 0),
-)
-const totalDepositos = computed(() => Number(totales.value?.depositos ?? 0))
-/** Solo gastos con medio que vacía el cajón (mismo criterio que el cierre BE). */
-const totalGastosCajaMedios = computed(() =>
-  Number(totales.value?.gastosCajaMediosCaja ?? totales.value?.gastosCaja ?? 0),
-)
-const pagosProveedorMediosCaja = computed(() =>
-  Number(totales.value?.pagosProveedorMediosCaja ?? 0),
-)
-const garantiasDevolucionMediosCaja = computed(() =>
-  Number(totales.value?.garantiasDevolucionMediosCaja ?? 0),
+
+const MEDIO_EFECTIVO_VACIO: CajaTotalesMedio = {
+  idMedioPago: null,
+  medioPago: 'EFECTIVO',
+  esEfectivo: true,
+  afectaCaja: true,
+  ventas: 0,
+  cobranzas: 0,
+  garantiasCobro: 0,
+  gastos: 0,
+  pagosProveedor: 0,
+  garantiasDevolucion: 0,
+  depositos: 0,
+  ingresos: 0,
+  egresos: 0,
+  neto: 0,
+}
+
+/** Columnas del resumen: Efectivo siempre primero (lleva el fondo), luego el resto. */
+const mediosResumen = computed<CajaTotalesMedio[]>(() => {
+  const lista = totales.value?.porMedio ?? []
+  return lista.some((m) => m.esEfectivo) ? lista : [MEDIO_EFECTIVO_VACIO, ...lista]
+})
+const filaEfectivo = computed(
+  () => mediosResumen.value.find((m) => m.esEfectivo) ?? MEDIO_EFECTIVO_VACIO,
 )
 
-const cajaEsperada = computed(
-  () =>
-    sesion.value?.cajaEsperada ??
-    montoInicial.value +
-      ventasMediosCaja.value +
-      cobranzasMediosCaja.value +
-      garantiasCobroMediosCaja.value -
-      totalDepositos.value -
-      totalGastosCajaMedios.value -
-      pagosProveedorMediosCaja.value -
-      garantiasDevolucionMediosCaja.value,
+/** Solo billetes: Yape/Plin no se cuentan en el cajón (mismo criterio que el cierre BE). */
+const efectivoEsperado = computed(() =>
+  Number(
+    sesion.value?.efectivoEsperado ??
+      montoInicial.value + Number(totales.value?.efectivoNeto ?? 0),
+  ),
 )
+
+function nombreMedio(nombre: string): string {
+  return nombre.charAt(0) + nombre.slice(1).toLowerCase()
+}
+
+function saldoMedio(m: CajaTotalesMedio): number {
+  return Number(m.neto) + (m.esEfectivo ? montoInicial.value : 0)
+}
+
+interface FilaResumenMedio {
+  key: string
+  label: string
+  signo: '+' | '-'
+  valor: (m: CajaTotalesMedio) => number | null
+  /** Las filas opcionales se ocultan si están en cero en todos los medios. */
+  siempre: boolean
+}
+
+const FILAS_RESUMEN_MEDIO: FilaResumenMedio[] = [
+  {
+    key: 'fondo',
+    label: 'Fondo al abrir',
+    signo: '+',
+    valor: (m) => (m.esEfectivo ? montoInicial.value : null),
+    siempre: true,
+  },
+  { key: 'ventas', label: 'Ventas', signo: '+', valor: (m) => Number(m.ventas), siempre: true },
+  {
+    key: 'cobranzas',
+    label: 'Cobranzas',
+    signo: '+',
+    valor: (m) => Number(m.cobranzas),
+    siempre: true,
+  },
+  {
+    key: 'garantiasCobro',
+    label: 'Garantías cobradas',
+    signo: '+',
+    valor: (m) => Number(m.garantiasCobro),
+    siempre: false,
+  },
+  { key: 'gastos', label: 'Gastos', signo: '-', valor: (m) => Number(m.gastos), siempre: true },
+  {
+    key: 'pagosProveedor',
+    label: 'Pagos a proveedores',
+    signo: '-',
+    valor: (m) => Number(m.pagosProveedor),
+    siempre: false,
+  },
+  {
+    key: 'garantiasDevolucion',
+    label: 'Devolución de garantías',
+    signo: '-',
+    valor: (m) => Number(m.garantiasDevolucion),
+    siempre: false,
+  },
+  {
+    key: 'depositos',
+    label: 'Depósitos al banco',
+    signo: '-',
+    valor: (m) => Number(m.depositos),
+    siempre: false,
+  },
+]
+
+const filasResumenMedio = computed(() =>
+  FILAS_RESUMEN_MEDIO.filter(
+    (f) => f.siempre || mediosResumen.value.some((m) => Math.abs(f.valor(m) ?? 0) >= 0.005),
+  ).map((f) => ({
+    ...f,
+    total: mediosResumen.value.reduce((t, m) => t + (f.valor(m) ?? 0), 0),
+  })),
+)
+const saldoTotalMedios = computed(() =>
+  mediosResumen.value.reduce((t, m) => t + saldoMedio(m), 0),
+)
+const ventasCredito = computed(() => Number(totales.value?.ventasCredito ?? 0))
 
 const canAbrir = computed(() => auth.hasPermission(PermisoBanderas.CAJA_ABRIR))
 const canCerrar = computed(() => auth.hasPermission(PermisoBanderas.CAJA_CERRAR))
@@ -676,18 +868,18 @@ const resumenCards = computed<SummaryCardItem[]>(() => [
     iconClass: 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300',
   },
   {
+    // Todos los medios: el desglose por medio está en el resumen del final.
     key: 'gastos',
     label: 'Gastos caja',
-    value: formatCurrency(totales.value?.gastosCajaMediosCaja ?? totales.value?.gastosCaja ?? 0),
+    value: formatCurrency(totales.value?.gastosCaja ?? 0),
     icon: ICONS.arrowUpFromLine,
     iconClass: 'bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-300',
   },
   {
     key: 'garantias',
-    label: 'Garantías (neto caja)',
+    label: 'Garantías (neto)',
     value: formatCurrency(
-      Number(totales.value?.garantiasCobroMediosCaja ?? 0) -
-        Number(totales.value?.garantiasDevolucionMediosCaja ?? 0),
+      Number(totales.value?.garantiasCobro ?? 0) - Number(totales.value?.garantiasDevolucion ?? 0),
     ),
     icon: ICONS.wallet,
     iconClass: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300',
@@ -711,58 +903,58 @@ const desgloseArqueo = computed(() => [
   },
   {
     key: 'ventas',
-    label: 'Ventas efectivo / Yape / Plin',
+    label: 'Ventas en efectivo',
     signo: '+' as const,
-    monto: ventasMediosCaja.value,
+    monto: Number(filaEfectivo.value.ventas),
     destacado: false,
   },
   {
     key: 'cobranzas',
-    label: 'Cobranzas efectivo / Yape / Plin',
+    label: 'Cobranzas en efectivo',
     signo: '+' as const,
-    monto: cobranzasMediosCaja.value,
+    monto: Number(filaEfectivo.value.cobranzas),
     destacado: false,
   },
   {
     key: 'garantiasCobro',
-    label: 'Cobro garantías (sin CPE)',
+    label: 'Garantías cobradas en efectivo',
     signo: '+' as const,
-    monto: garantiasCobroMediosCaja.value,
+    monto: Number(filaEfectivo.value.garantiasCobro),
     destacado: false,
   },
   {
     key: 'depositos',
     label: 'Depósitos al banco',
     signo: '-' as const,
-    monto: totalDepositos.value,
+    monto: Number(filaEfectivo.value.depositos),
     destacado: false,
   },
   {
     key: 'gastos',
-    label: 'Gastos de caja (efectivo / Yape / Plin)',
+    label: 'Gastos en efectivo',
     signo: '-' as const,
-    monto: totalGastosCajaMedios.value,
+    monto: Number(filaEfectivo.value.gastos),
     destacado: false,
   },
   {
     key: 'pagosProveedor',
-    label: 'Pagos a proveedores (CxP)',
+    label: 'Pagos a proveedores en efectivo',
     signo: '-' as const,
-    monto: pagosProveedorMediosCaja.value,
+    monto: Number(filaEfectivo.value.pagosProveedor),
     destacado: false,
   },
   {
     key: 'garantiasDev',
-    label: 'Devolución garantías',
+    label: 'Devolución garantías en efectivo',
     signo: '-' as const,
-    monto: garantiasDevolucionMediosCaja.value,
+    monto: Number(filaEfectivo.value.garantiasDevolucion),
     destacado: false,
   },
   {
     key: 'total',
-    label: 'Total esperado en caja',
+    label: 'Efectivo esperado en caja',
     signo: null,
-    monto: cajaEsperada.value,
+    monto: efectivoEsperado.value,
     destacado: true,
   },
 ])
