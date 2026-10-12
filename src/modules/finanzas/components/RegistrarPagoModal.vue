@@ -75,8 +75,13 @@
         excluir-credito
       />
 
-      <AppFormField label="Observación">
-        <AppTextarea v-model="form.observacion" :rows="2" placeholder="Opcional" />
+      <AppFormField label="Observación" :error="errores.observacion" :help="`Máximo ${MAX_OBSERVACION_PAGO} caracteres`">
+        <AppTextarea
+          v-model="form.observacion"
+          :rows="2"
+          :maxlength="MAX_OBSERVACION_PAGO"
+          placeholder="Opcional"
+        />
       </AppFormField>
     </div>
 
@@ -161,6 +166,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{ saved: [] }>()
+const MAX_OBSERVACION_PAGO = 500
 
 const open = defineModel<boolean>({ required: true })
 
@@ -193,7 +199,12 @@ const form = reactive({
 const pagoValido = ref(true)
 const intentoEnvio = ref(false)
 
-const errores = reactive<{ monto?: string; fechaPago?: string; idSucursal?: string }>({})
+const errores = reactive<{
+  monto?: string
+  fechaPago?: string
+  idSucursal?: string
+  observacion?: string
+}>({})
 const cajasAbiertas = ref<CajaSesion[]>([])
 const cargandoCajas = ref(false)
 const errorCajas = ref('')
@@ -244,6 +255,7 @@ const resetForm = () => {
   form.observacion = ''
   errores.monto = undefined
   errores.fechaPago = undefined
+  errores.observacion = undefined
   intentoEnvio.value = false
 }
 
@@ -292,10 +304,18 @@ watch(
   },
 )
 
+watch(
+  () => form.observacion,
+  (v) => {
+    if (v.length <= MAX_OBSERVACION_PAGO) errores.observacion = undefined
+  },
+)
+
 const validar = (): boolean => {
   errores.idSucursal = undefined
   errores.monto = undefined
   errores.fechaPago = undefined
+  errores.observacion = undefined
   let ok = true
 
   if (cargandoCajas.value || errorCajas.value || !cajasAbiertas.value.some((s) => s.idSucursal === form.idSucursal)) {
@@ -322,6 +342,11 @@ const validar = (): boolean => {
     ok = false
   } else if (props.cuenta?.fecha_emision && form.fechaPago < props.cuenta.fecha_emision) {
     errores.fechaPago = `No puede ser anterior a la emisión (${props.cuenta.fecha_emision})`
+    ok = false
+  }
+
+  if (form.observacion.length > MAX_OBSERVACION_PAGO) {
+    errores.observacion = `Máximo ${MAX_OBSERVACION_PAGO} caracteres`
     ok = false
   }
 

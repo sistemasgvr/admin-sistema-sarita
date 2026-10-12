@@ -55,6 +55,15 @@
           {{ formatListaOpcionLabel(row.nombre_tipo_persona) }}
         </AppBadge>
       </template>
+      <template #cell-direccion="{ row }">
+        <p
+          class="truncate text-gray-500 text-theme-sm dark:text-gray-400"
+          :title="row.direccion || 'Sin dirección'"
+        >
+          {{ row.direccion || '—' }}
+        </p>
+      </template>
+
       <template #cell-contacto="{ row }">
         <div class="flex flex-col text-sm">
           <span class="text-gray-500 dark:text-gray-400">
@@ -390,7 +399,12 @@ const getNombrePrincipal = (cliente: Cliente) => {
 const columns = computed<TableColumn<Cliente>[]>(() => [
   { key: 'cliente', label: 'Cliente' },
   { key: 'numero_documento', label: 'Documento' },
-  { key: 'direccion', label: 'Dirección' },
+  {
+    key: 'direccion',
+    label: 'Dirección',
+    headerClass: 'max-w-[14rem] sm:max-w-[18rem]',
+    cellClass: 'max-w-[14rem] sm:max-w-[18rem]',
+  },
   { key: 'contacto', label: 'Teléfono / Correo' },
   { key: 'estado', label: 'Estado' },
 ])
