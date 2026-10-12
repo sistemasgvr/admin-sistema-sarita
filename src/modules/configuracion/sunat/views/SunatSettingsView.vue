@@ -233,14 +233,14 @@
         v-model:open="openOauth"
         data-tutorial="sunat-oauth"
         title="OAuth GRE (Guías de Remisión Electrónicas)"
-        description="Client ID / Secret del portal SUNAT. Obligatorio para emitir gu?as electr?nicas (GRE)."
+        description="Client ID / Secret del portal SUNAT. Obligatorio para emitir guías electrónicas (GRE)."
         :icon="ICONS.keyRound"
         :badge="oauthBadge"
       >
         <div class="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
           <div data-field="client_id">
             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-              Client ID
+              Client ID GRE
             </label>
             <AppInput
               v-model="client_id"
@@ -252,7 +252,7 @@
 
           <div data-field="client_secret">
             <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-              Client Secret
+              Client Secret GRE
             </label>
             <AppInput
               v-model="client_secret"
@@ -265,6 +265,27 @@
           </div>
         </div>
     </AppCollapsibleSection>
+
+      <AppCollapsibleSection
+        v-model:open="openValidez"
+        data-tutorial="sunat-validez"
+        title="Validez de comprobantes (API SUNAT)"
+        description="Credenciales de Consulta de Validez de Comprobantes de Pago en SUNAT SOL."
+        :icon="ICONS.keyRound"
+        :badge="validezBadge"
+      >
+        <div class="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
+          <div data-field="validez_client_id">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Client ID de validez</label>
+            <AppInput v-model="validez_client_id" v-bind="validezClientIdAttrs" placeholder="ID de la aplicación de consulta" :error="errors.validez_client_id" />
+          </div>
+          <div data-field="validez_client_secret">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Client Secret de validez</label>
+            <AppInput v-model="validez_client_secret" v-bind="validezClientSecretAttrs" type="password" autocomplete="new-password" :placeholder="configuracionSunat?.tiene_validez_client_secret ? 'Clave guardada; escribe para reemplazar' : 'Clave de la aplicación de consulta'" :error="errors.validez_client_secret" />
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Estas credenciales se guardan por separado de GRE. Deja la clave vacía para conservar la guardada.</p>
+      </AppCollapsibleSection>
 
       <!--
         Verificar = solo lecturas al PSE (RUC, entorno, URLs, credenciales).
@@ -443,6 +464,8 @@ const FIELD_ORDER = [
   'timeout_ms',
   'client_id',
   'client_secret',
+  'validez_client_id',
+  'validez_client_secret',
 ] as const
 
 const SOL_FIELDS = new Set([
@@ -465,6 +488,7 @@ const PSE_FIELDS = new Set([
 ])
 
 const OAUTH_FIELDS = new Set(['client_id', 'client_secret'])
+const VALIDEZ_FIELDS = new Set(['validez_client_id', 'validez_client_secret'])
 
 const authStore = useAuthStore()
 
@@ -513,6 +537,7 @@ const isEditMode = computed(() => configuracionSunat.value != null)
 const openSol = ref(true)
 const openPse = ref(false)
 const openOauth = ref(false)
+const openValidez = ref(false)
 const openVerificacion = ref(false)
 
 // ---- Verificación / sincronización GRE en el PSE ----
@@ -571,6 +596,13 @@ const oauthBadge = computed(() => {
 })
 
 
+const validezBadge = computed(() => {
+  const cfg = configuracionSunat.value
+  if (cfg?.validez_client_id && cfg.tiene_validez_client_secret) return 'Configurado'
+  if (cfg?.validez_client_id || cfg?.tiene_validez_client_secret) return 'Incompleto'
+  return 'Pendiente'
+})
+
 const validationSchema = computed(() =>
   toTypedSchema(
     yup.object({
@@ -590,6 +622,8 @@ const validationSchema = computed(() =>
       ruc_emisor: optionalString(),
       client_id: optionalString(),
       client_secret: optionalString(),
+      validez_client_id: optionalString().max(255),
+      validez_client_secret: optionalString().max(255),
       timeout_ms: yup
         .number()
         .transform((value, originalValue) => {
@@ -622,6 +656,8 @@ const { defineField, handleSubmit, resetForm, errors, isSubmitting } = useForm({
     ruc_emisor: '',
     client_id: '',
     client_secret: '',
+    validez_client_id: '',
+    validez_client_secret: '',
     timeout_ms: undefined as number | undefined,
   },
 })
@@ -640,6 +676,8 @@ const [api_clave, apiClaveAttrs] = defineField('api_clave')
 const [ruc_emisor, rucEmisorAttrs] = defineField('ruc_emisor')
 const [client_id, clientIdAttrs] = defineField('client_id')
 const [client_secret, clientSecretAttrs] = defineField('client_secret')
+const [validez_client_id, validezClientIdAttrs] = defineField('validez_client_id')
+const [validez_client_secret, validezClientSecretAttrs] = defineField('validez_client_secret')
 const [timeout_ms, timeoutMsAttrs] = defineField('timeout_ms')
 
 const canSave = computed(() => {
@@ -669,6 +707,8 @@ const syncFormValues = () => {
       ruc_emisor: cfg?.ruc_emisor ?? '',
       client_id: cfg?.client_id ?? '',
       client_secret: cfg?.client_secret ?? '',
+      validez_client_id: cfg?.validez_client_id ?? '',
+      validez_client_secret: '',
       timeout_ms: cfg?.timeout_ms ?? undefined,
     },
   })
@@ -678,6 +718,7 @@ const focusFirstInvalidField = async (errorKeys: string[]) => {
   if (errorKeys.some((key) => SOL_FIELDS.has(key))) openSol.value = true
   if (errorKeys.some((key) => PSE_FIELDS.has(key))) openPse.value = true
   if (errorKeys.some((key) => OAUTH_FIELDS.has(key))) openOauth.value = true
+  if (errorKeys.some((key) => VALIDEZ_FIELDS.has(key))) openValidez.value = true
 
   await nextTick()
 
@@ -717,6 +758,7 @@ const onSubmit = handleSubmit(
           apiUsuario: values.api_usuario || undefined,
           rucEmisor: values.ruc_emisor || undefined,
           clientId: values.client_id || undefined,
+          validezClientId: values.validez_client_id || undefined,
           timeoutMs: values.timeout_ms ?? undefined,
         }
 
@@ -725,6 +767,7 @@ const onSubmit = handleSubmit(
         if (values.api_token) payload.apiToken = values.api_token
         if (values.api_clave) payload.apiClave = values.api_clave
         if (values.client_secret) payload.clientSecret = values.client_secret
+        if (values.validez_client_secret) payload.validezClientSecret = values.validez_client_secret
 
         await updateMutation.mutateAsync({
           id: configuracionSunat.value.id,
@@ -753,7 +796,9 @@ const onSubmit = handleSubmit(
           apiClave: values.api_clave || undefined,
           rucEmisor: values.ruc_emisor || undefined,
           clientId: values.client_id || undefined,
+          validezClientId: values.validez_client_id || undefined,
           clientSecret: values.client_secret || undefined,
+          validezClientSecret: values.validez_client_secret || undefined,
           timeoutMs: values.timeout_ms ?? undefined,
         }
 

@@ -22,6 +22,8 @@ export interface ConfiguracionSunat {
   ruc_emisor?: string | null
   client_id?: string | null
   client_secret?: string | null
+  validez_client_id?: string | null
+  tiene_validez_client_secret?: boolean
   tiene_client_secret?: boolean
   timeout_ms?: number | null
   estado: boolean
@@ -52,6 +54,8 @@ export interface CreateConfiguracionSunatPayload {
   rucEmisor?: string
   clientId?: string
   clientSecret?: string
+  validezClientId?: string
+  validezClientSecret?: string
   timeoutMs?: number
 }
 
@@ -71,6 +75,8 @@ export interface UpdateConfiguracionSunatPayload {
   rucEmisor?: string
   clientId?: string
   clientSecret?: string
+  validezClientId?: string
+  validezClientSecret?: string
   timeoutMs?: number
 }
 
