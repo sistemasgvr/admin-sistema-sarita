@@ -81,6 +81,10 @@
             Sin confirmación
             <AppHelpTip tone="warning" text="El envío todavía no tiene una respuesta definitiva. El sistema verifica automáticamente SUNAT y el CDR del proveedor. Este estado no confirma un rechazo ni autoriza un nuevo envío." aria-label="Detalle del envío sin confirmación" />
           </span>
+          <span v-else-if="row.estado_envio === 'ERROR_ENVIO'" class="inline-flex items-center gap-1 rounded-full bg-red-50 pl-2.5 pr-1 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">
+            Error de envío
+            <AppHelpTip tone="warning" text="El proveedor devolvió un error al enviar. Verificar envío comprueba SUNAT y el CDR; habilita Reintentar envío cuando ambas consultas permiten revisar la misma referencia." aria-label="Detalle del error de envío" />
+          </span>
           <span v-else class="inline-flex items-center gap-1">
             <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
             <AppHelpTip v-if="row.advertencia_cdr" tone="warning" :text="row.advertencia_cdr" aria-label="Advertencia del CDR de emisión" />
@@ -519,16 +523,18 @@ function plazoVencido(row: ComprobanteListItem) {
 }
 
 function puedeEmitir(row: ComprobanteListItem) {
-  if (row.estado_envio === 'EN_CURSO' || row.estado_envio === 'POR_CONFIRMAR') return false
+  if (row.estado_envio) return false
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
 function puedeEditar(row: ComprobanteListItem) {
+  if (row.estado_envio) return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
 function puedeEliminar(row: ComprobanteListItem) {
+  if (row.estado_envio) return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
@@ -642,6 +648,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !(canConsultarCdr.value && ['01','03'].includes(String(row.codigo_tipo_comprobante)) && Boolean(row.estado_envio)),
     },
     {
+      key: 'reintentar-envio',
+      label: row.reintento_permitido ? 'Reintentar envío' : 'Reintentar envío (verifica primero)',
+      icon: ICONS.refreshCw,
+      disabled: busy || !row.reintento_permitido,
+      hidden: !(canEmit.value && row.estado_envio==='ERROR_ENVIO'),
+    },
+    {
       key: 'anular',
       label: 'Anular en SUNAT',
       icon: ICONS.ban,
@@ -728,6 +741,8 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
       return
     case 'verificar-envio':
       return verificarEnvio(row)
+    case 'reintentar-envio':
+      return emitirComprobante(row,true)
     case 'anular':
       openAnularModal(row)
       return
@@ -857,7 +872,7 @@ async function verificarEnvio(row: ComprobanteListItem) {
   finally { verificandoId.value = null }
 }
 
-async function emitirComprobante(row: ComprobanteListItem) {
+async function emitirComprobante(row: ComprobanteListItem, reintento = false) {
   const userId = authStore.user?.id
   if (!userId) return
 
@@ -873,15 +888,15 @@ async function emitirComprobante(row: ComprobanteListItem) {
     return
   }
 
-  await ejecutarEmitir(row, userId)
+  await ejecutarEmitir(row, userId, reintento)
 }
 
-async function ejecutarEmitir(row: ComprobanteListItem, userId: number) {
+async function ejecutarEmitir(row: ComprobanteListItem, userId: number, reintento = false) {
   try {
     const resultado = await emitirConImpresionTicket({
       comprobanteId: row.id,
       emitir: () =>
-        emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId }),
+        emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId, reintento }),
     })
 
     if (resultado === 'sin_ventana') {

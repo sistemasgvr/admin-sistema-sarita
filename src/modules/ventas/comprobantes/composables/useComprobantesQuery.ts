@@ -15,7 +15,7 @@ export function useComprobantesQuery(filters: Ref<ComprobanteListFilters>, emiti
   const query = useQuery({
     queryKey: computed(() => comprobantesQueryKeys.list(filters.value)),
     queryFn: () => comprobantesService.listar(filters.value),
-    refetchInterval: (query) => emitiendo?.value || query.state.data?.data.some(row => ['EN_CURSO', 'POR_CONFIRMAR'].includes(row.estado_envio ?? '')) ? 3000 : false,
+    refetchInterval: (query) => emitiendo?.value || query.state.data?.data.some(row => ['EN_CURSO', 'POR_CONFIRMAR', 'ERROR_ENVIO'].includes(row.estado_envio ?? '')) ? 3000 : false,
     placeholderData: keepPreviousData,
   })
   // Reconciliación en segundo plano: una consulta a la vez, cada 15 s por CPE.
@@ -24,7 +24,7 @@ export function useComprobantesQuery(filters: Ref<ComprobanteListFilters>, emiti
     if (!activo || !sincronizar?.value || consultando) return
     const row = query.data.value?.data.filter(item =>
       ['01', '03'].includes(String(item.codigo_tipo_comprobante)) &&
-      ['EN_CURSO', 'POR_CONFIRMAR'].includes(item.estado_envio ?? '') &&
+      ['EN_CURSO', 'POR_CONFIRMAR', 'ERROR_ENVIO'].includes(item.estado_envio ?? '') &&
       Date.now() - (ultimasConsultas.get(item.id) ?? 0) >= 15000,
     ).sort((a, b) => (ultimasConsultas.get(a.id) ?? 0) - (ultimasConsultas.get(b.id) ?? 0))[0]
     if (!row) return

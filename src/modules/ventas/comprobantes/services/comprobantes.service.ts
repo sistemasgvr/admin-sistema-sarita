@@ -31,6 +31,9 @@ import type {
 import type { ComprobantePdfFormato } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 
 export const comprobantesService = {
+  reintentarEnvio(id: number) {
+    return apiPost<EmitirComprobanteResponse>(`/comprobantes/${id}/reintentar-envio`, {})
+  },
   verificarEnvio(id: number) {
     return apiPost<{ estado: string; mensaje: string; verificadoEn: string }>(`/comprobantes/${id}/verificar-envio`, {})
   },

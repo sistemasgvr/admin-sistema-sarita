@@ -15,7 +15,8 @@ export interface ComprobanteListItem {
   nombre_estado?: string | null
   id_estado_sunat?: number | null
   fecha_emision_cpe?: string | null
-  estado_envio?: 'EN_CURSO' | 'POR_CONFIRMAR'
+  estado_envio?: 'EN_CURSO' | 'POR_CONFIRMAR' | 'ERROR_ENVIO'
+  reintento_permitido?: boolean
   estado_cdr_registrado?: string
   advertencia_cdr?: string
   nombre_estado_sunat?: string | null
