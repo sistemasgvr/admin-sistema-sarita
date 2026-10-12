@@ -102,7 +102,6 @@ const syncModel = () => {
 }
 
 onMounted(() => {
-  Dropzone.autoDiscover = false
 
   instance = new Dropzone(`#${dropzoneId}`, {
     url: '/__local__',
@@ -124,7 +123,7 @@ onMounted(() => {
     dictFileTooBig:
       'El archivo es demasiado grande ({{filesize}}MB). Máximo: {{maxFilesize}}MB',
     dictMaxFilesExceeded: 'Alcanzaste el máximo de archivos permitidos',
-    init() {
+    init(this: Dropzone) {
       this.on('addedfile', () => {
         if (!props.multiple && this.files.length > 1) {
           this.files.slice(0, -1).forEach((file) => this.removeFile(file))
@@ -134,10 +133,7 @@ onMounted(() => {
       this.on('removedfile', () => {
         syncModel()
       })
-      this.on('error', (file, message) => {
-        if (file && !(message instanceof ProgressEvent)) {
-          // Deja el preview con el error de Dropzone
-        }
+      this.on('error', () => {
         syncModel()
       })
     },

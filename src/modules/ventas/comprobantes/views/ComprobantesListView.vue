@@ -73,7 +73,18 @@
 
       <template #cell-nombre_estado_sunat="{ row }">
         <div data-tutorial="comprobantes-estado" class="space-y-1">
-          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
+          <span v-if="row.estado_envio === 'EN_CURSO'" class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+            <AppIcon :name="ICONS.loader" :size="12" class="animate-spin" />
+            En curso
+          </span>
+          <span v-else-if="row.estado_envio === 'POR_CONFIRMAR'" class="inline-flex items-center gap-1 rounded-full bg-amber-50 pl-2.5 pr-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+            Por confirmar
+            <AppHelpTip tone="warning" text="El proveedor no confirmó el resultado del envío. Consulta la validez antes de volver a emitir." aria-label="Detalle del envío por confirmar" />
+          </span>
+          <span v-else class="inline-flex items-center gap-1">
+            <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
+            <AppHelpTip v-if="row.advertencia_cdr" tone="warning" :text="row.advertencia_cdr" aria-label="Advertencia del CDR de emisión" />
+          </span>
           <p
             v-if="plazoLabel(row)"
             class="text-[11px] font-medium"
@@ -127,6 +138,8 @@
       :comprobante="comprobanteToNotaCredito"
     />
 
+    <RegularizarCpeModal v-model="regularizarModalOpen" :comprobante="comprobanteToRegularizar" />
+    <ComprobanteValidezModal v-model="validezModalOpen" :comprobante="comprobanteToValidez" />
     <ComprobanteCdrModal v-model="cdrModalOpen" :comprobante="comprobanteToCdr" />
 
     <ComprobanteAnularModal v-model="anularModalOpen" :comprobante="comprobanteToAnular" />
@@ -202,6 +215,8 @@ import {
   tieneActividadVigente,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
+import RegularizarCpeModal from '@/modules/ventas/comprobantes/components/RegularizarCpeModal.vue'
+import ComprobanteValidezModal from '@/modules/ventas/comprobantes/components/ComprobanteValidezModal.vue'
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
@@ -248,6 +263,7 @@ import {
   ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import AppHelpTip from '@/shared/components/ui/AppHelpTip.vue'
 import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
@@ -274,9 +290,10 @@ const filters = ref<ComprobanteListFilters>({
   limite: 10,
 })
 
-const comprobantesQuery = useComprobantesQuery(filters)
-const catalogosQuery = useComprobanteCatalogosPosQuery()
 const emitMutation = useEmitirComprobanteMutation()
+const comprobantesQuery = useComprobantesQuery(filters, emitMutation.isPending,
+  computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CONSULTAR_CDR)))
+const catalogosQuery = useComprobanteCatalogosPosQuery()
 const deleteMutation = useDeleteComprobanteMutation()
 
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
@@ -291,6 +308,10 @@ const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
 const notaCreditoModalOpen = ref(false)
 const comprobanteToNotaCredito = ref<ComprobanteListItem | null>(null)
 
+const regularizarModalOpen = ref(false)
+const comprobanteToRegularizar = ref<ComprobanteListItem | null>(null)
+const validezModalOpen = ref(false)
+const comprobanteToValidez = ref<ComprobanteListItem | null>(null)
 const cdrModalOpen = ref(false)
 const comprobanteToCdr = ref<ComprobanteListItem | null>(null)
 
@@ -339,7 +360,7 @@ const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 // ya resueltas. Aqui solo se muestra el estado, que llega por JOIN.
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 
-const isLoading = computed(() => comprobantesQuery.isFetching.value)
+const isLoading = computed(() => comprobantesQuery.isPending.value)
 const rows = computed(() => {
   const data = comprobantesQuery.data.value?.data ?? []
   return data.filter(
@@ -482,7 +503,7 @@ function esNotaVenta(row: ComprobanteListItem) {
 
 function plazoDe(row: ComprobanteListItem) {
   return evaluarPlazoEmision({
-    fecha: row.fecha,
+    fecha: row.fecha_emision_cpe ?? row.fecha,
     codigoTipo: row.codigo_tipo_comprobante,
     estadoSunat: row.nombre_estado_sunat,
   })
@@ -497,6 +518,7 @@ function plazoVencido(row: ComprobanteListItem) {
 }
 
 function puedeEmitir(row: ComprobanteListItem) {
+  if (row.estado_envio === 'EN_CURSO') return false
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
@@ -520,7 +542,7 @@ function puedePdf(row: ComprobanteListItem) {
 
 function puedeConsultarCdr(row: ComprobanteListItem) {
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
-  return ['01', '03'].includes(String(row.codigo_tipo_comprobante)) && row.nombre_estado_sunat === 'ACEPTADO'
+  return ['01', '03'].includes(String(row.codigo_tipo_comprobante))
 }
 
 function puedeNotaCredito(row: ComprobanteListItem) {
@@ -589,6 +611,20 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       icon: ICONS.fileText,
       disabled: busy,
       hidden: !(canCreate.value && puedeNotaCredito(row)),
+    },
+    {
+      key: 'regularizar',
+      label: 'Regularizar en serie nueva',
+      icon: ICONS.refreshCw,
+      disabled: busy || row.estado_envio === 'EN_CURSO',
+      hidden: !(canEmit.value && ['01', '03'].includes(String(row.codigo_tipo_comprobante)) && ['F001', 'B001'].includes(row.serie) && row.nombre_estado_sunat !== 'BAJA'),
+    },
+    {
+      key: 'validez',
+      label: 'Consultar validez SUNAT',
+      icon: ICONS.search,
+      disabled: busy,
+      hidden: !(canConsultarCdr.value && ['01', '03'].includes(String(row.codigo_tipo_comprobante))),
     },
     {
       key: 'cdr',
@@ -670,6 +706,14 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
       return
     case 'nota-credito':
       openNotaCreditoModal(row)
+      return
+    case 'regularizar':
+      comprobanteToRegularizar.value = row
+      regularizarModalOpen.value = true
+      return
+    case 'validez':
+      comprobanteToValidez.value = row
+      validezModalOpen.value = true
       return
     case 'cdr':
       openCdrModal(row)
