@@ -7,6 +7,7 @@ import {
   apiPost,
 } from '@/shared/api/apiClient'
 import type {
+  NotaFiscalCorreccion,
   Comprobante,
   ComprobanteValidez,
   ComprobantePago,
@@ -31,6 +32,12 @@ import type {
 import type { ComprobantePdfFormato } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 
 export const comprobantesService = {
+  notasFiscalesCorreccion(id: number) {
+    return apiGet<NotaFiscalCorreccion[]>(`/comprobantes/${id}/notas-fiscales`)
+  },
+  pdfNotaFiscalCorreccion(id: number, idNota: number) {
+    return apiGetBlob(`/comprobantes/${id}/notas-fiscales/${idNota}/pdf`)
+  },
   reintentarEnvio(id: number) {
     return apiPost<EmitirComprobanteResponse>(`/comprobantes/${id}/reintentar-envio`, {})
   },

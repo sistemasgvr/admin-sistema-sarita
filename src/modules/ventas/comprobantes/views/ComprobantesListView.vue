@@ -71,6 +71,10 @@
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
 
+      <template #cell-fecha_emision_cpe="{ row }">
+        <span>{{ esNotaVenta(row) ? '—' : (row.fecha_emision_cpe ?? row.fecha).slice(0, 10) }}</span>
+      </template>
+
       <template #cell-nombre_estado_sunat="{ row }">
         <div data-tutorial="comprobantes-estado" class="space-y-1">
           <span v-if="row.estado_envio === 'EN_CURSO'" class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
@@ -380,12 +384,12 @@ const rows = computed(() => {
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
     key: 'fechaDesde',
-    label: 'Desde',
+    label: 'Venta desde',
     type: 'date',
   },
   {
     key: 'fechaHasta',
-    label: 'Hasta',
+    label: 'Venta hasta',
     type: 'date',
   },
   {
@@ -445,7 +449,8 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
   { key: 'nombre_cliente', label: 'Cliente' },
-  { key: 'fecha', label: 'Fecha' },
+  { key: 'fecha_emision_cpe', label: 'Fecha del CPE' },
+  { key: 'fecha', label: 'Fecha de venta' },
   { key: 'total_importe', label: 'Total', align: 'right' },
   { key: 'nombre_estado_sunat', label: 'SUNAT', mobile: 'badge' },
 ]

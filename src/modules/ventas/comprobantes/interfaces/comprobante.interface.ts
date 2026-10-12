@@ -1,4 +1,15 @@
 import type { TributoVinculado } from '@/modules/tributos-sunat/interfaces/tributo.interface'
+export interface NotaFiscalCorreccion {
+  id: number
+  serie: string
+  numero: number
+  serie_original: string
+  numero_original: string
+  importe: string | number
+  estado: 'EN_CURSO' | 'POR_CONFIRMAR' | 'ACEPTADO' | 'RECHAZADO'
+  motivo: string
+  pdf_disponible: boolean
+}
 export interface ComprobanteListItem {
   id: number
   id_tipo_comprobante: number
