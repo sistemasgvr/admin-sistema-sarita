@@ -26,7 +26,7 @@
             <AppInput
               v-model="serie"
               label="Serie"
-              :placeholder="esFactura ? 'F001' : 'B001'"
+              :placeholder="esFactura ? 'F002' : 'B002'"
               :disabled="saving"
               required
             />

@@ -28,7 +28,7 @@
               :options="tipoComprobanteOptions"
               :disabled="catalogosQuery.isLoading.value"
             />
-            <AppInput v-model="serie" label="Serie" placeholder="B001 / F001" disabled />
+            <AppInput v-model="serie" label="Serie" placeholder="B002 / F002" disabled />
             <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
             <AppDatePicker v-model="fecha" label="Fecha" />
           </div>

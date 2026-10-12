@@ -8,6 +8,7 @@ import {
 } from '@/shared/api/apiClient'
 import type {
   Comprobante,
+  ComprobanteValidez,
   ComprobantePago,
   RegistrarCobroPayload,
   ComprobanteListFilters,
@@ -30,6 +31,15 @@ import type {
 import type { ComprobantePdfFormato } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 
 export const comprobantesService = {
+  sincronizarValidez(id: number) {
+    return apiPost<ComprobanteValidez & { estadoActualizado: boolean }>(`/comprobantes/${id}/sincronizar-validez`, {})
+  },
+  regularizarCpe(id: number) {
+    return apiPost<{ id: number; serie: string; numero: string; serie_anterior: string; numero_anterior: string }>(`/comprobantes/${id}/regularizar-cpe`, {})
+  },
+  consultarValidez(id: number) {
+    return apiGet<ComprobanteValidez>(`/comprobantes/${id}/validez`)
+  },
   obtenerXml(id: number) {
     return apiGetBlob(`/comprobantes/${id}/xml`)
   },

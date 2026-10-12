@@ -89,11 +89,15 @@ export function useEmitirComprobanteMutation() {
         toastWarning(
           `SUNAT respondió ${estado}: el comprobante no quedó aceptado. Si era una NC, se revirtieron sus efectos de stock.`,
         )
+      } else if (estado === 'PENDIENTE') {
+        toastWarning('Resultado del envío por confirmar. Consulta la validez antes de volver a emitir.')
       } else {
         toastSuccess(`Comprobante emitido: ${data.sunat.estado}`)
       }
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      void queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
+      void queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
       toastApiError(error, 'No se pudo emitir el comprobante')
     },
   })
