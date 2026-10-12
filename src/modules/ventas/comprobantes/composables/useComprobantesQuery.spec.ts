@@ -31,6 +31,20 @@ beforeEach(() => {
 afterEach(() => { scope?.stop(); vi.useRealTimers() })
 
 describe('reconciliación automática de emisiones', () => {
+  it('consulta ambos documentos aunque el primero tarde más de 15 segundos', async () => {
+    data.value.data.push({ id: 68, codigo_tipo_comprobante: '01', estado_envio: 'POR_CONFIRMAR' })
+    let resolve!: (value: never) => void
+    vi.mocked(comprobantesService.sincronizarValidez).mockImplementationOnce(() => new Promise(done => { resolve = done }))
+    vi.mocked(comprobantesService.sincronizarValidez).mockResolvedValue({ estadoActualizado: false } as never)
+    mount()
+    await refresh()
+    expect(comprobantesService.sincronizarValidez).toHaveBeenLastCalledWith(69)
+    vi.setSystemTime(Date.now() + 30000)
+    resolve({ estadoActualizado: false } as never)
+    await nextTick(); await nextTick()
+    await refresh()
+    expect(comprobantesService.sincronizarValidez).toHaveBeenLastCalledWith(68)
+  })
   it('refresca la lista al confirmar aceptación sin emitir nuevamente', async () => {
     vi.mocked(comprobantesService.sincronizarValidez).mockResolvedValue({ estadoActualizado: true } as never)
     mount()

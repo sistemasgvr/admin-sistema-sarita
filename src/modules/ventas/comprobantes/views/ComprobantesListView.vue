@@ -78,8 +78,8 @@
             En curso
           </span>
           <span v-else-if="row.estado_envio === 'POR_CONFIRMAR'" class="inline-flex items-center gap-1 rounded-full bg-amber-50 pl-2.5 pr-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-            Por confirmar
-            <AppHelpTip tone="warning" text="El proveedor no confirmó el resultado del envío. Consulta la validez antes de volver a emitir." aria-label="Detalle del envío por confirmar" />
+            Sin confirmación
+            <AppHelpTip tone="warning" text="El envío todavía no tiene una respuesta definitiva. El sistema verifica automáticamente SUNAT y el CDR del proveedor. Este estado no confirma un rechazo ni autoriza un nuevo envío." aria-label="Detalle del envío sin confirmación" />
           </span>
           <span v-else class="inline-flex items-center gap-1">
             <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
@@ -337,6 +337,7 @@ const clienteEditQuery = useClienteDetailQuery(idClienteParaEditar, clienteEditM
 const clienteParaEditar = computed(() => clienteEditQuery.data.value ?? null)
 
 const pdfBusyId = ref<number | null>(null)
+const verificandoId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canCrearGre = computed(() =>
@@ -518,7 +519,7 @@ function plazoVencido(row: ComprobanteListItem) {
 }
 
 function puedeEmitir(row: ComprobanteListItem) {
-  if (row.estado_envio === 'EN_CURSO') return false
+  if (row.estado_envio === 'EN_CURSO' || row.estado_envio === 'POR_CONFIRMAR') return false
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
@@ -574,7 +575,7 @@ function puedeAnular(row: ComprobanteListItem) {
 }
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
-  const busy = pdfBusyId.value !== null || emitMutation.isPending.value
+  const busy = pdfBusyId.value !== null || verificandoId.value !== null || emitMutation.isPending.value
 
   return [
     {
@@ -632,6 +633,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       icon: ICONS.refreshCw,
       disabled: busy,
       hidden: !(canConsultarCdr.value && puedeConsultarCdr(row)),
+    },
+    {
+      key: 'verificar-envio',
+      label: verificandoId.value === row.id ? 'Verificando envío…' : 'Verificar envío',
+      icon: ICONS.refreshCw,
+      disabled: busy,
+      hidden: !(canConsultarCdr.value && ['01','03'].includes(String(row.codigo_tipo_comprobante)) && Boolean(row.estado_envio)),
     },
     {
       key: 'anular',
@@ -718,6 +726,8 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
     case 'cdr':
       openCdrModal(row)
       return
+    case 'verificar-envio':
+      return verificarEnvio(row)
     case 'anular':
       openAnularModal(row)
       return
@@ -833,6 +843,18 @@ function openAnularModal(row: ComprobanteListItem) {
 function openCdrModal(row: ComprobanteListItem) {
   comprobanteToCdr.value = row
   cdrModalOpen.value = true
+}
+
+async function verificarEnvio(row: ComprobanteListItem) {
+  if (verificandoId.value !== null) return
+  verificandoId.value = row.id
+  try {
+    const resultado = await comprobantesService.verificarEnvio(row.id)
+    await comprobantesQuery.refetch()
+    if (resultado.estado === 'ACEPTADO') toastSuccess(resultado.mensaje)
+    else toastWarning(resultado.mensaje)
+  } catch (error) { toastApiError(error, 'No se pudo verificar el envío. Intenta nuevamente.') }
+  finally { verificandoId.value = null }
 }
 
 async function emitirComprobante(row: ComprobanteListItem) {

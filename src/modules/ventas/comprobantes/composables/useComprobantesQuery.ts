@@ -22,11 +22,11 @@ export function useComprobantesQuery(filters: Ref<ComprobanteListFilters>, emiti
   // Una consulta fallida o NO INFORMADO conserva el estado y nunca reenvía.
   watch(query.dataUpdatedAt, async () => {
     if (!activo || !sincronizar?.value || consultando) return
-    const row = query.data.value?.data.find(item =>
+    const row = query.data.value?.data.filter(item =>
       ['01', '03'].includes(String(item.codigo_tipo_comprobante)) &&
       ['EN_CURSO', 'POR_CONFIRMAR'].includes(item.estado_envio ?? '') &&
       Date.now() - (ultimasConsultas.get(item.id) ?? 0) >= 15000,
-    )
+    ).sort((a, b) => (ultimasConsultas.get(a.id) ?? 0) - (ultimasConsultas.get(b.id) ?? 0))[0]
     if (!row) return
     consultando = true
     ultimasConsultas.set(row.id, Date.now())
