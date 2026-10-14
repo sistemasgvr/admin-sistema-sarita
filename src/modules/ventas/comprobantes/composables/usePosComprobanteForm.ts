@@ -92,7 +92,7 @@ export function usePosComprobanteForm(options?: {
   })
 
   const idTipoComprobante = ref<number | ''>('')
-  const serie = ref('B001')
+  const serie = ref('B002')
   const numero = ref('')
   const fecha = ref(hoyIsoLima())
   const idCliente = ref<number | ''>('')

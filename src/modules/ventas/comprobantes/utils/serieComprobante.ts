@@ -31,7 +31,7 @@ export const REGLAS_SERIE_COMPROBANTE: Record<string, ReglaSerieComprobante> = {
   '01': {
     codigo: '01',
     nombre: 'FACTURA',
-    serieDefault: 'F001',
+    serieDefault: 'F002',
     prefijosPermitidos: ['F'],
     mensajePrefijo: 'Para FACTURA la serie debe empezar con F (ej. F001)',
     requiereRuc: true,
@@ -39,7 +39,7 @@ export const REGLAS_SERIE_COMPROBANTE: Record<string, ReglaSerieComprobante> = {
   '03': {
     codigo: '03',
     nombre: 'BOLETA',
-    serieDefault: 'B001',
+    serieDefault: 'B002',
     prefijosPermitidos: ['B'],
     mensajePrefijo: 'Para BOLETA la serie debe empezar con B (ej. B001)',
     requiereRuc: false,
@@ -105,11 +105,11 @@ export function seriePorDefectoDesdeCodigo(
     origen.startsWith('B') ? 'B' : origen.startsWith('F') ? 'F' : actual.startsWith('B') ? 'B' : 'F'
 
   if (codigo === '01') {
-    return `F${correlativoSerieDesde(actual || '001', 3)}`
+    return `F${/^[FB]\d{3}$/.test(actual) && actual.slice(1) !== '001' ? actual.slice(1) : '002'}`
   }
 
   if (codigo === '03') {
-    return `B${correlativoSerieDesde(actual || '001', 3)}`
+    return `B${/^[FB]\d{3}$/.test(actual) && actual.slice(1) !== '001' ? actual.slice(1) : '002'}`
   }
 
   if (codigo === '07') {
@@ -127,12 +127,12 @@ export function seriePorDefectoDesdeCodigo(
   }
 
   if (esCodigoVentaSinDocumento(codigo)) {
-    const digits = actual.replace(/^(VSD|NV)/i, '') || '01'
+    const digits = /^(VSD|NV)/i.test(actual) ? actual.replace(/^(VSD|NV)/i, '') || '01' : '01'
     return `VSD${correlativoSerieDesde(digits, 2)}`
   }
 
   const regla = REGLAS_SERIE_COMPROBANTE[codigo]
-  return regla?.serieDefault ?? (actual || 'B001')
+  return regla?.serieDefault ?? (actual || 'B002')
 }
 
 export function reglaSeriePorCodigo(codigoTipo: string): ReglaSerieComprobante | null {

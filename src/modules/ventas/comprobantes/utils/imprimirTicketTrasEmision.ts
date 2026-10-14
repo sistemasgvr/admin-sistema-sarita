@@ -19,7 +19,7 @@ export async function cargarEImprimirTicketEnVentana(win: Window, id: number) {
 
 export function debeImprimirTrasEmision(estadoSunat: string) {
   const estado = estadoSunat.toUpperCase()
-  return estado === 'ACEPTADO' || estado === 'PENDIENTE'
+  return estado === 'ACEPTADO'
 }
 
 /**

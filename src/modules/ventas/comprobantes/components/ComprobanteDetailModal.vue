@@ -35,8 +35,12 @@
           </p>
         </div>
         <div>
-          <p class="text-xs text-gray-500 dark:text-gray-400">Fecha</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Fecha de venta</p>
           <p class="text-gray-700 dark:text-gray-300">{{ comprobante.fecha }}</p>
+        </div>
+        <div v-if="['01','03','07','08'].includes(String(comprobante.codigo_tipo_comprobante))">
+          <p class="text-xs text-gray-500 dark:text-gray-400">Fecha del CPE</p>
+          <p class="text-gray-700 dark:text-gray-300">{{ comprobante.fecha_emision_cpe ?? comprobante.fecha }}</p>
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Tipo</p>
@@ -73,6 +77,18 @@
           </p>
         </div>
       </div>
+
+      <section v-if="notasFiscalesQuery.data.value?.length" class="rounded-xl border border-amber-200 p-3 dark:border-amber-500/30">
+        <h3 class="text-sm font-semibold">Notas de crédito por corrección de numeración</h3>
+        <p class="mt-1 text-xs text-gray-500">La venta se conserva. Cada nota corresponde al comprobante original indicado.</p>
+        <div v-for="nota in notasFiscalesQuery.data.value" :key="nota.id" class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+          <span class="font-medium">{{ nota.serie }}-{{ nota.numero }}</span>
+          <span class="text-gray-500">Original: {{ nota.serie_original }}-{{ Number(nota.numero_original) }}</span>
+          <span>{{ formatMoney(Number(nota.importe)) }}</span>
+          <ListaOpcionBadge :value="nota.estado === 'POR_CONFIRMAR' ? 'Sin confirmación' : nota.estado === 'EN_CURSO' ? 'En curso' : nota.estado" raw />
+          <button v-if="nota.pdf_disponible" class="text-brand-600 underline" :disabled="notaPdfBusy" @click="descargarNotaFiscal(nota)">Descargar PDF</button>
+        </div>
+      </section>
 
       <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
         <table class="min-w-full text-sm">
@@ -449,6 +465,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useQuery } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useCancelarActividadMutation } from '@/modules/operativa/actividades/composables/useActividadMutations'
@@ -460,6 +477,7 @@ import {
 import { useComprobanteQuery } from '@/modules/ventas/comprobantes/composables/useComprobantesQuery'
 import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
 import type {
+  NotaFiscalCorreccion,
   ComprobanteBalonPrestamo,
   ComprobanteDetalle,
   ComprobanteGarantia,
@@ -515,6 +533,23 @@ const open = computed({
 const comprobanteIdRef = ref<number | null>(null)
 const comprobanteQuery = useComprobanteQuery(comprobanteIdRef)
 const pdfBusy = ref(false)
+const notaPdfBusy = ref(false)
+const notasFiscalesQuery = useQuery({
+  queryKey: computed(() => ['comprobantes', comprobanteIdRef.value, 'notas-fiscales']),
+  queryFn: () => comprobantesService.notasFiscalesCorreccion(comprobanteIdRef.value!),
+  enabled: computed(() => comprobanteIdRef.value != null && open.value),
+  refetchInterval: 5000,
+})
+async function descargarNotaFiscal(nota: NotaFiscalCorreccion) {
+  const id = comprobanteIdRef.value
+  if (!id || notaPdfBusy.value) return
+  notaPdfBusy.value = true
+  try {
+    const blob = await comprobantesService.pdfNotaFiscalCorreccion(id, Number(nota.id))
+    downloadBlob(blob, `${nota.serie}-${nota.numero}.pdf`)
+  } catch (error) { toastApiError(error) }
+  finally { notaPdfBusy.value = false }
+}
 
 watch(
   () => props.comprobanteId,

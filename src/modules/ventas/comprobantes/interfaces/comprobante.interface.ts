@@ -1,4 +1,15 @@
 import type { TributoVinculado } from '@/modules/tributos-sunat/interfaces/tributo.interface'
+export interface NotaFiscalCorreccion {
+  id: number
+  serie: string
+  numero: number
+  serie_original: string
+  numero_original: string
+  importe: string | number
+  estado: 'EN_CURSO' | 'POR_CONFIRMAR' | 'ACEPTADO' | 'RECHAZADO'
+  motivo: string
+  pdf_disponible: boolean
+}
 export interface ComprobanteListItem {
   id: number
   id_tipo_comprobante: number
@@ -14,6 +25,11 @@ export interface ComprobanteListItem {
   id_estado?: number | null
   nombre_estado?: string | null
   id_estado_sunat?: number | null
+  fecha_emision_cpe?: string | null
+  estado_envio?: 'EN_CURSO' | 'POR_CONFIRMAR' | 'ERROR_ENVIO'
+  reintento_permitido?: boolean
+  estado_cdr_registrado?: string
+  advertencia_cdr?: string
   nombre_estado_sunat?: string | null
   id_comprobante_origen?: number | null
   serie_comprobante_origen?: string | null
@@ -621,4 +637,14 @@ export interface PosLineItem {
   idTipoMantenimiento?: number
   fechaIngresoMantenimiento?: string
   descripcionMantenimiento?: string
+}
+
+export interface ComprobanteValidez {
+  fuente: string
+  soloLectura: boolean
+  consultadoEn: string
+  consulta: { numRuc: string; codComp: string; numeroSerie: string; numero: number; fechaEmision: string; monto: number }
+  codigo: string
+  estado: string
+  observaciones: string[]
 }

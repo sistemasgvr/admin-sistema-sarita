@@ -71,9 +71,28 @@
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
 
+      <template #cell-fecha_emision_cpe="{ row }">
+        <span>{{ esNotaVenta(row) ? '—' : (row.fecha_emision_cpe ?? row.fecha).slice(0, 10) }}</span>
+      </template>
+
       <template #cell-nombre_estado_sunat="{ row }">
         <div data-tutorial="comprobantes-estado" class="space-y-1">
-          <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
+          <span v-if="row.estado_envio === 'EN_CURSO'" class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+            <AppIcon :name="ICONS.loader" :size="12" class="animate-spin" />
+            En curso
+          </span>
+          <span v-else-if="row.estado_envio === 'POR_CONFIRMAR'" class="inline-flex items-center gap-1 rounded-full bg-amber-50 pl-2.5 pr-1 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+            Sin confirmación
+            <AppHelpTip tone="warning" text="El envío todavía no tiene una respuesta definitiva. El sistema verifica automáticamente SUNAT y el CDR del proveedor. Este estado no confirma un rechazo ni autoriza un nuevo envío." aria-label="Detalle del envío sin confirmación" />
+          </span>
+          <span v-else-if="row.estado_envio === 'ERROR_ENVIO'" class="inline-flex items-center gap-1 rounded-full bg-red-50 pl-2.5 pr-1 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-300">
+            Error de envío
+            <AppHelpTip tone="warning" text="El proveedor devolvió un error al enviar. Verificar envío comprueba SUNAT y el CDR; habilita Reintentar envío cuando ambas consultas permiten revisar la misma referencia." aria-label="Detalle del error de envío" />
+          </span>
+          <span v-else class="inline-flex items-center gap-1">
+            <ListaOpcionBadge :value="String(row.nombre_estado_sunat ?? 'PENDIENTE')" />
+            <AppHelpTip v-if="row.advertencia_cdr" tone="warning" :text="row.advertencia_cdr" aria-label="Advertencia del CDR de emisión" />
+          </span>
           <p
             v-if="plazoLabel(row)"
             class="text-[11px] font-medium"
@@ -127,6 +146,8 @@
       :comprobante="comprobanteToNotaCredito"
     />
 
+    <RegularizarCpeModal v-model="regularizarModalOpen" :comprobante="comprobanteToRegularizar" />
+    <ComprobanteValidezModal v-model="validezModalOpen" :comprobante="comprobanteToValidez" />
     <ComprobanteCdrModal v-model="cdrModalOpen" :comprobante="comprobanteToCdr" />
 
     <ComprobanteAnularModal v-model="anularModalOpen" :comprobante="comprobanteToAnular" />
@@ -202,6 +223,8 @@ import {
   tieneActividadVigente,
 } from '@/modules/operativa/actividades/utils/actividadTipo'
 import ComprobanteAnularModal from '@/modules/ventas/comprobantes/components/ComprobanteAnularModal.vue'
+import RegularizarCpeModal from '@/modules/ventas/comprobantes/components/RegularizarCpeModal.vue'
+import ComprobanteValidezModal from '@/modules/ventas/comprobantes/components/ComprobanteValidezModal.vue'
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
@@ -248,6 +271,7 @@ import {
   ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
+import AppHelpTip from '@/shared/components/ui/AppHelpTip.vue'
 import { useOpenIdFromRouteQuery } from '@/shared/composables/useOpenIdFromRouteQuery'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
@@ -274,9 +298,10 @@ const filters = ref<ComprobanteListFilters>({
   limite: 10,
 })
 
-const comprobantesQuery = useComprobantesQuery(filters)
-const catalogosQuery = useComprobanteCatalogosPosQuery()
 const emitMutation = useEmitirComprobanteMutation()
+const comprobantesQuery = useComprobantesQuery(filters, emitMutation.isPending,
+  computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CONSULTAR_CDR)))
+const catalogosQuery = useComprobanteCatalogosPosQuery()
 const deleteMutation = useDeleteComprobanteMutation()
 
 const clientesFilters = ref({ pagina: 1, limite: 200, soloActivos: 1 as number })
@@ -291,6 +316,10 @@ const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
 const notaCreditoModalOpen = ref(false)
 const comprobanteToNotaCredito = ref<ComprobanteListItem | null>(null)
 
+const regularizarModalOpen = ref(false)
+const comprobanteToRegularizar = ref<ComprobanteListItem | null>(null)
+const validezModalOpen = ref(false)
+const comprobanteToValidez = ref<ComprobanteListItem | null>(null)
 const cdrModalOpen = ref(false)
 const comprobanteToCdr = ref<ComprobanteListItem | null>(null)
 
@@ -316,6 +345,7 @@ const clienteEditQuery = useClienteDetailQuery(idClienteParaEditar, clienteEditM
 const clienteParaEditar = computed(() => clienteEditQuery.data.value ?? null)
 
 const pdfBusyId = ref<number | null>(null)
+const verificandoId = ref<number | null>(null)
 
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_CREAR))
 const canCrearGre = computed(() =>
@@ -339,7 +369,7 @@ const canAnular = computed(() => authStore.hasPermission(PermisoBanderas.COMPROB
 // ya resueltas. Aqui solo se muestra el estado, que llega por JOIN.
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.COMPROBANTES_ELIMINAR))
 
-const isLoading = computed(() => comprobantesQuery.isFetching.value)
+const isLoading = computed(() => comprobantesQuery.isPending.value)
 const rows = computed(() => {
   const data = comprobantesQuery.data.value?.data ?? []
   return data.filter(
@@ -354,12 +384,12 @@ const rows = computed(() => {
 const filterFields = computed<DynamicFilterFieldDef[]>(() => [
   {
     key: 'fechaDesde',
-    label: 'Desde',
+    label: 'Venta desde',
     type: 'date',
   },
   {
     key: 'fechaHasta',
-    label: 'Hasta',
+    label: 'Venta hasta',
     type: 'date',
   },
   {
@@ -419,7 +449,8 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
 const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
   { key: 'nombre_cliente', label: 'Cliente' },
-  { key: 'fecha', label: 'Fecha' },
+  { key: 'fecha_emision_cpe', label: 'Fecha del CPE' },
+  { key: 'fecha', label: 'Fecha de venta' },
   { key: 'total_importe', label: 'Total', align: 'right' },
   { key: 'nombre_estado_sunat', label: 'SUNAT', mobile: 'badge' },
 ]
@@ -482,7 +513,7 @@ function esNotaVenta(row: ComprobanteListItem) {
 
 function plazoDe(row: ComprobanteListItem) {
   return evaluarPlazoEmision({
-    fecha: row.fecha,
+    fecha: row.fecha_emision_cpe ?? row.fecha,
     codigoTipo: row.codigo_tipo_comprobante,
     estadoSunat: row.nombre_estado_sunat,
   })
@@ -497,15 +528,18 @@ function plazoVencido(row: ComprobanteListItem) {
 }
 
 function puedeEmitir(row: ComprobanteListItem) {
+  if (row.estado_envio) return false
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
 function puedeEditar(row: ComprobanteListItem) {
+  if (row.estado_envio) return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
 function puedeEliminar(row: ComprobanteListItem) {
+  if (row.estado_envio) return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
@@ -520,7 +554,7 @@ function puedePdf(row: ComprobanteListItem) {
 
 function puedeConsultarCdr(row: ComprobanteListItem) {
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
-  return ['01', '03'].includes(String(row.codigo_tipo_comprobante)) && row.nombre_estado_sunat === 'ACEPTADO'
+  return ['01', '03'].includes(String(row.codigo_tipo_comprobante))
 }
 
 function puedeNotaCredito(row: ComprobanteListItem) {
@@ -552,7 +586,7 @@ function puedeAnular(row: ComprobanteListItem) {
 }
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
-  const busy = pdfBusyId.value !== null || emitMutation.isPending.value
+  const busy = pdfBusyId.value !== null || verificandoId.value !== null || emitMutation.isPending.value
 
   return [
     {
@@ -591,11 +625,39 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !(canCreate.value && puedeNotaCredito(row)),
     },
     {
+      key: 'regularizar',
+      label: 'Regularizar en serie nueva',
+      icon: ICONS.refreshCw,
+      disabled: busy || row.estado_envio === 'EN_CURSO',
+      hidden: !(canEmit.value && ['01', '03'].includes(String(row.codigo_tipo_comprobante)) && ['F001', 'B001'].includes(row.serie) && row.nombre_estado_sunat !== 'BAJA'),
+    },
+    {
+      key: 'validez',
+      label: 'Consultar validez SUNAT',
+      icon: ICONS.search,
+      disabled: busy,
+      hidden: !(canConsultarCdr.value && ['01', '03'].includes(String(row.codigo_tipo_comprobante))),
+    },
+    {
       key: 'cdr',
       label: 'Consultar CDR',
       icon: ICONS.refreshCw,
       disabled: busy,
       hidden: !(canConsultarCdr.value && puedeConsultarCdr(row)),
+    },
+    {
+      key: 'verificar-envio',
+      label: verificandoId.value === row.id ? 'Verificando envío…' : 'Verificar envío',
+      icon: ICONS.refreshCw,
+      disabled: busy,
+      hidden: !(canConsultarCdr.value && ['01','03'].includes(String(row.codigo_tipo_comprobante)) && Boolean(row.estado_envio)),
+    },
+    {
+      key: 'reintentar-envio',
+      label: row.reintento_permitido ? 'Reintentar envío' : 'Reintentar envío (verifica primero)',
+      icon: ICONS.refreshCw,
+      disabled: busy || !row.reintento_permitido,
+      hidden: !(canEmit.value && row.estado_envio==='ERROR_ENVIO'),
     },
     {
       key: 'anular',
@@ -671,9 +733,21 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
     case 'nota-credito':
       openNotaCreditoModal(row)
       return
+    case 'regularizar':
+      comprobanteToRegularizar.value = row
+      regularizarModalOpen.value = true
+      return
+    case 'validez':
+      comprobanteToValidez.value = row
+      validezModalOpen.value = true
+      return
     case 'cdr':
       openCdrModal(row)
       return
+    case 'verificar-envio':
+      return verificarEnvio(row)
+    case 'reintentar-envio':
+      return emitirComprobante(row,true)
     case 'anular':
       openAnularModal(row)
       return
@@ -791,7 +865,19 @@ function openCdrModal(row: ComprobanteListItem) {
   cdrModalOpen.value = true
 }
 
-async function emitirComprobante(row: ComprobanteListItem) {
+async function verificarEnvio(row: ComprobanteListItem) {
+  if (verificandoId.value !== null) return
+  verificandoId.value = row.id
+  try {
+    const resultado = await comprobantesService.verificarEnvio(row.id)
+    await comprobantesQuery.refetch()
+    if (resultado.estado === 'ACEPTADO') toastSuccess(resultado.mensaje)
+    else toastWarning(resultado.mensaje)
+  } catch (error) { toastApiError(error, 'No se pudo verificar el envío. Intenta nuevamente.') }
+  finally { verificandoId.value = null }
+}
+
+async function emitirComprobante(row: ComprobanteListItem, reintento = false) {
   const userId = authStore.user?.id
   if (!userId) return
 
@@ -807,15 +893,15 @@ async function emitirComprobante(row: ComprobanteListItem) {
     return
   }
 
-  await ejecutarEmitir(row, userId)
+  await ejecutarEmitir(row, userId, reintento)
 }
 
-async function ejecutarEmitir(row: ComprobanteListItem, userId: number) {
+async function ejecutarEmitir(row: ComprobanteListItem, userId: number, reintento = false) {
   try {
     const resultado = await emitirConImpresionTicket({
       comprobanteId: row.id,
       emitir: () =>
-        emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId }),
+        emitMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId, reintento }),
     })
 
     if (resultado === 'sin_ventana') {

@@ -7,7 +7,9 @@ import {
   apiPost,
 } from '@/shared/api/apiClient'
 import type {
+  NotaFiscalCorreccion,
   Comprobante,
+  ComprobanteValidez,
   ComprobantePago,
   RegistrarCobroPayload,
   ComprobanteListFilters,
@@ -30,6 +32,27 @@ import type {
 import type { ComprobantePdfFormato } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 
 export const comprobantesService = {
+  notasFiscalesCorreccion(id: number) {
+    return apiGet<NotaFiscalCorreccion[]>(`/comprobantes/${id}/notas-fiscales`)
+  },
+  pdfNotaFiscalCorreccion(id: number, idNota: number) {
+    return apiGetBlob(`/comprobantes/${id}/notas-fiscales/${idNota}/pdf`)
+  },
+  reintentarEnvio(id: number) {
+    return apiPost<EmitirComprobanteResponse>(`/comprobantes/${id}/reintentar-envio`, {})
+  },
+  verificarEnvio(id: number) {
+    return apiPost<{ estado: string; mensaje: string; verificadoEn: string }>(`/comprobantes/${id}/verificar-envio`, {})
+  },
+  sincronizarValidez(id: number) {
+    return apiPost<ComprobanteValidez & { estadoActualizado: boolean }>(`/comprobantes/${id}/sincronizar-validez`, {})
+  },
+  regularizarCpe(id: number) {
+    return apiPost<{ id: number; serie: string; numero: string; serie_anterior: string; numero_anterior: string }>(`/comprobantes/${id}/regularizar-cpe`, {})
+  },
+  consultarValidez(id: number) {
+    return apiGet<ComprobanteValidez>(`/comprobantes/${id}/validez`)
+  },
   obtenerXml(id: number) {
     return apiGetBlob(`/comprobantes/${id}/xml`)
   },
