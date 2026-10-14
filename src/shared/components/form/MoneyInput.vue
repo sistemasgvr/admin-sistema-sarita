@@ -1,5 +1,5 @@
 <template>
-  <div @paste="bloquearPegadoMontoInvalido" @focusout="emit('blur')">
+  <div @paste="bloquearPegadoMontoInvalido($event, maxDecimals)" @focusout="emit('blur')">
     <input
       :id="id"
       v-model="model"
@@ -34,9 +34,10 @@ const props = withDefaults(
     disabled?: boolean
     readonly?: boolean
     required?: boolean
+    maxDecimals?: number
     state?: FormControlState
   }>(),
-  { state: 'default', placeholder: '0.00' },
+  { state: 'default', placeholder: '0.00', maxDecimals: 2 },
 )
 
 const emit = defineEmits<{ blur: []; focus: [] }>()
@@ -57,6 +58,6 @@ function onFocus(event: FocusEvent) {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  bloquearTeclasMontoInvalidas(event)
+  bloquearTeclasMontoInvalidas(event, props.maxDecimals)
 }
 </script>

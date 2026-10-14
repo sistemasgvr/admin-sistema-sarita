@@ -234,7 +234,13 @@
                 </td>
                 <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ det.almacen ?? '—' }}</td>
                 <td class="px-3 py-2 text-right tabular-nums">{{ det.cantidad }}</td>
-                <td class="px-3 py-2 text-right tabular-nums">{{ det.precio_unitario != null ? formatMoney(det.precio_unitario) : '—' }}</td>
+                <td class="px-3 py-2 text-right tabular-nums">
+                  {{
+                    det.precio_unitario != null
+                      ? formatPrecioUnitario(det.precio_unitario)
+                      : '—'
+                  }}
+                </td>
                 <td class="px-3 py-2 text-right tabular-nums font-medium">{{ formatMoney(det.importe) }}</td>
               </tr>
             </tbody>
@@ -260,6 +266,7 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { AppBadge, AppModal } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
+import { formatPrecioUnitario } from '@/shared/utils/currency'
 
 const props = defineProps<{
   compraId: number | null

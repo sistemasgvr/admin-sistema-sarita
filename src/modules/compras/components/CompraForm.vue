@@ -398,7 +398,7 @@
                 class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
               >
                 <div class="overflow-x-auto">
-                  <table class="min-w-full text-sm">
+                  <table class="compra-detalle-table w-full min-w-[760px] table-fixed text-sm">
                     <thead class="bg-gray-50 dark:bg-white/5">
                       <tr>
                         <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
@@ -413,10 +413,10 @@
                         <th class="w-36 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                           Ingresa
                         </th>
-                        <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
-                          P. unit. (IGV)
+                        <th class="w-56 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                          Monto (IGV)
                         </th>
-                        <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                        <th class="w-48 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                           Importe
                         </th>
                         <th class="w-12 px-2 py-2.5" />
@@ -467,13 +467,44 @@
                           />
                         </td>
                         <td class="px-3 py-2.5">
-                          <MoneyInput
-                            v-model="precioNuevoInputs[lin.key]"
-                            placeholder="0.00"
-                            :disabled="saving"
-                            :state="precioNuevoError(lin.key) ? 'error' : 'default'"
-                            @blur="onBlurPrecioNuevo(lin.key)"
-                          />
+                          <div class="compra-precio flex items-center gap-1">
+                            <div class="min-w-0 flex-1">
+                              <p class="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                {{ etiquetaMonto(claveModoNueva(lin.key)) }}
+                              </p>
+                              <MoneyInput
+                                v-model="precioNuevoInputs[lin.key]"
+                              :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
+                                placeholder="0.00"
+                                :disabled="saving"
+                                :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                                @blur="onBlurPrecioNuevo(lin.key)"
+                              />
+                              <p
+                                v-if="precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))"
+                                class="mt-1 text-[11px] text-gray-500 dark:text-gray-400"
+                              >
+                                {{
+                                  precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))
+                                }}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              :title="
+                                esModoImporte(claveModoNueva(lin.key))
+                                  ? 'Usar precio unitario'
+                                  : 'Usar importe total de la línea'
+                              "
+                              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                              :disabled="saving"
+                              @click="
+                                alternarModoPrecio(claveModoNueva(lin.key), () => Number(lin.cantidad))
+                              "
+                            >
+                              <AppIcon :name="ICONS.arrowLeftRight" :size="14" />
+                            </button>
+                          </div>
                         </td>
                         <td
                           class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
@@ -517,19 +548,19 @@
               class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
             >
               <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="compra-detalle-table w-full min-w-[760px] table-fixed text-sm">
                   <thead class="bg-gray-50 dark:bg-white/5">
                     <tr>
                       <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
                         Producto
                       </th>
-                      <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         Cant.
                       </th>
-                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
-                        P. unit. (IGV)
+                      <th class="w-56 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                        Monto (IGV)
                       </th>
-                      <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-48 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         Importe
                       </th>
                       <th class="w-12 px-2 py-2.5" />
@@ -587,13 +618,44 @@
                         />
                       </td>
                       <td class="px-3 py-2.5">
-                        <MoneyInput
-                          v-model="precioNuevoInputs[lin.key]"
-                          placeholder="0.00"
-                          :disabled="saving"
-                          :state="precioNuevoError(lin.key) ? 'error' : 'default'"
-                          @blur="onBlurPrecioNuevo(lin.key)"
-                        />
+                        <div class="compra-precio flex items-center gap-1">
+                          <div class="min-w-0 flex-1">
+                            <p class="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                              {{ etiquetaMonto(claveModoNueva(lin.key)) }}
+                            </p>
+                            <MoneyInput
+                              v-model="precioNuevoInputs[lin.key]"
+                              :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
+                              placeholder="0.00"
+                              :disabled="saving"
+                              :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                              @blur="onBlurPrecioNuevo(lin.key)"
+                            />
+                            <p
+                              v-if="precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))"
+                              class="mt-1 text-[11px] text-gray-500 dark:text-gray-400"
+                            >
+                              {{
+                                precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))
+                              }}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            :title="
+                              esModoImporte(claveModoNueva(lin.key))
+                                ? 'Usar precio unitario'
+                                : 'Usar importe total de la línea'
+                            "
+                            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                            :disabled="saving"
+                            @click="
+                              alternarModoPrecio(claveModoNueva(lin.key), () => Number(lin.cantidad))
+                            "
+                          >
+                            <AppIcon :name="ICONS.arrowLeftRight" :size="14" />
+                          </button>
+                        </div>
                       </td>
                       <td
                         class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
@@ -619,7 +681,7 @@
 
             <div
               v-if="lineas.length"
-              class="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
+              class="compra-totales mt-3 grid grid-cols-1 gap-3 rounded-xl sm:grid-cols-3 border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
             >
               <div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">Sub total</p>
@@ -742,7 +804,7 @@
 
             <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
               <div class="overflow-x-auto">
-                <table class="min-w-full text-sm">
+                <table class="compra-detalle-table w-full min-w-[1040px] table-fixed text-sm">
                   <thead class="bg-gray-50 dark:bg-white/5">
                     <tr>
                       <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
@@ -751,13 +813,13 @@
                       <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
                         Almacén
                       </th>
-                      <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         Cant.
                       </th>
-                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
-                        P. unit. (IGV)
+                      <th class="w-56 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                        Monto (IGV)
                       </th>
-                      <th class="w-28 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-48 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
                         Importe
                       </th>
                       <th v-if="puedeModificar" class="w-20 px-2 py-2.5" />
@@ -811,28 +873,62 @@
                       </td>
                       <td class="px-3 py-2.5">
                         <template v-if="puedeModificar && lineasDraft[det.id]">
-                          <MoneyInput
-                            v-model="lineasDraft[det.id].precio"
-                            placeholder="0.00"
-                            :disabled="saving || lineaGuardando === det.id"
-                            :state="precioEditError(det.id) ? 'error' : 'default'"
-                            @blur="onBlurPrecioEdit(det.id)"
-                          />
+                          <div class="compra-precio flex items-center gap-1">
+                            <div class="min-w-0 flex-1">
+                              <p class="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                {{ etiquetaMonto(claveModoEdit(det.id)) }}
+                              </p>
+                              <MoneyInput
+                                v-model="lineasDraft[det.id].precio"
+                                :max-decimals="decimalesPrecio(claveModoEdit(det.id))"
+                                placeholder="0.00"
+                                :disabled="saving || lineaGuardando === det.id"
+                                :state="precioEditError(det.id) ? 'error' : 'default'"
+                                @blur="onBlurPrecioEdit(det.id)"
+                              />
+                              <p
+                                v-if="precioUnitarioDerivadoTexto(claveModoEdit(det.id), Number(lineasDraft[det.id]?.cantidad ?? det.cantidad))"
+                                class="mt-1 text-[11px] text-gray-500 dark:text-gray-400"
+                              >
+                                {{
+                                  precioUnitarioDerivadoTexto(
+                                    claveModoEdit(det.id),
+                                    Number(lineasDraft[det.id]?.cantidad ?? det.cantidad),
+                                  )
+                                }}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              :title="
+                                esModoImporte(claveModoEdit(det.id))
+                                  ? 'Usar precio unitario'
+                                  : 'Usar importe total de la línea'
+                              "
+                              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                              :disabled="saving || lineaGuardando === det.id"
+                              @click="
+                                alternarModoPrecio(claveModoEdit(det.id), () =>
+                                  Number(lineasDraft[det.id]?.cantidad ?? det.cantidad),
+                                )
+                              "
+                            >
+                              <AppIcon :name="ICONS.arrowLeftRight" :size="14" />
+                            </button>
+                          </div>
                         </template>
                         <span v-else class="tabular-nums">
-                          {{ det.precio_unitario != null ? formatMoney(det.precio_unitario) : '—' }}
+                          {{
+                            det.precio_unitario != null
+                              ? formatPrecioUnitario(det.precio_unitario, codigoMoneda)
+                              : '—'
+                          }}
                         </span>
                       </td>
                       <td
                         class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
                       >
-                        {{
-                          formatMoney(
-                            (parsePrecioLinea(lineasDraft[det.id]?.precio) ??
-                              (Number(det.precio_unitario) || 0)) *
-                              Number(lineasDraft[det.id]?.cantidad ?? det.cantidad),
-                          )
-                        }}
+                        {{ formatMoney(importeLineaExistiente(det)) }}
                       </td>
                       <td v-if="puedeModificar" class="px-2 py-2.5 text-center">
                         <div class="flex flex-col items-center gap-1">
@@ -990,9 +1086,12 @@ import { formatListDate } from '@/shared/utils/date'
 import {
   esMontoMonedaValido,
   esNumeroMonedaValido,
+  formatPrecioUnitario,
   mensajeErrorMontoMoneda,
   parseMoneyInput,
+  precioUnitarioDesdeImporte,
   roundMoney,
+  roundPrecioUnitario,
 } from '@/shared/utils/currency'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
@@ -1166,12 +1265,96 @@ const lineaGuardando = ref<number | null>(null)
 const lineasDraft = reactive<Record<number, { cantidad: number; precio: string }>>({})
 const precioNuevoInputs = reactive<Record<string, string>>({})
 
-const precioLineaOpts = { min: 0, allowZero: true } as const
+/**
+ * Cómo se captura el monto de cada línea.
+ *
+ * - UNITARIO: se escribe el precio unitario (lo de siempre).
+ * - IMPORTE: se escribe el importe total de la línea tal como figura en la
+ *   factura y el P. unitario se deriva (importe / cantidad) con 6 decimales,
+ *   que es lo que admite `com_comprobante_compra_detalle.precio_unitario`.
+ *
+ * El monto capturado vive siempre en `precioNuevoInputs` / `lineasDraft.precio`:
+ * lo que cambia es la etiqueta y cómo se interpreta. Así el campo vacío por
+ * defecto mantiene el comportamiento actual.
+ */
+type ModoPrecioLinea = 'UNITARIO' | 'IMPORTE'
+const modoPrecioLinea = reactive<Record<string, ModoPrecioLinea>>({})
+
+/** Clave de modo compartida por líneas nuevas (`lin.key`) y existentes (`edit-<id>`). */
+function claveModoNueva(key: string) {
+  return key
+}
+function claveModoEdit(id: number) {
+  return `edit-${id}`
+}
+
+function modoPrecioDe(clave: string): ModoPrecioLinea {
+  return modoPrecioLinea[clave] ?? 'UNITARIO'
+}
+
+function esModoImporte(clave: string): boolean {
+  return modoPrecioDe(clave) === 'IMPORTE'
+}
+
+/**
+ * Alterna UNITARIO <-> IMPORTE conservando el monto: al pasar a IMPORTE se
+ * multiplica el P. unitario por la cantidad, y al volver se divide el importe.
+ * Si no hay monto capturado se cambia solo la etiqueta.
+ */
+function alternarModoPrecio(clave: string, cantidad: () => number) {
+  const actual = modoPrecioDe(clave)
+  const destino: ModoPrecioLinea = actual === 'UNITARIO' ? 'IMPORTE' : 'UNITARIO'
+
+  modoPrecioLinea[clave] = destino
+  if (actual === 'UNITARIO') {
+    const unitario = parsePrecioLinea(getPrecioInput(clave))
+    if (unitario != null && unitario > 0) setPrecioInput(clave, unitario * cantidad())
+  } else {
+    const importe = parsePrecioLinea(getPrecioInput(clave))
+    const derivado = precioUnitarioDesdeImporte(importe, cantidad())
+    if (derivado != null && derivado > 0) setPrecioInput(clave, derivado)
+  }
+
+  modoPrecioLinea[clave] = destino
+}
+
+/** Lectura/escritura del monto capturado según la línea (nueva o existente). */
+function getPrecioInput(clave: string): string {
+  if (clave.startsWith('edit-')) return lineasDraft[Number(clave.slice(5))]?.precio ?? ''
+  return precioNuevoInputs[clave] ?? ''
+}
+
+function setPrecioInput(clave: string, value: number) {
+  const texto = formatearPrecioInput(value, clave)
+  if (clave.startsWith('edit-')) {
+    const draft = lineasDraft[Number(clave.slice(5))]
+    if (draft) draft.precio = texto
+    return
+  }
+  precioNuevoInputs[clave] = texto
+}
+
+/** Etiqueta de la columna/celda de monto según el modo de la línea. */
+function etiquetaMonto(clave: string): string {
+  return esModoImporte(clave) ? 'Importe total (IGV)' : 'P. unit. (IGV)'
+}
+
+function decimalesPrecio(clave: string): number {
+  return esModoImporte(clave) ? 2 : 6
+}
+
+function precioLineaOpts(clave: string) {
+  return { min: 0, allowZero: true, maxDecimals: decimalesPrecio(clave) }
+}
+
+function formatearPrecioInput(value: number, clave: string): string {
+  return esModoImporte(clave) ? roundMoney(value).toFixed(2) : montoPrecioAString(value)
+}
 
 function montoPrecioAString(value: number | string | null | undefined): string {
   const n = Number(value ?? 0)
   if (!Number.isFinite(n) || n <= 0) return ''
-  return roundMoney(n).toFixed(2)
+  return roundPrecioUnitario(n).toFixed(6).replace(/(\.\d{2}\d*?)0+$/, '$1')
 }
 
 function parsePrecioLinea(raw: string | undefined): number | null {
@@ -1180,55 +1363,99 @@ function parsePrecioLinea(raw: string | undefined): number | null {
   return parseMoneyInput(texto)
 }
 
-function esPrecioLineaValido(raw: string | undefined): boolean {
+function esPrecioLineaValido(raw: string | undefined, clave: string): boolean {
   const texto = String(raw ?? '').trim()
   if (!texto) return true
-  return esMontoMonedaValido(texto, precioLineaOpts)
+  return esMontoMonedaValido(texto, precioLineaOpts(clave))
 }
 
 function precioNuevoError(key: string): string {
-  return mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts) ?? ''
+  return mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts(claveModoNueva(key))) ?? ''
 }
 
 function precioEditError(id: number): string {
-  return mensajeErrorMontoMoneda(lineasDraft[id]?.precio ?? '', precioLineaOpts) ?? ''
+  return mensajeErrorMontoMoneda(lineasDraft[id]?.precio ?? '', precioLineaOpts(claveModoEdit(id))) ?? ''
 }
 
 function onBlurPrecioNuevo(key: string) {
-  const msg = mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts)
+  const msg = mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts(claveModoNueva(key)))
   if (msg) return
   const n = parseMoneyInput(precioNuevoInputs[key])
-  if (n != null) precioNuevoInputs[key] = roundMoney(n).toFixed(2)
+  if (n != null) precioNuevoInputs[key] = formatearPrecioInput(n, claveModoNueva(key))
 }
 
 function onBlurPrecioEdit(id: number) {
   const draft = lineasDraft[id]
   if (!draft) return
-  const msg = mensajeErrorMontoMoneda(draft.precio, precioLineaOpts)
+  const msg = mensajeErrorMontoMoneda(draft.precio, precioLineaOpts(claveModoEdit(id)))
   if (msg) return
   const n = parseMoneyInput(draft.precio)
-  if (n != null) draft.precio = roundMoney(n).toFixed(2)
+  if (n != null) draft.precio = formatearPrecioInput(n, claveModoEdit(id))
 }
 
 function quitarLineaNuevaPorKey(key: string) {
   const index = lineas.findIndex((lin) => lin.key === key)
   if (index >= 0) lineas.splice(index, 1)
   delete precioNuevoInputs[key]
+  delete modoPrecioLinea[claveModoNueva(key)]
 }
 
+/**
+ * Importe de la línea. En modo IMPORTE es el monto capturado; en modo UNITARIO
+ * es el P. unitario por la cantidad.
+ */
 function importeLinea(lin: CompraLineaForm) {
-  return (parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0) * Number(lin.cantidad)
+  const capturado = parsePrecioLinea(precioNuevoInputs[lin.key]) ?? 0
+  if (esModoImporte(claveModoNueva(lin.key))) return capturado
+  return capturado * Number(lin.cantidad)
+}
+
+/**
+ * Importe mostrado en una línea ya guardada. Usa el draft si la cantidad cambió;
+ * si no hay monto capturado todavía, cae al P. unitario guardado.
+ */
+function importeLineaExistiente(det: CompraDetalle): number {
+  const draft = lineasDraft[det.id]
+  const cantidad = Number(draft?.cantidad ?? det.cantidad)
+  const capturado = draft ? parsePrecioLinea(draft.precio) : null
+  const base = capturado ?? (Number(det.precio_unitario) || 0)
+  if (esModoImporte(claveModoEdit(det.id))) {
+    return capturado != null ? capturado : base * cantidad
+  }
+  return base * cantidad
+}
+
+/** Texto del P. unitario derivado, para mostrarlo bajo el importe capturado. */
+function precioUnitarioDerivadoTexto(clave: string, cantidad: number): string {
+  if (!esModoImporte(clave)) return ''
+  const derivado = precioUnitarioDesdeImporte(parsePrecioLinea(getPrecioInput(clave)), cantidad)
+  if (derivado == null || derivado <= 0) return ''
+  return `≈ ${formatPrecioUnitario(derivado, codigoMoneda.value)} / unidad`
 }
 
 function validarPreciosLineas(mostrarToast = true): boolean {
   for (const lin of lineas) {
-    if (!esPrecioLineaValido(precioNuevoInputs[lin.key])) {
+    const clave = claveModoNueva(lin.key)
+    if (!esPrecioLineaValido(precioNuevoInputs[lin.key], claveModoNueva(lin.key))) {
       if (mostrarToast) {
         toastWarning(
-          `Precio unitario inválido en ${lin.productoLabel}: solo hasta 2 decimales`,
+          esModoImporte(clave)
+            ? `Importe inválido en ${lin.productoLabel}: solo hasta 2 decimales`
+            : `Precio unitario inválido en ${lin.productoLabel}: solo hasta 6 decimales`,
         )
       }
       return false
+    }
+
+    // En modo IMPORTE el P. unitario sale de importe / cantidad: sin cantidad
+    // positiva no hay nada que derivar y el backend guardaría un precio inventado.
+    if (esModoImporte(clave) && parsePrecioLinea(precioNuevoInputs[lin.key]) != null) {
+      if (precioUnitarioDesdeImporte(precioNuevoInputs[lin.key], Number(lin.cantidad)) == null) {
+        if (mostrarToast) {
+          toastWarning(`Indica la cantidad de ${lin.productoLabel} para calcular el importe`)
+        }
+        return false
+      }
     }
   }
   return true
@@ -1606,6 +1833,7 @@ function quitarLineasDeRecargaPlanta() {
   for (let i = lineas.length - 1; i >= 0; i--) {
     if (lineas[i].key.startsWith(RECARGA_LINEA_PREFIX)) {
       delete precioNuevoInputs[lineas[i].key]
+      delete modoPrecioLinea[lineas[i].key]
       lineas.splice(i, 1)
     }
   }
@@ -1791,7 +2019,12 @@ watch(
 
 const almacenesFilters = ref({ pagina: 1, limite: 100 })
 const almacenesQuery = useAlmacenesQuery(almacenesFilters)
-const almacenOptions = computed(() => toSelectOptions(almacenesQuery.data.value?.data))
+const almacenOptions = computed(() =>
+  (almacenesQuery.data.value?.data ?? []).map((almacen) => ({
+    value: almacen.id,
+    label: almacen.nombre,
+  })),
+)
 
 const sucursalesFilters = ref({ pagina: 1, limite: 100 })
 const sucursalesQuery = useSucursalesQuery(sucursalesFilters)
@@ -1959,9 +2192,21 @@ watch(
 function lineaDraftCambiada(det: CompraDetalle) {
   const draft = lineasDraft[det.id]
   if (!draft) return false
-  const precioOrig = det.precio_unitario == null ? 0 : roundMoney(Number(det.precio_unitario))
-  const precioDraft = roundMoney(parsePrecioLinea(draft.precio) ?? 0)
+  // A 6 decimales: el P. unitario guardado puede venir derivado del importe y
+  // traer decimales que un roundMoney a 2 perdería, marcando la línea como
+  // modificada aunque no se haya tocado nada.
+  const precioOrig = det.precio_unitario == null ? 0 : roundPrecioUnitario(det.precio_unitario)
+  const precioDraft = precioUnitarioDraft(det)
   return Number(draft.cantidad) !== Number(det.cantidad) || precioDraft !== precioOrig
+}
+
+/** P. unitario que se enviaría al guardar la línea, sea capturado o derivado. */
+function precioUnitarioDraft(det: CompraDetalle): number {
+  const draft = lineasDraft[det.id]
+  if (!draft) return 0
+  const capturado = parsePrecioLinea(draft.precio) ?? 0
+  if (!esModoImporte(claveModoEdit(det.id))) return roundPrecioUnitario(capturado)
+  return precioUnitarioDesdeImporte(capturado, Number(draft.cantidad)) ?? 0
 }
 
 async function guardarLinea(det: CompraDetalle) {
@@ -1990,12 +2235,27 @@ async function guardarLinea(det: CompraDetalle) {
     return
   }
 
-  if (!esPrecioLineaValido(draft.precio)) {
-    toastWarning('Precio unitario inválido: solo hasta 2 decimales')
+  const esImporte = esModoImporte(claveModoEdit(det.id))
+  if (!esPrecioLineaValido(draft.precio, claveModoEdit(det.id))) {
+    toastWarning(
+      esImporte
+        ? 'Importe inválido: solo hasta 2 decimales'
+        : 'Precio unitario inválido: solo hasta 6 decimales',
+    )
     return
   }
 
-  const precio = roundMoney(parsePrecioLinea(draft.precio) ?? 0)
+  if (esImporte && parsePrecioLinea(draft.precio) != null) {
+    if (precioUnitarioDesdeImporte(draft.precio, cantidad) == null) {
+      toastWarning('Indica una cantidad mayor a cero para calcular el precio unitario')
+      return
+    }
+  }
+
+  const precio = esImporte
+    ? precioUnitarioDesdeImporte(draft.precio, cantidad) ?? 0
+    : roundPrecioUnitario(parsePrecioLinea(draft.precio) ?? 0)
+
   lineaGuardando.value = det.id
   try {
     await actualizarDetalleMutation.mutateAsync({
@@ -2166,6 +2426,9 @@ function resetCreateForm() {
   for (const key of Object.keys(precioNuevoInputs)) {
     delete precioNuevoInputs[key]
   }
+  for (const key of Object.keys(modoPrecioLinea)) {
+    delete modoPrecioLinea[key]
+  }
   proveedorBuscar.value = ''
   proveedorCreadoOption.value = null
   lineaProductoBuscar.value = ''
@@ -2216,6 +2479,9 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
   lineas.splice(0, lineas.length)
   for (const key of Object.keys(precioNuevoInputs)) {
     delete precioNuevoInputs[key]
+  }
+  for (const key of Object.keys(modoPrecioLinea)) {
+    delete modoPrecioLinea[key]
   }
 
   const lineasRef = (data.detalle ?? [])
@@ -2359,12 +2625,18 @@ const onSubmit = handleSubmit(async (values) => {
   if (!validarCantidadesRecarga()) return
 
   const detalles = lineas.map((l) => {
-    const precioParsed = parsePrecioLinea(precioNuevoInputs[l.key])
+    const capturado = parsePrecioLinea(precioNuevoInputs[l.key])
+    // En modo IMPORTE el P. unitario sale del importe capturado con 6 decimales,
+    // que es lo que admite numeric(12,6) y hace que el importe de la línea
+    // vuelva a ser exactamente el de la factura.
+    const precioUnitario = esModoImporte(claveModoNueva(l.key))
+      ? (precioUnitarioDesdeImporte(capturado, Number(l.cantidad)) ?? 0)
+      : roundPrecioUnitario(capturado ?? 0)
+
     return {
       idProducto: l.idProducto,
       cantidad: Number(l.cantidad),
-      precioUnitario:
-        precioParsed != null && precioParsed > 0 ? roundMoney(precioParsed) : undefined,
+      precioUnitario: capturado != null && capturado > 0 ? precioUnitario : undefined,
       idUnidadMedida: l.idUnidadMedida ?? undefined,
       // Gas de la orden: la línea es costo, no INGRESO. La cantidad es la que
       // bal_finalizar_recarga_planta lleva al stock al registrar el retorno.
@@ -2418,3 +2690,33 @@ const onSubmit = handleSubmit(async (values) => {
   emit('saved', created.cabecera.id)
 })
 </script>
+
+<style scoped>
+/* Keep long amounts inside their column without squeezing the editable fields. */
+.compra-detalle-table td {
+  overflow-wrap: anywhere;
+}
+
+.compra-totales > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.compra-precio > div {
+  position: relative;
+}
+
+.compra-precio p:first-child {
+  position: absolute;
+  bottom: 100%;
+}
+
+.compra-precio p:last-child:not(:first-child) {
+  position: absolute;
+  top: 100%;
+}
+
+.compra-detalle-table td {
+  padding-top: 1.75rem;
+  padding-bottom: 1.75rem;
+}
+</style>
