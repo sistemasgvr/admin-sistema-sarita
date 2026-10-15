@@ -1011,6 +1011,7 @@ import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
+import { debeLimpiarRecargaPorProveedor } from '@/modules/compras/utils/proveedorRecarga'
 import {
   useActualizarCabeceraMutation,
   useActualizarDetalleMutation,
@@ -1596,15 +1597,27 @@ const proveedoresLoading = computed(
   () => proveedoresQuery.isFetching.value || clienteProveedoresQuery.isFetching.value,
 )
 const proveedorOptions = computed(() => {
-  const base = [
+  const base: SelectOption[] = [
     ...(proveedoresQuery.data.value?.data ?? []),
     ...(clienteProveedoresQuery.data.value?.data ?? []),
   ].map((c) => ({ value: c.id, label: getClienteOptionLabel(c) }))
-  if (!proveedorCreadoOption.value) return base
-  if (base.some((opt) => String(opt.value) === String(proveedorCreadoOption.value!.value))) {
-    return base
+  const recarga = recargaPlantaDetalleQuery.data.value
+  // El proveedor de la orden puede no estar en la primera página del buscador.
+  if (
+    recarga?.id === idRecargaPlantaNum.value &&
+    recarga.id_proveedor &&
+    recarga.nombre_proveedor &&
+    !base.some((opt) => Number(opt.value) === Number(recarga.id_proveedor))
+  ) {
+    base.unshift({ value: recarga.id_proveedor, label: recarga.nombre_proveedor })
   }
-  return [proveedorCreadoOption.value, ...base]
+  if (
+    proveedorCreadoOption.value &&
+    !base.some((opt) => String(opt.value) === String(proveedorCreadoOption.value!.value))
+  ) {
+    base.unshift(proveedorCreadoOption.value)
+  }
+  return base
 })
 
 
@@ -1713,10 +1726,14 @@ function resetRetornoFields() {
   numeroGuiaIngreso.value = ''
 }
 
-watch(idProveedor, (id) => {
+watch(idProveedor, (id, anterior) => {
   const idNum = id !== '' && id != null ? Number(id) : undefined
   recargaPlantaFilters.value = { ...RECARGA_PLANTA_FILTROS_BASE, idProveedor: idNum }
   if (suppressRecargaPlantaReset.value) return
+  const recarga = recargaPlantaDetalleQuery.data.value
+  const proveedorOrden =
+    recarga?.id === idRecargaPlantaNum.value ? recarga?.id_proveedor : null
+  if (!debeLimpiarRecargaPorProveedor(id, anterior, proveedorOrden)) return
   idRecargaPlanta.value = ''
   resetRetornoFields()
 })
