@@ -875,9 +875,7 @@ const buildPayload = (
     paginaLibro: values.paginaLibro,
     fechaRegistro: values.fechaRegistro || undefined,
     numeroRecepcion: values.numeroRecepcion || undefined,
-    idAlmacen: esPropietarioEmpresa.value || requierePlantaPropietario.value
-      ? values.idAlmacen
-      : undefined,
+    idAlmacen: values.idAlmacen,
     idClienteUbicacion: requiereClientePropietario.value
       ? values.idClientePropietario
       : undefined,

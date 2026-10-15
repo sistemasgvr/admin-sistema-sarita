@@ -137,6 +137,19 @@ export function contarDecimalesEnTexto(raw: unknown): number | null {
   return match[1]?.length ?? 0
 }
 
+/**
+ * Dígitos de la parte entera escrita (sin ceros a la izquierda): "000123.45" → 3.
+ * `null` si el texto no es un número.
+ */
+export function contarEnterosEnTexto(raw: unknown): number | null {
+  if (raw == null) return null
+  const texto = limpiarTextoMonto(String(raw).trim())
+  if (!texto) return null
+  const match = texto.match(/^-?(\d*)(?:\.\d*)?$/)
+  if (!match) return null
+  return (match[1] ?? '').replace(/^0+/, '').length
+}
+
 export function tieneMaxDosDecimalesMoneda(raw: unknown): boolean {
   if (raw == null || String(raw).trim() === '') return false
 
@@ -159,6 +172,11 @@ export type ValidacionMontoMonedaOpts = {
   min?: number
   /** Si true, acepta monto === 0 (default false). */
   allowZero?: boolean
+  /**
+   * Máximo de dígitos enteros. Debe cuadrar con la columna `numeric(p,s)` que
+   * guarda el monto (p - s); sin tope un monto absurdo desborda la UI y la BD.
+   */
+  maxEnteros?: number
 }
 
 /** Valida monto monetario: parseable, no negativo, máx. 2 decimales. */
@@ -172,6 +190,7 @@ export function esMontoMonedaValido(
   if (n == null || !Number.isFinite(n)) return false
   if (n < min) return false
   if (!allowZero && n === 0) return false
+  if (opts.maxEnteros != null && (contarEnterosEnTexto(raw) ?? Infinity) > opts.maxEnteros) return false
   return (contarDecimalesEnTexto(raw) ?? Infinity) <= (opts.maxDecimals ?? 2)
 }
 
@@ -191,6 +210,9 @@ export function mensajeErrorMontoMoneda(
   if (n < 0) return 'El monto no puede ser negativo'
   if (n < min) return min > 0 ? 'El monto debe ser mayor a 0' : 'Monto inválido'
   if (!allowZero && n === 0) return 'El monto debe ser mayor a 0'
+  if (opts.maxEnteros != null && (contarEnterosEnTexto(raw) ?? Infinity) > opts.maxEnteros) {
+    return `Solo se permiten hasta ${opts.maxEnteros} dígitos enteros`
+  }
   if ((contarDecimalesEnTexto(raw) ?? Infinity) > (opts.maxDecimals ?? 2)) return `Solo se permiten hasta ${opts.maxDecimals ?? 2} decimales`
   return null
 }
@@ -199,8 +221,15 @@ function nextTickSelection(input: HTMLInputElement, pos: number) {
   queueMicrotask(() => input.setSelectionRange(pos, pos))
 }
 
-/** Bloquea signos, caracteres no numéricos y más de 2 decimales mientras se escribe. */
-export function bloquearTeclasMontoInvalidas(e: KeyboardEvent, maxDecimals = 2) {
+/**
+ * Bloquea signos, caracteres no numéricos, más de `maxDecimals` decimales y más
+ * de `maxEnteros` dígitos enteros mientras se escribe.
+ */
+export function bloquearTeclasMontoInvalidas(
+  e: KeyboardEvent,
+  maxDecimals = 2,
+  maxEnteros?: number,
+) {
   if (e.key.length > 1) return
   if (e.ctrlKey || e.metaKey) return
   if (['-', '+', 'e', 'E'].includes(e.key)) {
@@ -244,11 +273,23 @@ export function bloquearTeclasMontoInvalidas(e: KeyboardEvent, maxDecimals = 2) 
   }
 
   const dec = contarDecimalesEnTexto(candidato)
-  if (dec != null && dec > maxDecimals) e.preventDefault()
+  if (dec != null && dec > maxDecimals) {
+    e.preventDefault()
+    return
+  }
+
+  if (maxEnteros != null) {
+    const enteros = contarEnterosEnTexto(candidato)
+    if (enteros != null && enteros > maxEnteros) e.preventDefault()
+  }
 }
 
-/** Bloquea pegado de montos inválidos (signos, notación científica o >2 decimales). */
-export function bloquearPegadoMontoInvalido(e: ClipboardEvent, maxDecimals = 2) {
+/** Bloquea pegado de montos inválidos (signos, notación científica, exceso de decimales o enteros). */
+export function bloquearPegadoMontoInvalido(
+  e: ClipboardEvent,
+  maxDecimals = 2,
+  maxEnteros?: number,
+) {
   const texto = e.clipboardData?.getData('text') ?? ''
   if (/[-+eE]/.test(texto)) {
     e.preventDefault()
@@ -258,7 +299,14 @@ export function bloquearPegadoMontoInvalido(e: ClipboardEvent, maxDecimals = 2) 
   const candidato = input && typeof input.selectionStart === 'number'
     ? input.value.slice(0, input.selectionStart) + texto + input.value.slice(input.selectionEnd ?? input.selectionStart)
     : texto
-  if (candidato.trim() && (contarDecimalesEnTexto(candidato) ?? Infinity) > maxDecimals) e.preventDefault()
+  if (!candidato.trim()) return
+  if ((contarDecimalesEnTexto(candidato) ?? Infinity) > maxDecimals) {
+    e.preventDefault()
+    return
+  }
+  if (maxEnteros != null && (contarEnterosEnTexto(candidato) ?? Infinity) > maxEnteros) {
+    e.preventDefault()
+  }
 }
 
 /** Valida un número ya parseado (refs numéricas legacy). */

@@ -1,5 +1,8 @@
 <template>
-  <div @paste="bloquearPegadoMontoInvalido($event, maxDecimals)" @focusout="emit('blur')">
+  <div
+    @paste="bloquearPegadoMontoInvalido($event, maxDecimals, maxIntegerDigits)"
+    @focusout="emit('blur')"
+  >
     <input
       :id="id"
       v-model="model"
@@ -35,9 +38,14 @@ const props = withDefaults(
     readonly?: boolean
     required?: boolean
     maxDecimals?: number
+    /**
+     * Tope de dígitos enteros que se dejan escribir/pegar. Por defecto 10, el de
+     * un `numeric(12,2)`; cada formulario lo ajusta a la columna que guarda el monto.
+     */
+    maxIntegerDigits?: number
     state?: FormControlState
   }>(),
-  { state: 'default', placeholder: '0.00', maxDecimals: 2 },
+  { state: 'default', placeholder: '0.00', maxDecimals: 2, maxIntegerDigits: 10 },
 )
 
 const emit = defineEmits<{ blur: []; focus: [] }>()
@@ -58,6 +66,6 @@ function onFocus(event: FocusEvent) {
 }
 
 function onKeydown(event: KeyboardEvent) {
-  bloquearTeclasMontoInvalidas(event, props.maxDecimals)
+  bloquearTeclasMontoInvalidas(event, props.maxDecimals, props.maxIntegerDigits)
 }
 </script>

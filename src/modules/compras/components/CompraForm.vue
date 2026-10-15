@@ -475,6 +475,7 @@
                               <MoneyInput
                                 v-model="precioNuevoInputs[lin.key]"
                               :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
+                              :max-integer-digits="enterosPrecio(claveModoNueva(lin.key))"
                                 placeholder="0.00"
                                 :disabled="saving"
                                 :state="precioNuevoError(lin.key) ? 'error' : 'default'"
@@ -507,7 +508,7 @@
                           </div>
                         </td>
                         <td
-                          class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
+                          class="px-3 py-2.5 text-right tabular-nums font-medium break-all text-gray-800 dark:text-white/90"
                         >
                           {{ formatMoney(importeLinea(lin)) }}
                         </td>
@@ -626,6 +627,7 @@
                             <MoneyInput
                               v-model="precioNuevoInputs[lin.key]"
                               :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
+                              :max-integer-digits="enterosPrecio(claveModoNueva(lin.key))"
                               placeholder="0.00"
                               :disabled="saving"
                               :state="precioNuevoError(lin.key) ? 'error' : 'default'"
@@ -658,7 +660,7 @@
                         </div>
                       </td>
                       <td
-                        class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
+                        class="px-3 py-2.5 text-right tabular-nums font-medium break-all text-gray-800 dark:text-white/90"
                       >
                         {{ formatMoney(importeLinea(lin)) }}
                       </td>
@@ -683,21 +685,21 @@
               v-if="lineas.length"
               class="compra-totales mt-3 grid grid-cols-1 gap-3 rounded-xl sm:grid-cols-3 border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
             >
-              <div>
+              <div class="min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Sub total</p>
-                <p class="font-semibold text-gray-800 dark:text-white/90">
+                <p class="font-semibold tabular-nums break-all text-gray-800 dark:text-white/90">
                   {{ formatMoney(totalesDetalle.valorVenta) }}
                 </p>
               </div>
-              <div>
+              <div class="min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">IGV (18%)</p>
-                <p class="font-semibold text-gray-800 dark:text-white/90">
+                <p class="font-semibold tabular-nums break-all text-gray-800 dark:text-white/90">
                   {{ formatMoney(totalesDetalle.igv) }}
                 </p>
               </div>
-              <div>
+              <div class="min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
-                <p class="font-semibold text-gray-800 dark:text-white/90">
+                <p class="font-semibold tabular-nums break-all text-gray-800 dark:text-white/90">
                   {{ formatMoney(totalesDetalle.total) }}
                 </p>
               </div>
@@ -881,6 +883,7 @@
                               <MoneyInput
                                 v-model="lineasDraft[det.id].precio"
                                 :max-decimals="decimalesPrecio(claveModoEdit(det.id))"
+                                :max-integer-digits="enterosPrecio(claveModoEdit(det.id))"
                                 placeholder="0.00"
                                 :disabled="saving || lineaGuardando === det.id"
                                 :state="precioEditError(det.id) ? 'error' : 'default'"
@@ -926,7 +929,7 @@
                         </span>
                       </td>
                       <td
-                        class="px-3 py-2.5 text-right tabular-nums font-medium text-gray-800 dark:text-white/90"
+                        class="px-3 py-2.5 text-right tabular-nums font-medium break-all text-gray-800 dark:text-white/90"
                       >
                         {{ formatMoney(importeLineaExistiente(det)) }}
                       </td>
@@ -1343,8 +1346,30 @@ function decimalesPrecio(clave: string): number {
   return esModoImporte(clave) ? 2 : 6
 }
 
+/**
+ * Tope de importe de una línea y del comprobante: `importe` y `total_importe`
+ * son `numeric(12,4)`, así que admiten hasta 8 dígitos enteros.
+ */
+const MAX_IMPORTE_COMPRA = 99_999_999.9999
+
+/** Enteros admitidos: `precio_unitario numeric(12,6)` → 6; importe `numeric(12,4)` → 8. */
+function enterosPrecio(clave: string): number {
+  return esModoImporte(clave) ? 8 : 6
+}
+
 function precioLineaOpts(clave: string) {
-  return { min: 0, allowZero: true, maxDecimals: decimalesPrecio(clave) }
+  return {
+    min: 0,
+    allowZero: true,
+    maxDecimals: decimalesPrecio(clave),
+    maxEnteros: enterosPrecio(clave),
+  }
+}
+
+function errorImporteExcedido(importe: number): string {
+  return importe > MAX_IMPORTE_COMPRA
+    ? `El importe no puede superar ${formatMoney(MAX_IMPORTE_COMPRA)}`
+    : ''
 }
 
 function formatearPrecioInput(value: number, clave: string): string {
@@ -1370,7 +1395,10 @@ function esPrecioLineaValido(raw: string | undefined, clave: string): boolean {
 }
 
 function precioNuevoError(key: string): string {
-  return mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts(claveModoNueva(key))) ?? ''
+  const msg = mensajeErrorMontoMoneda(precioNuevoInputs[key] ?? '', precioLineaOpts(claveModoNueva(key)))
+  if (msg) return msg
+  const lin = lineas.find((l) => l.key === key)
+  return lin ? errorImporteExcedido(importeLinea(lin)) : ''
 }
 
 function precioEditError(id: number): string {
@@ -1440,10 +1468,16 @@ function validarPreciosLineas(mostrarToast = true): boolean {
       if (mostrarToast) {
         toastWarning(
           esModoImporte(clave)
-            ? `Importe inválido en ${lin.productoLabel}: solo hasta 2 decimales`
-            : `Precio unitario inválido en ${lin.productoLabel}: solo hasta 6 decimales`,
+            ? `Importe inválido en ${lin.productoLabel}: hasta 8 enteros y 2 decimales`
+            : `Precio unitario inválido en ${lin.productoLabel}: hasta 6 enteros y 6 decimales`,
         )
       }
+      return false
+    }
+
+    const excedido = errorImporteExcedido(importeLinea(lin))
+    if (excedido) {
+      if (mostrarToast) toastWarning(`${lin.productoLabel}: ${excedido}`)
       return false
     }
 
@@ -1457,6 +1491,12 @@ function validarPreciosLineas(mostrarToast = true): boolean {
         return false
       }
     }
+  }
+
+  const totalExcedido = errorImporteExcedido(totalLineas.value)
+  if (totalExcedido) {
+    if (mostrarToast) toastWarning(`Total de la compra: ${totalExcedido}`)
+    return false
   }
   return true
 }
@@ -2239,9 +2279,15 @@ async function guardarLinea(det: CompraDetalle) {
   if (!esPrecioLineaValido(draft.precio, claveModoEdit(det.id))) {
     toastWarning(
       esImporte
-        ? 'Importe inválido: solo hasta 2 decimales'
-        : 'Precio unitario inválido: solo hasta 6 decimales',
+        ? 'Importe inválido: hasta 8 enteros y 2 decimales'
+        : 'Precio unitario inválido: hasta 6 enteros y 6 decimales',
     )
+    return
+  }
+
+  const excedido = errorImporteExcedido(importeLineaExistiente(det))
+  if (excedido) {
+    toastWarning(excedido)
     return
   }
 
