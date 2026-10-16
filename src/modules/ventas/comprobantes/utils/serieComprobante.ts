@@ -65,7 +65,7 @@ export const REGLAS_SERIE_COMPROBANTE: Record<string, ReglaSerieComprobante> = {
   '09': {
     codigo: '09',
     nombre: 'GUÍA DE REMISIÓN',
-    serieDefault: 'T001',
+    serieDefault: 'T002',
     prefijosPermitidos: ['T'],
     mensajePrefijo: 'Para GUÍA DE REMISIÓN la serie debe empezar con T (ej. T001)',
     requiereRuc: false,
@@ -123,7 +123,7 @@ export function seriePorDefectoDesdeCodigo(
   }
 
   if (codigo === '09') {
-    return `T${correlativoSerieDesde(actual || '001', 3)}`
+    return `T${correlativoSerieDesde(actual || '002', 3)}`
   }
 
   if (esCodigoVentaSinDocumento(codigo)) {

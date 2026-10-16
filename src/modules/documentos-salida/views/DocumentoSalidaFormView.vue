@@ -1283,7 +1283,7 @@ const hitosDelDocumento = computed(() => {
   }
   if (doc.emitido_sunat) {
     hitos.push({ texto: 'Emitida a SUNAT', color: 'success' })
-  } else if (doc.ticket_sunat) {
+  } else if (doc.ticket_sunat && doc.nombre_estado_sunat === 'PENDIENTE') {
     hitos.push({ texto: 'Ticket SUNAT pendiente', color: 'warning' })
   }
   // El hito es el retorno físico (los cilindros entraron), no la fecha: una
