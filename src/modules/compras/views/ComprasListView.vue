@@ -44,8 +44,11 @@
       </template>
 
       <template #cell-proveedor="{ row }">
-        <p class="font-medium text-gray-800 dark:text-white/90">
+        <p class="font-medium text-gray-800 dark:text-white/90" :title="row.nombre_proveedor ?? row.proveedor ?? ''">
           {{ row.nombre_proveedor ?? row.proveedor ?? '—' }}
+        </p>
+        <p v-if="row.almacen" class="w-0 min-w-full truncate text-xs text-gray-500 dark:text-gray-400" :title="row.almacen">
+          Almacén: {{ row.almacen }}
         </p>
       </template>
 
@@ -58,12 +61,18 @@
           {{ formatListaOpcionLabel(row.categoria_gasto) }}
         </AppBadge>
         <span v-else class="text-xs text-gray-400">—</span>
+        <p v-if="row.tipo_registro" class="w-0 min-w-full truncate text-xs text-gray-500 dark:text-gray-400" :title="formatListaOpcionLabel(row.tipo_registro)">
+          {{ formatListaOpcionLabel(row.tipo_registro) }}
+        </p>
       </template>
 
       <template #cell-estado="{ row }">
         <AppBadge :color="row.estado === 1 ? 'success' : 'error'">
           {{ row.estado === 1 ? 'Activo' : 'Anulado' }}
         </AppBadge>
+        <p v-if="row.tiene_movimientos_inventario" title="Con movimientos de inventario" class="w-0 min-w-full truncate text-xs text-gray-500 dark:text-gray-400">
+          Con mov. inventario
+        </p>
       </template>
 
       <!-- <template #cell-tiene_movimientos_inventario="{ value }">

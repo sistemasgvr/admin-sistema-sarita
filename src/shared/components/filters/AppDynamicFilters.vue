@@ -265,7 +265,8 @@ const togglePanel = async () => {
 const handleDocumentPointerDown = (event: MouseEvent) => {
   const target = event.target as HTMLElement
   if (rootRef.value?.contains(target) || panelRef.value?.contains(target)) return
-  if (target.closest('.app-select-dropdown, .app-select-search-dropdown, [role="listbox"]')) return
+  // Los controles teletransportan sus paneles al body; siguen perteneciendo al filtro.
+  if (target.closest('.app-select-dropdown, .app-select-search-dropdown, [role="listbox"], [data-app-date-picker-panel]')) return
   closePanel()
 }
 

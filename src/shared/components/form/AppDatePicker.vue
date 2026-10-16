@@ -48,7 +48,7 @@
 
         <Teleport to="body">
           <Transition name="app-date-picker">
-            <div v-if="isOpen" ref="panelRef"
+            <div v-if="isOpen" ref="panelRef" data-app-date-picker-panel
               class="fixed z-[100002] min-w-[280px] max-w-[min(100vw-2rem,320px)] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200 bg-white shadow-theme-lg dark:border-gray-700 dark:bg-gray-900"
               :style="panelStyle">
               <!-- Header -->
