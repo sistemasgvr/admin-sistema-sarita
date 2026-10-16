@@ -13,9 +13,6 @@
             {{ empresaSeleccionadaInfo.razon_social || empresaSeleccionadaInfo.nombre_comercial }}
           </span>
           <span class="rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[11px] font-bold text-gray-700 dark:bg-white/10 dark:text-gray-300">RUC: {{ empresaSeleccionadaInfo.ruc }}</span>
-          <span class="rounded-full px-2 py-0.5 text-[11px] font-bold" :class="entornoBadgeClass">
-            {{ documento?.gre_entorno === 'produccion' ? 'PRODUCCIÓN' : 'PRUEBAS (BETA)' }}
-          </span>
         </div>
         <span v-else-if="empresasQuery.isLoading.value" class="mt-1 block text-sm text-gray-500">Cargando empresa emisora…</span>
         <span v-else class="mt-1 flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
@@ -481,12 +478,6 @@ const empresasQuery = useEmpresasQuery(ref({ pagina: 1, limite: 100 }))
 const empresaSeleccionadaInfo = computed(() => {
   if (!idEmpresaEmisora.value) return null
   return (empresasQuery.data.value?.data ?? []).find(e => e.id === idEmpresaEmisora.value) ?? null
-})
-
-const entornoBadgeClass = computed(() => {
-  const entorno = props.documento?.gre_entorno
-  if (entorno === 'produccion') return 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-  return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
 })
 
 const form = reactive({

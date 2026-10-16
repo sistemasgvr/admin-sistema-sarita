@@ -56,17 +56,6 @@
             {{ documento?.fecha_emision_gre?.slice(0, 10) ?? '—' }}
           </span>
         </div>
-        <div v-if="documento?.gre_entorno">
-          <span class="block text-[11px] text-gray-400">Entorno</span>
-          <span
-            class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
-            :class="documento.gre_entorno === 'produccion'
-              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'"
-          >
-            {{ documento.gre_entorno === 'produccion' ? 'PRODUCCIÓN' : 'PRUEBAS' }}
-          </span>
-        </div>
         <div>
           <span class="block text-[11px] text-gray-400">Peso bruto</span>
           <span class="font-semibold text-gray-800 dark:text-white/90">

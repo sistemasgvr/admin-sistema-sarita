@@ -426,11 +426,11 @@
                 v-if="puedeEmitir"
                 type="button"
                 class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-medium text-gray-700 shadow-theme-xs transition hover:bg-gray-50 disabled:opacity-70 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                :disabled="emitirMutation.isPending.value || validarGreMutation.isPending.value"
-                @click="abrirEmitir"
+                :disabled="emitirMutation.isPending.value"
+                @click="onEmitir"
               >
-                <AppIcon :name="entornoEsProduccion ? ICONS.alertTriangle : ICONS.info" :size="14" />
-                {{ validarGreMutation.isPending.value ? 'Validando...' : entornoEsProduccion ? 'Emitir a SUNAT (Producción)' : 'Emitir prueba (BETA)' }}
+                <AppIcon :name="ICONS.truck" :size="14" />
+                {{ emitirMutation.isPending.value ? 'Verificando y emitiendo...' : 'Emitir a SUNAT' }}
               </button>
               <button
                 v-if="puedeConsultarEstadoSunat"
@@ -862,125 +862,6 @@
     <ConvertirGreModal v-if="documento" v-model="greModalOpen" :documento="documento" />
 
     <!--
-      Emitir es irreversible (revertir exige comunicación de baja), así que se
-      muestra qué guía y con qué transporte va antes de llamar a SUNAT.
-    -->
-    <AppModal
-      v-if="documento"
-      v-model="emitirConfirmOpen"
-      :title="entornoEsProduccion ? 'Emitir a SUNAT (Producción)' : 'Emitir prueba a SUNAT (BETA)'"
-      size="md"
-    >
-      <div class="space-y-4">
-        <div class="flex flex-wrap items-center gap-2">
-          <span
-            class="rounded-full px-2 py-0.5 text-[11px] font-bold"
-            :class="entornoEsProduccion
-              ? 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-              : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'"
-          >
-            {{ entornoResuelto ? (entornoEsProduccion ? 'PRODUCCIÓN' : 'PRUEBAS (BETA)') : 'ENTORNO SIN VERIFICAR' }}
-          </span>
-          <span class="text-xs text-gray-500 dark:text-gray-400">Entorno SUNAT según la empresa en el PSE</span>
-        </div>
-
-        <!-- Resumen de lo que se envía: empresa, RUC, guía, fechas, transporte y destinatario. -->
-        <dl class="grid grid-cols-1 gap-x-4 gap-y-1.5 text-xs sm:grid-cols-2">
-          <div><dt class="text-gray-400">Empresa emisora</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ resumenGre.empresa || '—' }}</dd></div>
-          <div><dt class="text-gray-400">RUC</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ resumenGre.ruc || '—' }}</dd></div>
-          <div><dt class="text-gray-400">Guía</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ documento.serie }}-{{ documento.numero_sunat }} · {{ resumenEmision.tipo }}</dd></div>
-          <div><dt class="text-gray-400">Destinatario</dt><dd class="font-medium text-gray-800 dark:text-white/90">{{ resumenGre.destinatario || '—' }}</dd></div>
-          <div><dt class="text-gray-400">Fecha de la orden</dt><dd>{{ resumenGre.fechaOrden || documento.fecha?.slice(0, 10) || '—' }}</dd></div>
-          <div><dt class="text-gray-400">Emisión GRE · inicio traslado</dt><dd>{{ resumenGre.fechaEmisionGre || documento.fecha_emision_gre?.slice(0, 10) || '—' }} · {{ resumenGre.fechaTraslado || documento.fecha_traslado?.slice(0, 10) || '—' }}</dd></div>
-          <div class="sm:col-span-2"><dt class="text-gray-400">Transporte</dt><dd>{{ resumenEmision.transporte }}<span v-if="resumenGre.licencia"> · Lic. {{ resumenGre.licencia }}</span><span v-if="resumenGre.placa"> · placa enviada {{ resumenGre.placa }}</span></dd></div>
-        </dl>
-
-        <!-- Resultado de la prevalidación (misma que corre la emisión en el backend). -->
-        <div
-          v-if="validarGreMutation.isPending.value"
-          class="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400"
-        >
-          Validando datos de la guía y verificando la empresa en el PSE...
-        </div>
-        <div
-          v-else-if="validacionGre?.listo"
-          class="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300"
-        >
-          <AppIcon :name="ICONS.check" :size="14" class="mt-0.5 shrink-0" />
-          <span>Lista para emitir. No se detectaron problemas en los datos ni en la configuración del PSE.</span>
-        </div>
-        <div v-else-if="validacionGre" class="space-y-1.5">
-          <p class="text-xs font-semibold text-error-600 dark:text-error-400">
-            Corrige estos problemas antes de emitir:
-          </p>
-          <ul class="space-y-1">
-            <li
-              v-for="problema in erroresGre"
-              :key="problema.codigo + problema.campo"
-              class="flex items-start gap-2 rounded-lg border border-error-200 bg-error-50 px-3 py-1.5 text-xs text-error-700 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-300"
-            >
-              <AppIcon :name="ICONS.alertTriangle" :size="13" class="mt-0.5 shrink-0" />
-              <span>
-                {{ problema.mensaje }}
-                <button
-                  v-if="campoEditableEnGre(problema.campo)"
-                  type="button"
-                  class="ml-1 font-medium underline"
-                  @click="irAlCampoGre"
-                >
-                  Editar datos GRE
-                </button>
-                <span v-else class="ml-1 text-[10px] text-gray-400">({{ problema.codigo }})</span>
-              </span>
-            </li>
-          </ul>
-        </div>
-        <ul v-if="advertenciasGre.length" class="space-y-1">
-          <li
-            v-for="problema in advertenciasGre"
-            :key="problema.codigo + problema.campo"
-            class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-          >
-            <AppIcon :name="ICONS.info" :size="13" class="mt-0.5 shrink-0" />
-            <span>{{ problema.mensaje }}</span>
-          </li>
-        </ul>
-
-        <p class="text-xs text-amber-600 dark:text-amber-400">
-          Se envía una sola vez. Una vez aceptada no se puede editar; solo anular con comunicación de baja.
-          <span v-if="!entornoEsProduccion && entornoResuelto">En BETA la aceptación es del simulador y no tiene valor fiscal.</span>
-        </p>
-      </div>
-      <template #footer>
-        <button
-          type="button"
-          class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
-          :disabled="emitirMutation.isPending.value"
-          @click="emitirConfirmOpen = false"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:text-gray-300"
-          :disabled="validarGreMutation.isPending.value || emitirMutation.isPending.value"
-          @click="revalidarGre"
-        >
-          Volver a validar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg px-4 py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-          :class="entornoEsProduccion ? 'bg-warning-500 hover:bg-warning-600' : 'bg-brand-500 hover:bg-brand-600'"
-          :disabled="!validacionGre?.listo || validarGreMutation.isPending.value || emitirMutation.isPending.value"
-          @click="onEmitir"
-        >
-          {{ emitirMutation.isPending.value ? 'Emitiendo...' : entornoEsProduccion ? 'Emitir en producción' : 'Emitir prueba' }}
-        </button>
-      </template>
-    </AppModal>
-
-    <!--
       Consultar estado y Historial SUNAT ya no viven en el detalle: son
       acciones del menú del listado (ver useDocSalidaAcciones).
     -->
@@ -1044,7 +925,6 @@ import {
   useEmitirSunatDocSalidaMutation,
   useConsultarEstadoDocSalidaMutation,
   useGenerarDocSalidaMutation,
-  useValidarGreMutation,
 } from '../composables/useDocumentoSalidaMutations'
 import { visualizarArchivo } from '@/shared/utils/visualizarArchivo'
 import { faltantesTrasladoPdf, mensajeFaltantesTraslado } from '../utils/faltantesTraslado'
@@ -1054,8 +934,6 @@ import type {
   DocSalidaLineaBorrador,
   DocSalidaDetalleLinea,
   DocSalidaProductoCantidad,
-  GreProblema,
-  ValidarGreResponse,
 } from '../interfaces/documento-salida.interface'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import {
@@ -1403,12 +1281,6 @@ const hitosDelDocumento = computed(() => {
   if (doc.serie && doc.numero_sunat) {
     hitos.push({ texto: `Guía ${doc.serie}-${doc.numero_sunat}`, color: 'neutral' })
   }
-  if (doc.gre_entorno) {
-    hitos.push({
-      texto: doc.gre_entorno === 'produccion' ? 'Entorno: Producción' : 'Entorno: Pruebas (BETA)',
-      color: doc.gre_entorno === 'produccion' ? 'success' : 'warning',
-    })
-  }
   if (doc.emitido_sunat) {
     hitos.push({ texto: 'Emitida a SUNAT', color: 'success' })
   } else if (doc.ticket_sunat) {
@@ -1699,75 +1571,16 @@ async function onConsultarEstado() {
     // toast en la mutation
   }
 }
-const emitirConfirmOpen = ref(false)
-
-/** Qué guía y qué transporte se enviará, para confirmar antes de emitir. */
-const resumenEmision = computed(() => {
-  const doc = documento.value
-  const esTransportista = doc?.codigo_tipo_guia === '31'
-  const tipo = esTransportista ? 'guía de transportista · 31' : 'guía de remisión remitente · 09'
-  const flotaPropia = esTransportista || doc?.nombre_modalidad_traslado !== 'PUBLICO'
-  const transporte = flotaPropia
-    ? `Vehículo ${doc?.placa_vehiculo ?? '—'} · chofer ${doc?.nombre_chofer?.trim() || '—'}`
-    : `Transportista ${doc?.nombre_transportista ?? '—'} (transporte público)`
-  return { tipo, transporte }
-})
-
-// ---- Prevalidación antes de emitir (misma validación que corre el backend) ----
-const validarGreMutation = useValidarGreMutation()
-const validacionGre = ref<ValidarGreResponse | null>(null)
-const erroresGre = computed<GreProblema[]>(() => (validacionGre.value?.problemas ?? []).filter((p) => p.severidad === 'error'))
-const advertenciasGre = computed<GreProblema[]>(() => (validacionGre.value?.problemas ?? []).filter((p) => p.severidad === 'advertencia'))
-const resumenGre = computed(() => validacionGre.value?.resumen ?? ({} as Partial<ValidarGreResponse['resumen']>))
-
-/**
- * El entorno real lo dice la verificación del PSE (antes de emitir) o el
- * intento ya enviado (después). Sin ninguno de los dos no se asume nada.
- */
-const entornoResuelto = computed(() => validacionGre.value?.entorno ?? documento.value?.gre_entorno ?? null)
-const entornoEsProduccion = computed(() => entornoResuelto.value === 'produccion')
-
-async function revalidarGre() {
-  if (!documento.value) return
-  validacionGre.value = null
-  try {
-    validacionGre.value = await validarGreMutation.mutateAsync(documento.value.id)
-  } catch {
-    // toast en la mutation; el modal muestra el estado sin validar
-  }
-}
-
-async function abrirEmitir() {
-  emitirConfirmOpen.value = true
-  await revalidarGre()
-}
-
-/** Campos que se corrigen desde el modal «Editar datos GRE». */
-const CAMPOS_MODAL_GRE = new Set([
-  'idTipoGuiaRemision', 'serie', 'fechaEmisionGre', 'fechaTraslado', 'idMotivoTraslado', 'idModalidadTraslado',
-  'direccionOrigen', 'idDistritoOrigen', 'direccionLlegada', 'idDistritoLlegada', 'pesoBruto', 'numeroBultos',
-  'idChofer', 'idVehiculo', 'idTransportista',
-])
-function campoEditableEnGre(campo: string) {
-  return CAMPOS_MODAL_GRE.has(campo)
-}
-function irAlCampoGre() {
-  emitirConfirmOpen.value = false
-  greModalOpen.value = true
-}
-
+// La emisión valida los datos y verifica la empresa en el servidor antes de enviar.
 async function onEmitir() {
-  if (!documento.value || !validacionGre.value?.listo) return
+  if (!documento.value || emitirMutation.isPending.value) return
   try {
     await emitirMutation.mutateAsync({
       id: documento.value.id,
       idUsuarioAuditoria: idUsuarioAuditoria.value,
     })
-    emitirConfirmOpen.value = false
-    validacionGre.value = null
   } catch {
-    // toast en la mutation; se revalida porque el estado pudo cambiar (intento abierto, ticket)
-    await revalidarGre()
+    // La mutation muestra el error y actualiza el estado del documento.
   }
 }
 
