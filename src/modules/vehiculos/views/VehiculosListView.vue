@@ -14,6 +14,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -147,6 +148,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -434,4 +437,28 @@ const confirmDelete = async () => {
 const onVehiculoSaved = () => {
   selectedVehiculo.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Vehículos',
+    listar: vehiculosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['placa', 'Placa'],
+      ['placa2', 'Placa2'],
+      ['nombre_tipo_vehiculo', 'Tipo vehiculo'],
+      ['marca', 'Marca'],
+      ['modelo', 'Modelo'],
+      ['anio', 'Año', 'numero'],
+      ['color', 'Color'],
+      ['cliente_razon_social', 'Cliente: razón social'],
+      ['cliente_nombres', 'Cliente: nombres'],
+      ['cliente_apellido_paterno', 'Cliente: apellido paterno'],
+      ['cliente_apellido_materno', 'Cliente: apellido materno'],
+      ['cliente_numero_documento', 'Documento del cliente'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

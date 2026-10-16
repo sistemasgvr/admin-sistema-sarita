@@ -1,5 +1,8 @@
 <template>
   <div>
+    <div class="mb-4 flex justify-end">
+      <AppExportExcelButton :on-export="exportarIndicadores" />
+    </div>
     <!-- data-tutorial: anclas de la ruta guiada de Soporte (Dashboard › panel principal). -->
     <section v-if="hayCardsEconomico" data-tutorial="dashboard-economico" class="mb-6">
       <div class="grid grid-cols-[repeat(auto-fit,minmax(230px,1fr))] gap-3">
@@ -219,6 +222,8 @@
 </template>
 
 <script setup lang="ts">
+import AppExportExcelButton from '@/shared/components/ui/AppExportExcelButton.vue'
+import { exportarFilasExcel } from '@/shared/utils/exportarListadoExcel'
 import { computed } from 'vue'
 import { RouterLink, useRouter, type RouteLocationRaw } from 'vue-router'
 import type { ApexOptions } from 'apexcharts'
@@ -729,4 +734,10 @@ const demandaGasesOptions = computed<ApexOptions>(() => ({
 // ---------- Top clientes con mayor deuda ----------
 
 const topClientesDeuda = computed(() => clientesQuery.data.value?.clientesConDeuda.detalle ?? [])
+
+const exportarIndicadores = () => exportarFilasExcel(
+  'Panel principal',
+  [...resumenEconomicoCards.value, ...(canVerBalones.value ? envasesCards.value : [])].map((card) => ({ indicador: card.label, valor: card.value, detalle: card.hint ?? '' })),
+  [['indicador', 'Indicador'], ['valor', 'Valor'], ['detalle', 'Detalle']],
+)
 </script>

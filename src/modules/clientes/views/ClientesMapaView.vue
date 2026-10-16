@@ -35,6 +35,7 @@
         </div>
       </div>
 
+      <AppExportExcelButton :on-export="exportarMapa" />
       <p class="shrink-0 text-sm text-gray-500 sm:pb-2.5 dark:text-gray-400">
         {{ clientesConCoordenadas }} cliente{{ clientesConCoordenadas !== 1 ? 's' : '' }}
         <span v-if="clientesConBalones > 0"> · {{ clientesConBalones }} con balones</span>
@@ -119,6 +120,9 @@
 </template>
 
 <script setup lang="ts">
+import AppExportExcelButton from '@/shared/components/ui/AppExportExcelButton.vue'
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { clientesService } from '@/modules/clientes/services/clientes.service'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import L from 'leaflet'
@@ -711,6 +715,11 @@ onBeforeUnmount(() => {
     userLocationAccuracy = null
     lastMarkersBounds = null
   }
+})
+
+const exportarMapa = () => exportarListadoExcel({
+  nombre: 'Mapa de clientes', listar: clientesService.listarMapa, filtros: filters.value,
+  campos: [['id', 'ID cliente'], ['razon_social', 'Razón social'], ['nombres', 'Nombres'], ['apellido_paterno', 'Apellido paterno'], ['apellido_materno', 'Apellido materno'], ['numero_documento', 'Documento'], ['direccion', 'Dirección'], ['telefono', 'Teléfono'], ['latitud', 'Latitud', 'numero'], ['longitud', 'Longitud', 'numero'], ['total_balones', 'Cilindros', 'numero'], ['tiene_vencidos', 'Tiene vencidos']],
 })
 </script>
 

@@ -12,6 +12,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -142,6 +143,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { contactosService } from '@/modules/contactos/services/contactos.service'
+
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -386,4 +390,29 @@ const confirmDelete = async () => {
 const onContactoSaved = () => {
   selectedContacto.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Contactos',
+    listar: contactosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombre', 'Nombre'],
+      ['apellido_paterno', 'Apellido paterno'],
+      ['apellido_materno', 'Apellido materno'],
+      ['telefono1', 'Telefono1'],
+      ['telefono2', 'Telefono2'],
+      ['telefono3', 'Telefono3'],
+      ['email', 'Email'],
+      ['es_principal', 'Es principal'],
+      ['cliente_razon_social', 'Cliente: razón social'],
+      ['cliente_nombres', 'Cliente: nombres'],
+      ['cliente_apellido_paterno', 'Cliente: apellido paterno'],
+      ['cliente_apellido_materno', 'Cliente: apellido materno'],
+      ['cliente_numero_documento', 'Documento del cliente'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

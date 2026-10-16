@@ -10,6 +10,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -134,6 +135,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { catalogoPreciosService } from '@/modules/productos/catalogo-precios/services/catalogo-precios.service'
+
 import { computed, onMounted, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
@@ -355,4 +359,28 @@ function onActionSelect(key: string, row: CatalogoPrecio) {
 const onCatalogoPrecioSaved = () => {
   selectedCatalogoPrecio.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Catálogo de precios',
+    listar: catalogoPreciosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombre_tipo_catalogo', 'Tipo catalogo'],
+      ['periodo', 'Periodo'],
+      ['nombre_item', 'Item'],
+      ['codigo_producto', 'Código producto'],
+      ['nombre_producto', 'Producto'],
+      ['nombre_tipo_balon', 'Tipo balon'],
+      ['nombre_proveedor', 'Proveedor'],
+      ['costo_producto', 'Costo producto', 'numero'],
+      ['costo_flete', 'Costo flete', 'numero'],
+      ['porcentaje_margen', 'Porcentaje margen', 'numero'],
+      ['precio_final', 'Precio final', 'numero'],
+      ['precio_garantia', 'Precio garantia', 'numero'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

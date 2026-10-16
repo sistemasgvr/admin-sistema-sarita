@@ -13,6 +13,7 @@
   </div>
 
   <div v-else>
+    <div class="mb-4 flex justify-end"><AppExportExcelButton :on-export="exportarIndicadores" /></div>
     <section class="mb-6">
       <AppSummaryCards :cards="resumenCards" :columns="4" />
     </section>
@@ -73,9 +74,12 @@
         empty-text="No hay cuentas por cobrar pendientes."
       >
         <template #toolbar>
-          <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
-            Control de cuentas por cobrar pendientes
-          </h3>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
+              Control de cuentas por cobrar pendientes
+            </h3>
+            <AppExportExcelButton :on-export="exportarTabla" />
+          </div>
         </template>
 
         <template #cell-estadoPago="{ value }">
@@ -95,6 +99,8 @@
 </template>
 
 <script setup lang="ts">
+import AppExportExcelButton from '@/shared/components/ui/AppExportExcelButton.vue'
+import { exportarFilasExcel } from '@/shared/utils/exportarListadoExcel'
 import { computed } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppBadge, AppSummaryCards, AppTable } from '@/shared/components'
@@ -266,4 +272,12 @@ const columnasCxc: TableColumn<CuentaPorCobrarRow>[] = [
   { key: 'estadoPago', label: 'Estado', align: 'center' },
   { key: 'montoSaldo', label: 'Monto', align: 'right' },
 ]
+
+const exportarIndicadores = () => exportarFilasExcel(
+  'Gestión de clientes',
+  resumenCards.value.map((card) => ({ indicador: card.label, valor: card.value, detalle: card.hint ?? '' })),
+  [['indicador', 'Indicador'], ['valor', 'Valor'], ['detalle', 'Detalle']],
+)
+
+const exportarTabla = () => exportarFilasExcel('Cuentas por cobrar del panel', cuentasPorCobrar.value, [['idCuenta', 'ID cuenta'], ['cliente', 'Cliente'], ['comprobante', 'Comprobante'], ['fechaEmision', 'Fecha emisión'], ['diasRetraso', 'Días de retraso', 'numero'], ['estadoPago', 'Estado'], ['montoSaldo', 'Saldo', 'numero']])
 </script>

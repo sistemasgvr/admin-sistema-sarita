@@ -50,6 +50,8 @@
         <slot name="tools" />
       </div>
 
+      <AppExportExcelButton v-if="onExport" :on-export="onExport" :disabled="exportDisabled" />
+
       <div v-if="slots.actions" class="contents">
         <slot name="actions" />
       </div>
@@ -61,6 +63,7 @@
 import { computed, useSlots } from 'vue'
 import { AppInput } from '@/shared/components'
 import AppDynamicFilters from '@/shared/components/filters/AppDynamicFilters.vue'
+import AppExportExcelButton from '@/shared/components/ui/AppExportExcelButton.vue'
 import type {
   DynamicFilterFieldDef,
   DynamicFilterValues,
@@ -76,6 +79,9 @@ const props = withDefaults(
     alignEndOnDesktop?: boolean
     /** Siempre una sola fila (p. ej. pickers del POS). */
     inline?: boolean
+    /** Reporte simple del listado; se omite cuando la vista ya tiene un exportador propio. */
+    onExport?: () => Promise<void> | void
+    exportDisabled?: boolean
   }>(),
   {
     searchPlaceholder: 'Buscar...',
@@ -98,6 +104,7 @@ const emit = defineEmits<{
 const hasTrailingActions = computed(
   () =>
     (props.filterFields?.length ?? 0) > 0 ||
+    Boolean(props.onExport) ||
     Boolean(slots.actions) ||
     Boolean(slots.tools),
 )

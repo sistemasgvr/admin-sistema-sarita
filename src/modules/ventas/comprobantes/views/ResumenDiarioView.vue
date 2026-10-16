@@ -5,6 +5,7 @@
     <AppTable data-tutorial="rd-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -89,6 +90,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { comprobantesService } from '@/modules/ventas/comprobantes/services/comprobantes.service'
+
 import { computed, ref, watch } from 'vue'
 import {
   useComprobanteCatalogosPosQuery,
@@ -226,4 +230,25 @@ function onCreated(id: number) {
   autoConsultar.value = true
   detailModalOpen.value = true
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Resúmenes diarios',
+    listar: comprobantesService.listarResumenDiario,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['fecha', 'Fecha'],
+      ['correlativo', 'Correlativo'],
+      ['identificador', 'Identificador'],
+      ['ticket_sunat', 'Ticket sunat'],
+      ['nombre_estado_sunat', 'Estado SUNAT'],
+      ['moneda', 'Moneda'],
+      ['cantidad_docs', 'Cantidad docs', 'numero'],
+      ['total_importe', 'Total', 'numero'],
+      ['total_igv', 'Total igv', 'numero'],
+      ['total_valor_venta', 'Total valor venta', 'numero'],
+    ],
+  })
 </script>

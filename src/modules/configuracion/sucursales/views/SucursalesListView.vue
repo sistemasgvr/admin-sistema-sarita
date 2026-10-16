@@ -12,6 +12,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           search-placeholder="Código, nombre o dirección..."
         >
@@ -110,6 +111,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { sucursalesService } from '@/modules/configuracion/sucursales/services/sucursales.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import SucursalFormModal from '@/modules/configuracion/sucursales/components/SucursalFormModal.vue'
@@ -221,4 +225,19 @@ const confirmDelete = async () => {
 const onSucursalSaved = () => {
   selectedSucursal.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Sucursales',
+    listar: sucursalesService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['codigo', 'Código'],
+      ['nombre', 'Nombre'],
+      ['direccion', 'Direccion'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

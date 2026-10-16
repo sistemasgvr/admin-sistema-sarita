@@ -6,6 +6,7 @@
     <AppTable data-tutorial="movimientos-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -158,6 +159,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { inventarioMovimientosService } from '@/modules/inventario/services/inventario-movimientos.service'
+
 import { computed, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -373,4 +377,32 @@ async function confirmAnular() {
   await anularMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
   anularModalOpen.value = false
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Movimientos de inventario',
+    listar: inventarioMovimientosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['fecha', 'Fecha'],
+      ['naturaleza', 'Naturaleza'],
+      ['nombre_tipo_movimiento', 'Tipo movimiento'],
+      ['codigo_producto', 'Código producto'],
+      ['nombre_producto', 'Producto'],
+      ['numero_serie_balon', 'Número serie balon'],
+      ['cantidad', 'Cantidad', 'numero'],
+      ['nombre_unidad_medida', 'Unidad medida'],
+      ['nombre_almacen_origen', 'Almacén origen'],
+      ['nombre_almacen_destino', 'Almacén destino'],
+      ['nombre_cliente', 'Cliente'],
+      ['stock_anterior', 'Stock anterior', 'numero'],
+      ['stock_nuevo', 'Stock nuevo', 'numero'],
+      ['nombre_tipo_documento_origen', 'Tipo documento origen'],
+      ['id_documento_origen', 'Id documento origen'],
+      ['glosa', 'Glosa'],
+      ['estado', 'Estado', 'anulacion'],
+    ],
+  })
 </script>

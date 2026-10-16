@@ -12,6 +12,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -113,6 +114,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { almacenesService } from '@/modules/configuracion/almacenes/services/almacenes.service'
+
 import { computed, onMounted, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlmacenFormModal from '@/modules/configuracion/almacenes/components/AlmacenFormModal.vue'
@@ -268,4 +272,20 @@ const confirmDelete = async () => {
 const onAlmacenSaved = () => {
   selectedAlmacen.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Almacenes',
+    listar: almacenesService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombre', 'Nombre'],
+      ['nombre_sucursal', 'Sucursal'],
+      ['ubicacion', 'Ubicacion'],
+      ['descripcion', 'Descripción'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

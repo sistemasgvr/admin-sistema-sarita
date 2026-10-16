@@ -14,6 +14,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -169,6 +170,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ActivoDetailModal from '@/modules/activos/components/ActivoDetailModal.vue'
@@ -406,4 +409,25 @@ const confirmDelete = async () => {
 const onSaved = () => {
   selectedActivo.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Activos',
+    listar: activosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['descripcion', 'Descripción'],
+      ['nombre_tipo', 'Tipo'],
+      ['fecha_compra', 'Fecha compra'],
+      ['importe', 'Importe', 'numero'],
+      ['nombre_sucursal', 'Sucursal'],
+      ['marca', 'Marca'],
+      ['modelo', 'Modelo'],
+      ['numero_serie', 'Número serie'],
+      ['nombre_trabajador_responsable', 'Trabajador responsable'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

@@ -12,6 +12,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           search-placeholder="Código o nombre..."
         >
@@ -110,6 +111,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { condicionesPagoService } from '@/modules/configuracion/condiciones-pago/services/condiciones-pago.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import CondicionPagoFormModal from '@/modules/configuracion/condiciones-pago/components/CondicionPagoFormModal.vue'
@@ -243,4 +247,22 @@ const confirmDelete = async () => {
 const onCondicionPagoSaved = () => {
   selectedCondicionPago.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Condiciones de pago',
+    listar: condicionesPagoService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['codigo', 'Código'],
+      ['nombre', 'Nombre'],
+      ['modalidad', 'Modalidad'],
+      ['dias_credito', 'Días de crédito', 'numero'],
+      ['numero_cuotas', 'Número cuotas', 'numero'],
+      ['dia_mes_pago', 'Dia mes pago', 'numero'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

@@ -6,6 +6,7 @@
     <AppTable data-tutorial="docsalida-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -196,6 +197,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -594,4 +597,34 @@ watch(
   () => syncFilters(),
   { immediate: true },
 )
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Documentos de salida',
+    listar: documentosSalidaService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['numero', 'Número'],
+      ['nombre_tipo_orden', 'Tipo orden'],
+      ['fecha', 'Fecha'],
+      ['fecha_traslado', 'Fecha traslado'],
+      ['fecha_llegada_almacen', 'Fecha llegada almacén'],
+      ['nombre_estado_ciclo', 'Estado ciclo'],
+      ['nombre_estado_sunat', 'Estado SUNAT'],
+      ['serie', 'Serie'],
+      ['numero_sunat', 'Número sunat'],
+      ['nombre_cliente', 'Cliente'],
+      ['nombre_proveedor', 'Proveedor'],
+      ['nombre_sucursal', 'Sucursal'],
+      ['nombre_almacen', 'Almacén'],
+      ['nombre_almacen_destino', 'Almacén destino'],
+      ['nombre_almacen_retorno', 'Almacén retorno'],
+      ['total_items', 'Total items', 'numero'],
+      ['total_cilindros', 'Total cilindros', 'numero'],
+      ['total_productos', 'Total productos', 'numero'],
+      ['observaciones', 'Observaciones'],
+    ],
+  })
 </script>

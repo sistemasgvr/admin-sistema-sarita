@@ -3,6 +3,7 @@ import type {
   AbrirCajaPayload,
   ActualizarCajaGastoPayload,
   CajaGastosListFilters,
+  CajaSesionesListFilters,
   CajaMovimientoGasto,
   CajaPendienteCierre,
   CajaSesion,
@@ -24,7 +25,7 @@ export const cajaService = {
     })
   },
 
-  listarSesiones(filters: Record<string, unknown> = {}) {
+  listarSesiones(filters: CajaSesionesListFilters = {}) {
     return apiGetPaginated<CajaSesion>('/caja/sesiones', { params: filters })
   },
 

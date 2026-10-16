@@ -9,6 +9,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -146,6 +147,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { movimientosRecargaService } from '@/modules/balones/recargas/services/movimientos-recarga.service'
+
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -379,4 +383,30 @@ const confirmDelete = async () => {
     // toast en mutation
   }
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Recargas',
+    listar: movimientosRecargaService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['fecha_salida_almacen', 'Fecha salida almacén'],
+      ['tipo_recarga_nombre', 'Tipo recarga nombre'],
+      ['codigo_balon', 'Código balon'],
+      ['nombre_cliente', 'Cliente'],
+      ['documento_cliente', 'Documento cliente'],
+      ['nombre_producto', 'Producto'],
+      ['capacidad', 'Capacidad', 'numero'],
+      ['nombre_unidad_medida', 'Unidad medida'],
+      ['nombre_almacen', 'Almacén'],
+      ['nombre_proveedor', 'Proveedor'],
+      ['fecha_llegada_almacen', 'Fecha llegada almacén'],
+      ['serie_factura', 'Serie factura'],
+      ['numero_factura', 'Número factura'],
+      ['lote', 'Lote'],
+      ['observacion', 'Observación'],
+    ],
+  })
 </script>

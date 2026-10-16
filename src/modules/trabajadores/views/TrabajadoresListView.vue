@@ -14,6 +14,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -173,6 +174,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import TrabajadorDetailModal from '@/modules/trabajadores/components/TrabajadorDetailModal.vue'
@@ -411,4 +414,28 @@ const confirmDelete = async () => {
 const onTrabajadorSaved = () => {
   selectedTrabajador.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Trabajadores',
+    listar: trabajadoresService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombres', 'Nombres'],
+      ['apellido_paterno', 'Apellido paterno'],
+      ['apellido_materno', 'Apellido materno'],
+      ['nombre_tipo_documento', 'Tipo de documento'],
+      ['numero_documento', 'Número documento'],
+      ['nombre_area', 'Area'],
+      ['nombre_cargo', 'Cargo'],
+      ['correo', 'Correo'],
+      ['fecha_nacimiento', 'Fecha nacimiento'],
+      ['edad', 'Edad', 'numero'],
+      ['fecha_inicio', 'Fecha inicio'],
+      ['fecha_cese', 'Fecha cese'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

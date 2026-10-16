@@ -9,6 +9,7 @@
         <AppTable data-tutorial="docvenc-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
           <template #toolbar>
             <AppListToolbar
+          :on-export="exportarListado"
               v-model:search="buscar"
               v-model:filters="dynamicFilters"
               :filter-fields="filterFields"
@@ -243,6 +244,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { documentosVencimientoService } from '@/modules/documentos-vencimiento/services/documentos-vencimiento.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import DocumentoVencimientoFormModal from '@/modules/documentos-vencimiento/components/DocumentoVencimientoFormModal.vue'
@@ -517,4 +521,25 @@ const confirmDelete = async () => {
 const onDocumentoSaved = () => {
   selectedDocumento.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Permisos y certificados',
+    listar: documentosVencimientoService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['descripcion', 'Descripción'],
+      ['numero_documento', 'Número documento'],
+      ['nombre_categoria', 'Categoría'],
+      ['vehiculo_placa', 'Vehiculo placa'],
+      ['sucursal_nombre', 'Sucursal nombre'],
+      ['fecha_vencimiento', 'Fecha vencimiento'],
+      ['fecha_renovacion', 'Fecha renovacion'],
+      ['estado_calculado', 'Estado de vencimiento'],
+      ['dias_para_vencer', 'Días para vencer', 'numero'],
+      ['observacion', 'Observación'],
+    ],
+  })
 </script>

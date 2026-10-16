@@ -9,6 +9,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -145,6 +146,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { prestamosService } from '@/modules/balones/prestamos/services/prestamos.service'
+
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -453,4 +457,27 @@ const confirmDelete = async () => {
     // toast en mutation
   }
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Préstamos',
+    listar: prestamosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['numero_prestamo', 'Número prestamo'],
+      ['nombre_tipo_prestamo', 'Tipo prestamo'],
+      ['nombre_cliente', 'Cliente'],
+      ['nombre_proveedor', 'Proveedor'],
+      ['nombre_almacen', 'Almacén'],
+      ['fecha_salida', 'Fecha salida'],
+      ['fecha_retorno_pactada', 'Fecha retorno pactada'],
+      ['fecha_retorno_real', 'Fecha retorno real'],
+      ['nombre_estado', 'Estado'],
+      ['total_detalles', 'Cantidad de cilindros', 'numero'],
+      ['total_garantias', 'Total garantias', 'numero'],
+      ['observacion', 'Observación'],
+    ],
+  })
 </script>

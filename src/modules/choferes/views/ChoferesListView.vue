@@ -14,6 +14,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -147,6 +148,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -437,4 +440,29 @@ const confirmDelete = async () => {
 const onChoferSaved = () => {
   selectedChofer.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Choferes',
+    listar: choferesService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombres', 'Nombres'],
+      ['apellido_paterno', 'Apellido paterno'],
+      ['apellido_materno', 'Apellido materno'],
+      ['nombre_tipo_documento', 'Tipo de documento'],
+      ['numero_documento', 'Número documento'],
+      ['cliente_razon_social', 'Cliente: razón social'],
+      ['cliente_nombres', 'Cliente: nombres'],
+      ['cliente_apellido_paterno', 'Cliente: apellido paterno'],
+      ['cliente_apellido_materno', 'Cliente: apellido materno'],
+      ['cliente_numero_documento', 'Documento del cliente'],
+      ['telefono', 'Teléfono'],
+      ['codigo_licencia', 'Código licencia'],
+      ['fecha_vencimiento', 'Fecha vencimiento'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

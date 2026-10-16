@@ -5,6 +5,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -170,6 +171,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { mantenimientosService } from '@/modules/balones/mantenimientos/services/mantenimientos.service'
+
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -441,4 +445,28 @@ const confirmDelete = async () => {
     // toast en mutation
   }
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Mantenimientos',
+    listar: mantenimientosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['codigo_balon', 'Código balon'],
+      ['codigo_producto', 'Código producto'],
+      ['nombre_producto', 'Producto'],
+      ['nombre_tipo_mantenimiento', 'Tipo mantenimiento'],
+      ['fecha_ingreso', 'Fecha ingreso'],
+      ['fecha_salida', 'Fecha salida'],
+      ['costo', 'Costo', 'numero'],
+      ['es_externo', 'Es externo'],
+      ['nombre_proveedor', 'Proveedor'],
+      ['nombre_estado', 'Estado'],
+      ['comprobante_compra', 'Comprobante compra'],
+      ['comprobante_venta', 'Comprobante venta'],
+      ['observacion', 'Observación'],
+    ],
+  })
 </script>

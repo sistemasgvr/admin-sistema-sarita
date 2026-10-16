@@ -12,6 +12,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -176,6 +177,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { usuariosService } from '@/modules/usuarios/services/usuarios.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import UsuarioFormModal from '@/modules/usuarios/components/UsuarioFormModal.vue'
@@ -353,4 +357,21 @@ const confirmActivate = async () => {
 const onUsuarioSaved = () => {
   selectedUsuario.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Usuarios',
+    listar: usuariosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombre', 'Nombre'],
+      ['correo', 'Correo'],
+      ['nombre_trabajador', 'Trabajador'],
+      ['roles', 'Roles'],
+      ['estado', 'Estado', 'estado'],
+      ['fecha_creacion', 'Fecha creación'],
+    ],
+  })
 </script>

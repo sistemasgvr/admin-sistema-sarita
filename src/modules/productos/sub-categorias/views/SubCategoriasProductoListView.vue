@@ -12,6 +12,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -176,6 +177,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { subCategoriasProductoService } from '@/modules/productos/sub-categorias/services/sub-categorias-producto.service'
+
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -464,4 +468,20 @@ function onActionSelect(key: string, row: SubCategoriaProducto) {
 const onSubCategoriaSaved = () => {
   selectedSubCategoria.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Subcategorías de productos',
+    listar: subCategoriasProductoService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombre_categoria', 'Categoría'],
+      ['nombre', 'Nombre'],
+      ['descripcion', 'Descripción'],
+      ['total_productos', 'Total productos', 'numero'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

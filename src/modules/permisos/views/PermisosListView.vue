@@ -16,6 +16,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           search-placeholder="Nombre o descripción..."
         />
@@ -38,6 +39,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { permisosService } from '@/modules/permisos/services/permisos.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { usePermisosQuery } from '@/modules/permisos/composables/usePermisosQuery'
@@ -97,4 +101,19 @@ watch(buscar, () => {
 watch([pagina, limite], () => {
   syncFilters()
 })
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Permisos del sistema',
+    listar: permisosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombre', 'Nombre'],
+      ['descripcion', 'Descripción'],
+      ['cantidad_roles', 'Cantidad roles', 'numero'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

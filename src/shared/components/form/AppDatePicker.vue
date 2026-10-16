@@ -244,8 +244,11 @@ function commitDateTextFromInput() {
     dateTextDraft.value = dateTextFromModel(model.value)
     return
   }
-  model.value = formatYMD(dt)
-  dateTextDraft.value = dateTextFromModel(model.value)
+  const ymd = formatYMD(dt)
+  model.value = ymd
+  // El padre actualiza la prop en el siguiente render. Leer model aquí puede
+  // recuperar el valor anterior y borrar la fecha al salir del campo.
+  dateTextDraft.value = dateTextFromModel(ymd)
 }
 
 function onDateTextInput(e: Event) {

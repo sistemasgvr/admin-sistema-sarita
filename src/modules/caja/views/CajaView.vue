@@ -77,6 +77,7 @@
             data-tutorial="caja-acciones"
             class="flex w-full flex-wrap gap-2 lg:ml-auto lg:w-auto lg:shrink-0 lg:items-end"
           >
+            <AppExportExcelButton :on-export="exportarCaja" :disabled="isLoading" />
             <button
               v-if="canAbrir && !sesion?.id && !pendienteCierreSucursal"
               type="button"
@@ -524,6 +525,9 @@
 </template>
 
 <script setup lang="ts">
+import AppExportExcelButton from '@/shared/components/ui/AppExportExcelButton.vue'
+import { exportarLibroDiarioExcel } from '@/modules/caja/utils/exportarLibroDiarioExcel'
+import { cajaService } from '@/modules/caja/services/caja.service'
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -958,4 +962,9 @@ const desgloseArqueo = computed(() => [
     destacado: true,
   },
 ])
+
+async function exportarCaja() {
+  const libro = await cajaService.libroDiario({ fechaDesde: fecha.value, fechaHasta: fecha.value, idSucursal: idSucursal.value })
+  await exportarLibroDiarioExcel(libro)
+}
 </script>

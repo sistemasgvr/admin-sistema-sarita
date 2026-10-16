@@ -5,6 +5,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -149,6 +150,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { rutasPueblosService } from '@/modules/balones/rutas-pueblos/services/rutas-pueblos.service'
+
 import { computed, ref, watch } from 'vue'
 import {
   useDeleteRutaPuebloMutation,
@@ -406,4 +410,26 @@ async function confirmarEliminar() {
   await deleteMutation.mutateAsync({ id: row.id, idUsuarioAuditoria: userId })
   eliminarOpen.value = false
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Rutas a pueblos',
+    listar: rutasPueblosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['fecha', 'Fecha'],
+      ['nombre_almacen', 'Almacén'],
+      ['nombre_chofer', 'Chofer'],
+      ['nombre_usuario_responsable', 'Usuario responsable'],
+      ['nombre_estado', 'Estado'],
+      ['total_cilindros', 'Total cilindros', 'numero'],
+      ['total_retornados', 'Total retornados', 'numero'],
+      ['m3_reportado_ventas', 'm³ reportado en ventas', 'numero'],
+      ['m3_calculado', 'm³ calculado', 'numero'],
+      ['descuadre_m3', 'Descuadre (m³)', 'numero'],
+      ['observacion', 'Observación'],
+    ],
+  })
 </script>

@@ -5,6 +5,8 @@
     <AppTable data-tutorial="vsd-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
+          :export-disabled="idTipoNotaVenta == null"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -141,6 +143,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -548,4 +552,23 @@ async function confirmDelete() {
   deleteModalOpen.value = false
   comprobanteToDelete.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Ventas sin documento',
+    listar: comprobantesService.listar,
+    filtros: { ...filters.value, idTipoComprobante: idTipoNotaVenta.value ?? -1 },
+    campos: [
+      ['id', 'ID'],
+      ['serie', 'Serie'],
+      ['numero', 'Número'],
+      ['fecha', 'Fecha'],
+      ['nombre_cliente', 'Cliente'],
+      ['documento_cliente', 'Documento cliente'],
+      ['total_importe', 'Total', 'numero'],
+      ['nombre_estado', 'Estado'],
+      ['nombre_estado_sunat', 'Estado SUNAT'],
+    ],
+  })
 </script>

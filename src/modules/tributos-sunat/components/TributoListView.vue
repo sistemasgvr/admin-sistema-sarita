@@ -5,6 +5,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading" :empty-text="`No hay ${config.plural.toLowerCase()} registradas.`">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -89,6 +90,8 @@ import { useTributosQuery } from '../composables/useTributosQuery'
 import type { TipoTributo, TributoListFilters, TributoListItem } from '../interfaces/tributo.interface'
 import { formatFecha, formatMoney } from '../utils/formato'
 import TributoEstadoBadge from './TributoEstadoBadge.vue'
+import { createTributoService } from '../services/tributos.service'
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
 
 const props = defineProps<{ tipo: TipoTributo }>()
 const config = computed(() => TRIBUTOS_CONFIG[props.tipo])
@@ -141,4 +144,21 @@ const columns = computed<TableColumn<TributoListItem>[]>(() => [
   { key: 'tributo', label: config.value.singular, align: 'right' },
   { key: 'estado', label: 'SUNAT', align: 'center', mobile: 'badge' },
 ])
+
+const exportarListado = () => exportarListadoExcel({
+  nombre: config.value.plural,
+  listar: createTributoService(props.tipo).listar,
+  filtros: filters.value,
+  paginacion: 'tamano',
+  campos: [
+    ['id', 'ID'], ['serie', 'Serie'], ['numero', 'Número'], ['fecha_emision', 'Fecha de emisión'],
+    [config.value.campos.nombreContraparte, config.value.contraparte],
+    [config.value.campos.documentoContraparte, 'Documento'],
+    ['regimen', 'Régimen'], ['tasa', 'Tasa (%)', 'numero'],
+    ['base_imponible', 'Base imponible', 'numero'],
+    [config.value.campos.montoTributo, config.value.singular, 'numero'],
+    [config.value.campos.montoNeto, props.tipo === 'retencion' ? 'Monto pagado' : 'Monto cobrado', 'numero'],
+    ['nombre_estado_sunat', 'Estado SUNAT'], ['ticket_sunat', 'Ticket SUNAT'],
+  ],
+})
 </script>

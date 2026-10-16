@@ -5,6 +5,8 @@
     <AppTable data-tutorial="nc-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
+          :export-disabled="idTipoNotaCredito == null"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -149,6 +151,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, ref, watch } from 'vue'
 import {
   useComprobanteCatalogosPosQuery,
@@ -529,4 +533,26 @@ async function confirmDelete() {
   deleteModalOpen.value = false
   comprobanteToDelete.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Notas de crédito',
+    listar: comprobantesService.listar,
+    filtros: { ...filters.value, idTipoComprobante: idTipoNotaCredito.value ?? -1 },
+    campos: [
+      ['id', 'ID'],
+      ['serie', 'Serie'],
+      ['numero', 'Número'],
+      ['fecha', 'Fecha'],
+      ['nombre_cliente', 'Cliente'],
+      ['documento_cliente', 'Documento cliente'],
+      ['serie_comprobante_origen', 'Serie comprobante origen'],
+      ['numero_comprobante_origen', 'Número comprobante origen'],
+      ['nombre_motivo_nota', 'Motivo nota'],
+      ['total_importe', 'Total', 'numero'],
+      ['nombre_estado', 'Estado'],
+      ['nombre_estado_sunat', 'Estado SUNAT'],
+    ],
+  })
 </script>

@@ -13,6 +13,7 @@
   </div>
 
   <div v-else>
+    <div class="mb-4 flex justify-end"><AppExportExcelButton :on-export="exportarIndicadores" /></div>
     <section class="mb-6">
       <AppSummaryCards :cards="resumenCards" :columns="4" />
     </section>
@@ -60,9 +61,12 @@
         empty-text="No hay productos con movimiento en el periodo."
       >
         <template #toolbar>
-          <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
-            Detalle de velocidad de salida
-          </h3>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
+              Detalle de velocidad de salida
+            </h3>
+            <AppExportExcelButton :on-export="exportarTabla" />
+          </div>
         </template>
 
         <template #cell-nivelRotacion="{ row }">
@@ -82,6 +86,8 @@
 </template>
 
 <script setup lang="ts">
+import AppExportExcelButton from '@/shared/components/ui/AppExportExcelButton.vue'
+import { exportarFilasExcel } from '@/shared/utils/exportarListadoExcel'
 import { computed } from 'vue'
 import type { ApexOptions } from 'apexcharts'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -232,4 +238,12 @@ const NIVEL_ROTACION_COLOR: Record<DashboardNivelRotacion, BadgeColor> = {
 
 const etiquetaNivelRotacion = (nivel: DashboardNivelRotacion) => NIVEL_ROTACION_LABEL[nivel]
 const colorNivelRotacion = (nivel: DashboardNivelRotacion) => NIVEL_ROTACION_COLOR[nivel]
+
+const exportarIndicadores = () => exportarFilasExcel(
+  'Analítica de productos',
+  resumenCards.value.map((card) => ({ indicador: card.label, valor: card.value, detalle: card.hint ?? '' })),
+  [['indicador', 'Indicador'], ['valor', 'Valor'], ['detalle', 'Detalle']],
+)
+
+const exportarTabla = () => exportarFilasExcel('Rotación de productos del panel', velocidadSalida.value, [['producto', 'Producto'], ['categoria', 'Categoría'], ['stockActual', 'Stock actual', 'numero'], ['nivelRotacion', 'Rotación'], ['margenUnitario', 'Margen unitario', 'numero']])
 </script>

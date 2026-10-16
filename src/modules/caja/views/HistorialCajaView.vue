@@ -6,6 +6,7 @@
       <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
         <template #toolbar>
           <AppListToolbar
+          :on-export="exportarListado"
             :show-search="false"
             v-model:filters="dynamicFilters"
             :filter-fields="filterFields"
@@ -108,6 +109,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { cajaService } from '@/modules/caja/services/caja.service'
+
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
@@ -193,4 +197,28 @@ function esSesionPendiente(row: CajaSesion) {
     String(row.fecha).slice(0, 10) < hoyLocal()
   )
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Historial de caja',
+    listar: cajaService.listarSesiones,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['fecha', 'Fecha'],
+      ['nombreSucursal', 'Sucursal'],
+      ['estadoCaja', 'Estado de caja'],
+      ['montoInicial', 'Monto inicial', 'numero'],
+      ['montoEfectivoContado', 'Monto efectivo contado', 'numero'],
+      ['montoEsperado', 'Monto esperado', 'numero'],
+      ['diferencia', 'Diferencia', 'numero'],
+      ['usuarioApertura', 'Usuario apertura'],
+      ['fechaApertura', 'Fecha apertura'],
+      ['usuarioCierre', 'Usuario cierre'],
+      ['fechaCierre', 'Fecha cierre'],
+      ['observacionApertura', 'Observacion apertura'],
+      ['observacionCierre', 'Observacion cierre'],
+    ],
+  })
 </script>

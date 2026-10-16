@@ -13,6 +13,7 @@
   </div>
 
   <div v-else>
+    <div class="mb-4 flex justify-end"><AppExportExcelButton :on-export="exportarIndicadores" /></div>
     <section class="mb-6">
       <AppSummaryCards :cards="resumenCards" :columns="4" />
     </section>
@@ -115,9 +116,12 @@
         empty-text="No hay solicitudes de baja pendientes."
       >
         <template #toolbar>
-          <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
-            Solicitudes de baja pendientes
-          </h3>
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="text-base font-semibold text-gray-800 dark:text-white/90">
+              Solicitudes de baja pendientes
+            </h3>
+            <AppExportExcelButton :on-export="exportarTabla" />
+          </div>
         </template>
 
         <template #cell-fechaBaja="{ value }">
@@ -129,6 +133,8 @@
 </template>
 
 <script setup lang="ts">
+import AppExportExcelButton from '@/shared/components/ui/AppExportExcelButton.vue'
+import { exportarFilasExcel } from '@/shared/utils/exportarListadoExcel'
 import { computed } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { AppBadge, AppSummaryCards, AppTable } from '@/shared/components'
@@ -215,4 +221,12 @@ const columnasBajas: TableColumn<(typeof bajasSolicitadas.value)[number]>[] = [
   { key: 'fechaBaja', label: 'Fecha' },
   { key: 'usuarioSolicita', label: 'Solicitado por' },
 ]
+
+const exportarIndicadores = () => exportarFilasExcel(
+  'Control de cilindros',
+  resumenCards.value.map((card) => ({ indicador: card.label, valor: card.value, detalle: card.hint ?? '' })),
+  [['indicador', 'Indicador'], ['valor', 'Valor'], ['detalle', 'Detalle']],
+)
+
+const exportarTabla = () => exportarFilasExcel('Bajas de cilindros del panel', bajasSolicitadas.value, [['codigoBalon', 'Cilindro'], ['motivo', 'Motivo'], ['fechaBaja', 'Fecha de baja'], ['usuarioSolicita', 'Solicitante']])
 </script>

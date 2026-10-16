@@ -11,6 +11,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           search-placeholder="Nombre o gas..."
         >
@@ -166,6 +167,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { tiposBalonService } from '@/modules/balones/tipos-balon/services/tipos-balon.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
@@ -335,4 +339,26 @@ const confirmDelete = async () => {
 const onTipoBalonSaved = () => {
   selectedTipoBalon.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Tipos de cilindro',
+    listar: tiposBalonService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['nombre', 'Nombre'],
+      ['nombre_gas', 'Gas'],
+      ['capacidad', 'Capacidad', 'numero'],
+      ['capacidad_lb', 'Capacidad (lb)', 'numero'],
+      ['nombre_unidad_medida', 'Unidad medida'],
+      ['peso', 'Peso', 'numero'],
+      ['peso_tara_lb', 'Peso tara (lb)', 'numero'],
+      ['presion_llenado_psi', 'Presión llenado (psi)', 'numero'],
+      ['vigencia_ph_anios', 'Vigencia P.H. (años)', 'numero'],
+      ['total_balones', 'Total balones', 'numero'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

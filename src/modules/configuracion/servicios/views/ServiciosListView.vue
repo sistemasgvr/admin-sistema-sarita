@@ -12,6 +12,7 @@
     >
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           search-placeholder="Código, nombre o URL..."
         >
@@ -116,6 +117,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { configuracionServiciosService } from '@/modules/configuracion/servicios/services/configuracion-servicios.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ServicioFormModal from '@/modules/configuracion/servicios/components/ServicioFormModal.vue'
@@ -235,4 +239,22 @@ const confirmDelete = async () => {
 const onServicioSaved = () => {
   selectedServicio.value = null
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Servicios',
+    listar: configuracionServiciosService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['codigo', 'Código'],
+      ['nombre', 'Nombre'],
+      ['usuario', 'Usuario'],
+      ['email', 'Email'],
+      ['url', 'Url'],
+      ['observacion', 'Observación'],
+      ['estado', 'Estado', 'estado'],
+    ],
+  })
 </script>

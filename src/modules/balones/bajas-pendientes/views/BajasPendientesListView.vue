@@ -9,6 +9,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           search-placeholder="Cilindro, motivo o solicitante..."
         >
@@ -228,6 +229,8 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import {
@@ -443,4 +446,27 @@ watch(buscar, () => {
 watch([pagina, limite], () => {
   syncFilters()
 })
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Bajas pendientes de cilindros',
+    listar: bajasPendientesService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['codigo_balon', 'Código balon'],
+      ['numero_serie', 'Número serie'],
+      ['nombre_motivo_baja', 'Motivo baja'],
+      ['fecha_baja', 'Fecha baja'],
+      ['motivo_detalle', 'Motivo detalle'],
+      ['nombre_cliente_comprador', 'Cliente comprador'],
+      ['serie_comprobante', 'Serie comprobante'],
+      ['numero_comprobante', 'Número comprobante'],
+      ['monto_venta', 'Monto venta', 'numero'],
+      ['nombre_usuario_solicita', 'Solicitante'],
+      ['estado_aprobacion', 'Estado de aprobación'],
+      ['fecha_creacion', 'Fecha creación'],
+    ],
+  })
 </script>

@@ -5,6 +5,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           search-placeholder="N° de lote, protocolo, proveedor o serie..."
         >
@@ -164,6 +165,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { lotesProtocoloService } from '@/modules/balones/lotes-protocolo/services/lotes-protocolo.service'
+
 import { computed, ref, watch } from 'vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import LoteProtocoloDetailModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloDetailModal.vue'
@@ -341,4 +345,28 @@ const confirmDelete = async () => {
     // toast en mutation
   }
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Lotes y protocolos',
+    listar: lotesProtocoloService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['numero_lote', 'Número lote'],
+      ['numero_protocolo', 'Número protocolo'],
+      ['nombre_proveedor', 'Proveedor'],
+      ['nombre_producto_gas', 'Producto gas'],
+      ['fecha_emision', 'Fecha emisión'],
+      ['fecha_fabricacion', 'Fecha fabricacion'],
+      ['fecha_vencimiento', 'Fecha vencimiento'],
+      ['vencido', 'Vencido'],
+      ['tamano_lote_m3', 'Tamaño lote (m³)', 'numero'],
+      ['valoracion_o2_pct', 'Valoración O₂ (%)', 'numero'],
+      ['total_envases', 'Envases', 'numero'],
+      ['total_balones_vigentes', 'Cilindros vigentes', 'numero'],
+      ['observacion', 'Observación'],
+    ],
+  })
 </script>

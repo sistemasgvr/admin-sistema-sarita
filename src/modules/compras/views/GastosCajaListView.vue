@@ -8,6 +8,7 @@
     <AppTable data-tutorial="gastos-tabla" :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -159,6 +160,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { cajaService } from '@/modules/caja/services/caja.service'
+
 import { computed, ref, watch } from 'vue'
 import {
   useCajaGastoDetailQuery,
@@ -337,4 +341,25 @@ async function confirmEliminar() {
   await eliminarMutation.mutateAsync(row.id)
   eliminarModalOpen.value = false
 }
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Gastos de caja',
+    listar: cajaService.listarGastos,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['fecha', 'Fecha'],
+      ['concepto', 'Concepto'],
+      ['categoriaGasto', 'Categoría de gasto'],
+      ['medioPago', 'Medio de pago'],
+      ['cuentaBancaria', 'Cuenta bancaria'],
+      ['numeroOperacion', 'Número de operación'],
+      ['monto', 'Monto', 'numero'],
+      ['observacion', 'Observación'],
+      ['idSesion', 'ID sesión de caja'],
+      ['estado', 'Estado', 'anulacion'],
+    ],
+  })
 </script>

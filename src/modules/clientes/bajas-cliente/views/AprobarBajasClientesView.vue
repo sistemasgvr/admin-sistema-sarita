@@ -3,6 +3,7 @@
     <AppTable :columns="columns" :rows="rows" row-key="id" :loading="isLoading">
       <template #toolbar>
         <AppListToolbar
+          :on-export="exportarListado"
           v-model:search="buscar"
           v-model:filters="dynamicFilters"
           :filter-fields="filterFields"
@@ -273,6 +274,9 @@
 </template>
 
 <script setup lang="ts">
+import { exportarListadoExcel } from '@/shared/utils/exportarListadoExcel'
+import { bajasClienteService } from '@/modules/clientes/bajas-cliente/services/bajas-cliente.service'
+
 import { computed, ref, watch } from 'vue'
 import {
   useAprobarBajaClienteMutation,
@@ -610,4 +614,28 @@ watch(detailModalOpen, (open) => {
     detailEnabled.value = false
   }
 })
+
+// Reporte simple de todas las páginas, con los filtros actuales del listado.
+const exportarListado = () =>
+  exportarListadoExcel({
+    nombre: 'Solicitudes de baja de clientes',
+    listar: bajasClienteService.listar,
+    filtros: filters.value,
+    campos: [
+      ['id', 'ID'],
+      ['cliente_razon_social', 'Cliente: razón social'],
+      ['cliente_nombres', 'Cliente: nombres'],
+      ['cliente_apellido_paterno', 'Cliente: apellido paterno'],
+      ['cliente_apellido_materno', 'Cliente: apellido materno'],
+      ['cliente_numero_documento', 'Documento del cliente'],
+      ['nombre_tipo_solicitud', 'Tipo solicitud'],
+      ['nombre_motivo_baja', 'Motivo baja'],
+      ['motivo_detalle', 'Motivo detalle'],
+      ['nombre_estado_aprobacion', 'Estado de aprobación'],
+      ['nombre_usuario_solicita', 'Solicitante'],
+      ['nombre_usuario_autoriza', 'Autorizado por'],
+      ['fecha_autorizacion', 'Fecha autorizacion'],
+      ['fecha_creacion', 'Fecha creación'],
+    ],
+  })
 </script>
