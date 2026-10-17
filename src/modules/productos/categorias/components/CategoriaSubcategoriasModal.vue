@@ -80,10 +80,10 @@
           <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900">
             <tr v-for="subCategoria in rows" :key="subCategoria.id">
               <td class="px-4 py-3 text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ subCategoria.nombre }}
+                <p class="max-w-sm truncate" :title="subCategoria.nombre">{{ subCategoria.nombre }}</p>
               </td>
               <td class="hidden px-4 py-3 text-sm text-gray-500 dark:text-gray-400 sm:table-cell">
-                {{ subCategoria.descripcion || '—' }}
+                <p class="max-w-sm truncate" :title="subCategoria.descripcion || undefined">{{ subCategoria.descripcion || '—' }}</p>
               </td>
               <td class="px-4 py-3">
                 <AppBadge variant="light">{{ subCategoria.total_productos ?? 0 }}</AppBadge>

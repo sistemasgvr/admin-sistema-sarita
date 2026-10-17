@@ -47,7 +47,7 @@
           <tr v-for="(fila, i) in filas" :key="fila.id_responsable ?? `sin-${i}`">
             <td class="px-4 py-2.5 font-medium text-gray-400 tabular-nums">{{ i + 1 }}</td>
             <td class="px-4 py-2.5 font-medium text-gray-800 dark:text-white/90">
-              {{ fila.nombre }}
+              <p class="max-w-sm truncate" :title="fila.nombre">{{ fila.nombre }}</p>
             </td>
             <td class="px-4 py-2.5 text-right tabular-nums font-semibold">{{ fila.total }}</td>
             <td class="px-4 py-2.5 text-right tabular-nums text-success-600">

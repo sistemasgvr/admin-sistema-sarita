@@ -32,7 +32,7 @@
       </template>
 
       <template #cell-concepto="{ row }">
-        <p class="font-medium text-gray-800 dark:text-white/90">{{ row.concepto }}</p>
+        <p class="truncate font-medium text-gray-800 dark:text-white/90" :title="row.concepto">{{ row.concepto }}</p>
         <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.fecha?.slice(0, 10) }}</p>
       </template>
 

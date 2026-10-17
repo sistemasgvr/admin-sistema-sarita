@@ -59,7 +59,9 @@
                       />
                     </div>
                   </td>
-                  <td class="px-3 py-2">{{ row.nombre_cliente ?? '—' }}</td>
+                  <td class="px-3 py-2">
+                    <p class="max-w-sm truncate" :title="row.nombre_cliente ?? undefined">{{ row.nombre_cliente ?? '—' }}</p>
+                  </td>
                   <td class="px-3 py-2">{{ formatFecha(row.fecha) }}</td>
                   <td class="px-3 py-2 text-right tabular-nums">
                     {{ formatMoney(Number(row.total_importe ?? 0)) }}

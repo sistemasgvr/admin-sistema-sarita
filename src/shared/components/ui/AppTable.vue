@@ -2,7 +2,10 @@
   <div
     class="w-full min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/3"
   >
-    <div v-if="$slots.toolbar" class="border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+    <div
+      v-if="$slots.toolbar"
+      class="border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800"
+    >
       <slot name="toolbar" />
     </div>
 
@@ -36,7 +39,11 @@
             v-if="mobileLayout.primary || mobileLayout.badge"
             class="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 dark:border-gray-800"
           >
-            <div v-if="mobileLayout.primary" class="min-w-0 flex-1">
+            <div
+              v-if="mobileLayout.primary"
+              class="app-table__cell-content min-w-0 flex-1"
+              :title="cellTitle(row, mobileLayout.primary)"
+            >
               <slot
                 :name="`cell-${mobileLayout.primary.key}`"
                 :row="row"
@@ -44,7 +51,10 @@
                 :index="index"
                 :column="mobileLayout.primary"
               >
-                <p class="font-medium text-brand-600 text-theme-sm dark:text-brand-400">
+                <p
+                  class="truncate font-medium text-brand-600 text-theme-sm dark:text-brand-400"
+                  :title="formatTableCellValue(row, mobileLayout.primary)"
+                >
                   {{ formatTableCellValue(row, mobileLayout.primary) }}
                 </p>
               </slot>
@@ -65,19 +75,22 @@
             </div>
           </header>
 
-          <div
-            v-if="mobileLayout.fields.length"
-            class="grid grid-cols-2 gap-x-4 gap-y-3 py-3"
-          >
+          <div v-if="mobileLayout.fields.length" class="grid grid-cols-2 gap-x-4 gap-y-3 py-3">
             <div
               v-for="column in mobileLayout.fields"
               :key="column.key"
+              class="min-w-0"
               :class="column.cellClass"
             >
-              <p class="text-theme-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              <p
+                class="text-theme-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500"
+              >
                 {{ column.label }}
               </p>
-              <div class="mt-0.5 min-w-0 text-theme-sm text-gray-800 dark:text-white/90">
+              <div
+                class="app-table__cell-content mt-0.5 min-w-0 text-theme-sm text-gray-800 dark:text-white/90"
+                :title="cellTitle(row, column)"
+              >
                 <slot
                   :name="`cell-${column.key}`"
                   :row="row"
@@ -85,7 +98,10 @@
                   :index="index"
                   :column="column"
                 >
-                  <p class="truncate text-gray-600 dark:text-gray-300">
+                  <p
+                    class="truncate text-gray-600 dark:text-gray-300"
+                    :title="formatTableCellValue(row, column)"
+                  >
                     {{ formatTableCellValue(row, column) }}
                   </p>
                 </slot>
@@ -110,92 +126,98 @@
         class="overflow-x-auto custom-scrollbar"
         @scroll="updateScrollOverflow"
       >
-      <table class="w-full min-w-[56rem]">
-        <thead>
-          <tr class="border-b border-gray-200 dark:border-gray-700">
-            <th
-              v-for="column in visibleColumns"
-              :key="column.key"
-              class="px-5 py-3 sm:px-6"
-              :class="[
-                getTableAlignClass(column.align),
-                column.headerClass,
-              ]"
-            >
-              <slot :name="`header-${column.key}`" :column="column">
-                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap">
-                  {{ column.label }}
-                </p>
-              </slot>
-            </th>
-
-            <th
-              v-if="showActions"
-              class="px-5 py-3 text-right sm:px-6"
-              :class="actionsHeaderClass"
-            >
-              <slot name="header-actions">
-                <p class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap">
-                  {{ actionsLabel }}
-                </p>
-              </slot>
-            </th>
-          </tr>
-        </thead>
-
-        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-          <tr v-if="loading">
-            <td :colspan="totalColumns" class="px-5 py-10 text-center sm:px-6">
-              <slot name="loading">
-                <p class="text-sm text-gray-500 dark:text-gray-400">Cargando registros...</p>
-              </slot>
-            </td>
-          </tr>
-
-          <tr v-else-if="!rows.length">
-            <td :colspan="totalColumns" class="px-5 py-10 text-center sm:px-6">
-              <slot name="empty">
-                <p class="text-sm text-gray-500 dark:text-gray-400">{{ emptyText }}</p>
-              </slot>
-            </td>
-          </tr>
-
-          <tr
-            v-else
-            v-for="(row, index) in rows"
-            :key="resolveTableRowKey(row, index, rowKey)"
-            class="border-t border-gray-100 dark:border-gray-800"
-          >
-            <td
-              v-for="column in visibleColumns"
-              :key="column.key"
-              class="px-5 py-4 sm:px-6"
-              :class="[
-                getTableAlignClass(column.align),
-                column.cellClass,
-              ]"
-            >
-              <slot
-                :name="`cell-${column.key}`"
-                :row="row"
-                :value="getTableCellValue(row, column.key)"
-                :index="index"
-                :column="column"
+        <table class="w-full min-w-[56rem]">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700">
+              <th
+                v-for="column in visibleColumns"
+                :key="column.key"
+                class="px-5 py-3 sm:px-6"
+                :class="[getTableAlignClass(column.align), column.headerClass]"
               >
-                <p class="truncate text-gray-500 text-theme-sm dark:text-gray-400">
-                  {{ formatTableCellValue(row, column) }}
-                </p>
-              </slot>
-            </td>
+                <slot :name="`header-${column.key}`" :column="column">
+                  <p
+                    class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap"
+                  >
+                    {{ column.label }}
+                  </p>
+                </slot>
+              </th>
 
-            <td v-if="showActions" class="px-5 py-4 text-right sm:px-6">
-              <div class="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
-                <slot name="actions" :row="row" :index="index" />
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <th
+                v-if="showActions"
+                class="px-5 py-3 text-right sm:px-6"
+                :class="actionsHeaderClass"
+              >
+                <slot name="header-actions">
+                  <p
+                    class="font-medium text-gray-500 text-theme-xs dark:text-gray-400 whitespace-nowrap"
+                  >
+                    {{ actionsLabel }}
+                  </p>
+                </slot>
+              </th>
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr v-if="loading">
+              <td :colspan="totalColumns" class="px-5 py-10 text-center sm:px-6">
+                <slot name="loading">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Cargando registros...</p>
+                </slot>
+              </td>
+            </tr>
+
+            <tr v-else-if="!rows.length">
+              <td :colspan="totalColumns" class="px-5 py-10 text-center sm:px-6">
+                <slot name="empty">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ emptyText }}</p>
+                </slot>
+              </td>
+            </tr>
+
+            <tr
+              v-else
+              v-for="(row, index) in rows"
+              :key="resolveTableRowKey(row, index, rowKey)"
+              class="border-t border-gray-100 dark:border-gray-800"
+            >
+              <td
+                v-for="column in visibleColumns"
+                :key="column.key"
+                class="px-5 py-4 sm:px-6"
+                :class="[getTableAlignClass(column.align), column.cellClass]"
+              >
+                <div
+                  class="app-table__cell-content min-w-0 max-w-sm"
+                  :title="cellTitle(row, column)"
+                >
+                  <slot
+                    :name="`cell-${column.key}`"
+                    :row="row"
+                    :value="getTableCellValue(row, column.key)"
+                    :index="index"
+                    :column="column"
+                  >
+                    <p
+                      class="truncate text-gray-500 text-theme-sm dark:text-gray-400"
+                      :title="formatTableCellValue(row, column)"
+                    >
+                      {{ formatTableCellValue(row, column) }}
+                    </p>
+                  </slot>
+                </div>
+              </td>
+
+              <td v-if="showActions" class="px-5 py-4 text-right sm:px-6">
+                <div class="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
+                  <slot name="actions" :row="row" :index="index" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div
         v-if="canScrollRight"
@@ -244,6 +266,11 @@ const props = withDefaults(defineProps<AppTableProps>(), {
 
 const visibleColumns = computed(() => props.columns.filter((column) => !column.hidden))
 
+function cellTitle(row: T, column: TableColumn<T>) {
+  const value = getTableCellValue(row, column.key)
+  return typeof value === 'string' ? formatTableCellValue(row, column) : undefined
+}
+
 const mobileLayout = computed(() =>
   resolveMobileLayout(visibleColumns.value, {
     primaryKey: props.mobilePrimaryKey,
@@ -251,9 +278,7 @@ const mobileLayout = computed(() =>
   }),
 )
 
-const totalColumns = computed(
-  () => visibleColumns.value.length + (props.showActions ? 1 : 0),
-)
+const totalColumns = computed(() => visibleColumns.value.length + (props.showActions ? 1 : 0))
 
 const scrollerRef = ref<HTMLElement | null>(null)
 const canScrollRight = ref(false)
@@ -286,3 +311,12 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateScrollOverflow)
 })
 </script>
+
+<style scoped>
+/* El contenido del slot también debe respetar el ancho de la columna. */
+.app-table__cell-content :deep(p) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
