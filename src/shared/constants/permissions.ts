@@ -41,6 +41,7 @@ export const PermisoBanderas = {
   CLIENTES_RESTAURAR: 'clientes.restaurar',
 
   CONFIGURACION_VER: 'configuracion.ver',
+  CATALOGOS_EDITAR: 'catalogos.editar',
 
   SUCURSALES_LISTAR: 'sucursales.listar',
   SUCURSALES_VER: 'sucursales.ver',

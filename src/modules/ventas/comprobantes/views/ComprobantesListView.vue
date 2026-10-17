@@ -141,6 +141,7 @@
     />
 
     <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
+    <CambioBalonVsdModal v-model="cambioBalonOpen" :venta-id="cambioBalonVentaId" />
 
     <ComprobanteNotaCreditoModal
       v-model="notaCreditoModalOpen"
@@ -231,6 +232,7 @@ import ComprobanteValidezModal from '@/modules/ventas/comprobantes/components/Co
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
+import CambioBalonVsdModal from '@/modules/ventas/comprobantes/components/CambioBalonVsdModal.vue'
 import ComprobanteNotaCreditoModal from '@/modules/ventas/comprobantes/components/ComprobanteNotaCreditoModal.vue'
 import ClienteSinDocumentoModal from '@/modules/ventas/comprobantes/components/ClienteSinDocumentoModal.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
@@ -314,6 +316,8 @@ const detailModalOpen = ref(false)
 const comprobanteToViewId = ref<number | null>(null)
 
 const editModalOpen = ref(false)
+const cambioBalonOpen = ref(false)
+const cambioBalonVentaId = ref<number | null>(null)
 const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
 
 const notaCreditoModalOpen = ref(false)
@@ -538,6 +542,7 @@ function puedeEmitir(row: ComprobanteListItem) {
 
 function puedeEditar(row: ComprobanteListItem) {
   if (row.estado_envio) return false
+  if (['01','03'].includes(row.codigo_tipo_comprobante ?? '') && row.permite_edicion_segura !== true) return false
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
@@ -561,6 +566,7 @@ function puedeConsultarCdr(row: ComprobanteListItem) {
 }
 
 function puedeNotaCredito(row: ComprobanteListItem) {
+  if (row.tiene_cambio_fisico) return false
   if (esNotaVenta(row)) return false
   if (row.nombre_estado_sunat !== 'ACEPTADO') return false
   const codigo = String(row.codigo_tipo_comprobante ?? '')
@@ -573,6 +579,7 @@ function puedeNotaCredito(row: ComprobanteListItem) {
 }
 
 function puedeAnular(row: ComprobanteListItem) {
+  if (row.tiene_cambio_fisico) return false
   if (esNotaVenta(row)) return false
   if (row.nombre_estado_sunat !== 'ACEPTADO') return false
   const codigo = String(row.codigo_tipo_comprobante ?? '')
@@ -594,10 +601,14 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
   return [
     {
       key: 'edit',
-      label: 'Editar',
+      label: 'Corregir datos antes de emitir',
       icon: ICONS.pencil,
       disabled: busy,
       hidden: !(canEdit.value && puedeEditar(row)),
+    },
+    {
+      key: 'cambio-balon', label: 'Corrección / cambio de balón', icon: ICONS.refreshCw,
+      disabled: busy, hidden: !(canEdit.value && puedeEditar(row) && ['01','03'].includes(row.codigo_tipo_comprobante ?? '')),
     },
     {
       key: 'emit',
@@ -717,6 +728,10 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
+    case 'cambio-balon':
+      cambioBalonVentaId.value = row.id
+      cambioBalonOpen.value = true
+      return
     case 'edit':
       openEditModal(row)
       return

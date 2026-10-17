@@ -282,6 +282,7 @@ import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import FormCardsLayout from '@/shared/components/detail/FormCardsLayout.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import { NUMBER_MIN } from '@/shared/constants/number-input'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { optionalNumber, requiredString } from '@/shared/validation'
@@ -316,7 +317,7 @@ const suppressCapacidadWatch = ref(false)
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)
 const isLoadingUnidadMedida = computed(() => unidadMedidaQuery.isLoading.value)
-const canCreateUnidad = computed(() => Boolean(authStore.user?.id))
+const canCreateUnidad = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR))
 
 const unidadMedidaOptions = computed(() => toSelectOptions(unidadMedidaQuery.data.value))
 

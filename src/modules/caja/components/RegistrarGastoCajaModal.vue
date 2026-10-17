@@ -2,6 +2,16 @@
   <AppModal v-model="open" :title="isEdit ? 'Editar gasto de caja' : 'Registrar gasto de caja'" size="md">
     <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gastos de caja). -->
     <div class="space-y-4">
+      <AppFormField v-if="requiereSeleccionCaja" label="Caja / sucursal" required>
+        <AppSelect v-model="sesionGasto.idSesion.value" :options="sesionGasto.options.value"
+          :disabled="guardando || sesionGasto.query.isFetching.value" placeholder="Seleccionar caja abierta" />
+        <p v-if="sesionGasto.query.isError.value" class="mt-1 text-sm text-error-500">
+          No se pudieron consultar las cajas abiertas. Cierra y vuelve a abrir el formulario.
+        </p>
+        <p v-else-if="!sesionGasto.query.isFetching.value && !sesionGasto.options.value.length" class="mt-1 text-sm text-gray-500">
+          No hay caja abierta para esta fecha. Solicita su apertura en Ventas → Caja.
+        </p>
+      </AppFormField>
       <AppFormField data-tutorial="gasto-concepto" label="Concepto" required :error="errores.concepto">
         <AppInput v-model="form.concepto" placeholder="Combustible, flete, vigilancia..." />
       </AppFormField>
@@ -91,6 +101,7 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { mensajeErrorMontoMoneda, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
+import { useSesionGasto } from '@/modules/caja/composables/useSesionGasto'
 
 const open = defineModel<boolean>({ default: false })
 const props = defineProps<{
@@ -104,6 +115,8 @@ const props = defineProps<{
 const emit = defineEmits<{ saved: [] }>()
 
 const isEdit = computed(() => Boolean(props.gasto))
+const requiereSeleccionCaja = computed(() => !isEdit.value && props.idSesion == null && props.idSucursal == null)
+const sesionGasto = useSesionGasto(toRef(props, 'fecha'), requiereSeleccionCaja, open)
 const authStore = useAuthStore()
 const form = reactive({
   concepto: '',
@@ -124,7 +137,7 @@ const guardando = computed(() => crearMutation.isPending.value || actualizarMuta
 const categoriaGastoQuery = useListaOpcionesQuery(computed(() => ListaIds.CATEGORIA_GASTO))
 const categoriaGastoOptions = computed(() => toSelectOptions(categoriaGastoQuery.data.value))
 const canCrearCategoriaGasto = computed(() =>
-  authStore.hasPermission(PermisoBanderas.CAJA_REGISTRAR_GASTO),
+  authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR),
 )
 const categoriaGastoModalOpen = ref(false)
 function onCategoriaGastoCreada(opcion: ListaOpcion) {
@@ -137,7 +150,7 @@ const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoney
 )
 
 const formularioValido = computed(
-  () => form.concepto.trim().length > 0 && montoValido.value && pagoValido.value,
+  () => form.concepto.trim().length > 0 && montoValido.value && pagoValido.value && sesionGasto.valida.value,
 )
 
 watch(open, (v) => {
@@ -159,7 +172,7 @@ async function submit() {
   intentoEnvio.value = true
   errores.concepto = form.concepto.trim() ? '' : 'Obligatorio'
   if (mensajeErrorMontoMoneda(form.monto, { min: 0.01 })) return
-  if (errores.concepto || !pagoValido.value) return
+  if (errores.concepto || !pagoValido.value || !sesionGasto.valida.value) return
 
   const monto = roundMoney(parseMoneyInput(form.monto))
 
@@ -187,8 +200,8 @@ async function submit() {
       idCategoriaGasto: form.idCategoriaGasto,
       numeroOperacion: form.numeroOperacion || undefined,
       observacion: form.observacion || undefined,
-      idSesion: props.idSesion ?? undefined,
-      idSucursal: props.idSucursal ?? undefined,
+      idSesion: props.idSesion ?? sesionGasto.seleccion.value?.id ?? undefined,
+      idSucursal: props.idSucursal ?? sesionGasto.seleccion.value?.idSucursal ?? undefined,
     })
   }
   open.value = false

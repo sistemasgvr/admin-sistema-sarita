@@ -271,7 +271,7 @@ const listaCategoriaId = ref(ListaIds.CATEGORIA_VENCIMIENTO)
 const categoriaQuery = useListaOpcionesQuery(listaCategoriaId)
 const categoriaOptions = computed(() => toSelectOptions(categoriaQuery.data.value))
 const canCrearCategoria = computed(() =>
-  authStore.hasPermission(PermisoBanderas.DOCUMENTOS_VENCIMIENTO_CREAR),
+  authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR),
 )
 const categoriaModalOpen = ref(false)
 

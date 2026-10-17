@@ -1131,9 +1131,7 @@ const canCreateProveedor = computed(() => authStore.hasPermission(PermisoBandera
 const proveedorModalOpen = ref(false)
 const categoriaGastoModalOpen = ref(false)
 const canCrearCategoriaGasto = computed(() =>
-  authStore.hasPermission(
-    isEdit.value ? PermisoBanderas.COMPRAS_EDITAR : PermisoBanderas.COMPRAS_CREAR,
-  ),
+  authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR),
 )
 const proveedorCreadoOption = ref<SelectOption | null>(null)
 

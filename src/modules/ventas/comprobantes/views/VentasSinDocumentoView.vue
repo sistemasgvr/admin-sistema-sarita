@@ -100,6 +100,7 @@
 
     <ComprobanteDetailModal v-model="detailModalOpen" :comprobante-id="comprobanteToViewId" />
     <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
+    <CambioBalonVsdModal v-model="cambioBalonOpen" :venta-id="cambioBalonVentaId" />
     <EmitirFacturaBoletaModal
       v-model="emitirModalOpen"
       :comprobante="comprobanteToEmitir"
@@ -155,6 +156,7 @@ import { useDeleteComprobanteMutation } from '@/modules/ventas/comprobantes/comp
 import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
+import CambioBalonVsdModal from '@/modules/ventas/comprobantes/components/CambioBalonVsdModal.vue'
 import EmitirFacturaBoletaModal from '@/modules/ventas/comprobantes/components/EmitirFacturaBoletaModal.vue'
 import type { CodigoTipoComprobanteSunat } from '@/modules/ventas/comprobantes/utils/serieComprobante'
 import { esVentaSinDocumentoTipo } from '@/modules/ventas/comprobantes/constants/tipoComprobante'
@@ -213,6 +215,8 @@ const clientesQuery = useClientesQuery(clientesFilters)
 const detailModalOpen = ref(false)
 const comprobanteToViewId = ref<number | null>(null)
 const editModalOpen = ref(false)
+const cambioBalonOpen = ref(false)
+const cambioBalonVentaId = ref<number | null>(null)
 const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
 const deleteModalOpen = ref(false)
 const comprobanteToDelete = ref<ComprobanteListItem | null>(null)
@@ -365,10 +369,14 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
   return [
     {
       key: 'edit',
-      label: 'Editar',
+      label: 'Corregir datos de venta',
       icon: ICONS.pencil,
       disabled: busy,
       hidden: !canEdit.value,
+    },
+    {
+      key: 'cambio-balon', label: 'Corrección / cambio de balón', icon: ICONS.refreshCw,
+      disabled: busy || tieneDestino, hidden: !canEdit.value || tieneDestino,
     },
     {
       key: 'pdf-a4',
@@ -439,6 +447,10 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
+    case 'cambio-balon':
+      cambioBalonVentaId.value = row.id
+      cambioBalonOpen.value = true
+      return
     case 'edit':
       openEditModal(row)
       return

@@ -34,7 +34,7 @@
           </div>
         </div>
         <div class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-          <span>Al editar cantidades se ajusta el stock</span>
+          <span>{{ detalleFisicoBloqueado ? 'La corrección conserva los balones y movimientos vinculados' : 'Al corregir cantidades se ajusta el stock' }}</span>
           <AppHelpTip
             text="Si aumentas cantidad se descuenta stock; si bajas o quitas un producto, se restaura. El almacén debe coincidir con el de la venta."
           />
@@ -124,7 +124,7 @@
               v-model="idCliente"
               label="Cliente"
               required
-              :disabled="saving"
+              :disabled="saving || detalleFisicoBloqueado"
             />
           </div>
           <AppDatePicker
@@ -137,7 +137,7 @@
             v-model="idAlmacen"
             label="Almacén"
             hint="Desde aquí se descuenta o restaura stock"
-            :disabled="saving"
+            :disabled="saving || detalleFisicoBloqueado"
             required
           />
         </div>
@@ -162,14 +162,14 @@
               search-placeholder="Código o nombre..."
               :options="productoOptions"
               :loading="isFetchingProductos"
-              :disabled="saving || !idAlmacen"
+              :disabled="saving || !idAlmacen || detalleFisicoBloqueado"
               :hint="productoSelectHint"
               :empty-text="productoSelectEmptyText"
             />
           </div>
           <ProductoBarcodeScanButton
             :filters="scanFiltersProducto"
-            :disabled="saving || !idAlmacen"
+            :disabled="saving || !idAlmacen || detalleFisicoBloqueado"
             @scanned="onProductoScanned"
           />
         </div>
@@ -218,7 +218,7 @@
                 >
                   <td class="px-3 py-2.5">
                     <p class="font-medium text-gray-800 dark:text-white/90">
-                      {{ linea.descripcion }}
+                      {{ linea.descripcion || linea.nombreProducto || `Producto ${linea.idProducto}` }}
                     </p>
                   </td>
                   <td class="px-3 py-2.5">
@@ -226,7 +226,7 @@
                       v-model="linea.cantidad"
                       :name="`comprobante-edit-cantidad-${linea.key}`"
                       :nombre-unidad="linea.nombreUnidadMedida"
-                      :disabled="saving"
+                      :disabled="saving || detalleFisicoBloqueado"
                     />
                   </td>
                   <td class="px-3 py-2.5">
@@ -256,7 +256,7 @@
                       type="button"
                       title="Quitar producto"
                       class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-error-50 hover:text-error-500 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-error-500/10"
-                      :disabled="saving || lineas.length <= 1"
+                      :disabled="saving || lineas.length <= 1 || detalleFisicoBloqueado"
                       @click="removeLinea(index)"
                     >
                       <AppIcon :name="ICONS.trash" :size="15" />
@@ -281,6 +281,7 @@
       </DetailSectionCard>
 
       <!-- 3. Notas (secundario) -->
+      <AppTextarea v-if="esEdicionSegura" v-model="motivoCorreccion" label="Motivo de la corrección" placeholder="Describe el error que estás corrigiendo (mínimo 5 caracteres)" :rows="2" :disabled="saving" />
       <AppCollapsibleSection
         v-model:open="notasOpen"
         title="Notas"
@@ -389,12 +390,20 @@ import {
 } from '@/shared/utils/currency'
 
 interface LineaEdit {
+  item?: number
+  idUnidadMedida?: number
+  idBalon?: number
+  capacidadCilindro?: number
+  idEstadoCilindro?: number
   key: string
   idProducto: number
   descripcion: string
+  nombreProducto?: string | null
   nombreUnidadMedida?: string | null
   cantidad: number
   precioUnitario: string
+  precioUnitarioOriginal?: number
+  precioUnitarioInicial?: string
   descuento: number
   porcentajeIgv: number
   idAfectacionIgv?: number
@@ -419,6 +428,7 @@ const comprobanteQuery = useComprobanteQuery(comprobanteId)
 const fecha = ref('')
 const glosa = ref('')
 const observaciones = ref('')
+const motivoCorreccion = ref('')
 const idCliente = ref<number | ''>('')
 const idAlmacen = ref<number | ''>('')
 const lineas = ref<LineaEdit[]>([])
@@ -506,6 +516,11 @@ const open = computed({
 })
 
 const comprobanteDetalle = computed(() => comprobanteQuery.data.value ?? null)
+const detalleFisicoBloqueado = computed(() => Boolean(
+  comprobanteDetalle.value?.detalles?.some(d => d.id_balon) ||
+  comprobanteDetalle.value?.prestamos?.length || comprobanteDetalle.value?.id_doc_salida ||
+  comprobanteDetalle.value?.garantias?.length,
+))
 
 const esVsd = computed(() =>
   esVentaSinDocumentoTipo({
@@ -515,8 +530,9 @@ const esVsd = computed(() =>
 )
 
 const modalTitle = computed(() =>
-  esVsd.value ? `Editar ${LABEL_VENTA_SIN_DOCUMENTO.toLowerCase()}` : 'Editar comprobante',
+  esVsd.value ? `Corregir ${LABEL_VENTA_SIN_DOCUMENTO.toLowerCase()}` : 'Corregir comprobante antes de emitir',
 )
+const esEdicionSegura = computed(() => esVsd.value || ['01','03'].includes(comprobanteDetalle.value?.codigo_tipo_comprobante ?? ''))
 
 const comprobanteLabel = computed(() => {
   // El detalle va primero: tras convertir el tipo, la fila del listado aún trae el número viejo.
@@ -643,6 +659,7 @@ const totalEstimado = computed(() =>
 
 const canSave = computed(
   () =>
+    (!esEdicionSegura.value || comprobanteDetalle.value?.permite_edicion_segura === true) &&
     Boolean(fecha.value) &&
     Boolean(idCliente.value) &&
     Boolean(idAlmacen.value) &&
@@ -661,16 +678,24 @@ watch(
     fecha.value = String(data.fecha ?? '').slice(0, 10)
     glosa.value = data.glosa ?? ''
     observaciones.value = data.observaciones ?? ''
+    motivoCorreccion.value = ''
     idCliente.value = data.id_cliente ?? ''
     idAlmacen.value = data.id_almacen ?? ''
     lineas.value = (data.detalles ?? []).map((detalle, index) => ({
+      item: detalle.item,
+      idUnidadMedida: detalle.id_unidad_medida ?? undefined,
+      idBalon: detalle.id_balon ?? undefined,
+      capacidadCilindro: detalle.capacidad_cilindro != null ? Number(detalle.capacidad_cilindro) : undefined,
+      idEstadoCilindro: detalle.id_estado_cilindro ?? undefined,
       key: `${detalle.id ?? detalle.id_producto}-${index}`,
       idProducto: detalle.id_producto,
-      descripcion:
-        detalle.descripcion || detalle.nombre_producto || `Producto ${detalle.id_producto}`,
+      descripcion: detalle.descripcion ?? '',
+      nombreProducto: detalle.nombre_producto,
       nombreUnidadMedida: detalle.nombre_unidad_medida ?? null,
       cantidad: Number(detalle.cantidad),
       precioUnitario: roundMoney(Number(detalle.precio_unitario)).toFixed(2),
+      precioUnitarioOriginal: Number(detalle.precio_unitario),
+      precioUnitarioInicial: roundMoney(Number(detalle.precio_unitario)).toFixed(2),
       descuento: Number(detalle.descuento ?? 0),
       porcentajeIgv: Number(detalle.porcentaje_igv ?? 18),
       idAfectacionIgv: detalle.id_afectacion_igv ?? undefined,
@@ -769,6 +794,10 @@ function agregarProducto(producto: Producto) {
 }
 
 async function confirm() {
+  if (esEdicionSegura.value && motivoCorreccion.value.trim().length < 5) {
+    toastWarning('Describe el motivo de la corrección con al menos 5 caracteres')
+    return
+  }
   const row = props.comprobante
   const userId = authStore.user?.id
   if (!row || !userId || !canSave.value) return
@@ -804,6 +833,8 @@ async function confirm() {
     await updateMutation.mutateAsync({
       id: row.id,
       payload: {
+        motivoCorreccion: esEdicionSegura.value ? motivoCorreccion.value.trim() : undefined,
+        versionEsperada: comprobanteDetalle.value?.version,
         idUsuarioAuditoria: userId,
         idCliente: Number(idCliente.value) || undefined,
         idAlmacen: Number(idAlmacen.value) || undefined,
@@ -811,9 +842,15 @@ async function confirm() {
         glosa: glosa.value.trim() || undefined,
         observaciones: observaciones.value.trim() || undefined,
         detalles: lineas.value.map((linea) => ({
+          item: linea.item,
+          idUnidadMedida: linea.idUnidadMedida,
+          idBalon: linea.idBalon,
+          capacidadCilindro: linea.capacidadCilindro,
+          idEstadoCilindro: linea.idEstadoCilindro,
           idProducto: linea.idProducto,
           cantidad: Number(linea.cantidad),
-          precioUnitario: roundMoney(parseMoneyInput(linea.precioUnitario) ?? 0),
+          precioUnitario: linea.precioUnitario === linea.precioUnitarioInicial && linea.precioUnitarioOriginal != null
+            ? linea.precioUnitarioOriginal : roundMoney(parseMoneyInput(linea.precioUnitario) ?? 0),
           descuento: linea.descuento || undefined,
           porcentajeIgv: linea.porcentajeIgv,
           idAfectacionIgv: linea.idAfectacionIgv,

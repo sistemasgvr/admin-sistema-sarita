@@ -230,7 +230,7 @@ const tipoMovInvUnificadoId = ref(ListaIds.TIPO_MOV_INV_UNIFICADO)
 const tipoMovimientoQuery = useListaOpcionesQuery(tipoMovInvUnificadoId)
 
 const canCreateListaOpcion = computed(() =>
-  authStore.hasPermission(PermisoBanderas.INVENTARIO_MOVIMIENTOS_CREAR),
+  authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR),
 )
 const tipoMovimientoModalOpen = ref(false)
 

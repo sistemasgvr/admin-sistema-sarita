@@ -22,7 +22,7 @@
         <div class="space-y-3">
           <div class="grid gap-3 sm:grid-cols-2">
             <AppSelectWithCreate
-              :can-create="true"
+              :can-create="puedeEditarCatalogos"
               create-title="Agregar tipo de activo"
               @create="tipoModalOpen = true"
             >
@@ -196,6 +196,7 @@ import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { trabajadoresService } from '@/modules/trabajadores/services/trabajadores.service'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { PermisoBanderas } from '@/shared/constants/permissions'
 import { ListaIds } from '@/shared/constants/lista-ids'
 import { optionalString, requiredString } from '@/shared/validation'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
@@ -225,6 +226,7 @@ const onTipoCreado = (opcion: ListaOpcion) => {
 }
 
 const authStore = useAuthStore()
+const puedeEditarCatalogos = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR))
 const createMutation = useCreateActivoMutation()
 const updateMutation = useUpdateActivoMutation()
 

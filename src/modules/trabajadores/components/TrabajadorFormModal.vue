@@ -194,7 +194,7 @@
         <div class="space-y-3">
           <div class="grid gap-3 sm:grid-cols-2">
             <AppSelectWithCreate
-              :can-create="true"
+              :can-create="puedeEditarCatalogos"
               create-title="Agregar área"
               @create="areaModalOpen = true"
             >
@@ -209,7 +209,7 @@
               />
             </AppSelectWithCreate>
             <AppSelectWithCreate
-              :can-create="true"
+              :can-create="puedeEditarCatalogos"
               create-title="Agregar cargo"
               @create="cargoModalOpen = true"
             >
@@ -515,6 +515,7 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const puedeEditarCatalogos = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR))
 const puedeCrearUsuario = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_CREAR))
 const puedeEditarUsuario = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_VER) && authStore.hasPermission(PermisoBanderas.USUARIOS_EDITAR))
 const usuarioModalOpen = ref(false)

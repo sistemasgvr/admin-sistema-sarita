@@ -481,7 +481,7 @@ const createMutation = useCreateBalonMutation()
 const updateMutation = useUpdateBalonMutation()
 
 const canCreateListaOpcion = computed(() =>
-  authStore.hasPermission(PermisoBanderas.BALONES_CREAR),
+  authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR),
 )
 
 const marcaModalOpen = ref(false)

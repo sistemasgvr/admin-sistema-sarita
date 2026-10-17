@@ -62,6 +62,9 @@ export function useUpdateComprobanteMutation() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: comprobantesQueryKeys.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
       void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante actualizado correctamente')
     },

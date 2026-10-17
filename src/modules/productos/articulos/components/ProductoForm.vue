@@ -549,7 +549,7 @@ const canCreateCategoria = computed(() =>
 const canCreateSubCategoria = computed(() =>
   authStore.hasPermission(PermisoBanderas.SUB_CATEGORIAS_CREAR),
 )
-const canCreateUnidad = computed(() => Boolean(authStore.user?.id))
+const canCreateUnidad = computed(() => authStore.hasPermission(PermisoBanderas.CATALOGOS_EDITAR))
 
 const listaUnidadMedidaId = ref(ListaIds.UNIDAD_MEDIDA)
 const unidadesMedidaQuery = useListaOpcionesQuery(listaUnidadMedidaId)

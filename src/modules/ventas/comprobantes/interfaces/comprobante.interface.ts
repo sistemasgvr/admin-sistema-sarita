@@ -11,6 +11,8 @@ export interface NotaFiscalCorreccion {
   pdf_disponible: boolean
 }
 export interface ComprobanteListItem {
+  permite_edicion_segura?: boolean
+  tiene_cambio_fisico?: boolean
   id: number
   id_tipo_comprobante: number
   nombre_tipo_comprobante?: string | null
@@ -56,6 +58,7 @@ export interface ComprobanteListItem {
 }
 
 export interface ComprobanteDetalle {
+  id_unidad_medida?: number | null
   id?: number
   item?: number
   id_producto: number
@@ -79,6 +82,8 @@ export interface ComprobanteDetalle {
   importe?: number | null
   id_balon?: number | null
   codigo_balon?: string | null
+  capacidad_cilindro?: number | null
+  id_estado_cilindro?: number | null
   /**
    * Línea de garantía cobrada dentro de la venta. El POS ya no las crea —la
    * garantía vive en `garantias`— pero los comprobantes emitidos antes del
@@ -161,6 +166,7 @@ export interface ComprobanteGarantia {
 }
 
 export interface Comprobante extends ComprobanteListItem {
+  version?: string
   /** Documentos de percepciones vinculados (solo lectura; se crean en su módulo). */
   percepciones?: TributoVinculado[]
   sub_total?: number | null
@@ -217,6 +223,10 @@ export interface ComprobanteListFilters {
 }
 
 export interface ComprobanteDetallePayload {
+  item?: number
+  idUnidadMedida?: number
+  capacidadCilindro?: number
+  idEstadoCilindro?: number
   idProducto: number
   cantidad: number
   precioUnitario: number
@@ -405,6 +415,8 @@ export interface EfectosPosPayload {
 }
 
 export interface UpdateComprobantePayload {
+  motivoCorreccion?: string
+  versionEsperada?: string
   idUsuarioAuditoria: number
   fecha?: string
   idCliente?: number
@@ -416,6 +428,24 @@ export interface UpdateComprobantePayload {
   glosa?: string
   observaciones?: string
   origenPos?: string
+}
+
+export interface CambioBalonVsdPayload {
+  tipoOperacion: 'CAMBIO' | 'CORRECCION_RESERVA'
+  solicitud: string
+  versionEsperada: string
+  idBalonActual: number
+  idBalonNuevo: number
+  idAlmacen: number
+  cantidadGasDevuelta: number
+  cantidadGasSalida: number
+  condicionDevolucion: 'DISPONIBLE' | 'EN_MANTENIMIENTO'
+  motivo: string
+}
+
+export interface OperacionesVsd {
+  balones: { id: number; codigo_balon: string; id_tipo_balon: number; id_producto_gas: number; estado: string; cantidad_salida: number | null }[]
+  historial: { id: number; tipo: string; motivo: string; fecha: string; datos: Record<string, unknown>; posterior: Record<string, unknown> }[]
 }
 
 export interface EmitirComprobanteResponse {
