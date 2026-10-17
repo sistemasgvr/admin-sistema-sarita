@@ -9,12 +9,7 @@
     <div class="space-y-4">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="w-full sm:max-w-sm">
-          <AppInput
-            v-model="buscar"
-            type="search"
-            placeholder="Buscar subcategoría..."
-            :disabled="isLoading"
-          />
+          <AppInput v-model="buscar" type="search" placeholder="Buscar subcategoría..." />
         </div>
 
         <button
@@ -29,15 +24,12 @@
         </button>
       </div>
 
-      <div
-        v-if="isLoading"
-        class="py-8 text-center text-sm text-gray-500 dark:text-gray-400"
-      >
-        Cargando subcategorías...
+      <div role="status" class="min-h-5 text-sm text-gray-500 dark:text-gray-400">
+        {{ isLoading ? 'Cargando subcategorías...' : '' }}
       </div>
 
       <div
-        v-else-if="!rows.length"
+        v-if="!rows.length && !isLoading"
         class="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center dark:border-gray-800"
       >
         <p class="text-sm text-gray-500 dark:text-gray-400">
@@ -55,8 +47,9 @@
       </div>
 
       <div
-        v-else
-        class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
+        v-show="rows.length || isLoading"
+        :aria-busy="isLoading"
+        class="min-h-40 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
       >
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
           <thead class="bg-gray-50 dark:bg-white/[0.03]">
@@ -95,10 +88,7 @@
               <td class="px-4 py-3">
                 <AppBadge variant="light">{{ subCategoria.total_productos ?? 0 }}</AppBadge>
               </td>
-              <td
-                v-if="canEdit || canDelete"
-                class="px-4 py-3 text-right"
-              >
+              <td v-if="canEdit || canDelete" class="px-4 py-3 text-right">
                 <div class="inline-flex items-center justify-end">
                   <AppActionMenu
                     :items="actionItemsForRow(subCategoria)"
@@ -148,8 +138,7 @@
       >
         No puedes eliminar
         <span class="font-medium">{{ subCategoriaToDelete?.nombre }}</span>
-        porque tiene productos asociados. Reasigna o elimina esos productos e
-        inténtalo de nuevo.
+        porque tiene productos asociados. Reasigna o elimina esos productos e inténtalo de nuevo.
       </div>
 
       <p v-else class="text-sm text-gray-600 dark:text-gray-400">
@@ -184,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import SubCategoriaProductoFormModal from '@/modules/productos/sub-categorias/components/SubCategoriaProductoFormModal.vue'
 import { useDeleteSubCategoriaProductoMutation } from '@/modules/productos/sub-categorias/composables/useSubCategoriaProductoMutations'
@@ -245,7 +234,7 @@ const rows = computed(() => subCategoriasQuery.data.value?.data ?? [])
 let buscarTimeout: ReturnType<typeof setTimeout> | undefined
 
 const syncFilters = () => {
-  if (!props.categoria) return
+  if (!open.value || !props.categoria) return
 
   filters.value = {
     buscar: buscar.value.trim(),
@@ -299,7 +288,7 @@ const confirmDelete = async () => {
 }
 
 function actionItemsForRow(row: SubCategoriaProducto): ActionMenuItem[] {
-  const busy = deleteMutation.isPending.value
+  const busy = deleteMutation.isPending.value || isLoading.value
   const blockedByProductos = Number(row.total_productos ?? 0) > 0
 
   return [
@@ -339,6 +328,7 @@ const onSubCategoriaSaved = () => {
 
 watch(buscar, () => {
   clearTimeout(buscarTimeout)
+  if (!open.value) return
   buscarTimeout = setTimeout(() => {
     syncFilters()
   }, 350)
@@ -352,6 +342,7 @@ watch(open, (isOpen) => {
   }
 
   if (!isOpen) {
+    clearTimeout(buscarTimeout)
     resetState()
   }
 })
@@ -364,4 +355,6 @@ watch(
     }
   },
 )
+
+onScopeDispose(() => clearTimeout(buscarTimeout))
 </script>

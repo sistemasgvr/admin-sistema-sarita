@@ -77,10 +77,7 @@
             <span class="font-medium text-gray-800 dark:text-white/90">
               {{ optionTitle(option) }}
             </span>
-            <div
-              v-if="option.badges?.length"
-              class="flex flex-wrap items-center gap-1"
-            >
+            <div v-if="option.badges?.length" class="flex flex-wrap items-center gap-1">
               <AppBadge
                 v-for="(badge, badgeIndex) in option.badges"
                 :key="`${option.value}-${badgeIndex}-${badge.label}`"
@@ -99,10 +96,7 @@
             </span>
           </button>
 
-          <div
-            v-if="!options.length"
-            class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400"
-          >
+          <div v-if="!options.length" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
             {{ query.length < minChars ? hintText : noResultsText }}
           </div>
         </template>
@@ -119,6 +113,7 @@ import AppBadge from '@/shared/components/ui/AppBadge.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
+import { useDebouncedSearch } from '@/shared/composables/useDebouncedSearch'
 
 interface SearchableSelectProps {
   modelValue: number | string | null | undefined
@@ -159,16 +154,26 @@ const emit = defineEmits<{
 const rootRef = ref<HTMLElement | null>(null)
 const query = ref('')
 const menuOpen = ref(false)
-const loading = ref(false)
-const options = ref<SelectOption[]>([])
+const {
+  results: options,
+  loading,
+  search,
+  cancel,
+} = useDebouncedSearch<SelectOption>((term) => props.searchFn(term), {
+  get debounceMs() {
+    return props.debounceMs
+  },
+  get minChars() {
+    return props.minChars
+  },
+})
 const highlightedIndex = ref(-1)
 
 const labelCache = new Map<string, string>()
 
 const optionTitle = (option: SelectOption) => option.title?.trim() || option.label
 
-const optionDisplayLabel = (option: SelectOption) =>
-  option.title?.trim() || option.label
+const optionDisplayLabel = (option: SelectOption) => option.title?.trim() || option.label
 
 const displayPlaceholder = computed(() => props.placeholder)
 
@@ -187,47 +192,22 @@ if (props.modelLabel && props.modelValue !== null && props.modelValue !== undefi
 }
 setQueryFromSelection()
 
-let debounceTimer: ReturnType<typeof setTimeout> | undefined
-let searchSeq = 0
-
-const runSearch = async (term: string) => {
-  if (term.length < props.minChars) {
-    options.value = []
-    return
-  }
-
-  const seq = ++searchSeq
-  loading.value = true
-  try {
-    const result = await props.searchFn(term)
-    if (seq !== searchSeq) return
-    options.value = result
-    result.forEach((option) =>
-      labelCache.set(String(option.value), optionDisplayLabel(option)),
-    )
-    highlightedIndex.value = result.length ? 0 : -1
-  } catch {
-    if (seq !== searchSeq) return
-    options.value = []
-  } finally {
-    if (seq === searchSeq) loading.value = false
-  }
-}
+watch(options, (result) => {
+  result.forEach((option) => labelCache.set(String(option.value), optionDisplayLabel(option)))
+  highlightedIndex.value = result.length ? 0 : -1
+})
 
 /** Al abrir: listar con término vacío (catálogo inicial), no con el label seleccionado. */
 const openMenuAndLoad = () => {
   menuOpen.value = true
-  void runSearch('')
+  search('', true)
 }
 
 const onInput = (event: Event) => {
   query.value = (event.target as HTMLInputElement).value
   menuOpen.value = true
 
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => {
-    void runSearch(query.value.trim())
-  }, props.debounceMs)
+  search(query.value)
 }
 
 const onFocus = (event: FocusEvent) => {
@@ -245,6 +225,7 @@ const onClick = () => {
 }
 
 const closeMenu = () => {
+  cancel()
   menuOpen.value = false
   setQueryFromSelection()
 }
@@ -253,10 +234,12 @@ const closeMenu = () => {
 // escribió (closeMenu() sí revierte a la selección vigente, correcto para click-outside,
 // pero como "cancelar" explícito el usuario espera conservar el texto).
 const handleEscape = () => {
+  cancel()
   menuOpen.value = false
 }
 
 const selectOption = (option: SelectOption) => {
+  cancel()
   const display = optionDisplayLabel(option)
   labelCache.set(String(option.value), display)
   emit('update:modelValue', option.value)
@@ -265,6 +248,7 @@ const selectOption = (option: SelectOption) => {
 }
 
 const clearSelection = () => {
+  cancel()
   emit('update:modelValue', null)
   query.value = ''
   menuOpen.value = false
@@ -283,6 +267,7 @@ const highlightPrev = () => {
 }
 
 const selectHighlighted = () => {
+  if (loading.value || !menuOpen.value) return
   const option = options.value[highlightedIndex.value]
   if (option) selectOption(option)
 }
@@ -315,6 +300,5 @@ watch(
 document.addEventListener('click', handleClickOutside)
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
-  clearTimeout(debounceTimer)
 })
 </script>
