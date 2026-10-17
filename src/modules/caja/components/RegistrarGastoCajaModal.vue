@@ -39,6 +39,7 @@
       <AppFormField data-tutorial="gasto-categoria" label="Categoría de gasto" optional>
         <AppSelectWithCreate
           :can-create="canCrearCategoriaGasto"
+          :has-label="false"
           create-title="Nueva categoría de gasto"
           :disabled="guardando"
           @create="categoriaGastoModalOpen = true"

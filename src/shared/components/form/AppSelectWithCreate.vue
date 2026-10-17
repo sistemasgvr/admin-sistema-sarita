@@ -1,12 +1,16 @@
 <template>
-  <div class="flex w-full min-w-0 items-start gap-2">
+  <div class="group/select-with-create flex w-full min-w-0 items-start gap-2">
     <div class="min-w-0 flex-1 overflow-hidden">
       <slot />
     </div>
 
     <div v-if="canScan || canCreate" class="flex shrink-0 flex-col">
-      <!-- Mismo alto que label (text-sm/leading-5 + mb-1.5) para alinear con el input -->
-      <div v-if="hasLabel" class="mb-1.5 h-5 shrink-0" aria-hidden="true" />
+      <!-- Solo reservar espacio si la etiqueta está dentro del selector. -->
+      <div
+        v-if="hasLabel"
+        class="mb-1.5 hidden h-5 shrink-0 group-has-[label]/select-with-create:block"
+        aria-hidden="true"
+      />
       <div class="flex items-center gap-2">
         <button
           v-if="canScan"
