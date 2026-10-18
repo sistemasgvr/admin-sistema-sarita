@@ -62,6 +62,13 @@
         v-if="tipo !== 'gas' && tipo !== 'alquiler'"
         class="grid grid-cols-1 gap-4 sm:grid-cols-2"
       >
+        <label v-if="!esTallerProducto" class="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 sm:col-span-2">
+          <input v-model="montoDirecto" type="checkbox" role="switch" class="h-4 w-4" />
+          <span>
+            Cobro por monto total
+            <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">Ingresa el total a cobrar por toda la cantidad del producto.</span>
+          </span>
+        </label>
         <CantidadUnidadInput
           v-if="!esTallerProducto"
           v-model="cantidad"
@@ -72,7 +79,7 @@
         />
         <div :class="esTallerProducto ? 'sm:col-span-2' : ''">
           <AppFormField
-            :label="esTallerProducto ? 'Costo / importe' : 'Precio unitario'"
+            :label="esTallerProducto ? 'Costo / importe' : montoDirecto ? 'Monto total del producto' : 'Precio unitario'"
             required
             :error="errorPrecioUnitario"
           >
@@ -1456,7 +1463,7 @@ async function refrescarOrigenesRecarga() {
 }
 
 const importeGas = computed(() => {
-  if (esTallerProducto.value || (tipo.value === 'gas' && montoDirecto.value)) return montoNumerico(precioUnitario.value)
+  if (esTallerProducto.value || montoDirecto.value) return montoNumerico(precioUnitario.value)
   return Number(cantidad.value || 0) * montoNumerico(precioUnitario.value)
 })
 
@@ -2405,10 +2412,10 @@ async function confirmar() {
   onBlurMontoGarantia()
   onBlurPrecioBalon()
   const monto = roundMoney(parseMoneyInput(precioUnitario.value) ?? 0)
-  const directo = tipo.value === 'gas' && montoDirecto.value
+  const directo = montoDirecto.value && !esTallerProducto.value && tipo.value !== 'alquiler'
   const precio = directo ? precioGasDesdeTotal(monto, cant) : monto
   if (precio == null) {
-    toastWarning('El monto no puede representarse para esta cantidad de gas; ajusta el monto o la cantidad')
+    toastWarning('El monto no puede representarse para esta cantidad; ajusta el monto o la cantidad')
     return
   }
   if (!precioUnitarioValido.value) {
