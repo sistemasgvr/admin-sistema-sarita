@@ -147,7 +147,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { useFormControlClasses } from '@/shared/composables/useFormControlClasses'
 import { ICONS } from '@/shared/constants/icons'
 import type { FormControlState, SelectOption } from '@/shared/interfaces/form.interface'
-import { normalizeSearchText } from '@/shared/utils/normalizeSearchText'
+import { matchesSearchText, normalizeSearchText } from '@/shared/utils/normalizeSearchText'
 
 defineOptions({
   inheritAttrs: false,
@@ -246,7 +246,7 @@ const visibleOptions = computed(() => {
     ]
       .filter(Boolean)
       .join(' ')
-    return normalizeSearchText(haystack).includes(normalizedSearch.value)
+    return matchesSearchText(haystack, normalizedSearch.value)
   })
 })
 

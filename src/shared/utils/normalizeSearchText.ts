@@ -6,12 +6,17 @@ export function normalizeSearchText(value?: string | null): string {
     .toLocaleLowerCase('es')
 }
 
-/** true si haystack contiene needle con búsqueda flexible. */
+/**
+ * true si haystack contiene cada palabra de needle con búsqueda flexible.
+ * Las palabras pueden ir en cualquier orden: "MUNDACA PEREZ CLARIZA" encuentra
+ * a "CLARIZA DEL CARMEN MUNDACA PEREZ".
+ */
 export function matchesSearchText(
   haystack?: string | null,
   needle?: string | null,
 ): boolean {
-  const term = normalizeSearchText(needle).trim()
-  if (!term) return true
-  return normalizeSearchText(haystack).includes(term)
+  const terms = normalizeSearchText(needle).split(/\s+/).filter(Boolean)
+  if (!terms.length) return true
+  const text = normalizeSearchText(haystack)
+  return terms.every((term) => text.includes(term))
 }
