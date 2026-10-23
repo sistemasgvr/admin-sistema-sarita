@@ -88,7 +88,7 @@ const observacion = ref('')
 const condicionQuery = useListaOpcionesQuery(ref(ListaIds.CONDICION_REGULADOR))
 const condicionOptions = computed(() =>
   (condicionQuery.data.value ?? []).map((o) => ({
-    value: o.descripcion ?? o.nombre,
+    value: o.nombre as CondicionReguladorDevolucion,
     label: o.nombre,
   })),
 )
