@@ -78,6 +78,12 @@ const detalleColumns: ExcelColumn<BalonPropietarioItem>[] = [
     width: 12,
     value: (row) => formatPh(row.fecha_proxima_prueba_hidrostatica),
   },
+  {
+    key: 'tenedor',
+    header: 'En poder de',
+    width: 34,
+    value: (row) => row.nombre_cliente_ubicacion ?? '',
+  },
 ]
 
 const resumenColumns: ExcelColumn<ResumenFila>[] = [
