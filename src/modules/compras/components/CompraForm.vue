@@ -12,12 +12,24 @@
           <DetailSectionCard
             data-tutorial="compra-comprobante"
             title="Comprobante"
+            description="Datos tal como figuran en la factura o boleta del proveedor."
             :icon="ICONS.receipt"
             :full-width="true"
           >
+            <template #actions>
+              <div data-tutorial="compra-declarar-sunat">
+                <AppSwitch
+                  v-model="declararSunat"
+                  label="Declarar SUNAT"
+                  :help="DECLARAR_SUNAT_HELP"
+                  :disabled="saving"
+                />
+              </div>
+            </template>
+
             <div
               v-if="props.referenciaCompraId"
-              class="mb-4 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
+              class="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700 dark:bg-brand-500/10 dark:text-brand-300"
             >
               <template v-if="referenciaQuery.isFetching.value">
                 Cargando datos de la compra anulada...
@@ -52,15 +64,7 @@
               />
             </AppSelectWithCreate>
 
-            <div data-tutorial="compra-documento" class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              <AppDatePicker
-                v-model="fecha"
-                label="Fecha"
-                required
-                v-bind="fechaAttrs"
-                :disabled="saving"
-                :error="errors.fecha"
-              />
+            <div data-tutorial="compra-documento" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <AppSelect
                 v-model="idTipoComprobante"
                 label="Tipo comprobante"
@@ -90,278 +94,254 @@
                 :disabled="saving"
                 :error="errors.numero"
               />
-            </div>
-
-            <div data-tutorial="compra-declarar-sunat" class="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <AppSwitch
-                v-model="declararSunat"
-                label="Declarar SUNAT"
-                :help="DECLARAR_SUNAT_HELP"
+              <AppDatePicker
+                v-model="fecha"
+                label="Fecha de emisión"
+                required
+                v-bind="fechaAttrs"
                 :disabled="saving"
+                :error="errors.fecha"
               />
             </div>
-
-            <AppTextarea
-              v-model="glosa"
-              label="Glosa"
-              placeholder="Opcional"
-              :disabled="saving"
-              class="mt-5"
-            />
           </DetailSectionCard>
 
           <DetailSectionCard
             data-tutorial="compra-clasificacion"
-            title="Clasificación"
+            title="Registro y destino"
+            description="Cómo se contabiliza la compra y a qué almacén ingresa el stock."
             :icon="ICONS.layers"
             :full-width="true"
           >
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <AppSelect
-                v-model="idTipoRegistro"
-                label="Tipo registro"
-                placeholder="Seleccionar"
-                required
-                v-bind="idTipoRegistroAttrs"
-                :options="tipoRegistroOptions"
-                :disabled="saving"
-                :error="errors.idTipoRegistro"
-              />
-              <AppSelectWithCreate
-                :can-create="canCrearCategoriaGasto"
-                create-title="Nueva categoría de gasto"
-                :disabled="saving"
-                @create="categoriaGastoModalOpen = true"
-              >
+            <div>
+              <p class="compra-subtitulo">Contabilidad</p>
+              <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <AppSelect
-                  v-model="idCategoriaGasto"
-                  label="Categoría gasto"
+                  v-model="idTipoRegistro"
+                  label="Tipo registro"
                   placeholder="Seleccionar"
                   required
-                  v-bind="idCategoriaGastoAttrs"
-                  :options="categoriaGastoOptions"
+                  v-bind="idTipoRegistroAttrs"
+                  :options="tipoRegistroOptions"
                   :disabled="saving"
-                  :error="errors.idCategoriaGasto"
+                  :error="errors.idTipoRegistro"
                 />
-              </AppSelectWithCreate>
-              <AppSelectSearch
-                v-model="idAlmacen"
-                label="Almacén"
-                placeholder="Seleccionar"
-                required
-                help="El stock de los productos que ingresan (y de los cilindros al retornar de planta) se registra en este almacén."
-                v-bind="idAlmacenAttrs"
-                :options="almacenOptions"
-                :loading="almacenesQuery.isFetching.value"
-                :disabled="saving"
-                :error="errors.idAlmacen"
-              />
-              <AppSelectSearch
-                v-model="idSucursal"
-                label="Sucursal"
-                placeholder="Seleccionar"
-                help="Sucursal a la que se atribuye la compra: sus ingresos de stock se reportan aquí y los pagos de su cuenta por pagar salen de la caja de esta sucursal."
-                :options="sucursalOptions"
-                :loading="sucursalesQuery.isFetching.value"
-                :disabled="saving"
-              />
-              <AppSelect
-                v-model="idMoneda"
-                label="Moneda"
-                placeholder="Seleccionar"
-                required
-                v-bind="idMonedaAttrs"
-                :options="monedaOptions"
-                :disabled="saving"
-                :error="errors.idMoneda"
-              />
+                <AppSelectWithCreate
+                  :can-create="canCrearCategoriaGasto"
+                  create-title="Nueva categoría de gasto"
+                  :disabled="saving"
+                  @create="categoriaGastoModalOpen = true"
+                >
+                  <AppSelect
+                    v-model="idCategoriaGasto"
+                    label="Categoría gasto"
+                    placeholder="Seleccionar"
+                    required
+                    v-bind="idCategoriaGastoAttrs"
+                    :options="categoriaGastoOptions"
+                    :disabled="saving"
+                    :error="errors.idCategoriaGasto"
+                  />
+                </AppSelectWithCreate>
+                <AppSelect
+                  v-model="idMoneda"
+                  label="Moneda"
+                  placeholder="Seleccionar"
+                  required
+                  v-bind="idMonedaAttrs"
+                  :options="monedaOptions"
+                  :disabled="saving"
+                  :error="errors.idMoneda"
+                />
+              </div>
+            </div>
+
+            <div class="border-t border-gray-100 pt-5 dark:border-gray-800">
+              <p class="compra-subtitulo">Destino</p>
+              <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <AppSelectSearch
+                  v-model="idAlmacen"
+                  label="Almacén"
+                  placeholder="Seleccionar"
+                  required
+                  help="El stock de los productos que ingresan (y de los cilindros al retornar de planta) se registra en este almacén."
+                  v-bind="idAlmacenAttrs"
+                  :options="almacenOptions"
+                  :loading="almacenesQuery.isFetching.value"
+                  :disabled="saving"
+                  :error="errors.idAlmacen"
+                />
+                <AppSelectSearch
+                  v-model="idSucursal"
+                  label="Sucursal"
+                  placeholder="Seleccionar"
+                  help="Sucursal a la que se atribuye la compra: sus ingresos de stock se reportan aquí y los pagos de su cuenta por pagar salen de la caja de esta sucursal."
+                  :options="sucursalOptions"
+                  :loading="sucursalesQuery.isFetching.value"
+                  :disabled="saving"
+                />
+              </div>
             </div>
           </DetailSectionCard>
 
           <DetailSectionCard
             data-tutorial="compra-pago"
             title="Pago"
+            description="Modalidad y medio con el que se pagó la factura."
             :icon="ICONS.wallet"
             :full-width="true"
           >
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <AppSelectSearch
-                v-model="idCondicionPago"
-                label="Condición pago"
-                placeholder="Contado"
-                :help="CONDICION_PAGO_HELP"
-                :options="condicionPagoOptions"
-                :loading="condicionesQuery.isFetching.value"
-                :disabled="saving"
-              />
-            </div>
-            <CompraPagoPreview
-              v-if="esPlanCuotas || esCreditoPago"
-              class="mt-5"
-              :modo="esPlanCuotas ? 'cuotas' : 'credito'"
-              v-model:cuotas="cuotasPlan"
-              v-model:fecha-vencimiento="fechaVencimientoCredito"
-              v-model:dia-mes-pago="diaMesPagoEditable"
-              :total="totalParaCuotas"
-              :dias-credito="Number(condicionPagoSeleccionada?.dias_credito ?? 0)"
+            <CompraPagoResumen
+              :modalidad="etiquetaModalidadPago"
+              :detalle="detallePago"
+              :estado="estadoPago"
+              :icono="esContado ? ICONS.banknote : ICONS.calendarRange"
+              :total="formatMoney(totalesDetalle.total)"
               :disabled="saving"
+              @editar="pagoModalOpen = true"
             />
-            <template v-else>
-              <MedioPagoCuentaField
-                data-tutorial="compra-medio-pago"
-                class="mt-5"
-                v-model:id-medio-pago="pagoContado.idMedioPago"
-                v-model:id-cuenta-bancaria="pagoContado.idCuentaBancaria"
-                v-model:numero-operacion="pagoContado.numeroOperacion"
-                v-model:valido="pagoContadoValido"
-                :medio-requerido="medioPagoRequerido"
-                :disabled="saving"
-                :mostrar-errores="submitCount > 0"
-                mostrar-siempre-numero-operacion
-                excluir-credito
-              />
-              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ avisoPagoContado }}</p>
-            </template>
           </DetailSectionCard>
 
           <DetailSectionCard
             data-tutorial="compra-recarga-externa"
             title="Recarga externa"
+            description="Actívalo solo si esta factura es el costo de una orden de recarga en planta."
             :icon="ICONS.cylinder"
             :full-width="true"
-            help="La compra puede ser de cualquier producto o gasto. Activa recarga externa solo si esta factura es el costo de una orden en planta."
           >
             <AppSwitch
               v-model="desdeRecargaExterna"
-              label="A partir de recarga externa"
+              label="Vincular a una orden de recarga"
               help="Vincula la factura a una orden de planta. El gas entra al stock con el retorno de los cilindros, con las cantidades de esta factura."
               :disabled="saving"
             />
 
             <template v-if="desdeRecargaExterna">
-            <div class="mt-5">
-            <AppSelectSearch
-              v-model="idRecargaPlanta"
-              label="Orden de recarga"
-              :placeholder="idProveedor ? 'Selecciona una orden' : 'Selecciona el proveedor primero'"
-              search-placeholder="Número de orden..."
-              :options="recargaPlantaOptions"
-              :loading="recargaPlantaQuery.isFetching.value"
-              :disabled="saving || !idProveedor"
-              :error="errors.idRecargaPlanta"
-            />
-            </div>
-
-            <template v-if="idRecargaPlantaNum">
-              <!--
-                Retorno ya registrado desde el documento de salida: los cilindros
-                y el gas ya ingresaron. Volver a marcarlo aquí duplicaba el
-                ingreso; ahora la factura solo se vincula a la orden.
-              -->
-              <div
-                v-if="ordenYaRetorno"
-                class="mt-3 flex items-start gap-2 rounded-lg border border-success-500/30 bg-success-50 px-3 py-2.5 text-xs text-gray-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-gray-300"
-              >
-                <AppIcon
-                  :name="ICONS.check"
-                  :size="14"
-                  class="mt-0.5 shrink-0 text-success-600 dark:text-success-500"
-                />
-                <span>
-                  Retorno registrado el
-                  <strong class="font-semibold">{{ fechaRetornoOrdenLabel }}</strong>: los
-                  cilindros ya están en almacén. Al guardar, esta factura queda vinculada a la
-                  orden y el gas ingresado se ajusta a las cantidades que indiques en el detalle.
-                </span>
-              </div>
-
-              <template v-else>
-                <div class="mt-3 flex items-start gap-1.5">
-                  <AppCheckbox
-                    v-model="guardarBalonesAlmacen"
-                    label="Registrar retorno de cilindros"
-                    :disabled="saving"
-                  />
-                  <AppHelpTip
-                    text="Márcalo si los cilindros ya llegaron: quedan disponibles en el almacén y el gas ingresa con las cantidades que indiques en el detalle. Si aún están en planta, déjalo apagado: la factura queda vinculada y el retorno se registra después desde el documento de salida."
-                  />
-                </div>
-
-                <div
-                  v-if="!guardarBalonesAlmacen"
-                  class="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
-                >
-                  <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
-                  <span>
-                    Mientras no marques el retorno, el gas de esta orden
-                    <strong class="font-semibold">no entra al stock</strong>. La factura queda
-                    vinculada; el retorno se registra acá o desde el documento de salida cuando
-                    lleguen los cilindros, con las cantidades de esta compra.
-                  </span>
-                </div>
-
-                <div v-if="guardarBalonesAlmacen" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <AppDatePicker
-                    v-model="fechaLlegadaAlmacen"
-                    label="Fecha llegada almacén"
-                    required
-                    :disabled="saving"
-                    :error="errors.fechaLlegadaAlmacen"
-                  />
-                </div>
-              </template>
-
               <!--
                 La GRE del proveedor es un dato de la factura, no del retorno:
                 se puede tipear aunque el retorno ya esté registrado o aún no
                 se marque. Se guarda en la orden como referencia.
               -->
-              <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <AppInput
-                  v-model="serieGuiaIngreso"
-                  label="Serie GRE proveedor"
-                  placeholder="T001"
-                  help="Guía con la que el proveedor devuelve los cilindros; es referencial."
-                  :disabled="saving"
-                />
-
-                <AppInput
-                  v-model="numeroGuiaIngreso"
-                  label="Número GRE proveedor"
-                  placeholder="00000002"
-                  :disabled="saving"
-                />
+              <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="sm:col-span-2">
+                  <AppSelectSearch
+                    v-model="idRecargaPlanta"
+                    label="Orden de recarga"
+                    :placeholder="idProveedor ? 'Selecciona una orden' : 'Selecciona el proveedor primero'"
+                    search-placeholder="Número de orden..."
+                    :options="recargaPlantaOptions"
+                    :loading="recargaPlantaQuery.isFetching.value"
+                    :disabled="saving || !idProveedor"
+                    :error="errors.idRecargaPlanta"
+                  />
+                </div>
+                <template v-if="idRecargaPlantaNum">
+                  <AppInput
+                    v-model="serieGuiaIngreso"
+                    label="Serie GRE proveedor"
+                    placeholder="T001"
+                    help="Guía con la que el proveedor devuelve los cilindros; es referencial."
+                    :disabled="saving"
+                  />
+                  <AppInput
+                    v-model="numeroGuiaIngreso"
+                    label="Número GRE proveedor"
+                    placeholder="00000002"
+                    :disabled="saving"
+                  />
+                </template>
               </div>
 
-              <div class="mt-4">
-                <p
-                  class="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
+              <template v-if="idRecargaPlantaNum">
+                <!--
+                  Retorno ya registrado desde el documento de salida: los cilindros
+                  y el gas ya ingresaron. Volver a marcarlo aquí duplicaba el
+                  ingreso; ahora la factura solo se vincula a la orden.
+                -->
+                <div
+                  v-if="ordenYaRetorno"
+                  class="flex items-start gap-2 rounded-lg border border-success-500/30 bg-success-50 px-3 py-2.5 text-xs text-gray-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-gray-300"
                 >
-                  Cilindros de la orden
-                </p>
-                <CompraRecargaPlantaDetalle
-                  :recarga="recargaPlantaDetalleQuery.data.value ?? null"
-                  :loading="recargaPlantaDetalleQuery.isFetching.value"
-                />
-              </div>
-            </template>
+                  <AppIcon
+                    :name="ICONS.check"
+                    :size="14"
+                    class="mt-0.5 shrink-0 text-success-600 dark:text-success-500"
+                  />
+                  <span>
+                    Retorno registrado el
+                    <strong class="font-semibold">{{ fechaRetornoOrdenLabel }}</strong>: los
+                    cilindros ya están en almacén. Al guardar, esta factura queda vinculada a la
+                    orden y el gas ingresado se ajusta a las cantidades que indiques en el detalle.
+                  </span>
+                </div>
+
+                <div
+                  v-else
+                  class="rounded-xl border border-gray-200 p-4 dark:border-gray-800"
+                >
+                  <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-start gap-1.5">
+                      <AppCheckbox
+                        v-model="guardarBalonesAlmacen"
+                        label="Registrar retorno de cilindros"
+                        :disabled="saving"
+                      />
+                      <AppHelpTip
+                        text="Márcalo si los cilindros ya llegaron: quedan disponibles en el almacén y el gas ingresa con las cantidades que indiques en el detalle. Si aún están en planta, déjalo apagado: la factura queda vinculada y el retorno se registra después desde el documento de salida."
+                      />
+                    </div>
+                    <div v-if="guardarBalonesAlmacen" class="w-full sm:w-64">
+                      <AppDatePicker
+                        v-model="fechaLlegadaAlmacen"
+                        label="Fecha llegada almacén"
+                        required
+                        :disabled="saving"
+                        :error="errors.fechaLlegadaAlmacen"
+                      />
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="!guardarBalonesAlmacen"
+                    class="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+                  >
+                    <AppIcon :name="ICONS.alertTriangle" :size="14" class="mt-0.5 shrink-0" />
+                    <span>
+                      Mientras no marques el retorno, el gas de esta orden
+                      <strong class="font-semibold">no entra al stock</strong>. La factura queda
+                      vinculada; el retorno se registra acá o desde el documento de salida cuando
+                      lleguen los cilindros, con las cantidades de esta compra.
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <p class="compra-subtitulo">Cilindros de la orden</p>
+                  <CompraRecargaPlantaDetalle
+                    :recarga="recargaPlantaDetalleQuery.data.value ?? null"
+                    :loading="recargaPlantaDetalleQuery.isFetching.value"
+                  />
+                </div>
+              </template>
             </template>
           </DetailSectionCard>
 
           <DetailSectionCard
             data-tutorial="compra-detalle"
             :title="tituloDetalleProductos"
+            :description="descripcionDetalleProductos"
             :icon="ICONS.clipboardList"
             :full-width="true"
             :help="helpDetalleProductos"
           >
             <template #actions>
-              <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+              <span
+                class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-white/5 dark:text-gray-300"
+              >
                 {{ lineas.length }} {{ lineas.length === 1 ? 'ítem' : 'ítems' }}
               </span>
             </template>
 
-            <div data-tutorial="compra-agregar-producto" class="mb-3">
+            <div data-tutorial="compra-agregar-producto">
               <CompraProductoField
                 v-model="lineaIdProducto"
                 v-model:search="lineaProductoBuscar"
@@ -390,13 +370,9 @@
               lo que la planta realmente cargó. Esa cantidad es la que entra al
               stock al registrar el retorno; la capacidad solo pone el tope.
             -->
-            <div v-if="desdeRecargaExterna && idRecargaPlantaNum" class="mb-4">
+            <div v-if="desdeRecargaExterna && idRecargaPlantaNum">
               <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <p
-                  class="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
-                >
-                  Gas que ingresa según los cilindros
-                </p>
+                <p class="compra-subtitulo !mb-0">Gas que ingresa según los cilindros</p>
                 <span class="text-[11px] text-gray-500 dark:text-gray-400">
                   {{
                     ordenYaRetorno
@@ -427,22 +403,22 @@
                   <table class="compra-detalle-table w-full min-w-[760px] table-fixed text-sm">
                     <thead class="bg-gray-50 dark:bg-white/5">
                       <tr>
-                        <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                        <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Producto
                         </th>
-                        <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                        <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Tipos que lo cargan
                         </th>
-                        <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                        <th class="w-32 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Capacidad
                         </th>
-                        <th class="w-36 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                        <th class="w-36 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Ingresa
                         </th>
-                        <th class="w-56 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                        <th class="w-56 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Monto (IGV)
                         </th>
-                        <th class="w-48 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                        <th class="w-48 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                           Importe
                         </th>
                         <th class="w-12 px-2 py-2.5" />
@@ -493,29 +469,7 @@
                           />
                         </td>
                         <td class="px-3 py-2.5">
-                          <div class="compra-precio flex items-center gap-1">
-                            <div class="min-w-0 flex-1">
-                              <p class="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                                {{ etiquetaMonto(claveModoNueva(lin.key)) }}
-                              </p>
-                              <MoneyInput
-                                v-model="precioNuevoInputs[lin.key]"
-                              :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
-                              :max-integer-digits="enterosPrecio(claveModoNueva(lin.key))"
-                                placeholder="0.00"
-                                :disabled="saving"
-                                :state="precioNuevoError(lin.key) ? 'error' : 'default'"
-                                @blur="onBlurPrecioNuevo(lin.key)"
-                              />
-                              <p
-                                v-if="precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))"
-                                class="mt-1 text-[11px] text-gray-500 dark:text-gray-400"
-                              >
-                                {{
-                                  precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))
-                                }}
-                              </p>
-                            </div>
+                          <div class="compra-precio">
                             <button
                               type="button"
                               :title="
@@ -523,14 +477,32 @@
                                   ? 'Usar precio unitario'
                                   : 'Usar importe total de la línea'
                               "
-                              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                              class="compra-precio-modo inline-flex items-center gap-1 rounded text-[11px] font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-40 dark:text-brand-400 dark:hover:text-brand-300"
                               :disabled="saving"
                               @click="
                                 alternarModoPrecio(claveModoNueva(lin.key), () => Number(lin.cantidad))
                               "
                             >
-                              <AppIcon :name="ICONS.arrowLeftRight" :size="14" />
+                              {{ etiquetaMonto(claveModoNueva(lin.key)) }}
+                              <AppIcon :name="ICONS.arrowLeftRight" :size="11" />
                             </button>
+                            <MoneyInput
+                              v-model="precioNuevoInputs[lin.key]"
+                            :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
+                            :max-integer-digits="enterosPrecio(claveModoNueva(lin.key))"
+                              placeholder="0.00"
+                              :disabled="saving"
+                              :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                              @blur="onBlurPrecioNuevo(lin.key)"
+                            />
+                            <p
+                              v-if="precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))"
+                              class="compra-precio-hint text-[11px] text-gray-500 dark:text-gray-400"
+                            >
+                              {{
+                                precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))
+                              }}
+                            </p>
                           </div>
                         </td>
                         <td
@@ -556,38 +528,41 @@
               </div>
             </div>
 
-            <p
-              v-if="desdeRecargaExterna && idRecargaPlantaNum && lineasManuales.length"
-              class="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400"
-            >
-              Otros productos
-            </p>
-
             <div
               v-if="lineas.length === 0 && !(desdeRecargaExterna && idRecargaPlantaNum)"
-              class="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"
+              class="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center dark:border-gray-700"
             >
-              Busca un producto arriba para agregarlo al detalle.
+              <span
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-400 dark:bg-white/5"
+              >
+                <AppIcon :name="ICONS.package" :size="18" />
+              </span>
+              <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Sin productos todavía</p>
+              <p class="max-w-sm text-xs text-gray-500 dark:text-gray-400">
+                Busca un producto arriba para agregarlo. También puedes registrar la compra sin
+                líneas y agregarlas después.
+              </p>
             </div>
 
-            <div
-              v-if="lineasManuales.length"
-              class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800"
-            >
+            <div v-if="lineasManuales.length">
+              <p v-if="desdeRecargaExterna && idRecargaPlantaNum" class="compra-subtitulo">
+                Otros productos
+              </p>
+              <div class="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
               <div class="overflow-x-auto">
                 <table class="compra-detalle-table w-full min-w-[760px] table-fixed text-sm">
                   <thead class="bg-gray-50 dark:bg-white/5">
                     <tr>
-                      <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                      <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Producto
                       </th>
-                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-32 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Cant.
                       </th>
-                      <th class="w-56 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-56 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Monto (IGV)
                       </th>
-                      <th class="w-48 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-48 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Importe
                       </th>
                       <th class="w-12 px-2 py-2.5" />
@@ -601,13 +576,13 @@
                     >
                       <td class="px-3 py-2.5">
                         <p class="font-medium text-gray-800 dark:text-white/90">{{ lin.productoLabel }}</p>
-                        <div class="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span
-                            v-if="lin.nombreUnidadMedida"
-                            class="text-xs text-gray-500 dark:text-gray-400"
-                          >
-                            {{ lin.nombreUnidadMedida }}
-                          </span>
+                        <p
+                          v-if="metaLinea(lin)"
+                          class="mt-0.5 text-xs text-gray-500 dark:text-gray-400"
+                        >
+                          {{ metaLinea(lin) }}
+                        </p>
+                        <div class="mt-1.5 flex flex-wrap items-center gap-1">
                           <AppBadge v-if="lin.esGas" size="sm" variant="light" color="primary">
                             Gas
                           </AppBadge>
@@ -616,15 +591,6 @@
                           </AppBadge>
                           <AppBadge v-if="lin.esAlquilable" size="sm" variant="light" color="warning">
                             Alquilable
-                          </AppBadge>
-                          <AppBadge v-if="lin.nombreCategoria" size="sm" variant="light" color="neutral">
-                            {{ lin.nombreCategoria }}
-                          </AppBadge>
-                          <AppBadge v-if="lin.presentacion" size="sm" variant="light" color="neutral">
-                            {{ lin.presentacion }}
-                          </AppBadge>
-                          <AppBadge v-if="lin.marca" size="sm" variant="light" color="neutral">
-                            {{ lin.marca }}
                           </AppBadge>
                           <AppBadge v-if="lin.afectaStock" size="sm" variant="light" color="primary">
                             Ingresa stock
@@ -645,29 +611,7 @@
                         />
                       </td>
                       <td class="px-3 py-2.5">
-                        <div class="compra-precio flex items-center gap-1">
-                          <div class="min-w-0 flex-1">
-                            <p class="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                              {{ etiquetaMonto(claveModoNueva(lin.key)) }}
-                            </p>
-                            <MoneyInput
-                              v-model="precioNuevoInputs[lin.key]"
-                              :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
-                              :max-integer-digits="enterosPrecio(claveModoNueva(lin.key))"
-                              placeholder="0.00"
-                              :disabled="saving"
-                              :state="precioNuevoError(lin.key) ? 'error' : 'default'"
-                              @blur="onBlurPrecioNuevo(lin.key)"
-                            />
-                            <p
-                              v-if="precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))"
-                              class="mt-1 text-[11px] text-gray-500 dark:text-gray-400"
-                            >
-                              {{
-                                precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))
-                              }}
-                            </p>
-                          </div>
+                        <div class="compra-precio">
                           <button
                             type="button"
                             :title="
@@ -675,14 +619,32 @@
                                 ? 'Usar precio unitario'
                                 : 'Usar importe total de la línea'
                             "
-                            class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                            class="compra-precio-modo inline-flex items-center gap-1 rounded text-[11px] font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-40 dark:text-brand-400 dark:hover:text-brand-300"
                             :disabled="saving"
                             @click="
                               alternarModoPrecio(claveModoNueva(lin.key), () => Number(lin.cantidad))
                             "
                           >
-                            <AppIcon :name="ICONS.arrowLeftRight" :size="14" />
+                            {{ etiquetaMonto(claveModoNueva(lin.key)) }}
+                            <AppIcon :name="ICONS.arrowLeftRight" :size="11" />
                           </button>
+                          <MoneyInput
+                            v-model="precioNuevoInputs[lin.key]"
+                            :max-decimals="decimalesPrecio(claveModoNueva(lin.key))"
+                            :max-integer-digits="enterosPrecio(claveModoNueva(lin.key))"
+                            placeholder="0.00"
+                            :disabled="saving"
+                            :state="precioNuevoError(lin.key) ? 'error' : 'default'"
+                            @blur="onBlurPrecioNuevo(lin.key)"
+                          />
+                          <p
+                            v-if="precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))"
+                            class="compra-precio-hint text-[11px] text-gray-500 dark:text-gray-400"
+                          >
+                            {{
+                              precioUnitarioDerivadoTexto(claveModoNueva(lin.key), Number(lin.cantidad))
+                            }}
+                          </p>
                         </div>
                       </td>
                       <td
@@ -705,45 +667,76 @@
                   </tbody>
                 </table>
               </div>
+              </div>
             </div>
 
+            <!-- Pie tipo factura: observaciones a la izquierda, totales a la derecha. -->
             <div
-              v-if="lineas.length"
-              class="compra-totales mt-3 grid grid-cols-1 gap-3 rounded-xl sm:grid-cols-3 border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-800 dark:bg-white/3"
+              class="grid grid-cols-1 gap-5 border-t border-gray-100 pt-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start dark:border-gray-800"
             >
-              <div class="min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Sub total</p>
-                <p class="font-semibold tabular-nums break-all text-gray-800 dark:text-white/90">
-                  {{ formatMoney(totalesDetalle.valorVenta) }}
-                </p>
-              </div>
-              <div class="min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">IGV (18%)</p>
-                <p class="font-semibold tabular-nums break-all text-gray-800 dark:text-white/90">
-                  {{ formatMoney(totalesDetalle.igv) }}
-                </p>
-              </div>
-              <div class="min-w-0">
-                <p class="text-xs text-gray-500 dark:text-gray-400">Total</p>
-                <p class="font-semibold tabular-nums break-all text-gray-800 dark:text-white/90">
-                  {{ formatMoney(totalesDetalle.total) }}
-                </p>
-              </div>
+              <AppTextarea
+                v-model="glosa"
+                label="Glosa / observaciones"
+                placeholder="Opcional"
+                :disabled="saving"
+              />
+              <dl
+                v-if="lineas.length"
+                class="compra-totales rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm dark:border-gray-800 dark:bg-white/3"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <dt class="text-gray-500 dark:text-gray-400">Subtotal</dt>
+                  <dd class="tabular-nums text-gray-700 dark:text-gray-300">
+                    {{ formatMoney(totalesDetalle.valorVenta) }}
+                  </dd>
+                </div>
+                <div class="mt-2 flex items-center justify-between gap-3">
+                  <dt class="text-gray-500 dark:text-gray-400">IGV (18%)</dt>
+                  <dd class="tabular-nums text-gray-700 dark:text-gray-300">
+                    {{ formatMoney(totalesDetalle.igv) }}
+                  </dd>
+                </div>
+                <div
+                  class="mt-3 flex items-baseline justify-between gap-3 border-t border-gray-200 pt-3 dark:border-gray-700"
+                >
+                  <dt class="font-semibold text-gray-800 dark:text-white/90">Total</dt>
+                  <dd class="text-xl font-semibold tabular-nums text-gray-900 dark:text-white">
+                    {{ formatMoney(totalesDetalle.total) }}
+                  </dd>
+                </div>
+              </dl>
             </div>
           </DetailSectionCard>
-        
         </template>
         <!-- EDIT -->
         <template v-else>
-          <DetailSectionCard title="Datos de la compra" :icon="ICONS.receipt" :full-width="true">
-            <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
+          <DetailSectionCard
+            title="Datos de la compra"
+            description="Proveedor, comprobante y almacén no se modifican; para corregirlos anula y vuelve a registrar."
+            :icon="ICONS.receipt"
+            :full-width="true"
+          >
+            <template #actions>
+              <AppSwitch
+                v-model="declararSunat"
+                label="Declarar SUNAT"
+                :help="DECLARAR_SUNAT_HELP"
+                :disabled="saving"
+              />
+            </template>
+
+            <div
+              class="grid grid-cols-1 gap-4 rounded-xl bg-gray-50 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] dark:bg-white/3"
+            >
+              <div class="min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Proveedor</p>
-                <p class="font-medium text-gray-800 dark:text-white/90">{{ cabecera?.proveedor ?? '—' }}</p>
+                <p class="truncate text-base font-semibold text-gray-800 dark:text-white/90">
+                  {{ cabecera?.proveedor ?? '—' }}
+                </p>
               </div>
               <div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">Comprobante</p>
-                <p class="font-medium text-gray-800 dark:text-white/90">
+                <p class="font-medium tabular-nums text-gray-800 dark:text-white/90">
                   {{ cabecera?.serie ?? '—' }}-{{ cabecera?.numero ?? '—' }}
                 </p>
               </div>
@@ -771,50 +764,21 @@
                   :disabled="saving"
                 />
               </AppSelectWithCreate>
-              <AppSelectSearch
-                v-model="idCondicionPago"
-                label="Condición pago"
-                placeholder="Seleccionar"
-                :help="CONDICION_PAGO_HELP"
-                :options="condicionPagoOptions"
-                :loading="condicionesQuery.isFetching.value"
+            </div>
+
+            <div class="border-t border-gray-100 pt-5 dark:border-gray-800">
+              <p class="compra-subtitulo">Pago</p>
+              <CompraPagoResumen
+                :modalidad="etiquetaModalidadPago"
+                :detalle="detallePago"
+                :estado="estadoPago"
+                :icono="esContado ? ICONS.banknote : ICONS.calendarRange"
+                :total="formatMoney(totalParaCuotas)"
                 :disabled="saving"
+                @editar="pagoModalOpen = true"
               />
             </div>
-            <CompraPagoPreview
-              v-if="esPlanCuotas || esCreditoPago"
-              class="mt-5"
-              :modo="esPlanCuotas ? 'cuotas' : 'credito'"
-              v-model:cuotas="cuotasPlan"
-              v-model:fecha-vencimiento="fechaVencimientoCredito"
-              v-model:dia-mes-pago="diaMesPagoEditable"
-              :total="totalParaCuotas"
-              :dias-credito="Number(condicionPagoSeleccionada?.dias_credito ?? 0)"
-              :disabled="saving"
-            />
-            <template v-else>
-              <MedioPagoCuentaField
-                class="mt-5"
-                v-model:id-medio-pago="pagoContado.idMedioPago"
-                v-model:id-cuenta-bancaria="pagoContado.idCuentaBancaria"
-                v-model:numero-operacion="pagoContado.numeroOperacion"
-                v-model:valido="pagoContadoValido"
-                :medio-requerido="medioPagoRequerido"
-                :disabled="saving"
-                :mostrar-errores="submitCount > 0"
-                mostrar-siempre-numero-operacion
-                excluir-credito
-              />
-              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ avisoPagoContado }}</p>
-            </template>
-            <AppTextarea v-model="glosa" label="Glosa" placeholder="Opcional" :disabled="saving" class="mt-5" />
-            <AppSwitch
-              v-model="declararSunat"
-              label="Declarar SUNAT"
-              :help="DECLARAR_SUNAT_HELP"
-              :disabled="saving"
-              class="mt-4"
-            />
+            <AppTextarea v-model="glosa" label="Glosa / observaciones" placeholder="Opcional" :disabled="saving" />
           </DetailSectionCard>
 
           <RecargaPlantaBalonesCard
@@ -850,19 +814,19 @@
                 <table class="compra-detalle-table w-full min-w-[1040px] table-fixed text-sm">
                   <thead class="bg-gray-50 dark:bg-white/5">
                     <tr>
-                      <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                      <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Producto
                       </th>
-                      <th class="px-3 py-2.5 text-left font-medium text-gray-600 dark:text-gray-300">
+                      <th class="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Almacén
                       </th>
-                      <th class="w-32 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-32 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Cant.
                       </th>
-                      <th class="w-56 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-56 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Monto (IGV)
                       </th>
-                      <th class="w-48 px-3 py-2.5 text-right font-medium text-gray-600 dark:text-gray-300">
+                      <th class="w-48 px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                         Importe
                       </th>
                       <th v-if="puedeModificar" class="w-20 px-2 py-2.5" />
@@ -916,32 +880,7 @@
                       </td>
                       <td class="px-3 py-2.5">
                         <template v-if="puedeModificar && lineasDraft[det.id]">
-                          <div class="compra-precio flex items-center gap-1">
-                            <div class="min-w-0 flex-1">
-                              <p class="mb-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                                {{ etiquetaMonto(claveModoEdit(det.id)) }}
-                              </p>
-                              <MoneyInput
-                                v-model="lineasDraft[det.id].precio"
-                                :max-decimals="decimalesPrecio(claveModoEdit(det.id))"
-                                :max-integer-digits="enterosPrecio(claveModoEdit(det.id))"
-                                placeholder="0.00"
-                                :disabled="saving || lineaGuardando === det.id"
-                                :state="precioEditError(det.id) ? 'error' : 'default'"
-                                @blur="onBlurPrecioEdit(det.id)"
-                              />
-                              <p
-                                v-if="precioUnitarioDerivadoTexto(claveModoEdit(det.id), Number(lineasDraft[det.id]?.cantidad ?? det.cantidad))"
-                                class="mt-1 text-[11px] text-gray-500 dark:text-gray-400"
-                              >
-                                {{
-                                  precioUnitarioDerivadoTexto(
-                                    claveModoEdit(det.id),
-                                    Number(lineasDraft[det.id]?.cantidad ?? det.cantidad),
-                                  )
-                                }}
-                              </p>
-                            </div>
+                          <div class="compra-precio">
                             <button
                               type="button"
                               :title="
@@ -949,7 +888,7 @@
                                   ? 'Usar precio unitario'
                                   : 'Usar importe total de la línea'
                               "
-                              class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                              class="compra-precio-modo inline-flex items-center gap-1 rounded text-[11px] font-medium text-brand-600 transition hover:text-brand-700 disabled:opacity-40 dark:text-brand-400 dark:hover:text-brand-300"
                               :disabled="saving || lineaGuardando === det.id"
                               @click="
                                 alternarModoPrecio(claveModoEdit(det.id), () =>
@@ -957,8 +896,29 @@
                                 )
                               "
                             >
-                              <AppIcon :name="ICONS.arrowLeftRight" :size="14" />
+                              {{ etiquetaMonto(claveModoEdit(det.id)) }}
+                              <AppIcon :name="ICONS.arrowLeftRight" :size="11" />
                             </button>
+                            <MoneyInput
+                              v-model="lineasDraft[det.id].precio"
+                              :max-decimals="decimalesPrecio(claveModoEdit(det.id))"
+                              :max-integer-digits="enterosPrecio(claveModoEdit(det.id))"
+                              placeholder="0.00"
+                              :disabled="saving || lineaGuardando === det.id"
+                              :state="precioEditError(det.id) ? 'error' : 'default'"
+                              @blur="onBlurPrecioEdit(det.id)"
+                            />
+                            <p
+                              v-if="precioUnitarioDerivadoTexto(claveModoEdit(det.id), Number(lineasDraft[det.id]?.cantidad ?? det.cantidad))"
+                              class="compra-precio-hint text-[11px] text-gray-500 dark:text-gray-400"
+                            >
+                              {{
+                                precioUnitarioDerivadoTexto(
+                                  claveModoEdit(det.id),
+                                  Number(lineasDraft[det.id]?.cantidad ?? det.cantidad),
+                                )
+                              }}
+                            </p>
                           </div>
                         </template>
                         <span v-else class="tabular-nums">
@@ -1005,25 +965,118 @@
 </template>
       </FormCardsLayout>
 
-      <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/3 sm:w-auto"
-          :disabled="saving"
-          @click="emit('cancel')"
-        >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          data-tutorial="compra-guardar"
-          class="flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
-          :disabled="saving || (isEdit && loadingDetail)"
-        >
-          {{ saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Registrar compra' }}
-        </button>
+      <!-- Barra fija: el total y la acción principal siguen a la vista en formularios largos. -->
+      <div
+        class="sticky bottom-0 z-10 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white/95 px-4 py-3 shadow-theme-md backdrop-blur sm:flex-row sm:items-center sm:justify-between dark:border-gray-800 dark:bg-gray-900/95"
+      >
+        <div v-if="!isEdit" class="flex items-baseline gap-2 text-sm">
+          <span class="text-gray-500 dark:text-gray-400">
+            {{ lineas.length }} {{ lineas.length === 1 ? 'ítem' : 'ítems' }} · Total
+          </span>
+          <span class="text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
+            {{ formatMoney(totalesDetalle.total) }}
+          </span>
+        </div>
+        <div class="flex gap-3 sm:ml-auto">
+          <button
+            type="button"
+            class="flex flex-1 justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/3 sm:flex-none"
+            :disabled="saving"
+            @click="emit('cancel')"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            data-tutorial="compra-guardar"
+            class="flex flex-1 justify-center rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70 sm:flex-none"
+            :disabled="saving || (isEdit && loadingDetail)"
+          >
+            {{ saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Registrar compra' }}
+          </button>
+        </div>
       </div>
     </form>
+
+    <!--
+      El pago se edita aquí pero vive en el formulario (sin borrador): cerrar el
+      modal conserva lo elegido y se envía con la compra al guardar.
+    -->
+    <AppModal
+      v-model="pagoModalOpen"
+      title="Pago de la compra"
+      :subtitle="`Total a pagar: ${formatMoney(isEdit ? totalParaCuotas : totalesDetalle.total)}`"
+      size="lg"
+    >
+      <div class="space-y-5">
+        <div>
+          <AppSelectSearch
+            v-model="idCondicionPago"
+            label="Modalidad de pago"
+            :placeholder="isEdit ? 'Seleccionar' : 'Contado'"
+            :help="CONDICION_PAGO_HELP"
+            :options="condicionPagoOptions"
+            :loading="condicionesQuery.isFetching.value"
+            :disabled="saving"
+          />
+          <div
+            class="mt-3 flex items-start gap-2 rounded-lg px-3 py-2 text-xs"
+            :class="
+              esContado
+                ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400'
+                : 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300'
+            "
+          >
+            <AppIcon
+              :name="esContado ? ICONS.banknote : ICONS.calendarRange"
+              :size="14"
+              class="mt-0.5 shrink-0"
+            />
+            <span>{{ resumenModalidadPago }}</span>
+          </div>
+        </div>
+
+        <CompraPagoPreview
+          v-if="esPlanCuotas || esCreditoPago"
+          :modo="esPlanCuotas ? 'cuotas' : 'credito'"
+          v-model:cuotas="cuotasPlan"
+          v-model:fecha-vencimiento="fechaVencimientoCredito"
+          v-model:dia-mes-pago="diaMesPagoEditable"
+          :total="totalParaCuotas"
+          :dias-credito="Number(condicionPagoSeleccionada?.dias_credito ?? 0)"
+          :disabled="saving"
+        />
+        <div v-else class="border-t border-gray-100 pt-5 dark:border-gray-800">
+          <p class="compra-subtitulo">¿Con qué se pagó?</p>
+          <MedioPagoCuentaField
+            v-model:id-medio-pago="pagoContado.idMedioPago"
+            v-model:id-cuenta-bancaria="pagoContado.idCuentaBancaria"
+            v-model:numero-operacion="pagoContado.numeroOperacion"
+            :medio-requerido="medioPagoRequerido"
+            :disabled="saving"
+            :mostrar-errores="submitCount > 0"
+            mostrar-siempre-numero-operacion
+            excluir-credito
+          />
+          <p class="mt-3 flex items-start gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <AppIcon :name="ICONS.info" :size="13" class="mt-0.5 shrink-0" />
+            <span>{{ avisoPagoContado }}</span>
+          </p>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end">
+          <button
+            type="button"
+            class="rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
+            @click="pagoModalOpen = false"
+          >
+            Listo
+          </button>
+        </div>
+      </template>
+    </AppModal>
 
     <ClienteFormModal
       v-model="proveedorModalOpen"
@@ -1066,6 +1119,7 @@ import type {
   CompraLineaForm,
 } from '@/modules/compras/interfaces/compra.interface'
 import CompraPagoPreview from '@/modules/compras/components/CompraPagoPreview.vue'
+import CompraPagoResumen from '@/modules/compras/components/CompraPagoResumen.vue'
 import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
@@ -1116,6 +1170,7 @@ import {
   AppCheckbox,
   AppDatePicker,
   AppHelpTip,
+  AppModal,
   AppInput,
   AppSelect,
   AppSelectSearch,
@@ -1732,9 +1787,21 @@ const recargaPlantaOptions = computed(() => {
 
 const tituloDetalleProductos = computed(() =>
   desdeRecargaExterna.value && idRecargaPlantaNum.value
-    ? 'Detalle de productos (gases de la orden)'
-    : 'Detalle de productos (opcional)',
+    ? 'Gases de la orden y extras'
+    : 'Detalle de productos',
 )
+const descripcionDetalleProductos = computed(() =>
+  desdeRecargaExterna.value && idRecargaPlantaNum.value
+    ? 'Indica cuánto cargó la planta por cada gas y su precio.'
+    : 'Opcional: puedes registrar la compra sin líneas y agregarlas después.',
+)
+
+/** Unidad, categoría, presentación y marca en una sola línea secundaria. */
+function metaLinea(lin: CompraLineaForm): string {
+  return [lin.nombreUnidadMedida, lin.nombreCategoria, lin.presentacion, lin.marca]
+    .filter(Boolean)
+    .join(' · ')
+}
 const helpDetalleProductos = computed(() => {
   if (!(desdeRecargaExterna.value && idRecargaPlantaNum.value)) {
     return 'Opcional: puedes registrar la compra sin líneas y agregarlas después. Al seleccionar un producto se agrega una fila editable. La cantidad se valida según la U.M. (UNID = solo enteros).'
@@ -2169,12 +2236,22 @@ const fechaParaCuotas = computed(() =>
 // comprobante. El backend la suma a los pagos a proveedor de la caja de la
 // sucursal en la fecha de la compra.
 const esContado = computed(() => !esPlanCuotas.value && !esCreditoPago.value)
+const resumenModalidadPago = computed(() => {
+  if (esPlanCuotas.value) {
+    return `Se crea una cuenta por pagar en ${numeroCuotasCondicion.value} cuotas; cada pago se registra después en Finanzas.`
+  }
+  if (esCreditoPago.value) {
+    const dias = Number(condicionPagoSeleccionada.value?.dias_credito ?? 0)
+    return `Se crea una cuenta por pagar a ${dias} días; el pago se registra después en Finanzas.`
+  }
+  return 'Se paga en el momento: queda registrado como pago a proveedor en la fecha de la compra.'
+})
 const pagoContado = reactive({
   idMedioPago: null as number | null,
   idCuentaBancaria: null as number | null,
   numeroOperacion: '',
 })
-const pagoContadoValido = ref(true)
+const pagoModalOpen = ref(false)
 // Al editar, una compra al contado registrada antes de guardar el medio puede
 // seguir sin él; solo se exige al pasar de crédito a contado.
 const medioPagoRequerido = computed(
@@ -2184,6 +2261,45 @@ const mediosPagoQuery = useMediosPagoQuery()
 const medioPagoContado = computed(
   () => (mediosPagoQuery.data.value ?? []).find((m) => m.id === pagoContado.idMedioPago) ?? null,
 )
+// Mismas reglas que MedioPagoCuentaField, pero calculadas aquí: el campo vive
+// en un modal que no está montado al guardar.
+const pagoContadoCompleto = computed(() => {
+  const medio = medioPagoContado.value
+  if (!medio) return !medioPagoRequerido.value
+  if (medio.requiereCuentaBancaria && !pagoContado.idCuentaBancaria) return false
+  if (medio.requiereNumeroOperacion && !pagoContado.numeroOperacion.trim()) return false
+  return true
+})
+const etiquetaModalidadPago = computed(
+  () =>
+    condicionPagoOptions.value.find((o) => Number(o.value) === Number(idCondicionPago.value))
+      ?.label ?? 'Contado',
+)
+const detallePago = computed(() => {
+  if (esPlanCuotas.value) {
+    const primera = cuotasPlan.value[0]?.fechaPago
+    return `${cuotasPlan.value.length} cuotas${primera ? ` · la primera vence el ${formatListDate(primera)}` : ''}`
+  }
+  if (esCreditoPago.value) {
+    return fechaVencimientoCredito.value
+      ? `Vence el ${formatListDate(fechaVencimientoCredito.value)}`
+      : 'Sin fecha de vencimiento'
+  }
+  const medio = medioPagoContado.value
+  if (!medio) {
+    return medioPagoRequerido.value ? 'Falta indicar con qué se pagó' : 'Sin medio de pago registrado'
+  }
+  if (!pagoContadoCompleto.value) return `${medio.nombre} · faltan datos del pago`
+  const cuenta = medio.cuentas.find((c) => c.id === pagoContado.idCuentaBancaria)
+  const operacion = pagoContado.numeroOperacion.trim()
+  return [medio.nombre, cuenta?.alias ?? cuenta?.banco, operacion ? `Op. ${operacion}` : null]
+    .filter(Boolean)
+    .join(' · ')
+})
+const estadoPago = computed<'ok' | 'pendiente' | 'error'>(() => {
+  if (!esContado.value || pagoContadoCompleto.value) return 'ok'
+  return submitCount.value > 0 ? 'error' : 'pendiente'
+})
 const avisoPagoContado = computed(() => {
   const medio = medioPagoContado.value
   if (!medio) return 'Indica con qué se pagó. No lo registres además como gasto de caja: se duplicaría la salida.'
@@ -2704,7 +2820,10 @@ const onSubmit = handleSubmit(async (values) => {
   const toOptionalNumber = (value: string | number | undefined) =>
     value !== '' && value != null ? Number(value) : undefined
 
-  if (esContado.value && !pagoContadoValido.value) return
+  if (esContado.value && !pagoContadoCompleto.value) {
+    pagoModalOpen.value = true
+    return
+  }
 
   if (isEdit.value && props.compraId) {
     if (!validarCuotasPlan()) return
@@ -2848,28 +2967,45 @@ const onSubmit = handleSubmit(async (values) => {
 /* Keep long amounts inside their column without squeezing the editable fields. */
 .compra-detalle-table td {
   overflow-wrap: anywhere;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
 }
 
 .compra-totales > div {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.compra-precio > div {
+
+/* Etiqueta-toggle arriba y ayuda abajo flotan para que el input quede alineado con la cantidad. */
+.compra-precio {
   position: relative;
 }
 
-.compra-precio p:first-child {
+.compra-precio-modo {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 0.25rem);
+  left: 0;
+  white-space: nowrap;
 }
 
-.compra-precio p:last-child:not(:first-child) {
+.compra-precio-hint {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  white-space: nowrap;
 }
 
-.compra-detalle-table td {
-  padding-top: 1.75rem;
-  padding-bottom: 1.75rem;
+/* Rótulo de subgrupo dentro de una tarjeta. */
+.compra-subtitulo {
+  margin-bottom: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gray-500);
+}
+
+:global(.dark) .compra-subtitulo {
+  color: var(--color-gray-400);
 }
 </style>

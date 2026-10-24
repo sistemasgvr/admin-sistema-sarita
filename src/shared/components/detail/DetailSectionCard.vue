@@ -10,18 +10,23 @@
       class="flex items-start justify-between gap-3"
       :class="isFormVariant ? 'mb-5' : 'mb-3'"
     >
-      <div class="flex min-w-0 items-center gap-2.5">
+      <div class="flex min-w-0 gap-2.5" :class="description ? 'items-start' : 'items-center'">
         <span
           v-if="icon"
           class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500 dark:bg-brand-500/15 dark:text-brand-400"
         >
           <AppIcon :name="icon" :size="16" />
         </span>
-        <div class="flex min-w-0 items-center gap-1.5">
-          <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
-            {{ title }}
-          </h5>
-          <AppHelpTip v-if="help" :text="help" />
+        <div class="min-w-0">
+          <div class="flex min-w-0 items-center gap-1.5">
+            <h5 class="text-sm font-semibold text-gray-800 dark:text-white/90">
+              {{ title }}
+            </h5>
+            <AppHelpTip v-if="help" :text="help" />
+          </div>
+          <p v-if="description" class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+            {{ description }}
+          </p>
         </div>
       </div>
 
@@ -63,6 +68,8 @@ defineProps<{
   title: string
   icon?: IconName
   help?: string
+  /** Texto corto visible bajo el título; para lo largo usa `help`. */
+  description?: string
   items?: DetailSectionItem[]
   fullWidth?: boolean
 }>()
