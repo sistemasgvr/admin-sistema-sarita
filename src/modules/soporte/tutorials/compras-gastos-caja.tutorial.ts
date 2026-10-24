@@ -59,7 +59,7 @@ export function createComprasGastosCajaTutorial(options: TutorialOptions = {}) {
       element: '[data-tutorial="gasto-concepto"]',
       popover: {
         title: '6. Concepto',
-        description: 'Descripción corta de en qué se gastó: «Combustible camión», «Flete cilindros», etc.',
+        description: 'Descripción corta de en qué se gastó: «Combustible camión», «Flete cilindros», etc. Si tienes comprobante del proveedor, regístralo en Compras como compra al contado en vez de aquí.',
         side: 'bottom',
         align: 'start',
       },
@@ -74,21 +74,21 @@ export function createComprasGastosCajaTutorial(options: TutorialOptions = {}) {
       },
     },
     {
-      element: '[data-tutorial="gasto-medio-pago"]',
+      element: '[data-tutorial="gasto-categoria"]',
       popover: {
-        title: '8. Medio de pago',
+        title: '8. Categoría',
         description:
-          'Efectivo sale de la caja; Yape/Plin o transferencia requieren la cuenta bancaria y el número de operación para conciliar.',
-        side: 'top',
+          'Clasifica el gasto para los reportes. Si falta una categoría, créala con el botón «+».',
+        side: 'bottom',
         align: 'start',
       },
     },
     {
-      element: '[data-tutorial="gasto-categoria"]',
+      element: '[data-tutorial="gasto-medio-pago"]',
       popover: {
-        title: '9. Categoría',
+        title: '9. Medio de pago',
         description:
-          'Clasifica el gasto para los reportes. Si falta una categoría, créala con el botón «+».',
+          'Efectivo sale de la caja; Yape/Plin o transferencia requieren la cuenta bancaria y el número de operación para conciliar.',
         side: 'top',
         align: 'start',
       },

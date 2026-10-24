@@ -210,6 +210,7 @@ const COLUMNAS: Record<string, TableColumn[]> = {
     { key: 'fechaPago', label: 'Fecha', formatter: celdaFecha },
     { key: 'proveedor', label: 'Proveedor' },
     { key: 'compraSerieNumero', label: 'Compra' },
+    { key: 'origen', label: 'Origen', formatter: (v) => (v === 'CONTADO' ? 'Compra al contado' : 'Pago de CxP') },
     { key: 'medioPago', label: 'Medio' },
     { key: 'cuentaBancaria', label: 'Cuenta' },
     { key: 'numeroOperacion', label: 'N° op.' },

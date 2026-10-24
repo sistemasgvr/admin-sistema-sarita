@@ -1,56 +1,88 @@
 <template>
   <AppModal v-model="open" :title="isEdit ? 'Editar gasto de caja' : 'Registrar gasto de caja'" size="md">
     <!-- data-tutorial: anclas de la ruta guiada de Soporte (Gastos de caja). -->
+    <!-- Jerarquía: de qué caja sale → qué se pagó y cuánto → cómo se pagó → nota. -->
     <div class="space-y-4">
-      <AppFormField v-if="requiereSeleccionCaja" label="Caja / sucursal" required>
-        <AppSelect v-model="sesionGasto.idSesion.value" :options="sesionGasto.options.value"
-          :disabled="guardando || sesionGasto.query.isFetching.value" placeholder="Seleccionar caja abierta" />
-        <p v-if="sesionGasto.query.isError.value" class="mt-1 text-sm text-error-500">
-          No se pudieron consultar las cajas abiertas. Cierra y vuelve a abrir el formulario.
-        </p>
-        <p v-else-if="!sesionGasto.query.isFetching.value && !sesionGasto.options.value.length" class="mt-1 text-sm text-gray-500">
-          No hay caja abierta para esta fecha. Solicita su apertura en Ventas → Caja.
-        </p>
-      </AppFormField>
-      <AppFormField data-tutorial="gasto-concepto" label="Concepto" required :error="errores.concepto">
-        <AppInput v-model="form.concepto" placeholder="Combustible, flete, vigilancia..." />
-      </AppFormField>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <AppFormField data-tutorial="gasto-monto" label="Monto" required :error="errorMonto">
-          <MoneyInput
-            v-model="form.monto"
-            placeholder="0.00"
-            :state="errorMonto ? 'error' : 'default'"
-            @blur="onBlurMonto"
-          />
+      <p class="text-theme-sm text-gray-500 dark:text-gray-400">
+        Salida de la caja sin comprobante. Si el proveedor te dio factura, boleta o recibo, regístralo en
+        Compras como compra al contado: también sale de la caja y no debe registrarse dos veces.
+      </p>
+
+      <section
+        v-if="requiereSeleccionCaja"
+        class="rounded-xl border border-gray-100 p-4 dark:border-gray-800"
+      >
+        <h4 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <AppIcon :name="ICONS.wallet" :size="14" />
+          Caja
+        </h4>
+        <AppFormField label="Caja / sucursal" required>
+          <AppSelect v-model="sesionGasto.idSesion.value" :options="sesionGasto.options.value"
+            :disabled="guardando || sesionGasto.query.isFetching.value" placeholder="Seleccionar caja abierta" />
+          <p v-if="sesionGasto.query.isError.value" class="mt-1 text-sm text-error-500">
+            No se pudieron consultar las cajas abiertas. Cierra y vuelve a abrir el formulario.
+          </p>
+          <p v-else-if="!sesionGasto.query.isFetching.value && !sesionGasto.options.value.length" class="mt-1 text-sm text-gray-500">
+            No hay caja abierta para esta fecha. Solicita su apertura en Ventas → Caja.
+          </p>
         </AppFormField>
-      </div>
-      <MedioPagoCuentaField
-        data-tutorial="gasto-medio-pago"
-        v-model:id-medio-pago="form.idMedioPago"
-        v-model:id-cuenta-bancaria="form.idCuentaBancaria"
-        v-model:numero-operacion="form.numeroOperacion"
-        v-model:valido="pagoValido"
-        :disabled="guardando"
-        :mostrar-errores="intentoEnvio"
-        mostrar-siempre-numero-operacion
-        excluir-credito
-      />
-      <AppFormField data-tutorial="gasto-categoria" label="Categoría de gasto" optional>
-        <AppSelectWithCreate
-          :can-create="canCrearCategoriaGasto"
-          :has-label="false"
-          create-title="Nueva categoría de gasto"
+      </section>
+
+      <section class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+        <h4 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <AppIcon :name="ICONS.receipt" :size="14" />
+          Gasto
+        </h4>
+        <div class="space-y-4">
+          <AppFormField data-tutorial="gasto-concepto" label="Concepto" required :error="errores.concepto">
+            <AppInput v-model="form.concepto" placeholder="Combustible, flete, vigilancia..." />
+          </AppFormField>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <AppFormField data-tutorial="gasto-monto" label="Monto" required :error="errorMonto">
+              <MoneyInput
+                v-model="form.monto"
+                placeholder="0.00"
+                :state="errorMonto ? 'error' : 'default'"
+                @blur="onBlurMonto"
+              />
+            </AppFormField>
+            <AppFormField data-tutorial="gasto-categoria" label="Categoría de gasto" optional>
+              <AppSelectWithCreate
+                :can-create="canCrearCategoriaGasto"
+                :has-label="false"
+                create-title="Nueva categoría de gasto"
+                :disabled="guardando"
+                @create="categoriaGastoModalOpen = true"
+              >
+                <AppSelect
+                  v-model="form.idCategoriaGasto"
+                  :options="categoriaGastoOptions"
+                  placeholder="Seleccionar"
+                />
+              </AppSelectWithCreate>
+            </AppFormField>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-xl border border-gray-100 p-4 dark:border-gray-800">
+        <h4 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+          <AppIcon :name="ICONS.wallet" :size="14" />
+          Pago
+        </h4>
+        <MedioPagoCuentaField
+          data-tutorial="gasto-medio-pago"
+          v-model:id-medio-pago="form.idMedioPago"
+          v-model:id-cuenta-bancaria="form.idCuentaBancaria"
+          v-model:numero-operacion="form.numeroOperacion"
+          v-model:valido="pagoValido"
           :disabled="guardando"
-          @create="categoriaGastoModalOpen = true"
-        >
-          <AppSelect
-            v-model="form.idCategoriaGasto"
-            :options="categoriaGastoOptions"
-            placeholder="Seleccionar"
-          />
-        </AppSelectWithCreate>
-      </AppFormField>
+          :mostrar-errores="intentoEnvio"
+          mostrar-siempre-numero-operacion
+          excluir-credito
+        />
+      </section>
+
       <AppFormField label="Observación" optional>
         <AppTextarea v-model="form.observacion" :rows="2" />
       </AppFormField>
@@ -90,6 +122,8 @@
 import { computed, reactive, ref, toRef, watch } from 'vue'
 import { AppInput, AppModal, AppSelect, AppSelectWithCreate, AppTextarea, MoneyInput } from '@/shared/components'
 import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useActualizarCajaGastoMutation, useCrearCajaGastoMutation } from '@/modules/caja/composables/useCajaQuery'
 import type { CajaMovimientoGasto } from '@/modules/caja/interfaces/caja.interface'

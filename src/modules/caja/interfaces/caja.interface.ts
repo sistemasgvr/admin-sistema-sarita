@@ -281,6 +281,10 @@ export interface LibroDiarioCobranza {
  * GASTO, y el pago de una de esas compras apareceria dos veces si se mezclaran.
  */
 export interface LibroDiarioPagoProveedor {
+  /** Única entre orígenes: P<id pago> o C<id compra> (los ids pueden coincidir). */
+  clave?: string
+  /** CXP: pago de una cuenta por pagar. CONTADO: compra pagada en el momento. */
+  origen?: 'CXP' | 'CONTADO'
   id: number
   fechaPago: string
   monto: number

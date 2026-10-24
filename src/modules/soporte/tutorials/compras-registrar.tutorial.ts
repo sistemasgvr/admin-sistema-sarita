@@ -63,9 +63,21 @@ export function createComprasRegistrarTutorial(options: TutorialOptions = {}) {
         description: `${bulletList([
           ['Tipo registro', 'compra de mercadería, gasto o activo.'],
           ['Categoría de gasto', 'para los reportes (combustible, mantenimiento, planilla…).'],
-          ['Almacén y sucursal', 'a dónde entra el stock si la compra tiene productos.'],
-          ['Moneda y condición de pago', 'contado, crédito a N días o plan de cuotas.'],
-        ])}Si eliges crédito o cuotas, abajo aparece la previsualización de los vencimientos y se crea automáticamente la cuenta por pagar.`,
+          ['Almacén y sucursal', 'a dónde entra el stock y de qué caja sale un pago al contado.'],
+          ['Moneda', 'en la que está emitido el comprobante.'],
+        ])}`,
+        side: 'top',
+        align: 'start',
+      },
+    },
+    {
+      element: '[data-tutorial="compra-pago"]',
+      popover: {
+        title: '7. Pago',
+        description: `${bulletList([
+          ['Contado', 'indica el medio de pago (y la cuenta o Nº de operación si aplica). El pago sale de la caja de la sucursal en la fecha de la compra; si es efectivo, Yape o Plin esa caja debe estar abierta.'],
+          ['Crédito o cuotas', 'aparece la previsualización de los vencimientos y se crea la cuenta por pagar; cada pago sale de la caja cuando lo registras.'],
+        ])}No registres la misma compra además como gasto de caja: se duplicaría la salida.`,
         side: 'top',
         align: 'start',
       },
@@ -73,7 +85,7 @@ export function createComprasRegistrarTutorial(options: TutorialOptions = {}) {
     {
       element: '[data-tutorial="compra-recarga-externa"]',
       popover: {
-        title: '7. Recarga externa',
+        title: '8. Recarga externa',
         description:
           'Solo para facturas de gas de una planta externa. Al activarlo vinculas la factura a una orden de recarga: el gas entra al stock cuando retornan los cilindros, con las cantidades de esta factura.',
         side: 'top',
@@ -83,7 +95,7 @@ export function createComprasRegistrarTutorial(options: TutorialOptions = {}) {
     {
       element: '[data-tutorial="compra-detalle"]',
       popover: {
-        title: '8. Detalle de productos',
+        title: '9. Detalle de productos',
         description:
           'Las líneas de la factura: producto, cantidad, precio unitario y si el precio incluye IGV. El sistema calcula subtotal, IGV y total; los productos con control de stock generan el ingreso al almacén al guardar.',
         side: 'top',
@@ -93,7 +105,7 @@ export function createComprasRegistrarTutorial(options: TutorialOptions = {}) {
     {
       element: '[data-tutorial="compra-agregar-producto"]',
       popover: {
-        title: '9. Agregar producto',
+        title: '10. Agregar producto',
         description:
           'Busca el producto por nombre o código, o escanea su código de barras. Si no existe, créalo aquí mismo con el botón «+».',
         side: 'bottom',
@@ -103,9 +115,9 @@ export function createComprasRegistrarTutorial(options: TutorialOptions = {}) {
     {
       element: '[data-tutorial="compra-guardar"]',
       popover: {
-        title: '10. Registrar compra',
+        title: '11. Registrar compra',
         description:
-          'Guarda la compra. Según la condición de pago: al contado sale de la caja abierta del día; a crédito queda como cuenta por pagar en Finanzas.',
+          'Guarda la compra. Al contado queda como pago a proveedor en la caja de la sucursal (Ventas › Caja y libro diario); a crédito queda como cuenta por pagar en Finanzas.',
         side: 'top',
         align: 'end',
         onNextClick: () => finish('compras-registrar'),

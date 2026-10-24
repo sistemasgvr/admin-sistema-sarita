@@ -561,6 +561,16 @@ const sections = computed<DetailSection[]>(() => {
         { label: 'Tipo registro', value: formatCatalogo(c.tipo_registro) },
         { label: 'Categoría gasto', value: formatCatalogo(c.categoria_gasto) },
         { label: 'Condición de pago', value: c.condicion_pago ?? '—' },
+        ...(c.medio_pago
+          ? [
+              {
+                label: 'Medio de pago',
+                value: [c.medio_pago, c.cuenta_bancaria, c.numero_operacion && `Op. ${c.numero_operacion}`]
+                  .filter(Boolean)
+                  .join(' · '),
+              },
+            ]
+          : []),
         { label: 'Moneda', value: formatCatalogo(c.moneda) },
         { label: 'Declarar SUNAT', value: c.declarar_sunat ? 'Sí (PLE)' : 'No' },
         {

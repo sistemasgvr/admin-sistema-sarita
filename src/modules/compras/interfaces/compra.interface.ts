@@ -45,6 +45,12 @@ export interface CompraCabecera {
   moneda: string | null
   id_condicion_pago: number | null
   condicion_pago: string | null
+  /** Compra al contado: cómo se pagó (NULL si es al crédito o anterior a este dato). */
+  id_medio_pago?: number | null
+  medio_pago?: string | null
+  id_cuenta_bancaria?: number | null
+  cuenta_bancaria?: string | null
+  numero_operacion?: string | null
   sub_total: number | null
   igv: number | null
   total_importe: number
@@ -174,6 +180,10 @@ export interface CreateCompraPayload {
   glosa?: string
   fechaVencimiento?: string
   cuotas?: { fechaPago: string; monto?: number }[]
+  /** Compra al contado: medio con el que se pagó; el pago sale de la caja de la sucursal. */
+  idMedioPago?: number
+  idCuentaBancaria?: number
+  numeroOperacion?: string
   /** Opcional: la compra puede registrarse sin líneas y recibirlas después. */
   detalles?: CreateCompraDetallePayload[]
 }
@@ -186,6 +196,10 @@ export interface ActualizarCompraCabeceraPayload {
   declararSunat?: boolean
   fechaVencimiento?: string
   cuotas?: { fechaPago: string; monto?: number }[]
+  /** Compra al contado: medio con el que se pagó; el pago sale de la caja de la sucursal. */
+  idMedioPago?: number
+  idCuentaBancaria?: number
+  numeroOperacion?: string
 }
 
 export interface CreateCompraDetalleLineaPayload {

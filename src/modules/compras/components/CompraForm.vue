@@ -175,10 +175,20 @@
                 :disabled="saving"
                 :error="errors.idMoneda"
               />
+            </div>
+          </DetailSectionCard>
+
+          <DetailSectionCard
+            data-tutorial="compra-pago"
+            title="Pago"
+            :icon="ICONS.wallet"
+            :full-width="true"
+          >
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <AppSelectSearch
                 v-model="idCondicionPago"
                 label="Condición pago"
-                placeholder="Seleccionar"
+                placeholder="Contado"
                 :help="CONDICION_PAGO_HELP"
                 :options="condicionPagoOptions"
                 :loading="condicionesQuery.isFetching.value"
@@ -196,6 +206,22 @@
               :dias-credito="Number(condicionPagoSeleccionada?.dias_credito ?? 0)"
               :disabled="saving"
             />
+            <template v-else>
+              <MedioPagoCuentaField
+                data-tutorial="compra-medio-pago"
+                class="mt-5"
+                v-model:id-medio-pago="pagoContado.idMedioPago"
+                v-model:id-cuenta-bancaria="pagoContado.idCuentaBancaria"
+                v-model:numero-operacion="pagoContado.numeroOperacion"
+                v-model:valido="pagoContadoValido"
+                :medio-requerido="medioPagoRequerido"
+                :disabled="saving"
+                :mostrar-errores="submitCount > 0"
+                mostrar-siempre-numero-operacion
+                excluir-credito
+              />
+              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ avisoPagoContado }}</p>
+            </template>
           </DetailSectionCard>
 
           <DetailSectionCard
@@ -766,6 +792,21 @@
               :dias-credito="Number(condicionPagoSeleccionada?.dias_credito ?? 0)"
               :disabled="saving"
             />
+            <template v-else>
+              <MedioPagoCuentaField
+                class="mt-5"
+                v-model:id-medio-pago="pagoContado.idMedioPago"
+                v-model:id-cuenta-bancaria="pagoContado.idCuentaBancaria"
+                v-model:numero-operacion="pagoContado.numeroOperacion"
+                v-model:valido="pagoContadoValido"
+                :medio-requerido="medioPagoRequerido"
+                :disabled="saving"
+                :mostrar-errores="submitCount > 0"
+                mostrar-siempre-numero-operacion
+                excluir-credito
+              />
+              <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">{{ avisoPagoContado }}</p>
+            </template>
             <AppTextarea v-model="glosa" label="Glosa" placeholder="Opcional" :disabled="saving" class="mt-5" />
             <AppSwitch
               v-model="declararSunat"
@@ -1025,6 +1066,8 @@ import type {
   CompraLineaForm,
 } from '@/modules/compras/interfaces/compra.interface'
 import CompraPagoPreview from '@/modules/compras/components/CompraPagoPreview.vue'
+import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
+import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
 import CompraProductoField from '@/modules/compras/components/CompraProductoField.vue'
 import CompraRecargaPlantaDetalle from '@/modules/compras/components/CompraRecargaPlantaDetalle.vue'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
@@ -1177,7 +1220,7 @@ const requiredDateOnCreate = () =>
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-const { defineField, handleSubmit, resetForm, errors } = useForm({
+const { defineField, handleSubmit, resetForm, errors, submitCount } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       fecha: requiredDateOnCreate(),
@@ -1257,7 +1300,7 @@ const [declararSunat] = defineField('declararSunat')
 const DECLARAR_SUNAT_HELP =
   'Marca la factura para el registro de compras SUNAT (PLE). No la envía por internet; solo la clasifica para declarar.'
 const CONDICION_PAGO_HELP =
-  'Contado: la compra no mueve la caja por sí sola; si pagaste en efectivo, regístralo aparte como gasto de caja. Crédito o cuotas: verás un preview editable y al guardar se crea la cuenta por pagar; cada pago que registres sobre ella sí sale de la caja de la sucursal.'
+  'Contado: indica con qué pagaste; el pago sale de la caja de la sucursal en la fecha de la compra (no lo registres además como gasto de caja). Crédito o cuotas: verás un preview editable y al guardar se crea la cuenta por pagar; cada pago que registres sobre ella sale de la caja de la sucursal.'
 
 const lineas = reactive<CompraLineaForm[]>([])
 const lineasExistentes = computed(() => compraData.value?.detalle ?? [])
@@ -2121,6 +2164,48 @@ const esCreditoPago = computed(
 const fechaParaCuotas = computed(() =>
   isEdit.value ? (cabecera.value?.fecha ?? '').slice(0, 10) : String(fecha.value || ''),
 )
+
+// Compra al contado: se paga en el momento, como un gasto de caja pero con
+// comprobante. El backend la suma a los pagos a proveedor de la caja de la
+// sucursal en la fecha de la compra.
+const esContado = computed(() => !esPlanCuotas.value && !esCreditoPago.value)
+const pagoContado = reactive({
+  idMedioPago: null as number | null,
+  idCuentaBancaria: null as number | null,
+  numeroOperacion: '',
+})
+const pagoContadoValido = ref(true)
+// Al editar, una compra al contado registrada antes de guardar el medio puede
+// seguir sin él; solo se exige al pasar de crédito a contado.
+const medioPagoRequerido = computed(
+  () => esContado.value && (!isEdit.value || Boolean(compraData.value?.cuenta_por_pagar)),
+)
+const mediosPagoQuery = useMediosPagoQuery()
+const medioPagoContado = computed(
+  () => (mediosPagoQuery.data.value ?? []).find((m) => m.id === pagoContado.idMedioPago) ?? null,
+)
+const avisoPagoContado = computed(() => {
+  const medio = medioPagoContado.value
+  if (!medio) return 'Indica con qué se pagó. No lo registres además como gasto de caja: se duplicaría la salida.'
+  const fechaPago = fechaParaCuotas.value ? formatListDate(fechaParaCuotas.value) : 'la fecha de la compra'
+  if (!medio.afectaCaja) {
+    return `Se registra como pago a proveedor del ${fechaPago} por ${medio.nombre}; no cambia el efectivo del arqueo.`
+  }
+  const sucursal = isEdit.value
+    ? cabecera.value?.sucursal
+    : sucursalOptions.value.find((o) => Number(o.value) === Number(idSucursal.value))?.label
+  return sucursal
+    ? `Sale de la caja de ${sucursal} del ${fechaPago}: esa caja debe estar abierta.`
+    : 'Pagada con un medio que afecta caja: selecciona la sucursal de cuya caja sale el pago.'
+})
+const payloadPagoContado = () =>
+  esContado.value && pagoContado.idMedioPago
+    ? {
+        idMedioPago: pagoContado.idMedioPago,
+        idCuentaBancaria: pagoContado.idCuentaBancaria ?? undefined,
+        numeroOperacion: pagoContado.numeroOperacion.trim() || undefined,
+      }
+    : {}
 const totalLineas = computed(() => lineas.reduce((acc, lin) => acc + importeLinea(lin), 0))
 const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value))
 const totalParaCuotas = computed(() => {
@@ -2606,6 +2691,9 @@ watch(
         declararSunat: data.cabecera.declarar_sunat,
       },
     })
+    pagoContado.idMedioPago = data.cabecera.id_medio_pago ?? null
+    pagoContado.idCuentaBancaria = data.cabecera.id_cuenta_bancaria ?? null
+    pagoContado.numeroOperacion = data.cabecera.numero_operacion ?? ''
   },
 )
 
@@ -2615,6 +2703,8 @@ const onSubmit = handleSubmit(async (values) => {
 
   const toOptionalNumber = (value: string | number | undefined) =>
     value !== '' && value != null ? Number(value) : undefined
+
+  if (esContado.value && !pagoContadoValido.value) return
 
   if (isEdit.value && props.compraId) {
     if (!validarCuotasPlan()) return
@@ -2637,6 +2727,7 @@ const onSubmit = handleSubmit(async (values) => {
                 monto: roundMoney(c.monto),
               }))
             : undefined,
+        ...payloadPagoContado(),
       },
     })
     emit('saved', updated.cabecera.id)
@@ -2746,6 +2837,7 @@ const onSubmit = handleSubmit(async (values) => {
             monto: roundMoney(c.monto),
           }))
         : undefined,
+    ...payloadPagoContado(),
     detalles,
   })
   emit('saved', created.cabecera.id)

@@ -128,6 +128,7 @@
           <AppTable
             :columns="colsPagosProveedor"
             :rows="pagosProveedor"
+            row-key="clave"
             empty-text="Sin pagos a proveedores en el rango"
           >
             <template #actions="{ row }">
@@ -574,6 +575,7 @@ const colsPagosProveedor: TableColumn[] = [
   { key: 'fechaPago', label: 'Fecha' },
   { key: 'proveedor', label: 'Proveedor' },
   { key: 'compraSerieNumero', label: 'Compra' },
+  { key: 'origen', label: 'Origen', formatter: (v) => (v === 'CONTADO' ? 'Compra al contado' : 'Pago de CxP') },
   { key: 'medioPago', label: 'Medio' },
   { key: 'numeroOperacion', label: 'Operación' },
   { key: 'monto', label: 'Monto', formatter: (v) => formatCurrency(Number(v ?? 0)) },

@@ -67,6 +67,12 @@
               {{ cabecera.condicion_pago ?? '—' }}
             </p>
           </div>
+          <div v-if="cabecera.medio_pago">
+            <p class="text-xs text-gray-500 dark:text-gray-400">Medio de pago</p>
+            <p class="font-medium text-gray-800 dark:text-white/90">
+              {{ [cabecera.medio_pago, cabecera.cuenta_bancaria, cabecera.numero_operacion && `Op. ${cabecera.numero_operacion}`].filter(Boolean).join(' · ') }}
+            </p>
+          </div>
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Fecha</p>
             <p class="font-medium text-gray-800 dark:text-white/90">{{ cabecera.fecha }}</p>
