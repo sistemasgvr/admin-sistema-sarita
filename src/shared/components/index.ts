@@ -32,4 +32,5 @@ export { default as AppExportExcelButton } from '@/shared/components/ui/AppExpor
 export { default as AppDynamicFilters } from '@/shared/components/filters/AppDynamicFilters.vue'
 export { default as AppListToolbar } from '@/shared/components/filters/AppListToolbar.vue'
 export { default as MapaLeaflet } from '@/shared/components/map/MapaLeaflet.vue'
+export { default as BarcodeCameraScanner } from '@/shared/components/ui/BarcodeCameraScanner.vue'
 export { default as ApexChart } from '@/shared/components/charts/ApexChart.vue'

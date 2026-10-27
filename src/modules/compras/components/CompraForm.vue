@@ -690,8 +690,27 @@
                     {{ formatMoney(totalesDetalle.valorVenta) }}
                   </dd>
                 </div>
+                <div class="mt-2 flex items-start justify-between gap-3">
+                  <dt class="pt-2.5 text-gray-500 dark:text-gray-400">
+                    <label for="compra-porcentaje-igv">% IGV</label>
+                  </dt>
+                  <dd class="w-28">
+                    <AppInput
+                      id="compra-porcentaje-igv"
+                      v-model="porcentajeIgvInput"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      inputmode="decimal"
+                      aria-label="Porcentaje de IGV"
+                      :error="porcentajeIgvError"
+                      :disabled="saving"
+                    />
+                  </dd>
+                </div>
                 <div class="mt-2 flex items-center justify-between gap-3">
-                  <dt class="text-gray-500 dark:text-gray-400">IGV (18%)</dt>
+                  <dt class="text-gray-500 dark:text-gray-400">{{ etiquetaIgv(porcentajeIgvValor) }}</dt>
                   <dd class="tabular-nums text-gray-700 dark:text-gray-300">
                     {{ formatMoney(totalesDetalle.igv) }}
                   </dd>
@@ -764,6 +783,19 @@
                   :disabled="saving"
                 />
               </AppSelectWithCreate>
+              <AppInput
+                id="compra-porcentaje-igv"
+                v-model="porcentajeIgvInput"
+                label="% IGV"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                inputmode="decimal"
+                :help="`Base ${formatMoney(totalesEdicion.valorVenta)} · ${etiquetaIgv(porcentajeIgvValor)} ${formatMoney(totalesEdicion.igv)}. Se recalcula al guardar.`"
+                :error="porcentajeIgvError"
+                :disabled="saving"
+              />
             </div>
 
             <div class="border-t border-gray-100 pt-5 dark:border-gray-800">
@@ -1106,6 +1138,12 @@ import { toTypedSchema } from '@vee-validate/yup'
 import * as yup from 'yup'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
 import { debeLimpiarRecargaPorProveedor } from '@/modules/compras/utils/proveedorRecarga'
+import {
+  PORCENTAJE_IGV_DEFAULT,
+  etiquetaIgv,
+  parsePorcentajeIgv,
+  tasaIgvDesdePorcentaje,
+} from '@/modules/compras/utils/porcentajeIgv'
 import {
   useActualizarCabeceraMutation,
   useActualizarDetalleMutation,
@@ -2323,7 +2361,25 @@ const payloadPagoContado = () =>
       }
     : {}
 const totalLineas = computed(() => lineas.reduce((acc, lin) => acc + importeLinea(lin), 0))
-const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value))
+// % de IGV de la compra (18 por defecto; 0 es válido). Al editar se carga el guardado.
+const porcentajeIgvInput = ref<string | number | null>(PORCENTAJE_IGV_DEFAULT)
+const porcentajeIgvCargado = ref<number>(PORCENTAJE_IGV_DEFAULT)
+const porcentajeIgvParse = computed(() => parsePorcentajeIgv(porcentajeIgvInput.value))
+const porcentajeIgvValor = computed(() =>
+  porcentajeIgvParse.value.ok ? porcentajeIgvParse.value.valor : PORCENTAJE_IGV_DEFAULT,
+)
+const porcentajeIgvError = computed(() =>
+  porcentajeIgvParse.value.ok ? undefined : porcentajeIgvParse.value.error,
+)
+const tasaIgv = computed(() => tasaIgvDesdePorcentaje(porcentajeIgvValor.value))
+const totalesDetalle = computed(() => calcularTotalesDesdeImporte(totalLineas.value, tasaIgv.value))
+// Alta: el % solo se ve con líneas; sin ellas vuelve a 18 para que un valor oculto no bloquee el guardado.
+watch(
+  () => lineas.length,
+  (n) => {
+    if (!isEdit.value && n === 0) porcentajeIgvInput.value = PORCENTAJE_IGV_DEFAULT
+  },
+)
 const totalParaCuotas = computed(() => {
   if (!isEdit.value) return totalesDetalle.value.total
   const existentes = lineasExistentes.value
@@ -2335,6 +2391,10 @@ const totalParaCuotas = computed(() => {
     return acc + Number(cantidad) * precio
   }, 0)
 })
+/** Edición: base e IGV del total vigente con el % capturado (vista previa). */
+const totalesEdicion = computed(() =>
+  calcularTotalesDesdeImporte(totalParaCuotas.value, tasaIgv.value),
+)
 const cuotasPlan = ref<CuotaPreviewItem[]>([])
 const fechaVencimientoCredito = ref('')
 const diaMesPagoEditable = ref(0)
@@ -2810,6 +2870,9 @@ watch(
     pagoContado.idMedioPago = data.cabecera.id_medio_pago ?? null
     pagoContado.idCuentaBancaria = data.cabecera.id_cuenta_bancaria ?? null
     pagoContado.numeroOperacion = data.cabecera.numero_operacion ?? ''
+    const igvGuardado = parsePorcentajeIgv(data.cabecera.porcentaje_igv)
+    porcentajeIgvCargado.value = igvGuardado.ok ? igvGuardado.valor : PORCENTAJE_IGV_DEFAULT
+    porcentajeIgvInput.value = porcentajeIgvCargado.value
   },
 )
 
@@ -2822,6 +2885,12 @@ const onSubmit = handleSubmit(async (values) => {
 
   if (esContado.value && !pagoContadoCompleto.value) {
     pagoModalOpen.value = true
+    return
+  }
+
+  const igv = porcentajeIgvParse.value
+  if (!igv.ok) {
+    toastWarning(igv.error)
     return
   }
 
@@ -2847,6 +2916,7 @@ const onSubmit = handleSubmit(async (values) => {
               }))
             : undefined,
         ...payloadPagoContado(),
+        porcentajeIgv: igv.valor !== porcentajeIgvCargado.value ? igv.valor : undefined,
       },
     })
     emit('saved', updated.cabecera.id)
@@ -2957,6 +3027,7 @@ const onSubmit = handleSubmit(async (values) => {
           }))
         : undefined,
     ...payloadPagoContado(),
+    porcentajeIgv: igv.valor,
     detalles,
   })
   emit('saved', created.cabecera.id)

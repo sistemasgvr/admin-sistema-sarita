@@ -263,6 +263,16 @@
         </div>
         </div>
 
+        <AppCollapsibleSection
+          v-if="sesion?.id"
+          v-model:open="bitacoraOpen"
+          title="Comentarios de la caja"
+          :badge="String((sesion.eventos ?? []).length)"
+          :icon="ICONS.messageSquare"
+        >
+          <CajaBitacoraEventos :eventos="sesion.eventos ?? []" />
+        </AppCollapsibleSection>
+
         <div
           v-if="sesion?.id"
           data-tutorial="caja-movimientos"
@@ -550,6 +560,7 @@ import AbrirCajaModal from '@/modules/caja/components/AbrirCajaModal.vue'
 import CerrarCajaModal from '@/modules/caja/components/CerrarCajaModal.vue'
 import RegistrarGastoCajaModal from '@/modules/caja/components/RegistrarGastoCajaModal.vue'
 import RegistrarDepositoCajaModal from '@/modules/caja/components/RegistrarDepositoCajaModal.vue'
+import CajaBitacoraEventos from '@/modules/caja/components/CajaBitacoraEventos.vue'
 import HistorialCajaModal from '@/modules/caja/components/HistorialCajaModal.vue'
 import {
   useCajaDiaQuery,
@@ -623,6 +634,7 @@ const showAbrir = ref(false)
 const showCerrar = ref(false)
 const showGasto = ref(false)
 const showDeposito = ref(false)
+const bitacoraOpen = ref(false)
 const gastosOpen = ref(false)
 const depositosOpen = ref(false)
 const confirmAnularOpen = ref(false)

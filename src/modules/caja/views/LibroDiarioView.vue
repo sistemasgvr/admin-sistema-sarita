@@ -69,6 +69,20 @@
             :rows="libro.ventas"
             empty-text="Sin ventas en el rango"
           >
+            <template #cell-serieNumero="{ row }">
+              <div class="flex flex-col items-start gap-1">
+                <span>{{ row.serieNumero }}</span>
+                <AppBadge v-if="row.esConversionVsd" color="warning" size="sm">
+                  Conversión de VSD
+                </AppBadge>
+              </div>
+            </template>
+            <template #cell-totalImporte="{ row }">
+              <div class="text-right">
+                <p>{{ formatCurrency(Number(row.totalImporte ?? 0)) }}</p>
+                <p v-if="row.esConversionVsd" class="text-theme-xs text-gray-400">No suma a caja</p>
+              </div>
+            </template>
             <template #actions="{ row }">
               <div class="inline-flex items-center justify-end gap-1.5">
                 <button
@@ -228,6 +242,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   AppActionMenu,
+  AppBadge,
   AppCollapsibleSection,
   AppExportExcelButton,
   AppHelpTip,
@@ -559,6 +574,7 @@ const colsVentas: TableColumn[] = [
   {
     key: 'totalImporte',
     label: 'Total',
+    align: 'right',
     formatter: (v) => formatCurrency(Number(v ?? 0)),
   },
 ]

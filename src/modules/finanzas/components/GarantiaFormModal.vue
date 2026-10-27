@@ -5,6 +5,12 @@
         Registro manual. Las garantías de préstamos, alquileres y POS se crean automáticamente desde
         esos módulos.
       </p>
+      <div
+        v-if="avisoLigada"
+        class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-theme-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
+      >
+        {{ avisoLigada }}
+      </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Fecha" required :error="errores.fecha">
@@ -79,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, toRef, watch } from 'vue'
+import { computed, nextTick, reactive, ref, toRef, watch } from 'vue'
 import { AppDatePicker, AppModal, AppTextarea, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
@@ -95,6 +101,13 @@ import type { Garantia } from '@/modules/finanzas/interfaces/garantia.interface'
 import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { mensajeErrorMontoMoneda, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
+import {
+  avisoGarantiaLigada,
+  cambiosGarantiaEdicion,
+  valoresEdicionGarantia,
+  type ValoresEdicionGarantia,
+} from '@/modules/finanzas/utils/garantiaDetalle'
+import { toastInfo } from '@/shared/composables/useToast'
 
 const props = defineProps<{ garantia?: Garantia | null }>()
 const emit = defineEmits<{ saved: [] }>()
@@ -105,7 +118,8 @@ const crearMutation = useCrearGarantiaMutation()
 const editarMutation = useActualizarGarantiaMutation()
 
 const esEdicion = computed(() => !!props.garantia)
-const titulo = computed(() => (esEdicion.value ? 'Editar garantía manual' : 'Nueva garantía'))
+const titulo = computed(() => (esEdicion.value ? 'Editar garantía' : 'Nueva garantía'))
+const avisoLigada = computed(() => avisoGarantiaLigada(props.garantia))
 const cta = computed(() => (esEdicion.value ? 'Guardar cambios' : 'Registrar garantía'))
 const guardando = computed(
   () => crearMutation.isPending.value || editarMutation.isPending.value,
@@ -170,26 +184,49 @@ const formularioValido = computed(
 
 const cargarDesdeProps = () => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
+  valoresIniciales.value = null
   if (props.garantia) {
-    form.fecha = props.garantia.fecha_registro
-    form.idCliente = props.garantia.id_cliente
-    form.idMedioPago = props.garantia.id_medio_pago ?? null
-    form.idCuentaBancaria = props.garantia.id_cuenta_bancaria ?? null
-    form.importe = Number(props.garantia.monto_cobrado).toFixed(2)
-    form.observacion = props.garantia.observacion ?? ''
+    const v = valoresEdicionGarantia(props.garantia)
+    form.fecha = v.fecha
+    form.idCliente = v.idCliente
+    form.idMedioPago = v.idMedioPago
+    form.idCuentaBancaria = v.idCuentaBancaria
+    form.numeroOperacion = v.numeroOperacion
+    form.importe = v.importe.toFixed(2)
+    form.observacion = v.observacion
   } else {
     form.fecha = hoy()
     form.idCliente = null
     form.idMedioPago = null
     form.idCuentaBancaria = null
+    form.numeroOperacion = ''
     form.importe = ''
     form.observacion = ''
   }
   clienteSearch.value = ''
 }
 
-watch(open, (isOpen) => {
-  if (isOpen) cargarDesdeProps()
+const valoresIniciales = ref<ValoresEdicionGarantia | null>(null)
+
+const valoresFormulario = (): ValoresEdicionGarantia => ({
+  fecha: form.fecha,
+  idCliente: form.idCliente,
+  idMedioPago: form.idMedioPago,
+  idCuentaBancaria: form.idCuentaBancaria,
+  numeroOperacion: form.numeroOperacion,
+  importe: roundMoney(parseMoneyInput(form.importe)),
+  observacion: form.observacion,
+})
+
+watch(open, async (isOpen) => {
+  if (!isOpen) return
+  cargarDesdeProps()
+  if (!props.garantia) return
+  // Línea base tras los ajustes automáticos del campo de pago (cuenta predeterminada):
+  // así sólo se envía lo que la persona cambió.
+  await nextTick()
+  await nextTick()
+  valoresIniciales.value = valoresFormulario()
 })
 
 watch(() => form.idCliente, (v) => { if (v) errores.idCliente = undefined })
@@ -228,7 +265,19 @@ const submit = async () => {
 
   try {
     if (esEdicion.value && props.garantia) {
-      await editarMutation.mutateAsync({ id: props.garantia.id, payload })
+      const cambios = cambiosGarantiaEdicion(
+        valoresIniciales.value ?? valoresEdicionGarantia(props.garantia),
+        valoresFormulario(),
+      )
+      if (!Object.keys(cambios).length) {
+        toastInfo('No hay cambios para guardar')
+        open.value = false
+        return
+      }
+      await editarMutation.mutateAsync({
+        id: props.garantia.id,
+        payload: { ...cambios, idUsuarioAuditoria: authStore.user?.id ?? undefined },
+      })
     } else {
       await crearMutation.mutateAsync(payload)
     }

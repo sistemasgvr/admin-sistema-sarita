@@ -18,11 +18,24 @@
         :error="error || undefined"
         @keydown.enter.prevent="onSubmit"
       />
+      <div class="flex justify-end">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          :disabled="loading"
+          @click="cameraOpen = true"
+        >
+          <AppIcon :name="ICONS.scanBarcode" :size="16" />
+          Escanear con cámara
+        </button>
+      </div>
       <p v-if="!error" class="text-theme-xs text-gray-500 dark:text-gray-400">
         Busca por código de barras, código interno o ubicación. La pistola suele
         enviar Enter al final.
       </p>
     </form>
+
+    <BarcodeCameraScanner v-model="cameraOpen" @detected="onCameraDetected" />
 
     <template #footer>
       <button
@@ -58,7 +71,7 @@ import {
   type BuscarProductoPorCodigoFilters,
 } from '@/modules/productos/articulos/utils/buscarProductoPorCodigo'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { AppInput, AppModal } from '@/shared/components'
+import { AppInput, AppModal, BarcodeCameraScanner } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { toastError, toastWarning } from '@/shared/composables/useToast'
@@ -81,8 +94,14 @@ const emit = defineEmits<{
 const codigo = ref('')
 const error = ref('')
 const loading = ref(false)
+const cameraOpen = ref(false)
 // AppInput expone focus()/select() para reenfocar tras cada escaneo.
 const codigoInputRef = ref<InstanceType<typeof AppInput> | null>(null)
+
+function onCameraDetected(code: string) {
+  codigo.value = code
+  void onSubmit()
+}
 
 function focusInput() {
   void nextTick(() => {

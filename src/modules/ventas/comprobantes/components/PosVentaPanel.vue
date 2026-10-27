@@ -401,12 +401,11 @@
       <PosResumenAside
         v-model:glosa="glosa"
         v-model:id-condicion-pago="idCondicionPago"
-        v-model:id-medio-pago="idMedioPago"
-        v-model:id-cuenta-bancaria="idCuentaBancaria"
-        v-model:numero-operacion="numeroOperacionPago"
-        v-model:pago-valido="pagoValido"
+        v-model:lineas="lineasPago"
+        v-model:efectivo-recibido="efectivoRecibido"
         :totales="totales"
         :garantia="totalGarantia"
+        :efectivo-garantia="efectivoGarantia"
         :condicion-pago-options="condicionPagoOptions"
         :es-venta-credito="esVentaCredito"
         :dias-credito="diasCredito"
@@ -429,6 +428,8 @@
         :segundos-para-limpiar="segundosRestantes"
         @emitir="emitirComprobante"
         @cancelar-limpieza="detenerAutoLimpieza"
+        @agregar-pago="agregarLineaPago"
+        @quitar-pago="quitarLineaPago"
       />
     </aside>
     </div>
@@ -514,10 +515,13 @@ const {
   fecha,
   idCliente,
   idCondicionPago,
-  idMedioPago,
-  idCuentaBancaria,
-  numeroOperacionPago,
-  pagoValido,
+  lineasPago,
+  efectivoRecibido,
+  idsEfectivo,
+  agregarLineaPago,
+  quitarLineaPago,
+  sincronizarTotalPagos,
+  idMedioPagoPrincipal,
   pagosPayload,
   canEmit,
   canPrint,
@@ -539,7 +543,12 @@ const {
   reiniciarTrasOperacion,
   seleccionarCliente,
   clienteDescripcion,
-} = usePosComprobanteForm()
+} = usePosComprobanteForm({
+  // La garantía en efectivo también la entrega el cliente: cuenta para vuelto
+  // y para validar el efectivo recibido. efectivoGarantia se define más abajo;
+  // el getter solo se evalúa al validar.
+  efectivoAdicional: () => efectivoGarantia.value,
+})
 
 const createMutation = useCreateComprobanteMutation()
 const emitMutation = useEmitirComprobanteMutation()
@@ -789,6 +798,14 @@ const totales = computed(() => {
   return calcularTotalesDesdeImporte(importeConIgv)
 })
 
+// Con un solo medio, su monto sigue al total del comprobante (sin la garantía,
+// que se cobra aparte). Con varios, el cajero cuadra a mano.
+watch(
+  () => totales.value.total,
+  (total) => sincronizarTotalPagos(total),
+  { immediate: true },
+)
+
 /** Garantía que se recibe hoy, fuera del comprobante (ver calcularImporteLinea). */
 const totalGarantia = computed(() =>
   lineasActivas.value.reduce(
@@ -796,6 +813,21 @@ const totalGarantia = computed(() =>
       sum + (lineaConGarantia(linea) ? Number(linea.montoGarantia || 0) : 0),
     0,
   ),
+)
+
+/**
+ * Parte de la garantía que se recibe en efectivo (medio efectivo o sin medio:
+ * caja trata el medio nulo como EFECTIVO). Se suma al efectivo a cobrar para
+ * el vuelto y la validación del efectivo recibido.
+ */
+const efectivoGarantia = computed(() =>
+  lineasActivas.value.reduce((sum, linea) => {
+    if (!lineaConGarantia(linea)) return sum
+    const monto = Number(linea.montoGarantia || 0)
+    if (monto <= 0) return sum
+    const idMedio = linea.idMedioPagoGarantia ? Number(linea.idMedioPagoGarantia) : null
+    return idMedio == null || idsEfectivo.value.has(idMedio) ? sum + monto : sum
+  }, 0),
 )
 
 const motivoNoGuardar = computed(() => {
@@ -1516,7 +1548,7 @@ try {
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
       idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
-      idMedioPago: idMedioPago.value ? Number(idMedioPago.value) : undefined,
+      idMedioPago: esVentaCredito.value ? undefined : (idMedioPagoPrincipal.value ?? undefined),
       pagos: pagosPayload(),
       fechaVencimiento: esVentaCredito.value ? fechaVencimiento.value || undefined : undefined,
       glosa: glosa.value || undefined,

@@ -20,6 +20,16 @@ import {
   tipoRequiereRuc,
   validarSerieParaTipo,
 } from '@/modules/ventas/comprobantes/utils/serieComprobante'
+import {
+  medioPrincipal,
+  nuevaLineaPago,
+  saldoPendiente,
+  validarPagos,
+  type LineaPagoForm,
+} from '@/modules/ventas/comprobantes/utils/pagosMixtos'
+import type { ComprobantePagoPayload } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
+import { useMediosPagoQuery } from '@/modules/finanzas/composables/useMediosPagoQuery'
+import { roundMoney } from '@/shared/utils/currency'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { hoyIsoLima } from '@/shared/utils/date'
@@ -60,6 +70,8 @@ function esTipoComprobantePos(codigo?: string | null): boolean {
 export function usePosComprobanteForm(options?: {
   /** Serie del comprobante origen (NC/ND). */
   serieOrigen?: () => string | null | undefined
+  /** Efectivo a cobrar fuera de las líneas de pago (garantía en efectivo). */
+  efectivoAdicional?: () => number
 }) {
   const authStore = useAuthStore()
   const catalogosQuery = useComprobanteCatalogosPosQuery()
@@ -100,12 +112,39 @@ export function usePosComprobanteForm(options?: {
   const clienteSeleccionadoCache = ref<Cliente | null>(null)
   const clientesVarios = ref<Cliente | null>(null)
   const idCondicionPago = ref<number | ''>('')
-  const idMedioPago = ref<number | ''>('')
-  // Fase 3: el cobro al contado se guarda como línea de ven_comprobante_pago,
-  // con la cuenta de la empresa cuando el medio no es efectivo.
-  const idCuentaBancaria = ref<number | null>(null)
-  const numeroOperacionPago = ref('')
-  const pagoValido = ref(true)
+  // El cobro al contado se guarda como líneas de ven_comprobante_pago (una por
+  // medio), con la cuenta de la empresa cuando el medio no es efectivo.
+  const lineasPago = ref<LineaPagoForm[]>([nuevaLineaPago(0)])
+  const efectivoRecibido = ref<number | null>(null)
+  // Último total del comprobante recibido por sincronizarTotalPagos.
+  const totalPagos = ref(0)
+
+  const mediosPagoQuery = useMediosPagoQuery()
+  const idsEfectivo = computed<ReadonlySet<number>>(
+    () => new Set((mediosPagoQuery.data.value ?? []).filter((m) => m.esEfectivo).map((m) => m.id)),
+  )
+  const idMedioPagoPrincipal = computed(() => medioPrincipal(lineasPago.value))
+
+  /** Con una sola línea, su monto sigue al total; con 2+ no se toca (la validación avisa el descuadre). */
+  function sincronizarTotalPagos(total: number) {
+    totalPagos.value = roundMoney(total)
+    if (lineasPago.value.length === 1) {
+      lineasPago.value[0].monto = roundMoney(total)
+    }
+  }
+
+  function agregarLineaPago() {
+    lineasPago.value.push(
+      nuevaLineaPago(Math.max(saldoPendiente(totalPagos.value, lineasPago.value), 0)),
+    )
+  }
+
+  function quitarLineaPago(key: string) {
+    if (lineasPago.value.length <= 1) return
+    lineasPago.value = lineasPago.value.filter((linea) => linea.key !== key)
+    // Si vuelve a quedar un solo medio, retoma el total (modo de una línea).
+    if (lineasPago.value.length === 1) sincronizarTotalPagos(totalPagos.value)
+  }
 
   const condicionesPagoFilters = ref({ pagina: 1, limite: 100 })
   const condicionesPagoQuery = useCondicionesPagoQuery(condicionesPagoFilters)
@@ -344,10 +383,15 @@ export function usePosComprobanteForm(options?: {
       if (esClientesVarios(clienteSeleccionado.value)) {
         return 'No se puede vender a crédito a Clientes Varios. Selecciona un cliente identificado'
       }
-    } else if (!idMedioPago.value) {
-      return 'Selecciona el medio de pago (contado)'
-    } else if (!pagoValido.value) {
-      return 'Completa la cuenta bancaria y el número de operación del cobro'
+    } else {
+      const errorPagos = validarPagos(
+        totalPagos.value,
+        lineasPago.value,
+        efectivoRecibido.value,
+        idsEfectivo.value,
+        options?.efectivoAdicional?.() ?? 0,
+      )
+      if (errorPagos) return errorPagos
     }
 
     const codigo = codigoTipoComprobante.value
@@ -424,9 +468,9 @@ export function usePosComprobanteForm(options?: {
     clienteDescripcion.value = ''
     aplicarClientesVariosPorDefecto()
     fecha.value = hoyIsoLima()
-    idMedioPago.value = ''
-    idCuentaBancaria.value = null
-    numeroOperacionPago.value = ''
+    // Arranca con el último total conocido; el watch del total lo ajusta al limpiar el carrito.
+    lineasPago.value = [nuevaLineaPago(totalPagos.value)]
+    efectivoRecibido.value = null
     const lista = condicionesPagoQuery.data.value?.data ?? []
     const contado = resolverCondicionContado(lista)
     if (contado) idCondicionPago.value = contado.id
@@ -434,20 +478,20 @@ export function usePosComprobanteForm(options?: {
   }
 
   /**
-   * Línea de cobro para `ven_comprobante_pago`. Se omite el `monto` a propósito:
-   * con un solo pago el backend toma el total del comprobante, que es el que
-   * acaba de calcular. Así los paneles no tienen que recalcularlo cada uno.
+   * Líneas de cobro para `ven_comprobante_pago`, una por medio y con su
+   * `monto`: el backend exige que sumen el total del comprobante.
    * En crédito no hay cobro todavía, así que no se manda nada.
    */
-  function pagosPayload() {
-    if (esVentaCredito.value || !idMedioPago.value) return undefined
-    return [
-      {
-        idMedioPago: Number(idMedioPago.value),
-        idCuentaBancaria: idCuentaBancaria.value ?? undefined,
-        numeroOperacion: numeroOperacionPago.value.trim() || undefined,
-      },
-    ]
+  function pagosPayload(): ComprobantePagoPayload[] | undefined {
+    if (esVentaCredito.value) return undefined
+    return lineasPago.value
+      .filter((linea) => linea.idMedioPago != null)
+      .map((linea) => ({
+        idMedioPago: Number(linea.idMedioPago),
+        monto: roundMoney(linea.monto),
+        idCuentaBancaria: linea.idCuentaBancaria ?? undefined,
+        numeroOperacion: linea.numeroOperacion.trim() || undefined,
+      }))
   }
 
   const canCreateCliente = computed(() =>
@@ -476,10 +520,13 @@ export function usePosComprobanteForm(options?: {
     idCliente,
     clienteDescripcion,
     idCondicionPago,
-    idMedioPago,
-    idCuentaBancaria,
-    numeroOperacionPago,
-    pagoValido,
+    lineasPago,
+    efectivoRecibido,
+    idsEfectivo,
+    agregarLineaPago,
+    quitarLineaPago,
+    sincronizarTotalPagos,
+    idMedioPagoPrincipal,
     pagosPayload,
     canEmit,
     canPrint,

@@ -100,7 +100,7 @@ export function createFinanzasGarantiasTutorial(options: TutorialOptions = {}) {
       popover: {
         title: '10. Editar y eliminar',
         description:
-          'Solo las garantías manuales se pueden editar o eliminar. Las que nacen de un préstamo o alquiler se corrigen desde su propio módulo.',
+          'Cualquier garantía activa se puede editar (fecha, monto, cliente, medio de pago, cuenta y nº de operación); si viene de un préstamo, alquiler o POS verás un aviso. Solo las manuales se pueden eliminar.',
         side: 'left',
         align: 'center',
         onNextClick: () => finish('finanzas-garantias'),

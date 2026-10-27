@@ -6,7 +6,8 @@ import type {
   CrearGarantiaPayload,
   ReembolsarGarantiaPayload,
 } from '@/modules/finanzas/interfaces/garantia.interface'
-import { toastApiError, toastSuccess } from '@/shared/composables/useToast'
+import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
+import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 
 function useInvalidate() {
   const queryClient = useQueryClient()
@@ -26,13 +27,15 @@ export function useCrearGarantiaMutation() {
 }
 
 export function useActualizarGarantiaMutation() {
-  const invalidate = useInvalidate()
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, payload }: { id: number; payload: ActualizarGarantiaPayload }) =>
       finanzasService.actualizarGarantia(id, payload),
-    onSuccess: () => {
-      invalidate()
+    onSuccess: (garantia) => {
+      void queryClient.invalidateQueries({ queryKey: finanzasQueryKeys.garantias() })
+      void invalidateCajaQueries(queryClient)
       toastSuccess('Garantía actualizada correctamente')
+      for (const aviso of garantia?.avisos ?? []) toastWarning(aviso)
     },
     onError: (error) => toastApiError(error, 'No se pudo actualizar la garantía'),
   })

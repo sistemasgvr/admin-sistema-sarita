@@ -92,6 +92,17 @@ export interface CajaMovimientoDeposito {
   observacion?: string | null
 }
 
+export interface CajaSesionEvento {
+  id: number
+  tipo: 'ABRIR' | 'CERRAR' | 'REABRIR'
+  monto: number | null
+  diferencia: number | null
+  observacion: string | null
+  idUsuario: number | null
+  usuario: string | null
+  fechaHora: string
+}
+
 export interface CajaSesion {
   id: number | null
   fecha: string
@@ -116,6 +127,10 @@ export interface CajaSesion {
   efectivoEsperado?: number
   gastos?: CajaMovimientoGasto[]
   depositos?: CajaMovimientoDeposito[]
+  /** Bitácora de abrir/cerrar/reabrir (detalle de sesión y caja del día). */
+  eventos?: CajaSesionEvento[]
+  /** Solo en el listado de sesiones. */
+  cantidadEventos?: number
 }
 
 export interface AbrirCajaPayload {
@@ -192,6 +207,8 @@ export interface LibroDiarioVenta {
   esCredito?: boolean
   totalImporte: number
   detalleProductos?: string
+  /** Boleta/factura emitida al convertir un VSD: no suma a caja ni a totales. */
+  esConversionVsd?: boolean
 }
 
 /**

@@ -16,4 +16,5 @@ export const finanzasQueryKeys = {
   garantias: () => [...finanzasQueryKeys.all, 'garantias'] as const,
   garantiasList: (filters: GarantiaListFilters) =>
     [...finanzasQueryKeys.garantias(), 'list', filters] as const,
+  garantiaDetalle: (id: number) => [...finanzasQueryKeys.garantias(), 'detalle', id] as const,
 }

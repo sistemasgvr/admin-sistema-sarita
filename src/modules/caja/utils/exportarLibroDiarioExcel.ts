@@ -41,7 +41,19 @@ export async function exportarLibroDiarioExcel(libro: LibroDiario) {
             width: 10,
             value: (r) => (r.esCredito ? 'Sí' : 'No'),
           },
-          { key: 'total', header: 'Total', width: 12, value: (r) => money(r.totalImporte) },
+          {
+            key: 'total',
+            header: 'Total',
+            width: 12,
+            // La conversión de VSD ya se cobró en la VSD origen: 0 para no sumarla dos veces.
+            value: (r) => (r.esConversionVsd ? 0 : money(r.totalImporte)),
+          },
+          {
+            key: 'nota',
+            header: 'Nota',
+            width: 30,
+            value: (r) => (r.esConversionVsd ? 'Conversión de VSD - No suma a caja' : ''),
+          },
         ],
         rows: libro.ventas,
       },

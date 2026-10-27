@@ -17,10 +17,22 @@
         :error="error || undefined"
         @keydown.enter.prevent="onSubmit"
       />
+      <div class="flex justify-end">
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          @click="cameraOpen = true"
+        >
+          <AppIcon :name="ICONS.scanBarcode" :size="16" />
+          Escanear con cámara
+        </button>
+      </div>
       <p v-if="!error" class="text-theme-xs text-gray-500 dark:text-gray-400">
         La pistola suele enviar Enter al final; no hace falta pulsar Confirmar.
       </p>
     </form>
+
+    <BarcodeCameraScanner v-model="cameraOpen" @detected="onCameraDetected" />
 
     <template #footer>
       <button
@@ -44,7 +56,9 @@
 
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
-import { AppInput, AppModal } from '@/shared/components'
+import { AppInput, AppModal, BarcodeCameraScanner } from '@/shared/components'
+import AppIcon from '@/shared/components/AppIcon.vue'
+import { ICONS } from '@/shared/constants/icons'
 
 withDefaults(
   defineProps<{
@@ -65,8 +79,14 @@ const emit = defineEmits<{
 
 const codigo = ref('')
 const error = ref('')
+const cameraOpen = ref(false)
 // AppInput expone focus()/select() para reenfocar tras cada escaneo.
 const codigoInputRef = ref<InstanceType<typeof AppInput> | null>(null)
+
+function onCameraDetected(code: string) {
+  codigo.value = code
+  onSubmit()
+}
 
 function focusInput() {
   void nextTick(() => {

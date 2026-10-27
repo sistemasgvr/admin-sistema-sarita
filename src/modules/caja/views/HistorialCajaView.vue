@@ -84,6 +84,25 @@
           </div>
         </template>
 
+        <template #cell-comentarios="{ row }">
+          <div class="flex items-center gap-2">
+            <span
+              v-if="row.observacionApertura || row.observacionCierre"
+              :title="tooltipComentarios(row)"
+              class="inline-flex text-brand-500"
+            >
+              <AppIcon :name="ICONS.messageSquare" :size="16" />
+            </span>
+            <button
+              type="button"
+              class="text-theme-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+              @click="abrirBitacora(row)"
+            >
+              Ver bitácora ({{ row.cantidadEventos ?? 0 }})
+            </button>
+          </div>
+        </template>
+
         <template #actions="{ row }">
           <button
             type="button"
@@ -105,6 +124,8 @@
         </template>
       </AppTable>
     </div>
+
+    <CajaBitacoraModal v-model="bitacoraOpen" :id-sesion="bitacoraIdSesion" />
   </div>
 </template>
 
@@ -114,6 +135,7 @@ import { cajaService } from '@/modules/caja/services/caja.service'
 
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import CajaBitacoraModal from '@/modules/caja/components/CajaBitacoraModal.vue'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { useCajaSesionesQuery } from '@/modules/caja/composables/useCajaQuery'
@@ -178,8 +200,21 @@ const columns: TableColumn[] = [
   { key: 'montos', label: 'Montos', align: 'right' },
   { key: 'apertura', label: 'Apertura' },
   { key: 'cierre', label: 'Cierre' },
+  { key: 'comentarios', label: 'Comentarios' },
   { key: 'actions', label: '', align: 'right' },
 ]
+
+const bitacoraOpen = ref(false)
+const bitacoraIdSesion = ref<number | null>(null)
+
+function abrirBitacora(row: CajaSesion) {
+  bitacoraIdSesion.value = row.id
+  bitacoraOpen.value = true
+}
+
+function tooltipComentarios(row: CajaSesion) {
+  return `Apertura: ${row.observacionApertura || '—'}\nCierre: ${row.observacionCierre || '—'}`
+}
 
 function abrirDia(row: CajaSesion) {
   const fecha = String(row.fecha ?? '').slice(0, 10)

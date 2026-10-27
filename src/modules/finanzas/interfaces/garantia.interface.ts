@@ -1,4 +1,4 @@
-export type EstadoGarantia = 'ACTIVA' | 'PARCIAL' | 'DEVUELTA'
+export type EstadoGarantia = 'ACTIVA' | 'PARCIAL' | 'DEVUELTA' | 'TRANSFERIDA'
 export type OrigenGarantia = 'PRESTAMO' | 'ALQUILER' | 'POS' | 'MANUAL'
 
 export interface GarantiaMovimiento {
@@ -13,6 +13,12 @@ export interface GarantiaMovimiento {
   fecha: string
   monto: number
   observacion?: string | null
+  id_medio_pago?: number | null
+  medio_pago?: string | null
+  id_cuenta_bancaria?: number | null
+  cuenta_bancaria?: string | null
+  numero_operacion?: string | null
+  id_sucursal?: number | null
   fecha_creacion?: string | null
 }
 
@@ -34,6 +40,7 @@ export interface Garantia {
   fecha_registro: string
   monto_cobrado: number
   monto_devuelto: number
+  monto_transferido?: number | null
   monto_saldo: number
   id_estado?: number | null
   nombre_estado?: string | null
@@ -43,6 +50,14 @@ export interface Garantia {
   /** Fase 3: cuenta de la empresa que recibió el cobro. */
   id_cuenta_bancaria?: number | null
   cuenta_bancaria?: string | null
+  /** Nº de operación del cobro. */
+  numero_operacion?: string | null
+  /** Valores efectivos del cobro (movimiento COBRO, con la cabecera como respaldo). */
+  cobro_fecha?: string | null
+  cobro_id_medio_pago?: number | null
+  cobro_medio_pago?: string | null
+  cobro_id_cuenta_bancaria?: number | null
+  cobro_cuenta_bancaria?: string | null
   fecha_reembolso?: string | null
   id_medio_reembolso?: number | null
   medio_reembolso?: string | null
@@ -60,6 +75,8 @@ export interface Garantia {
   fecha_creacion?: string
   fecha_modificacion?: string | null
   movimientos?: GarantiaMovimiento[]
+  /** Solo en la respuesta de edición: avisos (caja cerrada, cliente distinto al documento). */
+  avisos?: string[]
 }
 
 export interface GarantiaListFilters {

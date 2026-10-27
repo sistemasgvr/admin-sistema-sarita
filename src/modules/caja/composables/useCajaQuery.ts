@@ -38,6 +38,16 @@ export function useCajaDiaQuery(fecha: Ref<string>, idSucursal: Ref<number | nul
   })
 }
 
+export function useCajaSesionQuery(idSesion: Ref<number | null>) {
+  return useQuery({
+    queryKey: computed(() => cajaQueryKeys.sesion(idSesion.value ?? 0)),
+    queryFn: () => cajaService.obtenerSesion(idSesion.value as number),
+    enabled: computed(() => idSesion.value != null),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
+}
+
 export function useLibroDiarioQuery(filters: Ref<LibroDiarioFilters>) {
   return useQuery({
     queryKey: computed(() => cajaQueryKeys.libroDiario(filters.value)),

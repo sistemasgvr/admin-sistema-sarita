@@ -128,7 +128,7 @@
               </p>
             </div>
             <div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">IGV</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ etiquetaIgv(cabecera?.porcentaje_igv) }}</p>
               <p class="font-semibold text-gray-800 dark:text-white/90">
                 {{ formatMoney(cabecera?.igv ?? 0) }}
               </p>
@@ -425,6 +425,7 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import CompraBalonesModal from '@/modules/compras/components/CompraBalonesModal.vue'
+import { etiquetaIgv } from '@/modules/compras/utils/porcentajeIgv'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'
 import { comprasFormBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'

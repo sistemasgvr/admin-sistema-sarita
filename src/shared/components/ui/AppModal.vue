@@ -92,6 +92,7 @@
 import { computed, nextTick, onUnmounted, ref, useId, watch } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { pilaModales } from '@/shared/utils/modalStack'
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -121,6 +122,7 @@ const emit = defineEmits<{
 }>()
 
 const titleId = useId()
+const idPila = Symbol('AppModal')
 const contentScrollRef = ref<HTMLElement | null>(null)
 
 const contenidoSobreEncabezado = ref(false)
@@ -165,7 +167,7 @@ const close = () => {
 } 
 
 function teclaScape(event: KeyboardEvent) {
-  if (event.key === 'Escape' && modelValue.value) {
+  if (event.key === 'Escape' && modelValue.value && pilaModales.esSuperior(idPila)) {
     close()
   }
 }
@@ -176,10 +178,16 @@ const onBackdropClick = () => {
   }
 }
 
-watch(modelValue, (isOpen) => {
-  document.body.style.overflow = isOpen ? 'hidden' : ''
+function liberarModal() {
+  pilaModales.cerrar(idPila)
+  window.removeEventListener('keydown', teclaScape)
+  if (!pilaModales.hayAbiertos()) document.body.style.overflow = ''
+}
 
+watch(modelValue, (isOpen) => {
   if (isOpen) {
+    pilaModales.abrir(idPila)
+    document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', teclaScape)
     nextTick(() => {
       contentScrollRef.value?.scrollTo({ top: 0 })
@@ -189,11 +197,12 @@ watch(modelValue, (isOpen) => {
     return
   }
 
+  liberarModal()
   desconectarObservador()
 })
 
 onUnmounted(() => {
-  document.body.style.overflow = ''
+  liberarModal()
   desconectarObservador()
 })
 </script>

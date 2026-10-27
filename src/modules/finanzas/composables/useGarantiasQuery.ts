@@ -11,3 +11,12 @@ export function useGarantiasQuery(filters: Ref<GarantiaListFilters>) {
     placeholderData: keepPreviousData,
   })
 }
+
+export function useGarantiaDetalleQuery(id: Ref<number | null>) {
+  return useQuery({
+    queryKey: computed(() => finanzasQueryKeys.garantiaDetalle(id.value ?? 0)),
+    queryFn: () => finanzasService.obtenerGarantia(id.value as number),
+    enabled: computed(() => id.value != null),
+    staleTime: 0,
+  })
+}

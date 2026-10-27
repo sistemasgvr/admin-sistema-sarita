@@ -17,6 +17,7 @@ export interface CompraListItem {
   categoria_gasto?: string | null
   sub_total: number | null
   total_importe: number
+  porcentaje_igv?: number | string | null
   estado: number
   tiene_comprobante?: boolean
   tiene_movimientos_inventario: boolean
@@ -53,6 +54,8 @@ export interface CompraCabecera {
   numero_operacion?: string | null
   sub_total: number | null
   igv: number | null
+  /** % de IGV de la compra (0..100; 18 por defecto y en compras anteriores al dato). */
+  porcentaje_igv?: number | string | null
   total_importe: number
   afecta_inventario: boolean
   declarar_sunat: boolean
@@ -184,6 +187,8 @@ export interface CreateCompraPayload {
   idMedioPago?: number
   idCuentaBancaria?: number
   numeroOperacion?: string
+  /** % de IGV de la compra (0..100, 2 decimales). Si se omite, 18. */
+  porcentajeIgv?: number
   /** Opcional: la compra puede registrarse sin líneas y recibirlas después. */
   detalles?: CreateCompraDetallePayload[]
 }
@@ -200,6 +205,8 @@ export interface ActualizarCompraCabeceraPayload {
   idMedioPago?: number
   idCuentaBancaria?: number
   numeroOperacion?: string
+  /** Nuevo % de IGV (0..100): recalcula base imponible e IGV. Si se omite se conserva. */
+  porcentajeIgv?: number
 }
 
 export interface CreateCompraDetalleLineaPayload {
