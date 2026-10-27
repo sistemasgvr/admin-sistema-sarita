@@ -7,7 +7,11 @@ function hoyLocal(): string {
   return hoyIsoLima()
 }
 
-/** Regla operativa: ventas y movimientos requieren caja ABIERTA del día (arqueo Z diario) por sucursal. */
+/**
+ * Regla operativa: ventas y movimientos requieren la caja ABIERTA de la fecha
+ * del registro (arqueo Z diario) por sucursal. Una caja de un día anterior que
+ * sigue abierta admite operaciones con su fecha hasta que se cierre.
+ */
 export function useCajaAbiertaRequerida(
   fecha: Ref<string>,
   idSucursal: Ref<number | null | undefined> = ref(null),
@@ -42,17 +46,13 @@ export function useCajaAbiertaRequerida(
     // Sin sucursal no se puede validar (la caja es por fecha + sucursal).
     if (sucursalLista.value == null) return null
 
-    if (sesionEsPendiente.value) {
-      const f = formatListDate(sesion.value?.fecha)
-      return `La caja del ${f} quedó abierta de un día anterior. Ciérrala (arqueo) antes de seguir vendiendo; luego abre la de hoy.`
-    }
-
+    // La caja abierta de la fecha elegida permite operar aunque sea de un día anterior.
     if (cajaAbierta.value) return null
 
     if (hayPendienteCierre.value && pendienteCierre.value) {
       const f = formatListDate(pendienteCierre.value.fecha)
       const dias = pendienteCierre.value.diasAbierta ?? 1
-      return `Hay una caja sin cerrar del ${f} (${dias} día${dias === 1 ? '' : 's'}). Ciérrala en Ventas → Caja antes de abrir u operar la de hoy.`
+      return `Hay una caja sin cerrar del ${f} (${dias} día${dias === 1 ? '' : 's'}). Registra con fecha ${f} para usar esa caja, o ciérrala en Ventas → Caja y abre la de hoy.`
     }
 
     if (cajaCerrada.value) {
@@ -61,10 +61,8 @@ export function useCajaAbiertaRequerida(
     return 'Debes abrir la caja del día antes de registrar ventas o movimientos de caja.'
   })
 
-  /** ABIERTA del día consultado y no arrastrada de un día anterior. */
-  const puedeOperar = computed(
-    () => sucursalLista.value != null && cajaAbierta.value && !sesionEsPendiente.value,
-  )
+  /** ABIERTA en la fecha consultada (puede ser una caja de un día anterior aún sin cerrar). */
+  const puedeOperar = computed(() => sucursalLista.value != null && cajaAbierta.value)
 
   function assertCajaAbierta(): boolean {
     if (sucursalLista.value == null) {

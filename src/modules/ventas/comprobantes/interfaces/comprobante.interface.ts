@@ -280,9 +280,11 @@ export interface ComprobantePago {
   observacion?: string | null
 }
 
-/** Lo que se envía para completar el voucher de una venta ya emitida. */
+/** Lo que se envía para completar o corregir el cobro de una venta ya emitida. */
 export interface RegistrarCobroLineaPayload {
   idPago: number
+  /** Nuevo medio de pago. Omitir para conservar el actual. */
+  idMedioPago?: number
   numeroOperacion?: string
   referencia?: string
   observacion?: string

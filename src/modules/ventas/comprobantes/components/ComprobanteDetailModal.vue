@@ -313,7 +313,7 @@
             class="text-theme-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
             @click="iniciarEdicionCobro"
           >
-            Registrar voucher
+            Editar cobro
           </button>
         </div>
 
@@ -335,10 +335,17 @@
               </p>
             </div>
 
-            <div v-if="editandoCobro" class="mt-2">
-              <AppInput
-                v-model="vouchers[pago.id]"
-                placeholder="N° de operación / voucher"
+            <div v-if="editandoCobro && edicionCobro[pago.id]" class="mt-2">
+              <MedioPagoCuentaField
+                v-model:id-medio-pago="edicionCobro[pago.id].idMedioPago"
+                v-model:id-cuenta-bancaria="edicionCobro[pago.id].idCuentaBancaria"
+                v-model:numero-operacion="edicionCobro[pago.id].numeroOperacion"
+                v-model:valido="edicionCobro[pago.id].valido"
+                medio-requerido
+                excluir-credito
+                mostrar-siempre-numero-operacion
+                numero-operacion-opcional
+                mostrar-errores
                 :disabled="guardandoCobro"
               />
             </div>
@@ -347,6 +354,11 @@
             </p>
           </div>
         </div>
+
+        <p v-if="editandoCobro" class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+          Si cambias de un medio que entra a caja (efectivo, Yape, Plin) a otro, o al revés, la caja
+          del {{ formatListDate(comprobante.fecha) }} debe seguir abierta.
+        </p>
 
         <div v-if="editandoCobro" class="mt-3 flex justify-end gap-2">
           <button
@@ -491,13 +503,15 @@ import {
   type ComprobantePdfFormato,
 } from '@/modules/ventas/comprobantes/utils/comprobantePdf'
 import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composables/useDocumentoSalidaMutations'
-import { AppBadge, AppInput, AppModal, ListaOpcionBadge } from '@/shared/components'
+import { AppBadge, AppModal, ListaOpcionBadge } from '@/shared/components'
+import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { formatCurrency } from '@/shared/utils/currency'
+import { formatListDate } from '@/shared/utils/date'
 
 const props = defineProps<{
   modelValue: boolean
@@ -570,8 +584,8 @@ const comprobante = computed(() => comprobanteQuery.data.value)
  *
  * En el mostrador la venta se genera antes de que el cliente pague, así que el
  * número de operación casi nunca existe al cobrar. Aquí se completa cuando
- * llega. Solo se edita la referencia: el medio de pago y el importe no se tocan
- * porque moverían el arqueo de una caja que puede estar ya cerrada.
+ * llega, y también se puede corregir el medio de pago (el backend exige la caja
+ * de la fecha abierta si el cambio la afecta). El importe no se toca.
  */
 const pagos = computed<ComprobantePago[]>(() => comprobante.value?.pagos ?? [])
 
@@ -646,7 +660,13 @@ const etiquetaBalon = (balon: ComprobanteBalonPrestamo) =>
   `Cilindro ${balon.id_balon ?? ''}`
 const editandoCobro = ref(false)
 const guardandoCobro = ref(false)
-const vouchers = ref<Record<number, string>>({})
+interface EdicionCobroLinea {
+  idMedioPago: number | null
+  idCuentaBancaria: number | null
+  numeroOperacion: string
+  valido: boolean
+}
+const edicionCobro = ref<Record<number, EdicionCobroLinea>>({})
 
 const puedeRegistrarCobro = computed(
   () =>
@@ -655,8 +675,16 @@ const puedeRegistrarCobro = computed(
 )
 
 function iniciarEdicionCobro() {
-  vouchers.value = Object.fromEntries(
-    pagos.value.map((p) => [p.id, p.numero_operacion ?? '']),
+  edicionCobro.value = Object.fromEntries(
+    pagos.value.map((p) => [
+      p.id,
+      {
+        idMedioPago: p.id_medio_pago ?? null,
+        idCuentaBancaria: p.id_cuenta_bancaria ?? null,
+        numeroOperacion: p.numero_operacion ?? '',
+        valido: true,
+      },
+    ]),
   )
   editandoCobro.value = true
 }
@@ -665,10 +693,29 @@ async function guardarCobro() {
   const id = comprobante.value?.id
   if (!id) return
 
-  // Solo se mandan las líneas que realmente cambiaron.
-  const cambios = pagos.value
-    .filter((p) => (vouchers.value[p.id] ?? '').trim() !== (p.numero_operacion ?? ''))
-    .map((p) => ({ idPago: p.id, numeroOperacion: (vouchers.value[p.id] ?? '').trim() }))
+  if (Object.values(edicionCobro.value).some((e) => !e.valido)) {
+    toastWarning('Completa el medio de pago y la cuenta de cada línea')
+    return
+  }
+
+  // Solo se mandan las líneas que realmente cambiaron. Al cambiar de medio el
+  // backend toma la cuenta y el N° de operación tal como vienen.
+  const cambios = pagos.value.flatMap((p) => {
+    const e = edicionCobro.value[p.id]
+    if (!e) return []
+    const numeroOperacion = e.numeroOperacion.trim()
+    const cambiaMedio = e.idMedioPago !== p.id_medio_pago
+    const cambiaCuenta = (e.idCuentaBancaria ?? null) !== (p.id_cuenta_bancaria ?? null)
+    if (!cambiaMedio && !cambiaCuenta && numeroOperacion === (p.numero_operacion ?? '')) return []
+    return [
+      {
+        idPago: p.id,
+        idMedioPago: cambiaMedio ? (e.idMedioPago ?? undefined) : undefined,
+        idCuentaBancaria: e.idCuentaBancaria ?? undefined,
+        numeroOperacion,
+      },
+    ]
+  })
 
   if (!cambios.length) {
     editandoCobro.value = false
