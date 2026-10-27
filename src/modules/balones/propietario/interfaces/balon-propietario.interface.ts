@@ -21,6 +21,8 @@ export interface BalonPropietarioItem {
   nombre_estado_balon?: string | null
   id_almacen?: number | null
   nombre_almacen?: string | null
+  id_cliente_ubicacion?: number | null
+  nombre_cliente_ubicacion?: string | null
   fecha_proxima_prueba_hidrostatica?: string | null
 }
 
