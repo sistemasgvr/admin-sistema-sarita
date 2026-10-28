@@ -38,9 +38,18 @@
             @blur="onBlurMonto"
           />
         </AppFormField>
+        <AppDatePicker v-model="fecha" label="Fecha de emisión" />
+        <div class="hidden sm:block" />
         <AppDatePicker v-model="fechaInicio" label="Inicio periodo" />
         <AppDatePicker v-model="fechaFin" label="Fin periodo" />
       </div>
+
+      <p
+        v-if="mensajeBloqueoCaja"
+        class="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700 dark:bg-warning-500/15 dark:text-warning-400"
+      >
+        {{ mensajeBloqueoCaja }}
+      </p>
     </div>
 
     <template #footer>
@@ -72,6 +81,8 @@ import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/comp
 import { usePosComprobanteForm } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
+import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { AppDatePicker, AppModal, AppSelect, MoneyInput } from '@/shared/components'
 import AppFormField from '@/shared/components/form/AppFormField.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
@@ -97,6 +108,30 @@ const {
   idTipoOperacionVentaInterna,
   esNotaVenta,
 } = usePosComprobanteForm()
+
+/** Caja es por fecha + sucursal; la sucursal sale del almacén del alquiler. */
+const almacenesQuery = useAlmacenesQuery(ref({ pagina: 1, limite: 100 }))
+const idSucursalCaja = computed(() => {
+  const idAlmacen = props.alquiler?.id_almacen
+  if (idAlmacen == null) return null
+  const alm = almacenesQuery.data.value?.data?.find((a) => a.id === Number(idAlmacen))
+  return alm?.id_sucursal == null ? null : Number(alm.id_sucursal)
+})
+const {
+  cajaAbierta,
+  pendienteCierre,
+  mensajeBloqueo: mensajeBloqueoCaja,
+  assertCajaAbierta,
+} = useCajaAbiertaRequerida(fecha, idSucursalCaja)
+
+// Si la caja de hoy no está abierta pero sigue abierta la de un día anterior, se emite con esa fecha.
+watch(
+  () => [open.value, cajaAbierta.value, pendienteCierre.value?.fecha] as const,
+  ([isOpen, abierta, fechaPendiente]) => {
+    if (!isOpen || abierta || !fechaPendiente) return
+    fecha.value = String(fechaPendiente).slice(0, 10)
+  },
+)
 
 const monto = ref('')
 const fechaInicio = ref('')
@@ -146,6 +181,7 @@ async function confirmar() {
     toastWarning('Completa tipo de comprobante, monto y fechas')
     return
   }
+  if (!assertCajaAbierta()) return
 
   const montoNum = roundMoney(parseMoneyInput(monto.value))
 
@@ -156,6 +192,7 @@ async function confirmar() {
       idTipoComprobante: Number(idTipoComprobante.value),
       serie: serie.value.trim(),
       fecha: fecha.value,
+      idSucursal: idSucursalCaja.value ?? undefined,
       idCliente: Number(alquiler.id_cliente),
       detalles: [
         {
