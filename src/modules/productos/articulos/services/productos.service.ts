@@ -1,3 +1,4 @@
+import { cargarCatalogoCompleto } from '@/shared/utils/cargarCatalogoCompleto'
 import {
   apiDelete,
   apiGet,
@@ -16,6 +17,15 @@ import type {
 } from '@/modules/productos/articulos/interfaces/producto.interface'
 
 export const productosService = {
+  /** Todas las coincidencias para selectores; no confundir con el listado paginado. */
+  listarCatalogo(filters: ProductoListFilters = {}, signal?: AbortSignal) {
+    return cargarCatalogoCompleto(
+      (pagina: ProductoListFilters) => apiGetPaginated<Producto>('/productos', { params: { incluirImagenes: false, ...pagina }, signal }),
+      filters,
+      signal,
+    )
+  },
+
   listar(filters: ProductoListFilters = {}) {
     // Por defecto sin firmar imágenes (rápido para selects). Quien necesite
     // miniaturas debe pasar incluirImagenes: true.

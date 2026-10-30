@@ -333,7 +333,7 @@ import {
 import { useMantenimientoQuery } from '@/modules/balones/mantenimientos/composables/useMantenimientosQuery'
 import type { MantenimientoFormMode } from '@/modules/balones/mantenimientos/interfaces/mantenimiento.interface'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useProductosCatalogoQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { AppCheckbox, AppDatePicker, AppInput, AppSelect, AppSelectSearch, AppTextarea, MoneyInput } from '@/shared/components'
@@ -382,7 +382,7 @@ const tipoItemOptions = computed(() =>
 )
 const productoBuscar = ref('')
 const productoFilters = ref<ProductoListFilters>({ pagina: 1, limite: 100 })
-const productosQuery = useProductosQuery(productoFilters)
+const productosQuery = useProductosCatalogoQuery(productoFilters)
 
 let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined
 watch(productoBuscar, (term) => {

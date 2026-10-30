@@ -26,7 +26,7 @@ const { chromium, expect } = require('@playwright/test')
     const url = new URL(req.url())
     if (url.pathname.includes('/src/') || url.pathname.includes('/node_modules/') || url.pathname.includes('/@')) return route.continue()
     let data = []
-    const meta = { pagina: 1, limite: 80, total: 115, totalPaginas: 2 }
+    const meta = { pagina: Number(url.searchParams.get('pagina') || 1), limite: Number(url.searchParams.get('limite') || 80), total: 0 }
     if (url.pathname.endsWith('/auth/me')) data = user
     if (url.pathname.endsWith('/listas/78/opciones')) data = [{ id: 1, nombre: 'PRODUCTO' }, { id: 2, nombre: 'BALON' }]
     if (url.pathname.endsWith('/listas/72/opciones')) data = [{ id: 3, nombre: 'TRASLADO', descripcion: 'Traslado' }]
@@ -42,6 +42,7 @@ const { chromium, expect } = require('@playwright/test')
         data = [{ id: 110, codigo: 'PRO-110', nombre: 'ABRAZADERA', estado: 1 }]
       }
     }
+    if (url.pathname.endsWith('/productos')) meta.total = data.length
     if (url.pathname.endsWith('/inventario/movimientos') && req.method() === 'POST') {
       traslado = req.postDataJSON()
       data = { id: 999 }

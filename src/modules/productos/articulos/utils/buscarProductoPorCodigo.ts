@@ -50,7 +50,7 @@ export async function buscarProductoPorCodigo(
     return { producto: null, candidatos: [] }
   }
 
-  const response = await productosService.listar({
+  const response = await productosService.listarCatalogo({
     pagina: 1,
     limite: 30,
     soloActivos: filters.soloActivos ?? 1,

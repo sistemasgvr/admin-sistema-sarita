@@ -111,7 +111,7 @@ import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePr
 import type { PrestamoListFilters } from '@/modules/balones/prestamos/interfaces/prestamo.interface'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useProductosCatalogoQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type {
   Producto,
   ProductoListFilters,
@@ -191,7 +191,7 @@ const productosFilters = ref<ProductoListFilters>({
   esServicio: false,
   buscar: undefined,
 })
-const productosQuery = useProductosQuery(productosFilters)
+const productosQuery = useProductosCatalogoQuery(productosFilters)
 const scanFiltersProducto = { esServicio: false as const, soloActivos: 1 as const }
 const productoEscaneado = ref<Producto | null>(null)
 

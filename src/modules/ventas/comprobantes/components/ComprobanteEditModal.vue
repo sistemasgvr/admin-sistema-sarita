@@ -349,7 +349,7 @@ import type {
   Producto,
   ProductoListFilters,
 } from '@/modules/productos/articulos/interfaces/producto.interface'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useProductosCatalogoQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import ProductoBarcodeScanButton from '@/modules/productos/articulos/components/ProductoBarcodeScanButton.vue'
 import type { BuscarProductoPorCodigoFilters } from '@/modules/productos/articulos/utils/buscarProductoPorCodigo'
 import AlmacenSelectField from '@/modules/configuracion/almacenes/components/AlmacenSelectField.vue'
@@ -445,7 +445,7 @@ const productosFilters = ref<ProductoListFilters>({
   soloActivos: 1,
   incluirImagenes: false,
 })
-const productosQuery = useProductosQuery(productosFilters)
+const productosQuery = useProductosCatalogoQuery(productosFilters)
 const isFetchingProductos = computed(() => productosQuery.isFetching.value)
 const isProductosError = computed(() => productosQuery.isError.value)
 

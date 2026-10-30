@@ -852,7 +852,7 @@
 </template>
 
 <script setup lang="ts">
-import { keepPreviousData, useQuery } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
@@ -860,7 +860,7 @@ import { categoriasProductoService } from '@/modules/productos/categorias/servic
 import type { CategoriaProducto } from '@/modules/productos/categorias/interfaces/categoria-producto.interface'
 import { subCategoriasProductoService } from '@/modules/productos/sub-categorias/services/sub-categorias-producto.service'
 import type { SubCategoriaProducto } from '@/modules/productos/sub-categorias/interfaces/sub-categoria-producto.interface'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useProductosCatalogoQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto, ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 import { productosService } from '@/modules/productos/articulos/services/productos.service'
 import { filtrarProductosCatalogo } from '@/modules/productos/articulos/utils/productosSistema'
@@ -1568,7 +1568,7 @@ async function resolverProductoVentaEnvase(): Promise<boolean> {
   if (idProductoEnvase.value) return true
   resolviendoProductoEnvase.value = true
   try {
-    const response = await productosService.listar({
+    const response = await productosService.listarCatalogo({
       pagina: 1,
       limite: 20,
       soloActivos: 1,
@@ -1869,7 +1869,7 @@ const filters = ref<ProductoListFilters>({
   incluirImagenes: true,
 })
 
-const productosQuery = useProductosQuery(filters)
+const productosQuery = useProductosCatalogoQuery(filters)
 
 const stockGasFilters = computed<StockGasListFilters>(() => ({
   pagina: 1,
@@ -1878,12 +1878,11 @@ const stockGasFilters = computed<StockGasListFilters>(() => ({
 }))
 
 const stockGasQuery = useQuery({
-  queryKey: computed(() => stockGasQueryKeys.list(stockGasFilters.value)),
-  queryFn: () => stockGasService.listar(stockGasFilters.value),
+  queryKey: computed(() => [...stockGasQueryKeys.lists(), 'catalogo', stockGasFilters.value]),
+  queryFn: ({ signal }) => stockGasService.listarCatalogo(stockGasFilters.value, signal),
   enabled: computed(
     () => open.value && tipo.value === 'gas' && Boolean(props.idAlmacen),
   ),
-  placeholderData: keepPreviousData,
 })
 
 const stockGasPorProducto = computed(() => {

@@ -282,7 +282,7 @@ const formatPrecio = (value: unknown) => {
 
 onMounted(async () => {
   try {
-    const response = await productosService.listar({ pagina: 1, limite: 500 })
+    const response = await productosService.listarCatalogo({ pagina: 1, limite: 500 })
     productos.value = response.data
   } catch {
     productos.value = []

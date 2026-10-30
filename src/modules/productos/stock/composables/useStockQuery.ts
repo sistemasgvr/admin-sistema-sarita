@@ -23,3 +23,15 @@ export function useStockByIdQuery(id: Ref<number | null | undefined>, enabled = 
     enabled: computed(() => enabled && Number(id.value) > 0),
   })
 }
+
+/** Stock completo para validar todos los productos de un documento de salida. */
+export function useStockCatalogoQuery(
+  filters: MaybeRefOrGetter<StockListFilters>,
+  enabled: MaybeRefOrGetter<boolean> = true,
+) {
+  return useQuery({
+    queryKey: computed(() => [...stockQueryKeys.lists(), 'catalogo', toValue(filters)]),
+    queryFn: ({ signal }) => stockService.listarCatalogo({ ...toValue(filters) }, signal),
+    enabled: computed(() => toValue(enabled)),
+  })
+}

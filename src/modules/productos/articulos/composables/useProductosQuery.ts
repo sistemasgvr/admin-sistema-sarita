@@ -11,3 +11,14 @@ export function useProductosQuery(filters: Ref<ProductoListFilters>) {
     placeholderData: keepPreviousData,
   })
 }
+
+/** Selectores y catálogos locales: nunca usar una sola página como catálogo completo. */
+export function useProductosCatalogoQuery(filters: Ref<ProductoListFilters>) {
+  return useQuery({
+    queryKey: computed(() => {
+      const { pagina: _pagina, limite: _limite, ...catalogo } = filters.value
+      return [...productosQueryKeys.lists(), 'catalogo', catalogo]
+    }),
+    queryFn: ({ signal }) => productosService.listarCatalogo({ ...filters.value }, signal),
+  })
+}
