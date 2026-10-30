@@ -23,13 +23,16 @@
                 {{ det.codigo_balon || `#${det.id_balon}` }}
               </p>
               <p class="text-xs text-gray-500">
-                Salida: {{ Number(det.lb_salida).toFixed(2) }} lb · factor
-                {{ factorDe(det).toFixed(4) }} m³/lb
+                Salida: {{ Number(det.lb_salida).toFixed(2) }} lb de gas
+                <span v-if="det.capacidad_tipo">
+                  · Capacidad nominal: {{ det.capacidad_tipo }} {{ det.unidad_capacidad_tipo || '(sin unidad)' }}
+                </span>
               </p>
             </div>
             <AppInput
               v-model="det.lbRetorno"
-              label="Libras al retorno"
+              label="Gas restante (lb)"
+              hint="Libras de gas, sin incluir el peso del envase."
               type="number"
               step="0.01"
               min="0"
@@ -39,7 +42,7 @@
             />
             <div class="flex items-end pb-1 text-xs text-gray-500">
               <template v-if="det.yaRetornado">Ya retornado</template>
-              <template v-else>
+              <template v-else-if="factorDe(det) != null">
                 Usado ≈
                 {{
                   Math.max(0, Number(det.lb_salida) - Number(det.lbRetorno || 0)).toFixed(2)
@@ -47,11 +50,12 @@
                 lb /
                 {{
                   (
-                    Math.max(0, Number(det.lb_salida) - Number(det.lbRetorno || 0)) * factorDe(det)
+                    Math.max(0, Number(det.lb_salida) - Number(det.lbRetorno || 0)) * (factorDe(det) ?? 0)
                   ).toFixed(3)
                 }}
                 m³
               </template>
+              <template v-else>Falta configurar la equivalencia del tipo de balón a m³.</template>
             </div>
           </div>
         </div>
@@ -138,7 +142,6 @@ const authStore = useAuthStore()
 const rutaIdRef = computed(() => (open.value ? props.rutaId : null))
 const rutaQuery = useRutaPuebloQuery(rutaIdRef)
 const retornoMutation = useRegistrarRetornoRutaPuebloMutation()
-const ruta = computed(() => rutaQuery.data.value)
 
 type Fila = {
   id_balon: number
@@ -147,6 +150,7 @@ type Fila = {
   lbRetorno: string
   yaRetornado: boolean
   factor_lb_m3_tipo?: number | string | null
+  unidad_capacidad_tipo?: string | null
   capacidad_tipo?: number | string | null
   capacidad_lb_tipo?: number | string | null
 }
@@ -163,13 +167,9 @@ const filas = ref<Fila[]>([])
 const filasProducto = ref<FilaProducto[]>([])
 const hydratedForId = ref<number | null>(null)
 
-function factorDe(det: Pick<Fila, 'factor_lb_m3_tipo' | 'capacidad_tipo' | 'capacidad_lb_tipo'>) {
-  const fromTipo = Number(det.factor_lb_m3_tipo)
-  if (Number.isFinite(fromTipo) && fromTipo > 0) return fromTipo
-  const cap = Number(det.capacidad_tipo)
-  const lb = Number(det.capacidad_lb_tipo)
-  if (cap > 0 && lb > 0) return cap / lb
-  return Number(ruta.value?.factor_lb_m3 || 0)
+function factorDe(det: Pick<Fila, 'factor_lb_m3_tipo'>): number | null {
+  const factor = Number(det.factor_lb_m3_tipo)
+  return Number.isFinite(factor) && factor > 0 ? factor : null
 }
 
 function mapFilas(data: RutaPueblo): Fila[] {
@@ -183,6 +183,7 @@ function mapFilas(data: RutaPueblo): Fila[] {
       yaRetornado,
       factor_lb_m3_tipo: d.factor_lb_m3_tipo,
       capacidad_tipo: d.capacidad_tipo,
+      unidad_capacidad_tipo: d.unidad_capacidad_tipo,
       capacidad_lb_tipo: d.capacidad_lb_tipo,
     }
   })
@@ -264,7 +265,7 @@ async function guardar() {
     lbRetorno: Number(f.lbRetorno),
   }))
 
-  if (detalles.some((d) => Number.isNaN(d.lbRetorno) || d.lbRetorno < 0)) {
+  if (detalles.some((d) => !Number.isFinite(d.lbRetorno) || d.lbRetorno < 0)) {
     toastWarning('Completa las libras de retorno (≥ 0)')
     return
   }
@@ -284,7 +285,7 @@ async function guardar() {
     cantidadRetorno: Number(f.cantidadRetorno),
   }))
 
-  if (detallesProductos.some((d) => Number.isNaN(d.cantidadRetorno) || d.cantidadRetorno < 0)) {
+  if (detallesProductos.some((d) => !Number.isFinite(d.cantidadRetorno) || d.cantidadRetorno < 0)) {
     toastWarning('Completa las cantidades de retorno (≥ 0)')
     return
   }

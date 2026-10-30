@@ -149,8 +149,16 @@ const sections = computed<DetailSection[]>(() => {
       icon: ICONS.clipboardCheck,
       items: [
         {
-          label: 'm³ calculado',
+          label: 'Consumo registrado (total truncado)',
           value: `${formatDetailCantidad(Number(r.m3_calculado ?? 0))} m³`,
+        },
+        {
+          label: 'Consumo calculado antes del truncamiento',
+          value: r.m3_calculado_exacto != null ? formatM3(r.m3_calculado_exacto) : '—',
+        },
+        {
+          label: 'Ajuste por truncamiento',
+          value: r.observacion_truncamiento || 'Sin ajuste',
         },
         {
           label: 'm³ reportado',

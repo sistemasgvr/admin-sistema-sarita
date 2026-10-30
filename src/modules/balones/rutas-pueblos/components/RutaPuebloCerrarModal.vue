@@ -11,14 +11,17 @@
     <div v-else-if="ruta" class="space-y-4">
       <div class="rounded-lg bg-gray-50 p-3 text-sm dark:bg-white/5">
         <div class="flex justify-between">
-          <span class="text-gray-500">Gas calculado (por libras)</span>
-          <span class="font-medium tabular-nums">{{ Number(ruta.m3_calculado ?? 0).toFixed(3) }} m³</span>
+          <span class="text-gray-500">Consumo registrado (total truncado)</span>
+          <span class="font-medium tabular-nums">{{ Math.trunc(Number(ruta.m3_calculado ?? 0)).toFixed(0) }} m³</span>
         </div>
         <div class="mt-1 flex justify-between">
           <span class="text-gray-500">Diferencia permitida</span>
           <span class="tabular-nums">± {{ Number(ruta.tolerancia_m3 ?? 0).toFixed(3) }} m³</span>
         </div>
       </div>
+      <p v-if="ruta.observacion_truncamiento" class="text-xs text-gray-600 dark:text-gray-400">
+        {{ ruta.observacion_truncamiento }}
+      </p>
       <AppInput
         v-model="m3Reportado"
         label="Gas reportado por el repartidor (m³)"
@@ -99,7 +102,7 @@ const previewDescuadre = computed(() => {
   if (m3Reportado.value === '' || !ruta.value) return null
   const n = Number(m3Reportado.value)
   if (!Number.isFinite(n)) return null
-  return Number(ruta.value.m3_calculado ?? 0) - n
+  return Math.trunc(Number(ruta.value.m3_calculado ?? 0)) - n
 })
 
 const alertaClass = computed(() => {

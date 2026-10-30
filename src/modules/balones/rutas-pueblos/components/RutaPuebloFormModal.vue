@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Nueva ruta pueblos"
-    subtitle="Lb de salida mayor a 0, sin superar la capacidad del tipo."
+    subtitle="Registra las libras de gas, sin el peso del envase. La capacidad nominal puede estar en otra unidad."
     size="lg"
   >
     <div class="space-y-4">
@@ -54,13 +54,13 @@
           />
           <AppInput
             v-model="linea.lbSalida"
-            label="Libras al salir"
+            label="Gas al salir (lb)"
             type="number"
             step="0.01"
             min="0.01"
             :hint="
               linea.capacidadLbMax != null
-                ? `Máx. ${linea.capacidadLbMax} lb`
+                ? `Máx. ${linea.capacidadLbMax} lb de gas lleno`
                 : undefined
             "
             required

@@ -6,6 +6,7 @@ export interface RutaPuebloDetalle {
   id_balon: number
   codigo_balon?: string | null
   nombre_tipo_balon?: string | null
+  unidad_capacidad_tipo?: string | null
   capacidad_tipo?: number | string | null
   capacidad_lb_tipo?: number | string | null
   factor_lb_m3_tipo?: number | string | null
@@ -39,6 +40,9 @@ export interface RutaPueblo {
   factor_lb_m3: number | string
   tolerancia_m3: number | string
   m3_reportado_ventas?: number | string | null
+  m3_calculado_exacto?: number | string | null
+  ajuste_truncamiento_m3?: number | string | null
+  observacion_truncamiento?: string | null
   m3_calculado?: number | string | null
   descuadre_m3?: number | string | null
   id_estado?: number | null
