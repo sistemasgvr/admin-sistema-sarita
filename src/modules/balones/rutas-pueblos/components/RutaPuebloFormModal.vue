@@ -34,26 +34,29 @@
         <div
           v-for="(linea, index) in lineas"
           :key="linea.key"
-          class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_110px_110px_auto] dark:border-gray-800"
+          class="grid grid-cols-[minmax(0,1fr)_40px] items-end gap-3 rounded-lg border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] md:grid-cols-[minmax(0,1fr)_140px_150px_40px] dark:border-gray-800"
         >
-          <PosBalonSelectField
-            v-model="linea.idBalon"
-            mode="general"
-            label="Cilindro"
-            :id-almacen="idAlmacen"
-            :extra-filters="balonExtraFilters"
-            :client-filter="filtroBalonLinea(linea)"
-            :selection-locked="!idAlmacen"
-            :empty-text="
-              idAlmacen
-                ? 'Sin cilindros disponibles (en almacén o ya agregados).'
-                : 'Selecciona el almacén primero.'
-            "
-            required
-            @selected="(balon) => onBalonSelected(linea, balon)"
-          />
+          <div class="col-span-2 min-w-0 sm:col-span-3 md:col-span-1">
+            <PosBalonSelectField
+              v-model="linea.idBalon"
+              mode="general"
+              label="Cilindro"
+              :id-almacen="idAlmacen"
+              :extra-filters="balonExtraFilters"
+              :client-filter="filtroBalonLinea(linea)"
+              :selection-locked="!idAlmacen"
+              :empty-text="
+                idAlmacen
+                  ? 'Sin cilindros disponibles (en almacén o ya agregados).'
+                  : 'Selecciona el almacén primero.'
+              "
+              required
+              @selected="(balon) => onBalonSelected(linea, balon)"
+            />
+          </div>
           <AppInput
             v-model="linea.lbSalida"
+            class="col-span-2 min-w-0 sm:col-span-1"
             label="Libras de salida"
             type="number"
             step="0.01"
@@ -62,6 +65,7 @@
           />
           <AppInput
             v-model="linea.m3Salida"
+            class="min-w-0"
             label="m³ de salida"
             help="Cantidad manual para el stock"
             type="number"
@@ -71,7 +75,7 @@
           />
           <button
             type="button"
-            class="mt-6 inline-flex h-10 w-10 items-center justify-center self-start rounded-lg border border-gray-300 text-error-500"
+            class="inline-flex h-11 w-10 items-center justify-center self-end rounded-lg border border-gray-300 text-error-500"
             title="Quitar"
             @click="lineas.splice(index, 1)"
           >
