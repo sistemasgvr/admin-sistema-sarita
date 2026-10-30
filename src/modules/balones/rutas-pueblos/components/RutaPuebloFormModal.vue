@@ -42,7 +42,7 @@
             label="Cilindro"
             :id-almacen="idAlmacen"
             :extra-filters="balonExtraFilters"
-            :client-filter="filtroBalonLinea(linea.key)"
+            :client-filter="filtroBalonLinea(linea)"
             :selection-locked="!idAlmacen"
             :empty-text="
               idAlmacen
@@ -58,7 +58,11 @@
             type="number"
             step="0.01"
             min="0.01"
-            :max="linea.capacidadLbMax ?? undefined"
+            :hint="
+              linea.capacidadLbMax != null
+                ? `Máx. ${linea.capacidadLbMax} lb`
+                : undefined
+            "
             required
           />
           <button
@@ -207,6 +211,8 @@ const productoOptionsAll = computed(() =>
 type LineaBalon = {
   key: string
   idBalon: number | ''
+  /** Último cilindro para el que se inicializó la línea (evita borrar lo digitado). */
+  ultimoBalonId: number | null
   lbSalida: string
   capacidadLbMax: number | null
   sugerenciaOrigen: 'residual' | 'tipo' | null
@@ -223,6 +229,7 @@ function emptyLinea(): LineaBalon {
   return {
     key: crypto.randomUUID(),
     idBalon: '',
+    ultimoBalonId: null,
     lbSalida: '',
     capacidadLbMax: null,
     sugerenciaOrigen: null,
@@ -260,17 +267,29 @@ function soloBalonEnviable(balon: Balon) {
   return true
 }
 
+/**
+ * Filtro estable por línea. Si se devuelve una función nueva en cada render,
+ * el select de balones se recalcula y reemite `selected`, borrando lo digitado
+ * en "Libras al salir".
+ */
+const filtrosBalonPorLinea = new WeakMap<LineaBalon, (balon: Balon) => boolean>()
+
 /** Excluye cilindros ya elegidos en otras líneas (evita duplicar el mismo código). */
-function filtroBalonLinea(lineaKey: string) {
-  const idsOcupados = new Set(
-    lineas.value
-      .filter((l) => l.key !== lineaKey && l.idBalon)
-      .map((l) => Number(l.idBalon)),
-  )
-  return (balon: Balon) => {
-    if (!soloBalonEnviable(balon)) return false
-    return !idsOcupados.has(balon.id)
+function filtroBalonLinea(linea: LineaBalon) {
+  let filtro = filtrosBalonPorLinea.get(linea)
+  if (!filtro) {
+    filtro = (balon: Balon) => {
+      if (!soloBalonEnviable(balon)) return false
+      const idsOcupados = new Set(
+        lineas.value
+          .filter((l) => l.key !== linea.key && l.idBalon)
+          .map((l) => Number(l.idBalon)),
+      )
+      return !idsOcupados.has(balon.id)
+    }
+    filtrosBalonPorLinea.set(linea, filtro)
   }
+  return filtro
 }
 
 /** Excluye productos ya elegidos en otras líneas */
@@ -310,15 +329,20 @@ function sugerirLbDesdeBalon(balon: Balon): {
 
 function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
   if (!balon) {
+    linea.ultimoBalonId = null
     linea.capacidadLbMax = null
     linea.sugerenciaOrigen = null
     linea.lbSalida = ''
     return
   }
-  const { lb, max, origen } = sugerirLbDesdeBalon(balon)
+  const { max, origen } = sugerirLbDesdeBalon(balon)
+  const cambioBalon = linea.ultimoBalonId !== balon.id
+  linea.ultimoBalonId = balon.id
   linea.capacidadLbMax = max
   linea.sugerenciaOrigen = origen
-  linea.lbSalida = lb != null ? String(lb) : ''
+  // Solo limpiar cuando realmente cambió el cilindro: el select reemite
+  // `selected` al refrescar opciones y no debe borrar lo que se está digitando.
+  if (cambioBalon) linea.lbSalida = ''
 }
 
 function lbSalidaValida(value: string) {
@@ -346,6 +370,7 @@ function addLineaProducto() {
 watch(idAlmacen, () => {
   for (const linea of lineas.value) {
     linea.idBalon = ''
+    linea.ultimoBalonId = null
     linea.lbSalida = ''
     linea.capacidadLbMax = null
     linea.sugerenciaOrigen = null
