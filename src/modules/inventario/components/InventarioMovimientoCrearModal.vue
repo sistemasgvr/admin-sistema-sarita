@@ -44,13 +44,14 @@
       />
 
       <div v-if="form.naturaleza === 'PRODUCTO'" class="space-y-4">
-        <AppSelectSearch
-          v-model="form.idProducto"
+        <ProductoSelectField
+          v-model="productoId"
           label="Producto"
-          :options="productosOptions"
+          :options="productoSeleccionadoOptions"
           placeholder="Buscar producto..."
-          :disabled="productosQuery.isLoading.value"
-          :searchable="true"
+          :id-almacen="form.idAlmacenOrigen"
+          :remote="true"
+          :can-scan="false"
           :error="errors.idProducto"
         />
       </div>
@@ -170,6 +171,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
+import { useQuery } from '@tanstack/vue-query'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import {
   AppDatePicker,
@@ -184,7 +186,9 @@ import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField
 import ListaOpcionFormModal from '@/modules/catalogos/components/ListaOpcionFormModal.vue'
 import { useCreateInventarioMovimientoMutation } from '../composables/useInventarioMovimientoMutations'
 import type { CreateInventarioMovimientoPayload } from '../interfaces/inventario-movimiento.interface'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
+import { productosService } from '@/modules/productos/articulos/services/productos.service'
+import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import { useBalonesQuery } from '@/modules/balones/cilindros/composables/useBalonesQuery'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useListaOpcionesQuery } from '@/modules/catalogos/composables/useListaOpcionesQuery'
@@ -280,14 +284,24 @@ const form = reactive<Omit<CreateInventarioMovimientoPayload, 'idUsuarioAuditori
 
 const errors = reactive<Record<string, string>>({})
 
-const productosFilters = ref({ pagina: 1, limite: 100 })
-const productosQuery = useProductosQuery(productosFilters)
-const productosOptions = computed(() =>
-  (productosQuery.data.value?.data ?? []).map((p) => ({
-    value: p.id,
-    label: p.nombre,
-  })),
-)
+// El producto de la fila de stock puede estar fuera de la primera página.
+// Cargarlo por id permite mostrarlo sin depender del resultado del buscador.
+const productoId = computed({
+  get: () => form.idProducto,
+  set: (value: string | number | undefined) => {
+    const id = Number(value)
+    form.idProducto = Number.isFinite(id) && id > 0 ? id : undefined
+  },
+})
+const productoSeleccionadoQuery = useQuery({
+  queryKey: computed(() => productosQueryKeys.detail(form.idProducto ?? 0)),
+  queryFn: () => productosService.obtenerPorId(form.idProducto!),
+  enabled: computed(() => isOpen.value && !!form.idProducto),
+})
+const productoSeleccionadoOptions = computed(() => {
+  const producto = productoSeleccionadoQuery.data.value
+  return producto ? [{ value: producto.id, label: `${producto.codigo} — ${producto.nombre}` }] : []
+})
 
 const balonesFilters = ref({ pagina: 1, limite: 100 })
 const balonesQuery = useBalonesQuery(balonesFilters)
@@ -438,13 +452,9 @@ function resetForm() {
 }
 
 watch(isOpen, (open) => {
-  if (open) {
-    resetForm()
-    applyPrefill(props.prefill)
-  } else {
-    resetForm()
-  }
-})
+  resetForm()
+  if (open) applyPrefill(props.prefill)
+}, { immediate: true })
 
 watch(
   () => props.prefill,
