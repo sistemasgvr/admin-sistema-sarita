@@ -52,9 +52,9 @@
 
       <template #cell-m3="{ row }">
         <div class="text-right text-sm tabular-nums">
-          <p>{{ Number(row.m3_calculado ?? 0).toFixed(2) }} calc.</p>
+          <p>{{ Number(row.m3_calculado ?? 0).toFixed(row.control_gas_manual ? 4 : 2) }} calc.</p>
           <p v-if="row.m3_reportado_ventas != null" class="text-xs text-gray-500">
-            {{ Number(row.m3_reportado_ventas).toFixed(2) }} rep.
+            {{ Number(row.m3_reportado_ventas).toFixed(row.control_gas_manual ? 4 : 2) }} rep.
           </p>
         </div>
       </template>
@@ -119,7 +119,7 @@
       :loading="iniciarMutation.isPending.value"
       @confirm="confirmarIniciar"
     >
-      Los cilindros pasarán a tránsito ({{ labelEstado('EN_RUTA') }}). ¿Continuar?
+      Se descontarán del stock los m³ de salida registrados. Los cilindros pasarán a tránsito ({{ labelEstado('EN_RUTA') }}). ¿Continuar?
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -131,8 +131,9 @@
       :loading="updateMutation.isPending.value"
       @confirm="confirmarCancelar"
     >
-      ¿Cancelar la ruta? Si ya está {{ labelEstado('EN_RUTA').toLowerCase() }}, los cilindros sin
-      retorno vuelven al almacén con las lb de salida restauradas.
+      <span v-if="rutaSeleccionada?.control_gas_manual">Se cancelará la ruta abierta. El gas todavía no se ha descontado del stock.</span>
+      <span v-else>¿Cancelar la ruta? Si ya está {{ labelEstado('EN_RUTA').toLowerCase() }}, los cilindros sin
+      retorno vuelven al almacén con las lb de salida restauradas.</span>
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -366,10 +367,10 @@ function actionsFor(row: RutaPueblo): ActionMenuItem[] {
   ) {
     items.push({ key: 'cerrar', label: 'Cerrar ruta', icon: ICONS.clipboardCheck })
   }
-  if (canEdit.value && estado !== 'CERRADA' && estado !== 'CANCELADA') {
+  if (canEdit.value && estado !== 'CERRADA' && estado !== 'CANCELADA' && (!row.control_gas_manual || estado === 'ABIERTA')) {
     items.push({ key: 'cancelar', label: 'Cancelar', icon: ICONS.x, danger: true })
   }
-  if (canDelete.value && estado !== 'EN_RUTA') {
+  if (canDelete.value && estado !== 'EN_RUTA' && (!row.control_gas_manual || estado === 'ABIERTA' || estado === 'CANCELADA')) {
     items.push({ key: 'eliminar', label: 'Eliminar', icon: ICONS.trash, danger: true })
   }
   return items

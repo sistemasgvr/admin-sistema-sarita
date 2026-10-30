@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Cerrar ruta"
-    subtitle="Compara el gas calculado por libras con lo que reportó el repartidor."
+    subtitle="Compara el consumo de la ruta con las ventas reportadas. El cierre no vuelve a descontar stock."
     size="md"
   >
     <div v-if="rutaQuery.isPending.value" class="py-8 text-center text-sm text-gray-500">
@@ -11,8 +11,8 @@
     <div v-else-if="ruta" class="space-y-4">
       <div class="rounded-lg bg-gray-50 p-3 text-sm dark:bg-white/5">
         <div class="flex justify-between">
-          <span class="text-gray-500">Consumo registrado (total truncado)</span>
-          <span class="font-medium tabular-nums">{{ Math.trunc(Number(ruta.m3_calculado ?? 0)).toFixed(0) }} m³</span>
+          <span class="text-gray-500">{{ ruta.control_gas_manual ? 'Consumo (salida − retorno)' : 'Consumo registrado (total truncado)' }}</span>
+          <span class="font-medium tabular-nums">{{ m3Control.toFixed(4) }} m³</span>
         </div>
         <div class="mt-1 flex justify-between">
           <span class="text-gray-500">Diferencia permitida</span>
@@ -80,6 +80,8 @@ const rutaQuery = useRutaPuebloQuery(rutaIdRef)
 const cerrarMutation = useCerrarRutaPuebloMutation()
 const ruta = computed(() => rutaQuery.data.value)
 
+const m3Control = computed(() => ruta.value?.control_gas_manual ? Number(ruta.value.m3_calculado ?? 0) : Math.trunc(Number(ruta.value?.m3_calculado ?? 0)))
+
 const m3Reportado = ref('')
 const observacion = ref('')
 
@@ -102,7 +104,7 @@ const previewDescuadre = computed(() => {
   if (m3Reportado.value === '' || !ruta.value) return null
   const n = Number(m3Reportado.value)
   if (!Number.isFinite(n)) return null
-  return Math.trunc(Number(ruta.value.m3_calculado ?? 0)) - n
+  return m3Control.value - n
 })
 
 const alertaClass = computed(() => {

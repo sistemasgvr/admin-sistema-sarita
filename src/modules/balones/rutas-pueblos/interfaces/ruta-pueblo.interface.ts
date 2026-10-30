@@ -11,6 +11,9 @@ export interface RutaPuebloDetalle {
   capacidad_lb_tipo?: number | string | null
   factor_lb_m3_tipo?: number | string | null
   sellado: boolean
+  m3_salida?: number | string | null
+  m3_retorno?: number | string | null
+  id_producto_gas?: number | null
   lb_salida: number | string
   lb_retorno?: number | string | null
   m3_delta?: number | string | null
@@ -37,6 +40,7 @@ export interface RutaPueblo {
   nombre_usuario_responsable?: string | null
   id_chofer?: number | null
   nombre_chofer?: string | null
+  control_gas_manual?: boolean
   factor_lb_m3: number | string
   tolerancia_m3: number | string
   m3_reportado_ventas?: number | string | null
@@ -75,6 +79,7 @@ export interface CreateRutaPuebloPayload {
   observacion?: string
   detalles?: {
     idBalon: number
+    m3Salida: number
     lbSalida: number
     sellado?: boolean
     observacion?: string
@@ -100,7 +105,7 @@ export interface UpdateRutaPuebloPayload {
 
 export interface RegistrarRetornoRutaPuebloPayload {
   idUsuarioAuditoria: number
-  detalles?: { idBalon: number; lbRetorno: number; observacion?: string }[]
+  detalles?: { idBalon: number; lbRetorno: number; m3Retorno?: number; observacion?: string }[]
   detallesProductos?: { idProducto: number; cantidadRetorno: number; observacion?: string }[]
 }
 

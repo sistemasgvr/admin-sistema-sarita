@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Nueva ruta pueblos"
-    subtitle="Registra las libras de gas, sin el peso del envase. La capacidad nominal puede estar en otra unidad."
+    subtitle="Ingresa las libras y los m³ de cada cilindro. El stock se descuenta al iniciar la ruta."
     size="lg"
   >
     <div class="space-y-4">
@@ -34,7 +34,7 @@
         <div
           v-for="(linea, index) in lineas"
           :key="linea.key"
-          class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-[1fr_140px_auto] dark:border-gray-800"
+          class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_110px_110px_auto] dark:border-gray-800"
         >
           <PosBalonSelectField
             v-model="linea.idBalon"
@@ -54,15 +54,19 @@
           />
           <AppInput
             v-model="linea.lbSalida"
-            label="Gas al salir (lb)"
+            label="Libras de salida"
             type="number"
             step="0.01"
-            min="0.01"
-            :hint="
-              linea.capacidadLbMax != null
-                ? `Máx. ${linea.capacidadLbMax} lb de gas lleno`
-                : undefined
-            "
+            min="0"
+            required
+          />
+          <AppInput
+            v-model="linea.m3Salida"
+            label="m³ de salida"
+            hint="Cantidad manual para el stock"
+            type="number"
+            step="0.0001"
+            min="0"
             required
           />
           <button
@@ -214,8 +218,7 @@ type LineaBalon = {
   /** Último cilindro para el que se inicializó la línea (evita borrar lo digitado). */
   ultimoBalonId: number | null
   lbSalida: string
-  capacidadLbMax: number | null
-  sugerenciaOrigen: 'residual' | 'tipo' | null
+  m3Salida: string
 }
 
 type LineaProducto = {
@@ -231,8 +234,7 @@ function emptyLinea(): LineaBalon {
     idBalon: '',
     ultimoBalonId: null,
     lbSalida: '',
-    capacidadLbMax: null,
-    sugerenciaOrigen: null,
+    m3Salida: '',
   }
 }
 
@@ -302,60 +304,26 @@ function filtroProductoOpciones(lineaKey: string) {
   return productoOptionsAll.value.filter((opt) => !idsOcupados.has(opt.value))
 }
 
-function roundLb(n: number) {
-  return Math.round(n * 100) / 100
-}
-
-function sugerirLbDesdeBalon(balon: Balon): {
-  lb: number | null
-  max: number | null
-  origen: LineaBalon['sugerenciaOrigen']
-} {
-  const tipoLb = Number(balon.capacidad_lb)
-  const max = Number.isFinite(tipoLb) && tipoLb > 0 ? tipoLb : null
-  let lb: number | null = null
-  let origen: LineaBalon['sugerenciaOrigen'] = null
-
-  if (max != null) {
-    lb = max
-    origen = 'tipo'
-  }
-
-  if (lb != null && max != null) lb = Math.min(lb, max)
-  if (lb != null) lb = roundLb(lb)
-
-  return { lb, max, origen }
-}
-
 function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
-  if (!balon) {
-    linea.ultimoBalonId = null
-    linea.capacidadLbMax = null
-    linea.sugerenciaOrigen = null
+  const id = balon?.id ?? null
+  if (linea.ultimoBalonId !== id) {
     linea.lbSalida = ''
-    return
+    linea.m3Salida = ''
   }
-  const { max, origen } = sugerirLbDesdeBalon(balon)
-  const cambioBalon = linea.ultimoBalonId !== balon.id
-  linea.ultimoBalonId = balon.id
-  linea.capacidadLbMax = max
-  linea.sugerenciaOrigen = origen
-  // Solo limpiar cuando realmente cambió el cilindro: el select reemite
-  // `selected` al refrescar opciones y no debe borrar lo que se está digitando.
-  if (cambioBalon) linea.lbSalida = ''
+  linea.ultimoBalonId = id
 }
 
 function lbSalidaValida(value: string) {
   if (value === '') return false
   const n = Number(value)
-  return Number.isFinite(n) && n > 0
+  return Number.isFinite(n) && n >= 0
 }
 
 const saving = computed(() => createMutation.isPending.value)
 const canSave = computed(
   () =>
     Boolean(idAlmacen.value) &&
-    (lineas.value.some((l) => l.idBalon && lbSalidaValida(l.lbSalida)) ||
+    (lineas.value.some((l) => l.idBalon && lbSalidaValida(l.lbSalida) && lbSalidaValida(l.m3Salida)) ||
       lineasProducto.value.some((l) => l.idProducto && Number(l.cantidad) > 0)),
 )
 
@@ -372,8 +340,7 @@ watch(idAlmacen, () => {
     linea.idBalon = ''
     linea.ultimoBalonId = null
     linea.lbSalida = ''
-    linea.capacidadLbMax = null
-    linea.sugerenciaOrigen = null
+    linea.m3Salida = ''
   }
   for (const linea of lineasProducto.value) {
     linea.idProducto = ''
@@ -395,12 +362,17 @@ async function guardar() {
   const userId = authStore.user?.id
   if (!userId || !idAlmacen.value) return
 
+  if (lineas.value.some(l => l.idBalon && (!lbSalidaValida(l.lbSalida) || !lbSalidaValida(l.m3Salida)))) {
+    toastWarning('Completa las libras y los m³ de salida (≥ 0) de cada cilindro')
+    return
+  }
+
   const detalles = lineas.value
     .filter((l) => l.idBalon)
     .map((l) => ({
       idBalon: Number(l.idBalon),
       lbSalida: Number(l.lbSalida),
-      capacidadLbMax: l.capacidadLbMax,
+      m3Salida: Number(l.m3Salida),
     }))
 
   const detallesProductos = lineasProducto.value
@@ -416,17 +388,7 @@ async function guardar() {
   }
 
   if (detalles.some((d) => !lbSalidaValida(String(d.lbSalida)) || Number.isNaN(d.lbSalida))) {
-    toastWarning('Completa las libras de salida (> 0) de los cilindros')
-    return
-  }
-
-  const sobreTope = detalles.find(
-    (d) => d.capacidadLbMax != null && d.lbSalida > d.capacidadLbMax + 1e-9,
-  )
-  if (sobreTope) {
-    toastWarning(
-      `Las libras de salida no pueden superar la capacidad del tipo (${sobreTope.capacidadLbMax!.toFixed(2)} lb)`,
-    )
+    toastWarning('Completa las libras de salida (≥ 0) de los cilindros')
     return
   }
 
@@ -450,7 +412,7 @@ async function guardar() {
     idChofer: idChofer.value ? Number(idChofer.value) : undefined,
     observacion: observacion.value.trim() || undefined,
     detalles: detalles.length > 0
-      ? detalles.map(({ idBalon, lbSalida }) => ({ idBalon, lbSalida }))
+      ? detalles.map(({ idBalon, lbSalida, m3Salida }) => ({ idBalon, lbSalida, m3Salida }))
       : undefined,
     detallesProductos: detallesProductos.length > 0 ? detallesProductos : undefined,
   })

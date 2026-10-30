@@ -9,6 +9,8 @@
       Cargando…
     </div>
     <div v-else class="space-y-4">
+      <p v-if="manual" class="text-sm text-gray-600 dark:text-gray-400">Ingresa ambas lecturas. Solo los m³ de retorno se suman al stock; los decimales se conservan.</p>
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">Ruta anterior: conserva el cálculo por libras y no genera un reingreso adicional de gas al stock.</p>
       <!-- Cilindros -->
       <div v-if="filas.length > 0">
         <p class="mb-2 text-sm font-medium text-gray-800 dark:text-white/90">Cilindros</p>
@@ -16,14 +18,15 @@
           <div
             v-for="det in filas"
             :key="det.id_balon"
-            class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-3 dark:border-gray-800"
+            class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-4 dark:border-gray-800"
           >
             <div>
               <p class="text-sm font-medium text-gray-800 dark:text-white/90">
                 {{ det.codigo_balon || `#${det.id_balon}` }}
               </p>
               <p class="text-xs text-gray-500">
-                Salida: {{ Number(det.lb_salida).toFixed(2) }} lb de gas
+                Salida: {{ Number(det.lb_salida).toFixed(2) }} libras
+                <span v-if="manual"> · {{ Number(det.m3_salida).toFixed(4) }} m³</span>
                 <span v-if="det.capacidad_tipo">
                   · Capacidad nominal: {{ det.capacidad_tipo }} {{ det.unidad_capacidad_tipo || '(sin unidad)' }}
                 </span>
@@ -31,8 +34,8 @@
             </div>
             <AppInput
               v-model="det.lbRetorno"
-              label="Gas restante (lb)"
-              hint="Libras de gas, sin incluir el peso del envase."
+              label="Libras de retorno"
+
               type="number"
               step="0.01"
               min="0"
@@ -40,8 +43,24 @@
               :disabled="det.yaRetornado"
               :required="!det.yaRetornado"
             />
+            <AppInput
+              v-if="manual"
+              v-model="det.m3Retorno"
+              label="m³ de retorno"
+              hint="Se sumarán al stock del almacén"
+              type="number"
+              step="0.0001"
+              min="0"
+              :error="det.m3Retorno !== '' && Number(det.m3Retorno) > Number(det.m3_salida) ? 'No puede superar los m³ de salida' : undefined"
+              :disabled="det.yaRetornado"
+              :required="!det.yaRetornado"
+            />
             <div class="flex items-end pb-1 text-xs text-gray-500">
               <template v-if="det.yaRetornado">Ya retornado</template>
+              <template v-else-if="manual">
+                <span v-if="det.m3Retorno !== ''">Consumo: {{ Math.max(0, Number(det.m3_salida) - Number(det.m3Retorno)).toFixed(4) }} m³</span>
+                <span v-else>Pendiente de retorno</span>
+              </template>
               <template v-else-if="factorDe(det) != null">
                 Usado ≈
                 {{
@@ -142,11 +161,14 @@ const authStore = useAuthStore()
 const rutaIdRef = computed(() => (open.value ? props.rutaId : null))
 const rutaQuery = useRutaPuebloQuery(rutaIdRef)
 const retornoMutation = useRegistrarRetornoRutaPuebloMutation()
+const manual = computed(() => rutaQuery.data.value?.control_gas_manual === true)
 
 type Fila = {
   id_balon: number
   codigo_balon?: string | null
   lb_salida: number | string
+  m3_salida?: number | string | null
+  m3Retorno: string
   lbRetorno: string
   yaRetornado: boolean
   factor_lb_m3_tipo?: number | string | null
@@ -179,6 +201,8 @@ function mapFilas(data: RutaPueblo): Fila[] {
       id_balon: d.id_balon,
       codigo_balon: d.codigo_balon,
       lb_salida: d.lb_salida,
+      m3_salida: d.m3_salida,
+      m3Retorno: d.m3_retorno != null ? String(d.m3_retorno) : '',
       lbRetorno: yaRetornado ? String(d.lb_retorno) : '',
       yaRetornado,
       factor_lb_m3_tipo: d.factor_lb_m3_tipo,
@@ -238,7 +262,7 @@ watch(
 )
 
 const canSaveSubset = computed(() => {
-  const balonesPendientes = filas.value.some((f) => !f.yaRetornado && f.lbRetorno !== '')
+  const balonesPendientes = filas.value.some((f) => !f.yaRetornado && (f.lbRetorno !== '' || (manual.value && f.m3Retorno !== '')))
   const productosPendientes = filasProducto.value.some(
     (f) => !f.yaRetornado && f.cantidadRetorno !== '',
   )
@@ -250,7 +274,7 @@ async function guardar() {
   const id = props.rutaId
   if (!userId || !id) return
 
-  const pendientesBalon = filas.value.filter((f) => !f.yaRetornado && f.lbRetorno !== '')
+  const pendientesBalon = filas.value.filter((f) => !f.yaRetornado && (f.lbRetorno !== '' || (manual.value && f.m3Retorno !== '')))
   const pendientesProducto = filasProducto.value.filter(
     (f) => !f.yaRetornado && f.cantidadRetorno !== '',
   )
@@ -260,9 +284,15 @@ async function guardar() {
     return
   }
 
+  if (pendientesBalon.some(f => String(f.lbRetorno).trim() === '' || (manual.value && (String(f.m3Retorno).trim() === '' || !Number.isFinite(Number(f.m3Retorno)) || Number(f.m3Retorno) < 0 || Number(f.m3Retorno) > Number(f.m3_salida))))) {
+    toastWarning('Completa las libras y los m³ de retorno; los m³ deben estar entre 0 y los m³ de salida')
+    return
+  }
+
   const detalles = pendientesBalon.map((f) => ({
     idBalon: f.id_balon,
     lbRetorno: Number(f.lbRetorno),
+    ...(manual.value ? { m3Retorno: Number(f.m3Retorno) } : {}),
   }))
 
   if (detalles.some((d) => !Number.isFinite(d.lbRetorno) || d.lbRetorno < 0)) {
