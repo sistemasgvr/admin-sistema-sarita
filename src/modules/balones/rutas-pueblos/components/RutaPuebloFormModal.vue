@@ -63,7 +63,7 @@
           <AppInput
             v-model="linea.m3Salida"
             label="m³ de salida"
-            hint="Cantidad manual para el stock"
+            help="Cantidad manual para el stock"
             type="number"
             step="0.0001"
             min="0"
