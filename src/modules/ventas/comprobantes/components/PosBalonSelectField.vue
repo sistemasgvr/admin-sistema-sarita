@@ -18,7 +18,7 @@
           :error="error"
           :hint="hint"
           search-placeholder="Código, serie o tipo..."
-          :options="balonOptions"
+          :options="opcionesConSeleccionado"
           :loading="balonesQuery.isFetching.value"
           :disabled="disabled || balonSelectDisabled || balonesQuery.isLoading.value"
           :empty-text="resolvedEmptyText"
@@ -49,6 +49,7 @@ import type {
   BalonListFilters,
 } from '@/modules/balones/cilindros/interfaces/balon.interface'
 import {
+  balonToSelectOption,
   usePosBalonSelect,
   type PosBalonSelectMode,
 } from '@/modules/ventas/comprobantes/composables/usePosBalonSelect'
@@ -140,11 +141,31 @@ const {
 
 const resolvedEmptyText = computed(() => props.emptyText)
 
+/**
+ * Último balón seleccionado. Se conserva aunque la búsqueda se limpie y el
+ * refetch ya no lo traiga (p. ej. se buscó por código y no está en los primeros
+ * 50 resultados). Sin esto el select borraba la selección recién hecha.
+ */
+const selectedBalon = ref<Balon | null>(null)
+
 function resolveSelectedBalon(): Balon | null {
   if (!model.value) return null
   const rows = balonesQuery.data.value?.data ?? []
   return rows.find((item) => item.id === Number(model.value)) ?? null
 }
+
+const opcionesConSeleccionado = computed(() => {
+  const opciones = balonOptions.value
+  if (!model.value) return opciones
+  if (opciones.some((opcion) => String(opcion.value) === String(model.value))) {
+    return opciones
+  }
+  const balon = selectedBalon.value
+  if (balon && String(balon.id) === String(model.value)) {
+    return [...opciones, balonToSelectOption(balon)]
+  }
+  return opciones
+})
 
 function syncEtiqueta() {
   if (!model.value) {
@@ -156,7 +177,23 @@ function syncEtiqueta() {
 }
 
 function emitSelected() {
-  emit('selected', resolveSelectedBalon())
+  const encontrado = resolveSelectedBalon()
+  if (encontrado) {
+    selectedBalon.value = encontrado
+    emit('selected', encontrado)
+    return
+  }
+  if (!model.value) {
+    selectedBalon.value = null
+    emit('selected', null)
+    return
+  }
+  // Si el refetch ya no trae el balón, mantener el último seleccionado.
+  const cacheado =
+    selectedBalon.value && String(selectedBalon.value.id) === String(model.value)
+      ? selectedBalon.value
+      : null
+  emit('selected', cacheado)
 }
 
 watch(
@@ -200,7 +237,7 @@ watch(
 
 // Si el valor ya no está en el listado filtrado (p. ej. era propio del cliente), limpiarlo.
 // No limpiar mientras carga: la lista puede venir vacía de forma temporal.
-watch(balonOptions, (options) => {
+watch(opcionesConSeleccionado, (options) => {
   if (balonesQuery.isLoading.value || balonesQuery.isFetching.value) return
 
   // Tras un escaneo: si el filtro dejó un único cilindro, seleccionarlo directo.
