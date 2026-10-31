@@ -9,8 +9,8 @@
       Cargando…
     </div>
     <div v-else class="space-y-4">
-      <p v-if="manual" class="text-sm text-gray-600 dark:text-gray-400">Ingresa ambas lecturas. Solo los m³ de retorno se suman al stock; los decimales se conservan.</p>
-      <p v-else class="text-sm text-gray-600 dark:text-gray-400">Ruta anterior: conserva el cálculo por libras y no genera un reingreso adicional de gas al stock.</p>
+      <p v-if="manual" class="text-sm text-gray-600 dark:text-gray-400">Ingresa ambas lecturas para el historial. El retorno no modifica el inventario.</p>
+      <p v-else class="text-sm text-gray-600 dark:text-gray-400">Ruta anterior: conserva el cálculo por libras como registro histórico, sin modificar el inventario.</p>
       <!-- Cilindros -->
       <div v-if="filas.length > 0">
         <p class="mb-2 text-sm font-medium text-gray-800 dark:text-white/90">Cilindros</p>
@@ -47,7 +47,7 @@
               v-if="manual"
               v-model="det.m3Retorno"
               label="m³ de retorno"
-              hint="Se sumarán al stock del almacén"
+              hint="Lectura para el historial; no modifica stock"
               type="number"
               step="0.0001"
               min="0"

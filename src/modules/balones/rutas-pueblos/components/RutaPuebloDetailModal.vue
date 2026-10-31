@@ -144,7 +144,7 @@ const sections = computed<DetailSection[]>(() => {
         },
         {
           label: 'Control del gas',
-          value: r.control_gas_manual ? 'Libras y m³ manuales; el stock usa los m³' : `Conversión anterior: ${formatDetailCantidad(Number(r.factor_lb_m3))} m³/lb`,
+          value: r.control_gas_manual ? 'Libras y m³ manuales; registro histórico sin efecto en inventario' : `Conversión anterior: ${formatDetailCantidad(Number(r.factor_lb_m3))} m³/lb`,
         },
         {
           label: 'Tolerancia',

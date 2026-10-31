@@ -41,7 +41,7 @@ export function createBalonesRutasPueblosTutorial(options: TutorialOptions = {})
       popover: {
         title: '4. Cilindros a enviar',
         description:
-          'Añade cada cilindro e ingresa manualmente sus libras y m³ de salida. Al retornar se ingresan ambas lecturas otra vez. El stock utiliza los m³, sin convertir libras.',
+          'Añade cada cilindro e ingresa manualmente sus libras y m³ de salida. Al retornar se ingresan ambas lecturas otra vez. Las lecturas se guardan como historial y no modifican el inventario.',
         side: 'top',
         align: 'start',
       },
@@ -59,7 +59,7 @@ export function createBalonesRutasPueblosTutorial(options: TutorialOptions = {})
       element: '[data-tutorial="ruta-guardar"]',
       popover: {
         title: '6. Crear ruta',
-        description: 'La ruta queda ABIERTA, sin descontar gas todavía. Al iniciarla se descuentan los m³ de salida; después se registra el retorno y se cierra.',
+        description: 'La ruta queda ABIERTA. Puedes iniciarla, registrar el retorno y cerrarla como historial; ninguna etapa modifica el inventario.',
         side: 'top',
         align: 'end',
         onNextClick: closeModalThenNext(),
@@ -87,10 +87,10 @@ export function createBalonesRutasPueblosTutorial(options: TutorialOptions = {})
       popover: {
         title: '9. Ciclo de la ruta',
         description: `${bulletList([
-          ['Iniciar ruta', 'descuenta los m³ de salida del stock y pone los cilindros en ruta.'],
-          ['Registrar retorno', 'ingresa las libras y m³ que vuelven; solo los m³ retornados se suman al stock.'],
-          ['Cerrar ruta', 'compara el consumo con los m³ de ventas reportados, sin descontar stock otra vez.'],
-          ['Cancelar / Eliminar', 'rutas que no salieron.'],
+          ['Iniciar ruta', 'cambia el estado del registro a En ruta, sin mover stock ni cilindros.'],
+          ['Registrar retorno', 'guarda las libras y m³ que vuelven como historial, sin sumar stock.'],
+          ['Cerrar ruta', 'compara el consumo con los m³ de ventas reportados, sin modificar stock.'],
+          ['Cancelar / Eliminar', 'administra el registro, sin modificar el inventario.'],
         ])}`,
         side: 'left',
         align: 'center',

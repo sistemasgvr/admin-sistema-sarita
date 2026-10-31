@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Nueva ruta pueblos"
-    subtitle="Ingresa las libras y los m³ de cada cilindro. El stock se descuenta al iniciar la ruta."
+    subtitle="Registro histórico de salida y retorno. Esta ruta no modifica el inventario."
     size="lg"
   >
     <div class="space-y-4">
@@ -67,7 +67,7 @@
             v-model="linea.m3Salida"
             class="min-w-0"
             label="m³ de salida"
-            help="Cantidad manual para el stock"
+            help="Lectura manual para el historial"
             type="number"
             step="0.0001"
             min="0"

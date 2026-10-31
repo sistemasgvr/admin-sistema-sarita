@@ -1,7 +1,8 @@
 // Vite en E2E_BASE_URL o http://127.0.0.1:5188. API simulada, sin stock real.
 const { chromium, expect } = require('@playwright/test')
 ;(async () => {
-  const browser = await chromium.launch({ headless: true })
+  const browser = await chromium.launch({ headless: true,
+    ...(process.env.E2E_BROWSER_CHANNEL ? {channel:process.env.E2E_BROWSER_CHANNEL} : {}) })
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
   const user = { id: 42, nombre: 'Prueba', estado: true, roles: [], permisos: [
     'rutas_pueblos.listar','rutas_pueblos.crear','rutas_pueblos.ver','rutas_pueblos.editar',
@@ -52,6 +53,7 @@ const { chromium, expect } = require('@playwright/test')
     await page.goto((process.env.E2E_BASE_URL || 'http://127.0.0.1:5188')+'/admin/balones/rutas-pueblos')
     await page.getByRole('button',{name:'Nueva ruta',exact:true}).click()
     let modal=page.getByRole('dialog')
+    await expect(modal).toContainText('Esta ruta no modifica el inventario.')
     await modal.getByLabel(/^Almacén/).click()
     await page.getByRole('option').filter({hasText:'PRINCIPAL'}).click()
     await modal.getByLabel(/^Cilindro/).click()
@@ -62,10 +64,14 @@ const { chromium, expect } = require('@playwright/test')
     await modal.getByRole('button',{name:'Crear ruta',exact:true}).click()
     await expect.poll(()=>salida?.detalles[0]).toMatchObject({idBalon:101,lbSalida:1300,m3Salida:10})
     await menu('Iniciar ruta')
+    await expect(page.getByRole('dialog')).toContainText('registro histórico')
     await page.getByRole('dialog').getByRole('button',{name:'Iniciar',exact:true}).click()
     await expect.poll(()=>ruta.nombre_estado).toBe('EN_RUTA')
-    await menu('Registrar retorno')
+    await page.getByRole('button',{name:'Más acciones',exact:true}).click()
+    await expect(page.getByRole('menuitem',{name:'Cancelar',exact:true})).toBeVisible()
+    await page.getByRole('menuitem',{name:'Registrar retorno',exact:true}).click()
     modal=page.getByRole('dialog')
+    await expect(modal).toContainText('El retorno no modifica el inventario.')
     await modal.getByLabel(/^Libras de retorno/).fill('350')
     await modal.getByRole('button',{name:'Guardar retorno',exact:true}).click()
     expect(retorno).toBeNull()

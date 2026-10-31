@@ -119,7 +119,7 @@
       :loading="iniciarMutation.isPending.value"
       @confirm="confirmarIniciar"
     >
-      Se descontarán del stock los m³ de salida registrados. Los cilindros pasarán a tránsito ({{ labelEstado('EN_RUTA') }}). ¿Continuar?
+      La ruta quedará en estado En ruta como registro histórico. El stock y la ubicación de los cilindros se mantienen. ¿Continuar?
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -131,9 +131,7 @@
       :loading="updateMutation.isPending.value"
       @confirm="confirmarCancelar"
     >
-      <span v-if="rutaSeleccionada?.control_gas_manual">Se cancelará la ruta abierta. El gas todavía no se ha descontado del stock.</span>
-      <span v-else>¿Cancelar la ruta? Si ya está {{ labelEstado('EN_RUTA').toLowerCase() }}, los cilindros sin
-      retorno vuelven al almacén con las lb de salida restauradas.</span>
+      ¿Cancelar este registro de ruta? Esta acción no modifica el inventario ni la ubicación de los cilindros.
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -188,7 +186,6 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { formatListDate } from '@/shared/utils/date'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
@@ -323,10 +320,6 @@ function refresh() {
   void query.refetch()
 }
 
-function labelEstado(codigo: string) {
-  return formatListaOpcionLabel(codigo)
-}
-
 function openDetail(row: RutaPueblo) {
   if (!canView.value) return
   rutaActivaId.value = row.id
@@ -367,10 +360,10 @@ function actionsFor(row: RutaPueblo): ActionMenuItem[] {
   ) {
     items.push({ key: 'cerrar', label: 'Cerrar ruta', icon: ICONS.clipboardCheck })
   }
-  if (canEdit.value && estado !== 'CERRADA' && estado !== 'CANCELADA' && (!row.control_gas_manual || estado === 'ABIERTA')) {
+  if (canEdit.value && estado !== 'CERRADA' && estado !== 'CANCELADA') {
     items.push({ key: 'cancelar', label: 'Cancelar', icon: ICONS.x, danger: true })
   }
-  if (canDelete.value && estado !== 'EN_RUTA' && (!row.control_gas_manual || estado === 'ABIERTA' || estado === 'CANCELADA')) {
+  if (canDelete.value && estado !== 'EN_RUTA') {
     items.push({ key: 'eliminar', label: 'Eliminar', icon: ICONS.trash, danger: true })
   }
   return items

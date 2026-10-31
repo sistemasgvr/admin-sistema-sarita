@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Cerrar ruta"
-    subtitle="Compara el consumo de la ruta con las ventas reportadas. El cierre no vuelve a descontar stock."
+    subtitle="Compara el consumo de la ruta con las ventas reportadas. Este registro no modifica el inventario."
     size="md"
   >
     <div v-if="rutaQuery.isPending.value" class="py-8 text-center text-sm text-gray-500">
