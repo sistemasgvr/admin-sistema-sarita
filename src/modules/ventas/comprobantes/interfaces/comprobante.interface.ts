@@ -188,6 +188,7 @@ export interface Comprobante extends ComprobanteListItem {
   nombre_motivo_nota?: string | null
   id_moneda?: number | null
   id_medio_pago?: number | null
+  nombre_medio_pago?: string | null
   id_condicion_pago?: number | null
   nombre_condicion_pago?: string | null
   dias_credito?: number | null
