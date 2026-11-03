@@ -1,3 +1,4 @@
+import { cargarCatalogoCompleto } from '@/shared/utils/cargarCatalogoCompleto'
 import {
   apiDelete,
   apiGet,
@@ -14,6 +15,15 @@ import type {
 } from '@/modules/productos/stock/interfaces/stock.interface'
 
 export const stockService = {
+  /** Todas las coincidencias para selectores; no confundir con el listado paginado. */
+  listarCatalogo(filters: StockListFilters = {}, signal?: AbortSignal) {
+    return cargarCatalogoCompleto(
+      (pagina: StockListFilters) => apiGetPaginated<Stock>('/productos/stock', { params: pagina, signal }),
+      filters,
+      signal,
+    )
+  },
+
   listar(filters: StockListFilters = {}) {
     return apiGetPaginated<Stock>('/productos/stock', { params: filters })
   },

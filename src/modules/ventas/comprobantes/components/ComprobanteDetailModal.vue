@@ -49,6 +49,18 @@
           />
         </div>
         <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Condición de pago</p>
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+            {{ comprobante.nombre_condicion_pago || 'No registrada' }}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Medio de pago</p>
+          <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+            {{ resumenMediosPago }}
+          </p>
+        </div>
+        <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Estado SUNAT</p>
           <ListaOpcionBadge
             :value="comprobante.nombre_estado_sunat ?? 'PENDIENTE'"
@@ -75,6 +87,87 @@
           >
             Chofer: {{ comprobante.nombre_chofer_responsable }}
           </p>
+        </div>
+      </div>
+
+      <div
+        v-if="pagos.length"
+        class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
+      >
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Cobro
+          </p>
+          <button
+            v-if="puedeRegistrarCobro && !editandoCobro"
+            type="button"
+            class="text-theme-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
+            @click="iniciarEdicionCobro"
+          >
+            Editar cobro
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <div
+            v-for="pago in pagos"
+            :key="pago.id"
+            class="rounded-lg border border-gray-100 p-2 dark:border-gray-800"
+          >
+            <div class="flex flex-wrap items-baseline justify-between gap-2">
+              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
+                {{ pago.nombre_medio_pago || '—' }}
+                <span v-if="pago.cuenta_bancaria" class="font-normal text-gray-500">
+                  · {{ pago.cuenta_bancaria }}
+                </span>
+              </p>
+              <p class="text-sm font-semibold tabular-nums text-gray-800 dark:text-white/90">
+                {{ formatCurrency(Number(pago.monto)) }}
+              </p>
+            </div>
+
+            <div v-if="editandoCobro && edicionCobro[pago.id]" class="mt-2">
+              <MedioPagoCuentaField
+                v-model:id-medio-pago="edicionCobro[pago.id].idMedioPago"
+                v-model:id-cuenta-bancaria="edicionCobro[pago.id].idCuentaBancaria"
+                v-model:numero-operacion="edicionCobro[pago.id].numeroOperacion"
+                v-model:valido="edicionCobro[pago.id].valido"
+                medio-requerido
+                excluir-credito
+                mostrar-siempre-numero-operacion
+                numero-operacion-opcional
+                mostrar-errores
+                :disabled="guardandoCobro"
+              />
+            </div>
+            <p v-else class="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
+              {{ pago.numero_operacion ? `N° op. ${pago.numero_operacion}` : 'Sin N° de operación' }}
+            </p>
+          </div>
+        </div>
+
+        <p v-if="editandoCobro" class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
+          Si cambias de un medio que entra a caja (efectivo, Yape, Plin) a otro, o al revés, la caja
+          del {{ formatListDate(comprobante.fecha) }} debe seguir abierta.
+        </p>
+
+        <div v-if="editandoCobro" class="mt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
+            :disabled="guardandoCobro"
+            @click="editandoCobro = false"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
+            :disabled="guardandoCobro"
+            @click="guardarCobro"
+          >
+            {{ guardandoCobro ? 'Guardando...' : 'Guardar' }}
+          </button>
         </div>
       </div>
 
@@ -300,87 +393,6 @@
       </div>
 
       <div
-        v-if="pagos.length"
-        class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
-      >
-        <div class="mb-2 flex items-center justify-between gap-2">
-          <p class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Cobro
-          </p>
-          <button
-            v-if="puedeRegistrarCobro && !editandoCobro"
-            type="button"
-            class="text-theme-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
-            @click="iniciarEdicionCobro"
-          >
-            Editar cobro
-          </button>
-        </div>
-
-        <div class="space-y-2">
-          <div
-            v-for="pago in pagos"
-            :key="pago.id"
-            class="rounded-lg border border-gray-100 p-2 dark:border-gray-800"
-          >
-            <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <p class="text-sm font-medium text-gray-800 dark:text-white/90">
-                {{ pago.nombre_medio_pago || '—' }}
-                <span v-if="pago.cuenta_bancaria" class="font-normal text-gray-500">
-                  · {{ pago.cuenta_bancaria }}
-                </span>
-              </p>
-              <p class="text-sm font-semibold tabular-nums text-gray-800 dark:text-white/90">
-                {{ formatCurrency(Number(pago.monto)) }}
-              </p>
-            </div>
-
-            <div v-if="editandoCobro && edicionCobro[pago.id]" class="mt-2">
-              <MedioPagoCuentaField
-                v-model:id-medio-pago="edicionCobro[pago.id].idMedioPago"
-                v-model:id-cuenta-bancaria="edicionCobro[pago.id].idCuentaBancaria"
-                v-model:numero-operacion="edicionCobro[pago.id].numeroOperacion"
-                v-model:valido="edicionCobro[pago.id].valido"
-                medio-requerido
-                excluir-credito
-                mostrar-siempre-numero-operacion
-                numero-operacion-opcional
-                mostrar-errores
-                :disabled="guardandoCobro"
-              />
-            </div>
-            <p v-else class="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
-              {{ pago.numero_operacion ? `N° op. ${pago.numero_operacion}` : 'Sin N° de operación' }}
-            </p>
-          </div>
-        </div>
-
-        <p v-if="editandoCobro" class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
-          Si cambias de un medio que entra a caja (efectivo, Yape, Plin) a otro, o al revés, la caja
-          del {{ formatListDate(comprobante.fecha) }} debe seguir abierta.
-        </p>
-
-        <div v-if="editandoCobro" class="mt-3 flex justify-end gap-2">
-          <button
-            type="button"
-            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
-            :disabled="guardandoCobro"
-            @click="editandoCobro = false"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-70"
-            :disabled="guardandoCobro"
-            @click="guardarCobro"
-          >
-            {{ guardandoCobro ? 'Guardando...' : 'Guardar' }}
-          </button>
-        </div>
-      </div>
-
-      <div
         v-if="puedePdf"
         class="rounded-xl border border-gray-200 p-3 dark:border-gray-800"
       >
@@ -588,6 +600,12 @@ const comprobante = computed(() => comprobanteQuery.data.value)
  * de la fecha abierta si el cambio la afecta). El importe no se toca.
  */
 const pagos = computed<ComprobantePago[]>(() => comprobante.value?.pagos ?? [])
+const resumenMediosPago = computed(() => {
+  const nombres = [...new Set(pagos.value.map((pago) => pago.nombre_medio_pago).filter(Boolean))]
+  return nombres.length
+    ? nombres.join(' / ')
+    : comprobante.value?.nombre_medio_pago || 'No registrado'
+})
 
 /**
  * El detalle de una venta con gas + préstamo + garantía se arma con tres

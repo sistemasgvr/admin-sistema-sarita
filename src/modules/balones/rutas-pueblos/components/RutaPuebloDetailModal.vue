@@ -28,6 +28,12 @@
             <template #cell-lb_retorno="{ value }">
               <span class="tabular-nums">{{ value != null && value !== '' ? formatLb(value) : '—' }}</span>
             </template>
+            <template #cell-m3_salida="{ value }">
+              <span class="tabular-nums">{{ value != null ? formatM3(value) : '—' }}</span>
+            </template>
+            <template #cell-m3_retorno="{ value }">
+              <span class="tabular-nums">{{ value != null ? formatM3(value) : '—' }}</span>
+            </template>
             <template #cell-m3_delta="{ value }">
               <span class="tabular-nums">{{ value != null && value !== '' ? formatM3(value) : '—' }}</span>
             </template>
@@ -106,7 +112,7 @@ function formatLb(value: unknown) {
 
 function formatM3(value: unknown) {
   const n = Number(value)
-  return Number.isFinite(n) ? `${n.toFixed(3)} m³` : '—'
+  return Number.isFinite(n) ? `${n.toFixed(4)} m³` : '—'
 }
 
 const detalleColumns: TableColumn[] = [
@@ -114,6 +120,8 @@ const detalleColumns: TableColumn[] = [
   { key: 'nombre_tipo_balon', label: 'Tipo' },
   { key: 'lb_salida', label: 'Lb salida', align: 'right' },
   { key: 'lb_retorno', label: 'Lb retorno', align: 'right' },
+  { key: 'm3_salida', label: 'm³ salida', align: 'right' },
+  { key: 'm3_retorno', label: 'm³ retorno', align: 'right' },
   { key: 'm3_delta', label: 'm³ usados', align: 'right' },
   { key: 'estado_cil', label: 'Estado' },
 ]
@@ -135,8 +143,8 @@ const sections = computed<DetailSection[]>(() => {
           value: r.nombre_usuario_responsable || '—',
         },
         {
-          label: 'Factor lb → m³',
-          value: formatDetailCantidad(Number(r.factor_lb_m3)),
+          label: 'Control del gas',
+          value: r.control_gas_manual ? 'Libras y m³ manuales; registro histórico sin efecto en inventario' : `Conversión anterior: ${formatDetailCantidad(Number(r.factor_lb_m3))} m³/lb`,
         },
         {
           label: 'Tolerancia',
@@ -149,8 +157,16 @@ const sections = computed<DetailSection[]>(() => {
       icon: ICONS.clipboardCheck,
       items: [
         {
-          label: 'm³ calculado',
+          label: r.control_gas_manual ? 'Consumo (salida − retorno)' : 'Consumo registrado (total truncado)',
           value: `${formatDetailCantidad(Number(r.m3_calculado ?? 0))} m³`,
+        },
+        {
+          label: 'Consumo exacto',
+          value: r.m3_calculado_exacto != null ? formatM3(r.m3_calculado_exacto) : '—',
+        },
+        {
+          label: 'Ajuste por truncamiento',
+          value: r.observacion_truncamiento || 'Sin ajuste',
         },
         {
           label: 'm³ reportado',

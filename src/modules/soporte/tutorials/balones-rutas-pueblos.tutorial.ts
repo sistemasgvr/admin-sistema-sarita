@@ -41,7 +41,7 @@ export function createBalonesRutasPueblosTutorial(options: TutorialOptions = {})
       popover: {
         title: '4. Cilindros a enviar',
         description:
-          'Añade cada cilindro lleno que sube al vehículo con sus libras al salir. Al retornar se pesan de nuevo y la diferencia es el gas vendido.',
+          'Añade cada cilindro e ingresa manualmente sus libras y m³ de salida. Al retornar se ingresan ambas lecturas otra vez. Las lecturas se guardan como historial y no modifican el inventario.',
         side: 'top',
         align: 'start',
       },
@@ -59,7 +59,7 @@ export function createBalonesRutasPueblosTutorial(options: TutorialOptions = {})
       element: '[data-tutorial="ruta-guardar"]',
       popover: {
         title: '6. Crear ruta',
-        description: 'La ruta queda PROGRAMADA. Desde el listado se inicia, se registra el retorno y se cierra.',
+        description: 'La ruta queda ABIERTA. Puedes iniciarla, registrar el retorno y cerrarla como historial; ninguna etapa modifica el inventario.',
         side: 'top',
         align: 'end',
         onNextClick: closeModalThenNext(),
@@ -78,7 +78,7 @@ export function createBalonesRutasPueblosTutorial(options: TutorialOptions = {})
       popover: {
         title: '8. Ver detalle',
         description:
-          'Cilindros y productos enviados, libras de salida y retorno, m³ vendidos y el descuadre si lo hubiera.',
+          'Cilindros enviados, libras y m³ manuales de salida y retorno, consumo de gas y descuadre.',
         side: 'left',
         align: 'center',
       },
@@ -87,10 +87,10 @@ export function createBalonesRutasPueblosTutorial(options: TutorialOptions = {})
       popover: {
         title: '9. Ciclo de la ruta',
         description: `${bulletList([
-          ['Iniciar ruta', 'el chofer sale; los cilindros pasan a estar en ruta.'],
-          ['Registrar retorno', 'se pesan los cilindros que vuelven y se anotan las ventas y cobros.'],
-          ['Cerrar ruta', 'concilia gas vendido contra dinero rendido; marca el descuadre.'],
-          ['Cancelar / Eliminar', 'rutas que no salieron.'],
+          ['Iniciar ruta', 'cambia el estado del registro a En ruta, sin mover stock ni cilindros.'],
+          ['Registrar retorno', 'guarda las libras y m³ que vuelven como historial, sin sumar stock.'],
+          ['Cerrar ruta', 'compara el consumo con los m³ de ventas reportados, sin modificar stock.'],
+          ['Cancelar / Eliminar', 'administra el registro, sin modificar el inventario.'],
         ])}`,
         side: 'left',
         align: 'center',

@@ -54,7 +54,7 @@
 import { computed, ref, watch } from 'vue'
 import ProductoBarcodeScanModal from '@/modules/productos/articulos/components/ProductoBarcodeScanModal.vue'
 import ProductoFormModal from '@/modules/productos/articulos/components/ProductoFormModal.vue'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useProductosCatalogoQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type {
   Producto,
   ProductoListFilters,
@@ -76,7 +76,7 @@ const props = withDefaults(
     searchable?: boolean
     /**
      * true = cada tecla consulta API.
-     * false = carga catálogo filtrado y filtra en cliente.
+     * false = carga todas las páginas del catálogo filtrado y filtra en cliente.
      * omitir = auto (catálogos gas/servicio/alquilable → local; resto → remoto).
      */
     remote?: boolean
@@ -169,7 +169,7 @@ const scanFilters = computed<BuscarProductoPorCodigoFilters>(() => {
   return filters
 })
 
-/** Catálogos acotados: carga una vez + filtro local (mismo patrón que POS Recarga). */
+/** El modo local también carga todas las páginas antes de permitir el filtro en pantalla. */
 const useRemote = computed(() => {
   if (props.remote !== undefined) return props.remote
   const catalogoAcotado =
@@ -204,7 +204,7 @@ function buildFilters(buscar?: string): ProductoListFilters {
 }
 
 const productosFilters = ref<ProductoListFilters>(buildFilters())
-const productosQuery = useProductosQuery(productosFilters)
+const productosQuery = useProductosCatalogoQuery(productosFilters)
 
 const isFetchingProductos = computed(() => productosQuery.isFetching.value)
 const isLoadingProductos = computed(() => productosQuery.isLoading.value)

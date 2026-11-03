@@ -52,9 +52,9 @@
 
       <template #cell-m3="{ row }">
         <div class="text-right text-sm tabular-nums">
-          <p>{{ Number(row.m3_calculado ?? 0).toFixed(2) }} calc.</p>
+          <p>{{ Number(row.m3_calculado ?? 0).toFixed(row.control_gas_manual ? 4 : 2) }} calc.</p>
           <p v-if="row.m3_reportado_ventas != null" class="text-xs text-gray-500">
-            {{ Number(row.m3_reportado_ventas).toFixed(2) }} rep.
+            {{ Number(row.m3_reportado_ventas).toFixed(row.control_gas_manual ? 4 : 2) }} rep.
           </p>
         </div>
       </template>
@@ -119,7 +119,7 @@
       :loading="iniciarMutation.isPending.value"
       @confirm="confirmarIniciar"
     >
-      Los cilindros pasarán a tránsito ({{ labelEstado('EN_RUTA') }}). ¿Continuar?
+      La ruta quedará en estado En ruta como registro histórico. El stock y la ubicación de los cilindros se mantienen. ¿Continuar?
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -131,8 +131,7 @@
       :loading="updateMutation.isPending.value"
       @confirm="confirmarCancelar"
     >
-      ¿Cancelar la ruta? Si ya está {{ labelEstado('EN_RUTA').toLowerCase() }}, los cilindros sin
-      retorno vuelven al almacén con las lb de salida restauradas.
+      ¿Cancelar este registro de ruta? Esta acción no modifica el inventario ni la ubicación de los cilindros.
     </AppConfirmDialog>
 
     <AppConfirmDialog
@@ -187,7 +186,6 @@ import {
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { formatListDate } from '@/shared/utils/date'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
@@ -320,10 +318,6 @@ const columns = [
 
 function refresh() {
   void query.refetch()
-}
-
-function labelEstado(codigo: string) {
-  return formatListaOpcionLabel(codigo)
 }
 
 function openDetail(row: RutaPueblo) {

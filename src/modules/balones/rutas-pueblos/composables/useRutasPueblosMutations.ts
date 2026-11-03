@@ -1,3 +1,6 @@
+import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
+import { stockGasQueryKeys } from '@/modules/balones/stock-gas/constants/stockGasQueryKeys'
+import { inventarioMovimientosQueryKeys } from '@/modules/inventario/constants/inventarioMovimientosQueryKeys'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { rutasPueblosQueryKeys } from '@/modules/balones/rutas-pueblos/constants/rutasPueblosQueryKeys'
 import type {
@@ -13,6 +16,9 @@ import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/
 function invalidate(queryClient: ReturnType<typeof useQueryClient>, id?: number) {
   queryClient.invalidateQueries({ queryKey: rutasPueblosQueryKeys.all })
   queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: stockGasQueryKeys.all })
+  queryClient.invalidateQueries({ queryKey: inventarioMovimientosQueryKeys.all })
   if (id) {
     queryClient.invalidateQueries({ queryKey: rutasPueblosQueryKeys.detail(id) })
   }
@@ -68,7 +74,7 @@ export function useRegistrarRetornoRutaPuebloMutation() {
     }) => rutasPueblosService.registrarRetorno(id, payload),
     onSuccess: (_d, v) => {
       invalidate(queryClient, v.id)
-      toastSuccess('Retorno registrado · residual actualizado')
+      toastSuccess('Retorno registrado · stock actualizado')
     },
     onError: (error) => toastApiError(error, 'No se pudo registrar el retorno'),
   })

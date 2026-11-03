@@ -618,7 +618,7 @@ const onSubmit = handleSubmit(async (values) => {
 
       let idProductoStock: number | undefined
       try {
-        const listado = await productosService.listar({
+        const listado = await productosService.listarCatalogo({
           esAlquilable: true,
           idAlmacen: almacen,
           pagina: 1,

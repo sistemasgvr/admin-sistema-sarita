@@ -1172,7 +1172,7 @@ import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import { useSucursalesQuery } from '@/modules/configuracion/sucursales/composables/useSucursalesQuery'
 import { useCondicionesPagoQuery } from '@/modules/configuracion/condiciones-pago/composables/useCondicionesPagoQuery'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useProductosCatalogoQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
 import {
   useRecargaPlantaQuery,
@@ -2447,7 +2447,7 @@ const productosFilters = ref({
   buscar: undefined as string | undefined,
   idAlmacen: undefined as number | undefined,
 })
-const productosQuery = useProductosQuery(productosFilters)
+const productosQuery = useProductosCatalogoQuery(productosFilters)
 const lineaIdProducto = ref<number | ''>('')
 const lineaProductoBuscar = ref('')
 let productoBuscarTimeout: ReturnType<typeof setTimeout> | undefined

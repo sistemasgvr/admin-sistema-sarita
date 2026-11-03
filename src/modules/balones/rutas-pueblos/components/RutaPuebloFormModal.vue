@@ -2,7 +2,7 @@
   <AppModal
     v-model="open"
     title="Nueva ruta pueblos"
-    subtitle="Lb de salida mayor a 0, sin superar la capacidad del tipo."
+    subtitle="Registro histórico de salida y retorno. Esta ruta no modifica el inventario."
     size="lg"
   >
     <div class="space-y-4">
@@ -34,40 +34,48 @@
         <div
           v-for="(linea, index) in lineas"
           :key="linea.key"
-          class="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-[1fr_140px_auto] dark:border-gray-800"
+          class="grid grid-cols-[minmax(0,1fr)_40px] items-end gap-3 rounded-lg border border-gray-200 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] md:grid-cols-[minmax(0,1fr)_140px_150px_40px] dark:border-gray-800"
         >
-          <PosBalonSelectField
-            v-model="linea.idBalon"
-            mode="general"
-            label="Cilindro"
-            :id-almacen="idAlmacen"
-            :extra-filters="balonExtraFilters"
-            :client-filter="filtroBalonLinea(linea)"
-            :selection-locked="!idAlmacen"
-            :empty-text="
-              idAlmacen
-                ? 'Sin cilindros disponibles (en almacén o ya agregados).'
-                : 'Selecciona el almacén primero.'
-            "
-            required
-            @selected="(balon) => onBalonSelected(linea, balon)"
-          />
+          <div class="col-span-2 min-w-0 sm:col-span-3 md:col-span-1">
+            <PosBalonSelectField
+              v-model="linea.idBalon"
+              mode="general"
+              label="Cilindro"
+              :id-almacen="idAlmacen"
+              :extra-filters="balonExtraFilters"
+              :client-filter="filtroBalonLinea(linea)"
+              :selection-locked="!idAlmacen"
+              :empty-text="
+                idAlmacen
+                  ? 'Sin cilindros disponibles (en almacén o ya agregados).'
+                  : 'Selecciona el almacén primero.'
+              "
+              required
+              @selected="(balon) => onBalonSelected(linea, balon)"
+            />
+          </div>
           <AppInput
             v-model="linea.lbSalida"
-            label="Libras al salir"
+            class="col-span-2 min-w-0 sm:col-span-1"
+            label="Libras de salida"
             type="number"
             step="0.01"
-            min="0.01"
-            :hint="
-              linea.capacidadLbMax != null
-                ? `Máx. ${linea.capacidadLbMax} lb`
-                : undefined
-            "
+            min="0"
+            required
+          />
+          <AppInput
+            v-model="linea.m3Salida"
+            class="min-w-0"
+            label="m³ de salida"
+            help="Lectura manual para el historial"
+            type="number"
+            step="0.0001"
+            min="0"
             required
           />
           <button
             type="button"
-            class="mt-6 inline-flex h-10 w-10 items-center justify-center self-start rounded-lg border border-gray-300 text-error-500"
+            class="inline-flex h-11 w-10 items-center justify-center self-end rounded-lg border border-gray-300 text-error-500"
             title="Quitar"
             @click="lineas.splice(index, 1)"
           >
@@ -167,7 +175,7 @@ import { ListaIds } from '@/shared/constants/lista-ids'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { toastWarning } from '@/shared/composables/useToast'
 import { hoyIsoLima } from '@/shared/utils/date'
-import { useProductosQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
+import { useProductosCatalogoQuery } from '@/modules/productos/articulos/composables/useProductosQuery'
 import type { ProductoListFilters } from '@/modules/productos/articulos/interfaces/producto.interface'
 
 const open = defineModel<boolean>({ default: false })
@@ -197,7 +205,7 @@ const choferOptions = computed(() =>
 
 // Productos
 const productosFilters = ref<ProductoListFilters>({ pagina: 1, limite: 200 })
-const productosQuery = useProductosQuery(productosFilters)
+const productosQuery = useProductosCatalogoQuery(productosFilters)
 
 const productoOptionsAll = computed(() =>
   (productosQuery.data.value?.data ?? [])
@@ -215,8 +223,7 @@ type LineaBalon = {
   codigoBalon: string | null
   nombreTipoBalon: string | null
   lbSalida: string
-  capacidadLbMax: number | null
-  sugerenciaOrigen: 'residual' | 'tipo' | null
+  m3Salida: string
 }
 
 type LineaProducto = {
@@ -234,8 +241,7 @@ function emptyLinea(): LineaBalon {
     codigoBalon: null,
     nombreTipoBalon: null,
     lbSalida: '',
-    capacidadLbMax: null,
-    sugerenciaOrigen: null,
+    m3Salida: '',
   }
 }
 
@@ -299,31 +305,6 @@ function filtroProductoOpciones(lineaKey: string) {
   return productoOptionsAll.value.filter((opt) => !idsOcupados.has(opt.value))
 }
 
-function roundLb(n: number) {
-  return Math.round(n * 100) / 100
-}
-
-function sugerirLbDesdeBalon(balon: Balon): {
-  lb: number | null
-  max: number | null
-  origen: LineaBalon['sugerenciaOrigen']
-} {
-  const tipoLb = Number(balon.capacidad_lb)
-  const max = Number.isFinite(tipoLb) && tipoLb > 0 ? tipoLb : null
-  let lb: number | null = null
-  let origen: LineaBalon['sugerenciaOrigen'] = null
-
-  if (max != null) {
-    lb = max
-    origen = 'tipo'
-  }
-
-  if (lb != null && max != null) lb = Math.min(lb, max)
-  if (lb != null) lb = roundLb(lb)
-
-  return { lb, max, origen }
-}
-
 function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
   if (!balon) {
     linea.ultimoBalonId = null
@@ -337,34 +318,24 @@ function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
   const { max, origen } = sugerirLbDesdeBalon(balon)
   const cambioBalon = linea.ultimoBalonId !== balon.id
   linea.ultimoBalonId = balon.id
-  linea.codigoBalon = balon.codigo_balon?.trim() || null
-  linea.nombreTipoBalon = balon.nombre_tipo_balon?.trim() || null
   linea.capacidadLbMax = max
   linea.sugerenciaOrigen = origen
   // Solo limpiar cuando realmente cambió el cilindro: el select reemite
   // `selected` al refrescar opciones y no debe borrar lo que se está digitando.
-  if (cambioBalon) {
-    linea.lbSalida = ''
-    if (max == null) {
-      const codigo = linea.codigoBalon || `#${balon.id}`
-      toastWarning(
-        `El cilindro ${codigo} no tiene "Capacidad llena (lb)" configurada en su tipo.`,
-      )
-    }
-  }
+  if (cambioBalon) linea.lbSalida = ''
 }
 
 function lbSalidaValida(value: string) {
   if (value === '') return false
   const n = Number(value)
-  return Number.isFinite(n) && n > 0
+  return Number.isFinite(n) && n >= 0
 }
 
 const saving = computed(() => createMutation.isPending.value)
 const canSave = computed(
   () =>
     Boolean(idAlmacen.value) &&
-    (lineas.value.some((l) => l.idBalon && lbSalidaValida(l.lbSalida)) ||
+    (lineas.value.some((l) => l.idBalon && lbSalidaValida(l.lbSalida) && lbSalidaValida(l.m3Salida)) ||
       lineasProducto.value.some((l) => l.idProducto && Number(l.cantidad) > 0)),
 )
 
@@ -383,8 +354,7 @@ watch(idAlmacen, () => {
     linea.codigoBalon = null
     linea.nombreTipoBalon = null
     linea.lbSalida = ''
-    linea.capacidadLbMax = null
-    linea.sugerenciaOrigen = null
+    linea.m3Salida = ''
   }
   for (const linea of lineasProducto.value) {
     linea.idProducto = ''
@@ -406,12 +376,17 @@ async function guardar() {
   const userId = authStore.user?.id
   if (!userId || !idAlmacen.value) return
 
+  if (lineas.value.some(l => l.idBalon && (!lbSalidaValida(l.lbSalida) || !lbSalidaValida(l.m3Salida)))) {
+    toastWarning('Completa las libras y los m³ de salida (≥ 0) de cada cilindro')
+    return
+  }
+
   const detalles = lineas.value
     .filter((l) => l.idBalon)
     .map((l) => ({
       idBalon: Number(l.idBalon),
       lbSalida: Number(l.lbSalida),
-      capacidadLbMax: l.capacidadLbMax,
+      m3Salida: Number(l.m3Salida),
     }))
 
   const detallesProductos = lineasProducto.value
@@ -479,7 +454,7 @@ async function guardar() {
     idChofer: idChofer.value ? Number(idChofer.value) : undefined,
     observacion: observacion.value.trim() || undefined,
     detalles: detalles.length > 0
-      ? detalles.map(({ idBalon, lbSalida }) => ({ idBalon, lbSalida }))
+      ? detalles.map(({ idBalon, lbSalida, m3Salida }) => ({ idBalon, lbSalida, m3Salida }))
       : undefined,
     detallesProductos: detallesProductos.length > 0 ? detallesProductos : undefined,
   })

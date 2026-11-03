@@ -498,7 +498,7 @@ import type {
   DocSalidaProductoCantidad,
 } from '@/modules/documentos-salida/interfaces/documento-salida.interface'
 import ProductoSelectField from '@/modules/productos/articulos/components/ProductoSelectField.vue'
-import { useStockQuery } from '@/modules/productos/stock/composables/useStockQuery'
+import { useStockCatalogoQuery } from '@/modules/productos/stock/composables/useStockQuery'
 import { AppBadge, AppSelectSearch } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -549,14 +549,14 @@ const productos = computed(() => props.lineas.filter((linea) => linea.tipo === '
 
 // ---- Stock en el almacén de la orden ----
 // Se consulta el stock y no el catálogo de productos: cubre cualquier producto
-// (gas o no) con una sola llamada, y solo trae los que tienen existencias en
+// (gas o no) recorriendo todas las páginas del almacén. Solo trae el stock en
 // ESE almacén, que es justo el tope de la cantidad que puede salir.
 const stockFiltros = computed(() => ({
   pagina: 1,
   limite: 500,
   idAlmacen: props.idAlmacen != null ? Number(props.idAlmacen) : undefined,
 }))
-const stockQuery = useStockQuery(stockFiltros, () => props.idAlmacen != null)
+const stockQuery = useStockCatalogoQuery(stockFiltros, () => props.idAlmacen != null)
 
 const stockPorProducto = computed(() => {
   const mapa = new Map<

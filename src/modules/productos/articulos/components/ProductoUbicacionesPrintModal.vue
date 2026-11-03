@@ -154,7 +154,7 @@ const filteredProductos = computed(() => {
 const loadProductos = async () => {
   isLoading.value = true
   try {
-    const response = await productosService.listar({
+    const response = await productosService.listarCatalogo({
       pagina: 1,
       limite: 500,
       soloActivos: 1,
