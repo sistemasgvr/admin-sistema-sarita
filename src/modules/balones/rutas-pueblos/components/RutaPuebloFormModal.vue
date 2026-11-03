@@ -211,8 +211,9 @@ const productoOptionsAll = computed(() =>
 type LineaBalon = {
   key: string
   idBalon: number | ''
-  /** Último cilindro para el que se inicializó la línea (evita borrar lo digitado). */
   ultimoBalonId: number | null
+  codigoBalon: string | null
+  nombreTipoBalon: string | null
   lbSalida: string
   capacidadLbMax: number | null
   sugerenciaOrigen: 'residual' | 'tipo' | null
@@ -230,6 +231,8 @@ function emptyLinea(): LineaBalon {
     key: crypto.randomUUID(),
     idBalon: '',
     ultimoBalonId: null,
+    codigoBalon: null,
+    nombreTipoBalon: null,
     lbSalida: '',
     capacidadLbMax: null,
     sugerenciaOrigen: null,
@@ -267,14 +270,9 @@ function soloBalonEnviable(balon: Balon) {
   return true
 }
 
-/**
- * Filtro estable por línea. Si se devuelve una función nueva en cada render,
- * el select de balones se recalcula y reemite `selected`, borrando lo digitado
- * en "Libras al salir".
- */
+
 const filtrosBalonPorLinea = new WeakMap<LineaBalon, (balon: Balon) => boolean>()
 
-/** Excluye cilindros ya elegidos en otras líneas (evita duplicar el mismo código). */
 function filtroBalonLinea(linea: LineaBalon) {
   let filtro = filtrosBalonPorLinea.get(linea)
   if (!filtro) {
@@ -292,7 +290,6 @@ function filtroBalonLinea(linea: LineaBalon) {
   return filtro
 }
 
-/** Excluye productos ya elegidos en otras líneas */
 function filtroProductoOpciones(lineaKey: string) {
   const idsOcupados = new Set(
     lineasProducto.value
@@ -330,6 +327,8 @@ function sugerirLbDesdeBalon(balon: Balon): {
 function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
   if (!balon) {
     linea.ultimoBalonId = null
+    linea.codigoBalon = null
+    linea.nombreTipoBalon = null
     linea.capacidadLbMax = null
     linea.sugerenciaOrigen = null
     linea.lbSalida = ''
@@ -338,11 +337,21 @@ function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
   const { max, origen } = sugerirLbDesdeBalon(balon)
   const cambioBalon = linea.ultimoBalonId !== balon.id
   linea.ultimoBalonId = balon.id
+  linea.codigoBalon = balon.codigo_balon?.trim() || null
+  linea.nombreTipoBalon = balon.nombre_tipo_balon?.trim() || null
   linea.capacidadLbMax = max
   linea.sugerenciaOrigen = origen
   // Solo limpiar cuando realmente cambió el cilindro: el select reemite
   // `selected` al refrescar opciones y no debe borrar lo que se está digitando.
-  if (cambioBalon) linea.lbSalida = ''
+  if (cambioBalon) {
+    linea.lbSalida = ''
+    if (max == null) {
+      const codigo = linea.codigoBalon || `#${balon.id}`
+      toastWarning(
+        `El cilindro ${codigo} no tiene "Capacidad llena (lb)" configurada en su tipo.`,
+      )
+    }
+  }
 }
 
 function lbSalidaValida(value: string) {
@@ -371,6 +380,8 @@ watch(idAlmacen, () => {
   for (const linea of lineas.value) {
     linea.idBalon = ''
     linea.ultimoBalonId = null
+    linea.codigoBalon = null
+    linea.nombreTipoBalon = null
     linea.lbSalida = ''
     linea.capacidadLbMax = null
     linea.sugerenciaOrigen = null
@@ -420,12 +431,30 @@ async function guardar() {
     return
   }
 
-  const sobreTope = detalles.find(
-    (d) => d.capacidadLbMax != null && d.lbSalida > d.capacidadLbMax + 1e-9,
+  const sinCapacidad = lineas.value.filter((l) => l.idBalon && l.capacidadLbMax == null)
+  if (sinCapacidad.length > 0) {
+    const detalle = sinCapacidad
+      .map((l) => {
+        const codigo = l.codigoBalon || `#${l.idBalon}`
+        return l.nombreTipoBalon ? `${codigo} (${l.nombreTipoBalon})` : codigo
+      })
+      .join(', ')
+    toastWarning(
+      `Configura "Capacidad llena (lb)" en el tipo de: ${detalle}. Ve a Balones → Tipos de balón.`,
+    )
+    return
+  }
+
+  const sobreTope = lineas.value.find(
+    (l) =>
+      l.idBalon &&
+      l.capacidadLbMax != null &&
+      Number(l.lbSalida) > l.capacidadLbMax + 1e-9,
   )
   if (sobreTope) {
+    const codigo = sobreTope.codigoBalon || `#${sobreTope.idBalon}`
     toastWarning(
-      `Las libras de salida no pueden superar la capacidad del tipo (${sobreTope.capacidadLbMax!.toFixed(2)} lb)`,
+      `El cilindro ${codigo} no puede superar ${sobreTope.capacidadLbMax!.toFixed(2)} lb de salida`,
     )
     return
   }

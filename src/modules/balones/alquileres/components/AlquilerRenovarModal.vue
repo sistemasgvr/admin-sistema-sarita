@@ -44,6 +44,15 @@
         <AppDatePicker v-model="fechaFin" label="Fin periodo" />
       </div>
 
+      <PosPagosField
+        v-model:lineas="lineasPago"
+        v-model:efectivo-recibido="efectivoRecibido"
+        :total="montoNum"
+        :disabled="guardando"
+        @agregar="agregarLineaPago"
+        @quitar="quitarLineaPago"
+      />
+
       <p
         v-if="mensajeBloqueoCaja"
         class="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700 dark:bg-warning-500/15 dark:text-warning-400"
@@ -77,7 +86,9 @@
 import { computed, ref, watch } from 'vue'
 import { alquileresService } from '@/modules/balones/alquileres/services/alquileres.service'
 import type { Alquiler } from '@/modules/balones/alquileres/interfaces/alquiler.interface'
+import PosPagosField from '@/modules/ventas/comprobantes/components/PosPagosField.vue'
 import { useCreateComprobanteMutation } from '@/modules/ventas/comprobantes/composables/useComprobanteMutations'
+import { nuevaLineaPago, validarPagos } from '@/modules/ventas/comprobantes/utils/pagosMixtos'
 import { usePosComprobanteForm } from '@/modules/ventas/comprobantes/composables/usePosComprobanteForm'
 import { addDaysIso } from '@/modules/ventas/comprobantes/composables/usePosKitMedicinal'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
@@ -107,6 +118,15 @@ const {
   idMonedaPen,
   idTipoOperacionVentaInterna,
   esNotaVenta,
+  idCondicionPago,
+  lineasPago,
+  efectivoRecibido,
+  idsEfectivo,
+  agregarLineaPago,
+  quitarLineaPago,
+  sincronizarTotalPagos,
+  idMedioPagoPrincipal,
+  pagosPayload,
 } = usePosComprobanteForm()
 
 /** Caja es por fecha + sucursal; la sucursal sale del almacén del alquiler. */
@@ -142,6 +162,9 @@ const { error: errorMonto, valido: montoValido, onBlur: onBlurMonto } = useMoney
   min: 0.01,
 })
 
+const montoNum = computed(() => roundMoney(parseMoneyInput(monto.value)))
+watch(montoNum, (total) => sincronizarTotalPagos(total), { immediate: true })
+
 const puedeRenovar = computed(
   () =>
     Boolean(props.alquiler?.id_producto_regulador) &&
@@ -167,6 +190,9 @@ watch(
     fechaFin.value = addDaysIso(inicio, dias - 1)
     const tarifa = Number(props.alquiler.tarifa_diaria ?? 0)
     monto.value = tarifa > 0 ? tarifa.toFixed(2) : ''
+    // Cada apertura arranca con un solo medio por el monto del periodo.
+    lineasPago.value = [nuevaLineaPago(tarifa > 0 ? roundMoney(tarifa) : 0)]
+    efectivoRecibido.value = null
   },
 )
 
@@ -181,9 +207,17 @@ async function confirmar() {
     toastWarning('Completa tipo de comprobante, monto y fechas')
     return
   }
+  const errorPagos = validarPagos(
+    montoNum.value,
+    lineasPago.value,
+    efectivoRecibido.value,
+    idsEfectivo.value,
+  )
+  if (errorPagos) {
+    toastWarning(errorPagos)
+    return
+  }
   if (!assertCajaAbierta()) return
-
-  const montoNum = roundMoney(parseMoneyInput(monto.value))
 
   guardando.value = true
   try {
@@ -198,7 +232,7 @@ async function confirmar() {
         {
           idProducto: Number(alquiler.id_producto_regulador),
           cantidad: 1,
-          precioUnitario: montoNum,
+          precioUnitario: montoNum.value,
           descuento: 0,
           porcentajeIgv: 18,
           idAfectacionIgv: idAfectacionGravado.value,
@@ -207,13 +241,16 @@ async function confirmar() {
       ],
       idTipoOperacionSunat: idTipoOperacionVentaInterna.value,
       idMoneda: idMonedaPen.value,
+      idCondicionPago: idCondicionPago.value ? Number(idCondicionPago.value) : undefined,
+      idMedioPago: idMedioPagoPrincipal.value ?? undefined,
+      pagos: pagosPayload(),
       glosa: `Renovación alquiler ${alquiler.numero_alquiler}`,
     })
 
     await alquileresService.renovar(alquiler.id, {
       idUsuarioAuditoria: userId,
       idComprobante: comprobante.id,
-      monto: montoNum,
+      monto: montoNum.value,
       fechaInicio: fechaInicio.value,
       fechaFin: fechaFin.value,
       observacion: 'Renovación regulador',
