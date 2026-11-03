@@ -310,16 +310,13 @@ function onBalonSelected(linea: LineaBalon, balon: Balon | null) {
     linea.ultimoBalonId = null
     linea.codigoBalon = null
     linea.nombreTipoBalon = null
-    linea.capacidadLbMax = null
-    linea.sugerenciaOrigen = null
     linea.lbSalida = ''
     return
   }
-  const { max, origen } = sugerirLbDesdeBalon(balon)
   const cambioBalon = linea.ultimoBalonId !== balon.id
   linea.ultimoBalonId = balon.id
-  linea.capacidadLbMax = max
-  linea.sugerenciaOrigen = origen
+  linea.codigoBalon = balon.codigo_balon ?? null
+  linea.nombreTipoBalon = balon.nombre_tipo_balon ?? null
   // Solo limpiar cuando realmente cambió el cilindro: el select reemite
   // `selected` al refrescar opciones y no debe borrar lo que se está digitando.
   if (cambioBalon) linea.lbSalida = ''
@@ -403,34 +400,6 @@ async function guardar() {
 
   if (detalles.some((d) => !lbSalidaValida(String(d.lbSalida)) || Number.isNaN(d.lbSalida))) {
     toastWarning('Completa las libras de salida (> 0) de los cilindros')
-    return
-  }
-
-  const sinCapacidad = lineas.value.filter((l) => l.idBalon && l.capacidadLbMax == null)
-  if (sinCapacidad.length > 0) {
-    const detalle = sinCapacidad
-      .map((l) => {
-        const codigo = l.codigoBalon || `#${l.idBalon}`
-        return l.nombreTipoBalon ? `${codigo} (${l.nombreTipoBalon})` : codigo
-      })
-      .join(', ')
-    toastWarning(
-      `Configura "Capacidad llena (lb)" en el tipo de: ${detalle}. Ve a Balones → Tipos de balón.`,
-    )
-    return
-  }
-
-  const sobreTope = lineas.value.find(
-    (l) =>
-      l.idBalon &&
-      l.capacidadLbMax != null &&
-      Number(l.lbSalida) > l.capacidadLbMax + 1e-9,
-  )
-  if (sobreTope) {
-    const codigo = sobreTope.codigoBalon || `#${sobreTope.idBalon}`
-    toastWarning(
-      `El cilindro ${codigo} no puede superar ${sobreTope.capacidadLbMax!.toFixed(2)} lb de salida`,
-    )
     return
   }
 
