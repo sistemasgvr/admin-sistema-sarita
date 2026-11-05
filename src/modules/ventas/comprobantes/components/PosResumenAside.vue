@@ -95,7 +95,13 @@
             : 'Obligatorio al contado (caja / libro diario).'
         }}
       </p>
-      <AppInput v-model="glosaModel" label="Glosa" placeholder="Opcional" />
+      <AppInput
+        v-model="glosaModel"
+        label="Glosa"
+        placeholder="Opcional"
+        :maxlength="GLOSA_MAX"
+        :hint="`${glosaModel.length}/${GLOSA_MAX} caracteres (límite SUNAT)`"
+      />
     </div>
 
     <div
@@ -206,6 +212,7 @@ import type { LineaPagoForm } from '@/modules/ventas/comprobantes/utils/pagosMix
 import AppIcon from '@/shared/components/AppIcon.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
 import { ICONS } from '@/shared/constants/icons'
+import { GLOSA_MAX } from '@/shared/constants/facturacion'
 
 const props = withDefaults(
   defineProps<{

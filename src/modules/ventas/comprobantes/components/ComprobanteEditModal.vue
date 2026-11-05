@@ -295,6 +295,8 @@
             label="Glosa"
             placeholder="Texto corto en el comprobante"
             :disabled="saving"
+            :maxlength="GLOSA_MAX"
+            :hint="`${glosa.length}/${GLOSA_MAX} caracteres (límite SUNAT)`"
           />
           <AppTextarea
             v-model="observaciones"
@@ -382,6 +384,7 @@ import {
 } from '@/modules/ventas/comprobantes/utils/unidadMedidaCantidad'
 import { toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ICONS } from '@/shared/constants/icons'
+import { GLOSA_MAX } from '@/shared/constants/facturacion'
 import {
   esMontoMonedaValido,
   mensajeErrorMontoMoneda,
@@ -676,7 +679,7 @@ watch(
   (data) => {
     if (!data) return
     fecha.value = String(data.fecha ?? '').slice(0, 10)
-    glosa.value = data.glosa ?? ''
+    glosa.value = String(data.glosa ?? '').slice(0, GLOSA_MAX)
     observaciones.value = data.observaciones ?? ''
     motivoCorreccion.value = ''
     idCliente.value = data.id_cliente ?? ''
@@ -839,7 +842,7 @@ async function confirm() {
         idCliente: Number(idCliente.value) || undefined,
         idAlmacen: Number(idAlmacen.value) || undefined,
         fecha: fecha.value,
-        glosa: glosa.value.trim() || undefined,
+        glosa: glosa.value.trim().slice(0, GLOSA_MAX) || undefined,
         observaciones: observaciones.value.trim() || undefined,
         detalles: lineas.value.map((linea) => ({
           item: linea.item,
