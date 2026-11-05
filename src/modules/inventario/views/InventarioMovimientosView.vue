@@ -43,7 +43,7 @@
       </template>
 
       <template #cell-nombre_tipo_movimiento="{ value }">
-        <span class="text-sm text-gray-600 dark:text-gray-400">{{ value ?? '—' }}</span>
+        <ListaOpcionBadge :value="value as string" />
       </template>
 
       <template #cell-producto_balon="{ row }">
@@ -184,6 +184,7 @@ import {
   AppModal,
   AppPagination,
   AppTable,
+  ListaOpcionBadge,
 } from '@/shared/components'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
@@ -385,24 +386,28 @@ const exportarListado = () =>
     listar: inventarioMovimientosService.listar,
     filtros: filters.value,
     campos: [
-      ['id', 'ID'],
-      ['fecha', 'Fecha'],
-      ['naturaleza', 'Naturaleza'],
-      ['nombre_tipo_movimiento', 'Tipo movimiento'],
+      ['fecha', 'Fecha', 'fechaHora'],
+      ['naturaleza', 'Naturaleza', 'lista'],
+      ['nombre_tipo_movimiento', 'Tipo movimiento', 'lista'],
+      ['nombre_tipo_producto', 'Tipo producto'],
       ['codigo_producto', 'Código producto'],
       ['nombre_producto', 'Producto'],
-      ['numero_serie_balon', 'Número serie balon'],
+      ['numero_serie_balon', 'Serie balón'],
       ['cantidad', 'Cantidad', 'numero'],
-      ['nombre_unidad_medida', 'Unidad medida'],
+      ['nombre_unidad_medida', 'Unidad medida', 'lista'],
       ['nombre_almacen_origen', 'Almacén origen'],
       ['nombre_almacen_destino', 'Almacén destino'],
+      ['numero_documento_cliente', 'Doc. cliente'],
       ['nombre_cliente', 'Cliente'],
       ['stock_anterior', 'Stock anterior', 'numero'],
       ['stock_nuevo', 'Stock nuevo', 'numero'],
-      ['nombre_tipo_documento_origen', 'Tipo documento origen'],
-      ['id_documento_origen', 'Id documento origen'],
+      ['nombre_tipo_documento_origen', 'Tipo documento', 'lista'],
+      ['codigo_documento_origen', 'Documento'],
+      ['importe_linea', 'Importe línea', 'importe'],
+      ['total_documento', 'Total documento', 'importe'],
+      ['moneda_documento', 'Moneda'],
       ['glosa', 'Glosa'],
-      ['estado', 'Estado', 'anulacion'],
+      ['nombre_usuario_creacion', 'Usuario'],
     ],
   })
 </script>

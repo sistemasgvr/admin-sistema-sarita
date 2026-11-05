@@ -116,6 +116,32 @@ describe('reportes simples de listados', () => {
     expect(downloadExcel).toHaveBeenCalledWith(expect.objectContaining({ rows: [{ tipo: '01' }] }))
   })
 
+  it('formatea fecha y hora, códigos de catálogo e importes de un movimiento', () => {
+    const row = {
+      fecha: '2026-11-04T09:08:00.123456',
+      fechaConZona: '2026-11-04T14:08:00.000Z',
+      tipo: 'SALIDA_PRESTAMO',
+      importe: '125.40',
+      sinImporte: null as number | null,
+    }
+    const [fecha, fechaConZona, tipo, importe, sinImporte] = columnasListadoExcel<typeof row>([
+      ['fecha', 'Fecha', 'fechaHora'],
+      ['fechaConZona', 'Fecha con zona', 'fechaHora'],
+      ['tipo', 'Tipo movimiento', 'lista'],
+      ['importe', 'Importe', 'importe'],
+      ['sinImporte', 'Sin importe', 'importe'],
+    ])
+    expect(fecha!.value(row)).toEqual(new Date(Date.UTC(2026, 10, 4, 9, 8)))
+    expect(fecha!.numFmt).toBe('dd/mm/yyyy hh:mm')
+    expect(fecha!.width).toBeGreaterThanOrEqual(18)
+    expect(fechaConZona!.value(row)).toContain('9:08')
+    expect(tipo!.value(row)).toBe('Salida préstamo')
+    expect(tipo!.numFmt).toBeUndefined()
+    expect(importe!.value(row)).toBe(125.4)
+    expect(importe!.numFmt).toBe('#,##0.00')
+    expect(sinImporte!.value(row)).toBe('')
+  })
+
   it('no descarga un libro vacío', async () => {
     await exportarFilasExcel('Vacío', [], [])
     expect(toastInfo).toHaveBeenCalledOnce()

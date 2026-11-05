@@ -4,7 +4,8 @@ export type ExcelColumn<T> = {
   key: string
   header: string
   width?: number
-  value: (row: T) => string | number | null | undefined
+  numFmt?: string
+  value: (row: T) => string | number | Date | null | undefined
 }
 
 export interface ExcelSheetSpec<T> {
@@ -66,16 +67,18 @@ function addSheet<T>(workbook: import('exceljs').Workbook, spec: ExcelSheetSpec<
   })
 
   for (const row of spec.rows) {
-    const record: Record<string, string | number> = {}
+    const record: Record<string, string | number | Date> = {}
     for (const column of spec.columns) {
       const value = column.value(row)
       record[column.key] = value == null ? '' : value
     }
     const excelRow = sheet.addRow(record)
 
-    excelRow.eachCell({ includeEmpty: true }, (cell) => {
+    excelRow.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
       cell.border = THIN_BORDER
       cell.font = { name: REPORT_FONT, size: 10 }
+      const numFmt = spec.columns[columnNumber - 1]?.numFmt
+      if (numFmt) cell.numFmt = numFmt
     })
 
     if (spec.outlineLevel) {

@@ -1,26 +1,40 @@
 import type { PaginatedResult } from '@/shared/api/interfaces/api.interface'
 import { toastInfo } from '@/shared/composables/useToast'
-import { hoyIsoLima } from '@/shared/utils/date'
+import { formatDateTime, hoyIsoLima } from '@/shared/utils/date'
 import { downloadExcel, type ExcelColumn } from '@/shared/utils/exportExcel'
+import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 
 export type CampoExcel<T> = readonly [
   keyof T & string,
   string,
-  ('numero' | 'estado' | 'anulacion')?,
+  ('numero' | 'importe' | 'estado' | 'anulacion' | 'fechaHora' | 'lista')?,
 ]
+
+const FORMATO_CELDA = { fechaHora: 'dd/mm/yyyy hh:mm', importe: '#,##0.00' } as const
+
+function fechaHoraExcel(value: string): Date | string {
+  const partes = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(value)
+  if (!partes) return formatDateTime(value)
+  const [anio, mes, dia, hora, minuto] = partes.slice(1).map(Number)
+  return new Date(Date.UTC(anio, mes - 1, dia, hora, minuto))
+}
 
 export function columnasListadoExcel<T>(campos: readonly CampoExcel<T>[]): ExcelColumn<T>[] {
   return campos.map(([key, header, tipo]) => ({
     key,
     header,
-    width: Math.min(45, Math.max(16, header.length + 4)),
+    // Una fecha más angosta que su contenido se ve como ##### en Excel.
+    width: Math.min(45, Math.max(tipo === 'fechaHora' ? 18 : 16, header.length + 4)),
+    numFmt: tipo === 'fechaHora' || tipo === 'importe' ? FORMATO_CELDA[tipo] : undefined,
     value: (row) => {
       const value = row[key]
       if (value == null) return ''
       if (tipo === 'estado') return value === true || Number(value) === 1 ? 'Activo' : 'Inactivo'
       if (tipo === 'anulacion') return Number(value) === 1 ? 'Activo' : 'Anulado'
+      if (tipo === 'fechaHora' && typeof value === 'string') return fechaHoraExcel(value)
+      if (tipo === 'lista') return formatListaOpcionLabel(value)
       if (typeof value === 'boolean') return value ? 'Sí' : 'No'
-      if (tipo === 'numero' && value !== '') {
+      if ((tipo === 'numero' || tipo === 'importe') && value !== '') {
         const numero = Number(value)
         if (Number.isFinite(numero)) return numero
       }

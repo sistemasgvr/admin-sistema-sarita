@@ -30,6 +30,11 @@ const SPANISH_TOKEN_FIXES: Record<string, string> = {
   organo: 'órgano',
   tipografico: 'tipográfico',
   tipografica: 'tipográfica',
+  balon: 'balón',
+  garantia: 'garantía',
+  reposicion: 'reposición',
+  lima: 'Lima',
+  vsd: 'VSD',
 }
 
 function applySpanishAccentFixes(text: string): string {
