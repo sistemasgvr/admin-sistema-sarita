@@ -179,6 +179,14 @@
             hint="SUNAT lo exige mayor a 0"
           />
           <AppInput v-model.number="form.numeroBultos" type="number" min="1" step="1" label="N° de bultos" />
+          <AppInput
+            v-model="form.glosa"
+            class="col-span-full"
+            label="Glosa"
+            placeholder="Opcional"
+            :maxlength="GLOSA_MAX"
+            :hint="`${form.glosa.length}/${GLOSA_MAX} caracteres. Se envía a SUNAT y se imprime en la guía.`"
+          />
         </div>
       </section>
 
@@ -421,6 +429,7 @@ import { useConvertirAGreMutation } from '../composables/useDocumentoSalidaMutat
 import type { DocumentoSalida } from '../interfaces/documento-salida.interface'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import { ListaIds } from '@/shared/constants/lista-ids'
+import { GLOSA_MAX } from '@/shared/constants/facturacion'
 import { AppDatePicker, AppInput, AppModal, AppSelect, UbigeoCascadeSelect } from '@/shared/components'
 import SearchableSelect from '@/shared/components/form/SearchableSelect.vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
@@ -496,6 +505,7 @@ const form = reactive({
   idVehiculo: undefined as number | undefined,
   pesoBruto: undefined as number | undefined,
   numeroBultos: undefined as number | undefined,
+  glosa: '',
 })
 
 // ---- Tipo de guía y modalidad (tarjetas) ----
@@ -910,6 +920,7 @@ watch(open, (isOpen) => {
     d.direccion_llegada ?? d.direccion_entrega ?? d.direccion_almacen_destino ?? ''
   form.pesoBruto = d.peso_bruto ?? undefined
   form.numeroBultos = d.numero_bultos ?? undefined
+  form.glosa = (d.glosa ?? '').slice(0, GLOSA_MAX)
   form.idTransportista = d.id_transportista ?? undefined
   form.idChofer = d.id_chofer ?? undefined
   form.idVehiculo = d.id_vehiculo ?? undefined
@@ -1016,6 +1027,7 @@ async function onGuardar() {
         idVehiculo: requiereFlotaPropia.value ? form.idVehiculo : undefined,
         pesoBruto: form.pesoBruto,
         numeroBultos: form.numeroBultos,
+        glosa: form.glosa.trim(),
         idUsuarioAuditoria: authStore.user?.id,
       },
     })

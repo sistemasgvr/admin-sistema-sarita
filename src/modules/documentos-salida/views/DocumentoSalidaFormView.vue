@@ -115,7 +115,7 @@
       <div class="mt-6 border-t border-gray-100 pt-5 dark:border-gray-800">
         <AppTextarea
           v-model="form.observaciones"
-          label="Observaciones"
+          label="Observaciones internas"
           :rows="2"
           placeholder="Ej. Envío prioritario — revisar presión de balones"
         />
@@ -305,9 +305,15 @@
                     <AppIcon :name="ICONS.externalLink" :size="11" class="text-gray-400" />
                   </router-link>
                 </div>
+                <div v-if="documento.glosa">
+                  <span class="block text-[11px] text-gray-400">Glosa (se envía a SUNAT)</span>
+                  <p class="mt-1 rounded border border-gray-200 bg-white p-2 leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    {{ documento.glosa }}
+                  </p>
+                </div>
                 <div>
                   <div class="flex items-center justify-between gap-2">
-                    <span class="block text-[11px] text-gray-400">Observaciones</span>
+                    <span class="block text-[11px] text-gray-400">Observaciones internas</span>
                     <button
                       v-if="puedeEditarObservaciones && !editandoObservaciones"
                       type="button"

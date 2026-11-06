@@ -184,6 +184,8 @@ export interface DocumentoSalida {
    */
   retorno_fisico?: boolean
   observaciones: string | null
+  /** Texto público de la guía: viaja a SUNAT y se imprime. */
+  glosa?: string | null
   estado: number
   fecha_creacion: string
   fecha_modificacion: string | null
@@ -333,6 +335,8 @@ export interface ConvertirGrePayload {
   idEmpresa: number;
   idTipoGuiaRemision?: number
   serie: string
+  /** Cadena vacía para borrarla; omitir para no cambiarla. */
+  glosa?: string
   idMotivoTraslado?: number
   idModalidadTraslado?: number
   idTransportista?: number
