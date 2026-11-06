@@ -52,6 +52,12 @@
         </p>
       </template>
 
+      <template #cell-glosa="{ value }">
+        <p class="max-w-[12rem] truncate text-sm text-gray-500 dark:text-gray-400" :title="String(value ?? '')">
+          {{ value || '—' }}
+        </p>
+      </template>
+
       <template #cell-total_importe="{ value }">
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
@@ -297,6 +303,7 @@ const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
   { key: 'proveedor', label: 'Proveedor' },
   { key: 'categoria_gasto', label: 'Categoría' },
+  { key: 'glosa', label: 'Glosa' },
   { key: 'total_importe', label: 'Total', align: 'right' },
   { key: 'estado', label: 'Estado' },
   // { key: 'tiene_movimientos_inventario', label: 'Inventario' },
