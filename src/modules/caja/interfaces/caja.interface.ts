@@ -2,21 +2,13 @@ export interface CajaTotales {
   ventasContado: number
   ventasCredito: number
   ventasMediosCaja: number
-  /** Fase 3: desglose del cobro de ventas por naturaleza del medio. */
   ventasEfectivo?: number
   ventasOtrosMedios?: number
   cobranzas: number
   cobranzasMediosCaja: number
-  cobranzasEfectivo?: number
-  /**
-   * Pagos de cuentas por pagar (CxP de compras). Son EGRESOS: salen del cajon.
-   * `pagosProveedorMediosCaja` es el subconjunto pagado con medios que afectan
-   * caja, el unico que se resta del efectivo esperado.
-   */
   pagosProveedor?: number
   pagosProveedorMediosCaja?: number
   gastosCaja: number
-  /** Gastos pagados con medios que afectan caja: los únicos que vacían el cajón. */
   gastosCajaMediosCaja?: number
   gastosCompra: number
   gastos: number
@@ -25,16 +17,10 @@ export interface CajaTotales {
   garantiasCobroMediosCaja?: number
   garantiasDevolucion?: number
   garantiasDevolucionMediosCaja?: number
-  /** Neto del día en billetes (fila EFECTIVO de porMedio), sin el fondo inicial. */
   efectivoNeto?: number
-  /** Una fila por medio de pago con movimiento; los medios de crédito no entran. */
   porMedio?: CajaTotalesMedio[]
 }
 
-/**
- * Movimiento del día de un medio de pago. Efectivo se cuadra contando el cajón;
- * Yape, Plin y transferencia contra la app o el estado de cuenta.
- */
 export interface CajaTotalesMedio {
   idMedioPago: number | null
   medioPago: string
@@ -94,7 +80,7 @@ export interface CajaMovimientoDeposito {
 
 export interface CajaSesionEvento {
   id: number
-  tipo: 'ABRIR' | 'CERRAR' | 'REABRIR'
+  tipo: 'ABRIR' | 'CERRAR' | 'REABRIR' | 'AJUSTE_FONDO'
   monto: number | null
   diferencia: number | null
   observacion: string | null
@@ -131,6 +117,12 @@ export interface CajaSesion {
   eventos?: CajaSesionEvento[]
   /** Solo en el listado de sesiones. */
   cantidadEventos?: number
+}
+
+export interface ActualizarFondoCajaPayload {
+  montoInicial: number
+  observacion?: string
+  idUsuarioAuditoria?: number
 }
 
 export interface AbrirCajaPayload {
@@ -211,10 +203,6 @@ export interface LibroDiarioVenta {
   esConversionVsd?: boolean
 }
 
-/**
- * Una linea de cobro de una venta (Fase 3). Una venta cobrada mitad en efectivo
- * y mitad por transferencia produce dos filas, cada una en su pestana.
- */
 export interface LibroDiarioVentaPago {
   idComprobante: number
   idPago?: number | null
@@ -251,11 +239,6 @@ export interface LibroDiarioGarantia {
   observacion?: string | null
 }
 
-/**
- * Definicion de una pestana del historial de caja. La sirve el backend
- * (`fin_obtener_libro_diario`) en vez de estar escrita aqui, para que anadir un
- * resumen no obligue a tocar el componente.
- */
 export interface LibroDiarioResumen {
   clave: string
   etiqueta: string
@@ -292,11 +275,6 @@ export interface LibroDiarioCobranza {
   cuentaBancaria?: string | null
 }
 
-/**
- * Pago de una cuenta por pagar (CxP de una compra a credito). Va aparte de
- * `gastos`: ahi conviven los gastos de caja con el devengo de las compras tipo
- * GASTO, y el pago de una de esas compras apareceria dos veces si se mezclaran.
- */
 export interface LibroDiarioPagoProveedor {
   /** Única entre orígenes: P<id pago> o C<id compra> (los ids pueden coincidir). */
   clave?: string

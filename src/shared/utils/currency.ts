@@ -167,7 +167,7 @@ export function tieneMaxDosDecimalesMoneda(raw: unknown): boolean {
 }
 
 export type ValidacionMontoMonedaOpts = {
-  /** Mínimo permitido (default 0). */
+  /** Mínimo permitido (default 0). Con un mínimo negativo se aceptan negativos. */
   maxDecimals?: number
   min?: number
   /** Si true, acepta monto === 0 (default false). */
@@ -207,7 +207,7 @@ export function mensajeErrorMontoMoneda(
 
   const n = parseMoneyInput(raw)
   if (n == null || !Number.isFinite(n)) return 'Monto inválido'
-  if (n < 0) return 'El monto no puede ser negativo'
+  if (n < 0 && min >= 0) return 'El monto no puede ser negativo'
   if (n < min) return min > 0 ? 'El monto debe ser mayor a 0' : 'Monto inválido'
   if (!allowZero && n === 0) return 'El monto debe ser mayor a 0'
   if (opts.maxEnteros != null && (contarEnterosEnTexto(raw) ?? Infinity) > opts.maxEnteros) {
@@ -226,61 +226,73 @@ function nextTickSelection(input: HTMLInputElement, pos: number) {
  * de `maxEnteros` dígitos enteros mientras se escribe.
  */
 export function bloquearTeclasMontoInvalidas(
-  e: KeyboardEvent,
+  event: KeyboardEvent,
   maxDecimals = 2,
-  maxEnteros?: number,
+  maxIntegerDigits = 10,
+  permitirNegativos = false,
 ) {
-  if (e.key.length > 1) return
-  if (e.ctrlKey || e.metaKey) return
-  if (['-', '+', 'e', 'E'].includes(e.key)) {
-    e.preventDefault()
-    return
-  }
-  if (!/[\d.,]/.test(e.key)) {
-    e.preventDefault()
-    return
-  }
+  const input = event.target as HTMLInputElement
+  const key = event.key
 
-  const input = e.target as HTMLInputElement | null
-  if (!input || !/[\d.]/.test(e.key)) return
-
-  const start = input.selectionStart ?? input.value.length
-  const end = input.selectionEnd ?? input.value.length
-  const tieneSeleccion = start !== end
-
-  // Sobre "0.00" / "0": un dígito sin selección reemplaza en lugar de append (0.005 → bloqueado).
+  // Permitir navegación y edición
   if (
-    !tieneSeleccion &&
-    e.key.length === 1 &&
-    /^\d$/.test(e.key)
-  ) {
-    const n = parseMoneyInput(input.value)
-    if (n === 0) {
-      e.preventDefault()
-      input.value = e.key
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-      nextTickSelection(input, 1)
+    [
+      'Backspace',
+      'Delete',
+      'Tab',
+      'Escape',
+      'Enter',
+      'ArrowLeft',
+      'ArrowRight',
+      'Home',
+      'End',
+    ].includes(key) ||
+    event.ctrlKey ||
+    event.metaKey
+  ) return
+
+  const start = input.selectionStart ?? 0
+  const end = input.selectionEnd ?? 0
+
+  // Construir el siguiente valor
+  const nextValue =
+    input.value.substring(0, start) +
+    key +
+    input.value.substring(end)
+
+  // Permitir signo negativo únicamente al inicio
+  if (key === '-') {
+    if (
+      permitirNegativos &&
+      start === 0 &&
+      !input.value.includes('-')
+    ) {
       return
     }
-  }
 
-  const candidato = input.value.slice(0, start) + e.key + input.value.slice(end)
-  const limpio = limpiarTextoMonto(candidato)
-
-  if (limpio && !/^-?\d*(\.\d*)?$/.test(limpio)) {
-    e.preventDefault()
+    event.preventDefault()
     return
   }
 
-  const dec = contarDecimalesEnTexto(candidato)
-  if (dec != null && dec > maxDecimals) {
-    e.preventDefault()
+  // Permitir únicamente números y punto decimal
+  if (!/^\d$/.test(key) && key !== '.') {
+    event.preventDefault()
     return
   }
 
-  if (maxEnteros != null) {
-    const enteros = contarEnterosEnTexto(candidato)
-    if (enteros != null && enteros > maxEnteros) e.preventDefault()
+  // Validación dinámica de enteros y decimales
+  const integerPart = permitirNegativos
+    ? /^-?(\d*)/.exec(nextValue)?.[1] ?? ''
+    : nextValue.split('.')[0]
+
+  const decimalPart = nextValue.split('.')[1] ?? ''
+
+  if (
+    integerPart.length > maxIntegerDigits ||
+    decimalPart.length > maxDecimals ||
+    (nextValue.match(/\./g)?.length ?? 0) > 1
+  ) {
+    event.preventDefault()
   }
 }
 
@@ -289,22 +301,49 @@ export function bloquearPegadoMontoInvalido(
   e: ClipboardEvent,
   maxDecimals = 2,
   maxEnteros?: number,
+  permitirNegativos = false,
 ) {
   const texto = e.clipboardData?.getData('text') ?? ''
-  if (/[-+eE]/.test(texto)) {
+
+  // Bloquear notación científica y signo positivo
+  if (/[+eE]/.test(texto)) {
     e.preventDefault()
     return
   }
+
   const input = e.target as HTMLInputElement | null
-  const candidato = input && typeof input.selectionStart === 'number'
-    ? input.value.slice(0, input.selectionStart) + texto + input.value.slice(input.selectionEnd ?? input.selectionStart)
-    : texto
+
+  const candidato =
+    input && typeof input.selectionStart === 'number'
+      ? input.value.slice(0, input.selectionStart) +
+        texto +
+        input.value.slice(input.selectionEnd ?? input.selectionStart)
+      : texto
+
   if (!candidato.trim()) return
+
+  // Validar signo negativo
+  if (candidato.includes('-')) {
+    if (
+      !permitirNegativos ||
+      !/^-?\d*\.?\d*$/.test(candidato)
+    ) {
+      e.preventDefault()
+      return
+    }
+  }
+
+  // Validar cantidad de decimales
   if ((contarDecimalesEnTexto(candidato) ?? Infinity) > maxDecimals) {
     e.preventDefault()
     return
   }
-  if (maxEnteros != null && (contarEnterosEnTexto(candidato) ?? Infinity) > maxEnteros) {
+
+  // Validar cantidad de enteros
+  if (
+    maxEnteros != null &&
+    (contarEnterosEnTexto(candidato) ?? Infinity) > maxEnteros
+  ) {
     e.preventDefault()
   }
 }

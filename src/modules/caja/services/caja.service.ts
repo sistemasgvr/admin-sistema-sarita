@@ -2,6 +2,7 @@ import { apiDelete, apiGet, apiGetPaginated, apiPatch, apiPost } from '@/shared/
 import type {
   AbrirCajaPayload,
   ActualizarCajaGastoPayload,
+  ActualizarFondoCajaPayload,
   CajaGastosListFilters,
   CajaSesionesListFilters,
   CajaMovimientoGasto,
@@ -41,6 +42,10 @@ export const cajaService = {
 
   abrir(payload: AbrirCajaPayload) {
     return apiPost<CajaSesion>('/caja/sesiones/abrir', payload)
+  },
+
+  actualizarFondo(id: number, payload: ActualizarFondoCajaPayload) {
+    return apiPatch<CajaSesion>(`/caja/sesiones/${id}/fondo`, payload)
   },
 
   cerrar(id: number, payload: CerrarCajaPayload) {

@@ -105,3 +105,16 @@ describe('precisión configurable del precio', () => {
     expect(blocked).toBe(false)
   })
 })
+
+describe('montos negativos', () => {
+  const reglas = { min: Number.NEGATIVE_INFINITY, allowZero: true }
+
+  it('se rechazan por defecto', () => {
+    expect(mensajeErrorMontoMoneda('-555', { min: 0, allowZero: true })).toContain('negativo')
+  })
+
+  it('se aceptan con un mínimo negativo', () => {
+    expect(mensajeErrorMontoMoneda('-555', reglas)).toBeNull()
+    expect(esMontoMonedaValido('-555.50', reglas)).toBe(true)
+  })
+})

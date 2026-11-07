@@ -247,6 +247,16 @@
                   {{ linea.signo }}
                 </span>
                 {{ linea.label }}
+                <button
+                  v-if="linea.key === 'inicial' && canEditarFondo"
+                  type="button"
+                  class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/10 dark:hover:text-brand-400"
+                  title="Editar fondo"
+                  aria-label="Editar fondo al abrir"
+                  @click="showEditarFondo = true"
+                >
+                  <AppIcon :name="ICONS.pencil" :size="14" />
+                </button>
               </span>
               <span
                 class="tabular-nums"
@@ -428,6 +438,16 @@
                         {{ f.signo }}
                       </span>
                       {{ f.label }}
+                      <button
+                        v-if="f.key === 'fondo' && canEditarFondo"
+                        type="button"
+                        class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-white/10 dark:hover:text-brand-400"
+                        title="Editar fondo"
+                        aria-label="Editar fondo al abrir"
+                        @click="showEditarFondo = true"
+                      >
+                        <AppIcon :name="ICONS.pencil" :size="14" />
+                      </button>
                     </span>
                   </td>
                   <td
@@ -495,6 +515,12 @@
         :id-sesion="sesion?.id"
         :monto-inicial-anterior="sesion?.montoInicial"
       />
+      <EditarFondoCajaModal
+        v-if="sesion?.id"
+        v-model="showEditarFondo"
+        :id-sesion="sesion.id"
+        :monto-actual="montoInicial"
+      />
       <CerrarCajaModal
         v-if="sesion?.id"
         v-model="showCerrar"
@@ -558,6 +584,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import type { SummaryCardItem } from '@/shared/components/ui/AppSummaryCards.vue'
 import AbrirCajaModal from '@/modules/caja/components/AbrirCajaModal.vue'
 import CerrarCajaModal from '@/modules/caja/components/CerrarCajaModal.vue'
+import EditarFondoCajaModal from '@/modules/caja/components/EditarFondoCajaModal.vue'
 import RegistrarGastoCajaModal from '@/modules/caja/components/RegistrarGastoCajaModal.vue'
 import RegistrarDepositoCajaModal from '@/modules/caja/components/RegistrarDepositoCajaModal.vue'
 import CajaBitacoraEventos from '@/modules/caja/components/CajaBitacoraEventos.vue'
@@ -632,6 +659,7 @@ const idSucursalSelect = computed({
 })
 const showAbrir = ref(false)
 const showCerrar = ref(false)
+const showEditarFondo = ref(false)
 const showGasto = ref(false)
 const showDeposito = ref(false)
 const bitacoraOpen = ref(false)
@@ -819,6 +847,7 @@ const saldoTotalMedios = computed(() =>
 const ventasCredito = computed(() => Number(totales.value?.ventasCredito ?? 0))
 
 const canAbrir = computed(() => auth.hasPermission(PermisoBanderas.CAJA_ABRIR))
+const canEditarFondo = computed(() => canAbrir.value && cajaAbierta.value)
 const canCerrar = computed(() => auth.hasPermission(PermisoBanderas.CAJA_CERRAR))
 const canGasto = computed(() => auth.hasPermission(PermisoBanderas.CAJA_REGISTRAR_GASTO))
 const canDeposito = computed(() => auth.hasPermission(PermisoBanderas.CAJA_REGISTRAR_DEPOSITO))

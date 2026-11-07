@@ -2,15 +2,16 @@
   <AppModal v-model="open" :title="tituloModal" size="md">
     <div class="space-y-4">
       <p class="text-theme-sm text-gray-500 dark:text-gray-400">
-        {{ textoAyuda }}
+      {{ textoAyuda }}
       </p>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <AppFormField label="Fecha" required :error="errorFecha">
           <AppDatePicker v-model="form.fecha" :disabled="esReapertura" />
         </AppFormField>
-        <AppFormField label="Monto inicial" required :error="errorMonto">
-          <MoneyInput
+        <AppFormField label="Fondo inicial (modificar si cambia)." required :error="errorMonto">
+         <MoneyInput
             v-model="form.montoInicial"
+            :permitir-negativos="true"
             placeholder="0.00"
             :state="errorMonto ? 'error' : 'default'"
             @blur="onBlurMonto"

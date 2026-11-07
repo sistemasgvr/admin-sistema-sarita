@@ -11,6 +11,7 @@ import { cajaService } from '@/modules/caja/services/caja.service'
 import type {
   AbrirCajaPayload,
   ActualizarCajaGastoPayload,
+  ActualizarFondoCajaPayload,
   CajaGastosListFilters,
   CajaSesionesListFilters,
   CerrarCajaPayload,
@@ -115,6 +116,20 @@ export function useCajaPendienteCierreQuery(
     staleTime: 30_000,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
+  })
+}
+
+export function useActualizarFondoCajaMutation() {
+  const queryClient = useQueryClient()
+  const auth = useAuthStore()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: ActualizarFondoCajaPayload }) =>
+      cajaService.actualizarFondo(id, { ...payload, idUsuarioAuditoria: auth.user?.id }),
+    onSuccess: () => {
+      void invalidateCajaQueries(queryClient)
+      toastSuccess('Fondo actualizado')
+    },
+    onError: (error) => toastApiError(error, 'No se pudo actualizar el fondo'),
   })
 }
 

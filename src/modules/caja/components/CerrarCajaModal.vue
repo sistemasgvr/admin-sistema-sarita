@@ -14,6 +14,7 @@
         <MoneyInput
           v-model="form.monto"
           placeholder="0.00"
+          :permitir-negativos="true"
           :state="errorMonto ? 'error' : 'default'"
           @blur="onBlurMonto"
         />
@@ -80,6 +81,9 @@ const open = defineModel<boolean>({ default: false })
 const props = defineProps<{ idSesion: number; efectivoEsperado: number }>()
 const emit = defineEmits<{ saved: [] }>()
 
+/** El contado puede ser negativo: el arqueo registra el faltante tal como se declara. */
+const REGLAS_MONTO = { min: Number.NEGATIVE_INFINITY, allowZero: true }
+
 const form = reactive({ monto: '', observacion: '' })
 const errorObs = ref('')
 const mutation = useCerrarCajaMutation()
@@ -87,7 +91,7 @@ const guardando = computed(() => mutation.isPending.value)
 
 const { error: errorMonto, valido: formularioValido, onBlur: onBlurMonto } = useMoneyField(
   toRef(form, 'monto'),
-  { min: 0, allowZero: true },
+  REGLAS_MONTO,
 )
 
 const diferenciaPreview = computed(() => {
@@ -119,7 +123,7 @@ watch(open, (v) => {
 })
 
 async function submit() {
-  const msg = mensajeErrorMontoMoneda(form.monto, { min: 0, allowZero: true })
+  const msg = mensajeErrorMontoMoneda(form.monto, REGLAS_MONTO)
   if (msg) return
 
   if (requiereObservacion.value && !form.observacion.trim()) {
