@@ -217,9 +217,6 @@ export function mensajeErrorMontoMoneda(
   return null
 }
 
-function nextTickSelection(input: HTMLInputElement, pos: number) {
-  queueMicrotask(() => input.setSelectionRange(pos, pos))
-}
 
 /**
  * Bloquea signos, caracteres no numéricos, más de `maxDecimals` decimales y más
