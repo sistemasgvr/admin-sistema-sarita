@@ -431,23 +431,34 @@ export interface UpdateComprobantePayload {
   glosa?: string
   observaciones?: string
   origenPos?: string
+  /**
+   * Reparto del cobro. Solo hace falta cuando la venta se cobró con varios
+   * medios y la corrección cambia el total; con un solo medio la API lo ajusta.
+   */
+  pagos?: ComprobantePagoPayload[]
+  /** Cilindros del detalle a reemplazar; `detalles` ya debe traer el balón nuevo. */
+  cambiosBalon?: CambioBalonLineaPayload[]
 }
 
-export interface CambioBalonVsdPayload {
-  tipoOperacion: 'CAMBIO' | 'CORRECCION_RESERVA'
-  solicitud: string
-  versionEsperada: string
+/** Reemplazo de un cilindro del detalle, aplicado al guardar la corrección. */
+export interface CambioBalonLineaPayload {
   idBalonActual: number
   idBalonNuevo: number
-  idAlmacen: number
-  cantidadGasDevuelta: number
-  cantidadGasSalida: number
-  condicionDevolucion: 'DISPONIBLE' | 'EN_MANTENIMIENTO'
-  motivo: string
+}
+
+export interface OperacionesVsdBalon {
+  id: number
+  codigo_balon: string
+  id_tipo_balon: number
+  id_producto_gas: number
+  id_propietario?: number | null
+  id_cliente_propietario?: number | null
+  estado: string
+  cantidad_salida: number | null
 }
 
 export interface OperacionesVsd {
-  balones: { id: number; codigo_balon: string; id_tipo_balon: number; id_producto_gas: number; estado: string; cantidad_salida: number | null }[]
+  balones: OperacionesVsdBalon[]
   historial: { id: number; tipo: string; motivo: string; fecha: string; datos: Record<string, unknown>; posterior: Record<string, unknown> }[]
 }
 

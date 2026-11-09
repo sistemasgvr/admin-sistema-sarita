@@ -72,6 +72,7 @@ export const ICONS = {
   alertTriangle: 'lucide:triangle-alert',
   circleHelp: 'lucide:circle-help',
   clock: 'lucide:clock',
+  lock: 'lucide:lock',
   contact: 'lucide:contact',
   download: 'lucide:download',
   printer: 'lucide:printer',

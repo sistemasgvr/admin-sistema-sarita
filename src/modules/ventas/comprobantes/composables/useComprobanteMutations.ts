@@ -8,6 +8,11 @@ import type {
   UpdateComprobantePayload,
 } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { balonesQueryKeys } from '@/modules/balones/cilindros/constants/balonesQueryKeys'
+import { prestamosQueryKeys } from '@/modules/balones/prestamos/constants/prestamosQueryKeys'
+import { prestamosDetalleQueryKeys } from '@/modules/balones/prestamos/constants/prestamosDetalleQueryKeys'
+import { prestamosAntiguedadQueryKeys } from '@/modules/balones/prestamos/constants/prestamosAntiguedadQueryKeys'
+import { garantiasQueryKeys } from '@/modules/balones/garantias/constants/garantiasQueryKeys'
+import { actividadesQueryKeys } from '@/modules/operativa/actividades/constants/actividadesQueryKeys'
 import { invalidateCajaQueries } from '@/modules/caja/composables/useCajaQuery'
 import { productosQueryKeys } from '@/modules/productos/articulos/constants/productosQueryKeys'
 import { stockQueryKeys } from '@/modules/productos/stock/constants/stockQueryKeys'
@@ -65,6 +70,14 @@ export function useUpdateComprobanteMutation() {
       queryClient.invalidateQueries({ queryKey: stockQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: productosQueryKeys.all })
       queryClient.invalidateQueries({ queryKey: balonesQueryKeys.all })
+      // El reemplazo de cilindros da de baja la línea del préstamo y crea otra, y
+      // mueve su garantía y el recojo pendiente: sin esto se veían datos en caché.
+      queryClient.invalidateQueries({ queryKey: prestamosQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: prestamosDetalleQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: prestamosAntiguedadQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: garantiasQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: actividadesQueryKeys.all })
+      queryClient.invalidateQueries({ queryKey: ['comprobantes', 'operaciones-vsd', variables.id] })
       void invalidateCajaQueries(queryClient)
       toastSuccess('Comprobante actualizado correctamente')
     },

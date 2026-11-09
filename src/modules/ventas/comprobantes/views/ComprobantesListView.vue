@@ -141,7 +141,6 @@
     />
 
     <ComprobanteEditModal v-model="editModalOpen" :comprobante="comprobanteToEdit" />
-    <CambioBalonVsdModal v-model="cambioBalonOpen" :venta-id="cambioBalonVentaId" />
 
     <ComprobanteNotaCreditoModal
       v-model="notaCreditoModalOpen"
@@ -232,7 +231,6 @@ import ComprobanteValidezModal from '@/modules/ventas/comprobantes/components/Co
 import ComprobanteCdrModal from '@/modules/ventas/comprobantes/components/ComprobanteCdrModal.vue'
 import ComprobanteDetailModal from '@/modules/ventas/comprobantes/components/ComprobanteDetailModal.vue'
 import ComprobanteEditModal from '@/modules/ventas/comprobantes/components/ComprobanteEditModal.vue'
-import CambioBalonVsdModal from '@/modules/ventas/comprobantes/components/CambioBalonVsdModal.vue'
 import ComprobanteNotaCreditoModal from '@/modules/ventas/comprobantes/components/ComprobanteNotaCreditoModal.vue'
 import ClienteSinDocumentoModal from '@/modules/ventas/comprobantes/components/ClienteSinDocumentoModal.vue'
 import ClienteFormModal from '@/modules/clientes/components/ClienteFormModal.vue'
@@ -316,8 +314,6 @@ const detailModalOpen = ref(false)
 const comprobanteToViewId = ref<number | null>(null)
 
 const editModalOpen = ref(false)
-const cambioBalonOpen = ref(false)
-const cambioBalonVentaId = ref<number | null>(null)
 const comprobanteToEdit = ref<ComprobanteListItem | null>(null)
 
 const notaCreditoModalOpen = ref(false)
@@ -607,10 +603,6 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !(canEdit.value && puedeEditar(row)),
     },
     {
-      key: 'cambio-balon', label: 'Corrección / cambio de balón', icon: ICONS.refreshCw,
-      disabled: busy, hidden: !(canEdit.value && puedeEditar(row) && ['01','03'].includes(row.codigo_tipo_comprobante ?? '')),
-    },
-    {
       key: 'emit',
       label: 'Emitir SUNAT',
       icon: ICONS.plug,
@@ -728,10 +720,6 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
 
 function onActionSelect(key: string, row: ComprobanteListItem) {
   switch (key) {
-    case 'cambio-balon':
-      cambioBalonVentaId.value = row.id
-      cambioBalonOpen.value = true
-      return
     case 'edit':
       openEditModal(row)
       return

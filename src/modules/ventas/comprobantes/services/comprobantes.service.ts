@@ -8,7 +8,6 @@ import {
 } from '@/shared/api/apiClient'
 import type {
   NotaFiscalCorreccion,
-  CambioBalonVsdPayload,
   OperacionesVsd,
   Comprobante,
   ComprobanteValidez,
@@ -36,9 +35,6 @@ import type { ComprobantePdfFormato } from '@/modules/ventas/comprobantes/utils/
 export const comprobantesService = {
   operacionesVsd(id: number) {
     return apiGet<OperacionesVsd>(`/comprobantes/${id}/operaciones-vsd`)
-  },
-  cambiarBalonVsd(id: number, payload: CambioBalonVsdPayload) {
-    return apiPost<{ id: number; repetida: boolean }>(`/comprobantes/${id}/cambio-balon`, payload)
   },
   notasFiscalesCorreccion(id: number) {
     return apiGet<NotaFiscalCorreccion[]>(`/comprobantes/${id}/notas-fiscales`)
