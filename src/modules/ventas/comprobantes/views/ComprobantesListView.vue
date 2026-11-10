@@ -555,6 +555,9 @@ function puedePdf(row: ComprobanteListItem) {
     esNotaVenta(row)
   )
 }
+function puedeTicket(row: ComprobanteListItem) {
+  return esNotaVenta(row) || row.nombre_estado_sunat !== 'RECHAZADO'
+}
 
 function puedeConsultarCdr(row: ComprobanteListItem) {
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
@@ -698,14 +701,14 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       label: 'Descargar ticket 80mm',
       icon: ICONS.ticket,
       disabled: busy,
-      hidden: !(canView.value && puedePdf(row)),
+      hidden: !(canView.value && puedeTicket(row)),
     },
     {
       key: 'print-ticket',
       label: 'Imprimir ticket 80mm',
       icon: ICONS.printer,
       disabled: busy,
-      hidden: !(canView.value && puedePdf(row)),
+      hidden: !(canView.value && puedeTicket(row)),
     },
     {
       key: 'delete',
