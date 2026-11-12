@@ -2940,8 +2940,10 @@ watch(
     porcentajeIgvCargado.value = igvGuardado.ok ? igvGuardado.valor : PORCENTAJE_IGV_DEFAULT
     porcentajeIgvInput.value = porcentajeIgvCargado.value
   },
+  // immediate: si el detalle ya está en caché (staleTime) al montar, el watch no vería cambio
+  // y el formulario quedaría con los valores iniciales en vez de los de la compra.
+  { immediate: true },
 )
-
 
 const avisoCambioFechaGasto = computed(() => {
   const original = cabecera.value?.fecha
