@@ -37,10 +37,11 @@
         <p v-if="row.tiene_comprobante" class="font-medium text-gray-800 dark:text-white/90">
           {{ row.serie }}-{{ row.numero }}
         </p>
-        <AppBadge v-else size="sm" variant="light" color="warning" title="El proveedor no entregó comprobante">
+        <AppBadge v-else size="sm" variant="light" color="warning" title="Falta serie, número o fecha de emisión del comprobante">
           Sin comprobante
         </AppBadge>
-        <p class="text-xs text-gray-500 dark:text-gray-400">{{ row.fecha }}</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400">Gasto: {{ row.fecha }}</p>
+        <p v-if="row.fecha_emision" class="text-xs text-gray-500 dark:text-gray-400">Emisión: {{ row.fecha_emision }}</p>
       </template>
 
       <template #cell-proveedor="{ row }">
@@ -277,7 +278,7 @@ const filterFields = computed<DynamicFilterFieldDef[]>(() => [
     type: 'select',
     placeholder: 'Todos',
     options: [
-      { value: 'true', label: 'Sin comprobante' },
+      { value: 'true', label: 'Pendiente de comprobante' },
       { value: 'false', label: 'Con comprobante' },
     ],
   },

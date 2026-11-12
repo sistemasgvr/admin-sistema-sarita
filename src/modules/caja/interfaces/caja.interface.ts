@@ -80,7 +80,7 @@ export interface CajaMovimientoDeposito {
 
 export interface CajaSesionEvento {
   id: number
-  tipo: 'ABRIR' | 'CERRAR' | 'REABRIR' | 'AJUSTE_FONDO'
+  tipo: 'ABRIR' | 'CERRAR' | 'REABRIR' | 'AJUSTE_FONDO' | 'AJUSTE_COMPRA'
   monto: number | null
   diferencia: number | null
   observacion: string | null

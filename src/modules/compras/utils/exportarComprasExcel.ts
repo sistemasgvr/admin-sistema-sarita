@@ -26,7 +26,7 @@ function columnas<T>(campos: Campo<T>[]): ExcelColumn<T>[] {
 export function crearHojasCompras(compras: Compra[]) {
   const cabeceras = compras.map(({ cabecera: c }) => ({
     ...c,
-    tiene_comprobante: Boolean(c.serie?.trim() && c.numero?.trim()),
+    tiene_comprobante: Boolean(c.serie?.trim() && c.numero?.trim() && c.fecha_emision),
   }))
   const relacionadas = compras.map(({ cabecera: c, ...compra }) => ({
     ...compra,
@@ -34,7 +34,8 @@ export function crearHojasCompras(compras: Compra[]) {
       id_compra: c.id,
       serie: c.serie,
       numero: c.numero,
-      fecha_compra: c.fecha,
+      fecha_gasto: c.fecha,
+      fecha_emision: c.fecha_emision,
       proveedor: c.proveedor,
       proveedor_documento: c.proveedor_documento,
       moneda: c.moneda,
@@ -45,7 +46,8 @@ export function crearHojasCompras(compras: Compra[]) {
     ['id_compra', 'ID compra'],
     ['serie', 'Serie', 12],
     ['numero', 'Número', 16],
-    ['fecha_compra', 'Fecha compra', 14],
+    ['fecha_gasto', 'Fecha gasto', 14],
+    ['fecha_emision', 'Fecha emisión', 14],
     ['proveedor', 'Proveedor', 36],
     ['proveedor_documento', 'Documento proveedor', 22],
     ['moneda', 'Moneda'],
@@ -67,7 +69,8 @@ export function crearHojasCompras(compras: Compra[]) {
         ['id', 'ID compra'],
         ['serie', 'Serie', 12],
         ['numero', 'Número', 16],
-        ['fecha', 'Fecha', 14],
+        ['fecha', 'Fecha gasto', 14],
+        ['fecha_emision', 'Fecha emisión', 14],
         ['id_tipo_comprobante', 'ID tipo comprobante'],
         ['tipo_comprobante', 'Tipo comprobante'],
         ['tiene_comprobante', 'Tiene comprobante'],

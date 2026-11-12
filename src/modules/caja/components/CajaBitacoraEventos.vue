@@ -44,6 +44,7 @@ const ETIQUETAS: Record<CajaSesionEvento['tipo'], string> = {
   CERRAR: 'Cierre',
   REABRIR: 'Reapertura',
   AJUSTE_FONDO: 'Ajuste de fondo',
+  AJUSTE_COMPRA: 'Ajuste por compra',
 }
 
 function etiquetaTipo(tipo: CajaSesionEvento['tipo']) {
@@ -51,7 +52,7 @@ function etiquetaTipo(tipo: CajaSesionEvento['tipo']) {
 }
 
 function colorTipo(tipo: CajaSesionEvento['tipo']) {
-  if (tipo === 'CERRAR' || tipo === 'AJUSTE_FONDO') return 'warning'
+  if (tipo === 'CERRAR' || tipo === 'AJUSTE_FONDO' || tipo === 'AJUSTE_COMPRA') return 'warning'
   return tipo === 'REABRIR' ? 'primary' : 'success'
 }
 </script>

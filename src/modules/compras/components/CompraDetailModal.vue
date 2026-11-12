@@ -74,8 +74,12 @@
             </p>
           </div>
           <div>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Fecha</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Fecha de gasto</p>
             <p class="font-medium text-gray-800 dark:text-white/90">{{ cabecera.fecha }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Fecha de emisión</p>
+            <p class="font-medium text-gray-800 dark:text-white/90">{{ cabecera.fecha_emision ?? 'Pendiente' }}</p>
           </div>
           <div>
             <p class="text-xs text-gray-500 dark:text-gray-400">Estado</p>

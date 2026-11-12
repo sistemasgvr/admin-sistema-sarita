@@ -17,6 +17,8 @@ const compra = {
     id: 17,
     serie: 'F001',
     numero: '000042',
+    fecha: '2026-11-12',
+    fecha_emision: '2026-11-10',
     proveedor_documento: '00123456789',
     proveedor: 'Proveedor',
     moneda: 'SOLES',
@@ -68,9 +70,15 @@ describe('Excel de compras', () => {
       estado: 'Anulado',
       declarar_sunat: 'Sí',
       tiene_comprobante: 'Sí',
+      fecha: '2026-11-12',
+      fecha_emision: '2026-11-10',
     })
+    expect(sheets[0]!.columns.find((c) => c.key === 'fecha')!.header).toBe('Fecha gasto')
+    expect(sheets[0]!.columns.find((c) => c.key === 'fecha_emision')!.header).toBe('Fecha emisión')
     expect(values(1)).toMatchObject({
       id_compra: 17,
+      fecha_gasto: '2026-11-12',
+      fecha_emision: '2026-11-10',
       id: 8,
       codigo_producto: '0001',
       cantidad: 2.5,
@@ -89,6 +97,15 @@ describe('Excel de compras', () => {
       },
     ])
     expect(sheets.slice(1).every((s) => s.rows.length === 0)).toBe(true)
+    const header = sheets[0]!
+    expect(header.columns.find((c) => c.key === 'tiene_comprobante')!.value(header.rows[0]!)).toBe(
+      'No',
+    )
+  })
+  it('sin fecha de emisión la compra sigue pendiente de comprobante', () => {
+    const sheets = crearHojasCompras([
+      { ...compra, cabecera: { ...compra.cabecera, fecha_emision: null } },
+    ])
     const header = sheets[0]!
     expect(header.columns.find((c) => c.key === 'tiene_comprobante')!.value(header.rows[0]!)).toBe(
       'No',

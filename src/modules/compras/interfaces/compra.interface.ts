@@ -6,6 +6,8 @@ export interface CompraListItem {
   serie: string | null
   numero: string | null
   fecha: string
+  /** Fecha del comprobante del proveedor; null = pendiente de comprobante. */
+  fecha_emision?: string | null
   id_proveedor: number | null
   nombre_proveedor?: string | null
   proveedor?: string | null
@@ -31,6 +33,8 @@ export interface CompraCabecera {
   serie: string | null
   numero: string | null
   fecha: string
+  /** Fecha del comprobante del proveedor; null = pendiente de comprobante. */
+  fecha_emision?: string | null
   id_proveedor: number | null
   proveedor: string | null
   proveedor_documento: string | null
@@ -156,8 +160,11 @@ export interface CreateCompraPayload {
   idTipoComprobante?: number
   serie?: string
   numero?: string
+  /** Fecha de gasto: el pago se registra en la caja de ese día. */
   fecha: string
   idProveedor?: number
+  /** Fecha de emisión del comprobante; vacía = pendiente de comprobante. */
+  fechaEmision?: string
   idAlmacen?: number
   idComprobanteReferencia?: number
   idRecargaPlanta?: number
@@ -207,6 +214,15 @@ export interface ActualizarCompraCabeceraPayload {
   numeroOperacion?: string
   /** Nuevo % de IGV (0..100): recalcula base imponible e IGV. Si se omite se conserva. */
   porcentajeIgv?: number
+  /** Nueva fecha de gasto: mueve el pago a la caja de esa fecha (debe estar abierta). */
+  fecha?: string
+  /** null vacía la fecha de emisión (vuelve a pendiente de comprobante). */
+  fechaEmision?: string | null
+  /** null vacía el tipo de comprobante. */
+  idTipoComprobante?: number | null
+  /** "" vacía la serie/número. */
+  serie?: string
+  numero?: string
 }
 
 export interface CreateCompraDetalleLineaPayload {

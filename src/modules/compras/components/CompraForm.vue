@@ -64,13 +64,21 @@
               />
             </AppSelectWithCreate>
 
-            <div data-tutorial="compra-documento" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div data-tutorial="compra-documento" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+              <AppDatePicker
+                v-model="fecha"
+                label="Fecha de gasto"
+                required
+                help="Día en que salió el dinero; se registra en la caja de ese día"
+                v-bind="fechaAttrs"
+                :disabled="saving"
+                :error="errors.fecha"
+              />
               <AppSelect
                 v-model="idTipoComprobante"
                 label="Tipo comprobante"
                 placeholder="Seleccionar"
-                required
-                help="Catálogo SUNAT 01: factura, boleta, recibo por honorarios, ticket, servicios públicos, etc."
+                help="Catálogo SUNAT 01: factura, boleta, recibo por honorarios, ticket, servicios públicos, etc. Si aún no tienes el comprobante, complétalo después al editar."
                 v-bind="idTipoComprobanteAttrs"
                 :options="tipoComprobanteOptions"
                 :disabled="saving"
@@ -80,7 +88,6 @@
                 v-model="serie"
                 label="Serie"
                 placeholder="F001"
-                required
                 v-bind="serieAttrs"
                 :disabled="saving"
                 :error="errors.serie"
@@ -89,18 +96,18 @@
                 v-model="numero"
                 label="Número"
                 placeholder="00001234"
-                required
                 v-bind="numeroAttrs"
                 :disabled="saving"
                 :error="errors.numero"
               />
               <AppDatePicker
-                v-model="fecha"
+                v-model="fechaEmision"
                 label="Fecha de emisión"
-                required
-                v-bind="fechaAttrs"
+                help="Fecha del comprobante del proveedor. Si aún no llega, déjala vacía: la compra queda pendiente de comprobante."
+                :max="today()"
+                v-bind="fechaEmisionAttrs"
                 :disabled="saving"
-                :error="errors.fecha"
+                :error="errors.fechaEmision"
               />
             </div>
           </DetailSectionCard>
@@ -731,7 +738,7 @@
         <template v-else>
           <DetailSectionCard
             title="Datos de la compra"
-            description="Proveedor, comprobante y almacén no se modifican; para corregirlos anula y vuelve a registrar."
+            description="Proveedor y almacén no se modifican; para corregirlos anula y vuelve a registrar."
             :icon="ICONS.receipt"
             :full-width="true"
           >
@@ -745,7 +752,7 @@
             </template>
 
             <div
-              class="grid grid-cols-1 gap-4 rounded-xl bg-gray-50 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))] dark:bg-white/3"
+              class="grid grid-cols-1 gap-4 rounded-xl bg-gray-50 p-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] dark:bg-white/3"
             >
               <div class="min-w-0">
                 <p class="text-xs text-gray-500 dark:text-gray-400">Proveedor</p>
@@ -754,19 +761,60 @@
                 </p>
               </div>
               <div>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Comprobante</p>
-                <p class="font-medium tabular-nums text-gray-800 dark:text-white/90">
-                  {{ cabecera?.serie ?? '—' }}-{{ cabecera?.numero ?? '—' }}
-                </p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Fecha</p>
-                <p class="font-medium text-gray-800 dark:text-white/90">{{ cabecera?.fecha ?? '—' }}</p>
-              </div>
-              <div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">Almacén</p>
                 <p class="font-medium text-gray-800 dark:text-white/90">{{ cabecera?.almacen ?? '—' }}</p>
               </div>
+            </div>
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+              <AppDatePicker
+                v-model="fecha"
+                label="Fecha de gasto"
+                required
+                help="Día en que salió el dinero; se registra en la caja de ese día"
+                v-bind="fechaAttrs"
+                :disabled="saving"
+                :error="errors.fecha"
+              />
+              <AppSelect
+                v-model="idTipoComprobante"
+                label="Tipo comprobante"
+                placeholder="Seleccionar"
+                v-bind="idTipoComprobanteAttrs"
+                :options="tipoComprobanteOptionsEdicion"
+                :disabled="saving"
+                :error="errors.idTipoComprobante"
+              />
+              <AppInput
+                v-model="serie"
+                label="Serie"
+                placeholder="F001"
+                v-bind="serieAttrs"
+                :disabled="saving"
+                :error="errors.serie"
+              />
+              <AppInput
+                v-model="numero"
+                label="Número"
+                placeholder="00001234"
+                v-bind="numeroAttrs"
+                :disabled="saving"
+                :error="errors.numero"
+              />
+              <AppDatePicker
+                v-model="fechaEmision"
+                label="Fecha de emisión"
+                help="Bórrala para dejar la compra pendiente de comprobante."
+                :max="today()"
+                v-bind="fechaEmisionAttrs"
+                :disabled="saving"
+                :error="errors.fechaEmision"
+              />
+            </div>
+            <div
+              v-if="avisoCambioFechaGasto"
+              class="rounded-lg bg-warning-50 px-3 py-2 text-sm text-warning-700 dark:bg-warning-500/10 dark:text-warning-400"
+            >
+              {{ avisoCambioFechaGasto }}
             </div>
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <AppSelectWithCreate
@@ -1144,6 +1192,7 @@ import {
   parsePorcentajeIgv,
   tasaIgvDesdePorcentaje,
 } from '@/modules/compras/utils/porcentajeIgv'
+import { payloadComprobanteEdicion } from '@/modules/compras/utils/payloadComprobanteEdicion'
 import {
   useActualizarCabeceraMutation,
   useActualizarDetalleMutation,
@@ -1309,7 +1358,7 @@ const requiredOnCreate = (label: string) =>
 const requiredDateOnCreate = () =>
   yup
     .string()
-    .test('required-on-create', 'La fecha es obligatoria', (value) => isEdit.value || Boolean(value))
+    .test('required-on-create', 'La fecha de gasto es obligatoria', (value) => isEdit.value || Boolean(value))
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -1317,8 +1366,14 @@ const { defineField, handleSubmit, resetForm, errors, submitCount } = useForm({
   validationSchema: toTypedSchema(
     yup.object({
       fecha: requiredDateOnCreate(),
-      serie: requiredOnCreate('La serie'),
-      numero: requiredOnCreate('El número'),
+      // El comprobante puede llegar días después: serie, número y emisión se completan al editar.
+      serie: optionalString(),
+      numero: optionalString(),
+      fechaEmision: optionalString().test(
+        'emision-no-futura',
+        'La fecha de emisión no puede ser posterior a hoy',
+        (value) => !value || value <= today(),
+      ),
       idProveedor: requiredOnCreate('El proveedor'),
       // Con el switch encendido la factura declara ser el costo de una orden:
       // sin orden el backend la registra como compra suelta y el gas nunca
@@ -1340,7 +1395,7 @@ const { defineField, handleSubmit, resetForm, errors, submitCount } = useForm({
       serieGuiaIngreso: optionalString(),
       numeroGuiaIngreso: optionalString(),
       idAlmacen: requiredOnCreate('El almacén'),
-      idTipoComprobante: requiredOnCreate('El tipo de comprobante'),
+      idTipoComprobante: yup.mixed<string | number>().optional(),
       idTipoRegistro: requiredOnCreate('El tipo de registro'),
       idCategoriaGasto: requiredOnCreate('La categoría de gasto'),
       idSucursal: yup.mixed<string | number>().optional(),
@@ -1354,6 +1409,7 @@ const { defineField, handleSubmit, resetForm, errors, submitCount } = useForm({
     fecha: today(),
     serie: '',
     numero: '',
+    fechaEmision: '',
     idProveedor: '' as string | number,
     idRecargaPlanta: '' as string | number,
     guardarBalonesAlmacen: false,
@@ -1375,6 +1431,7 @@ const { defineField, handleSubmit, resetForm, errors, submitCount } = useForm({
 const [fecha, fechaAttrs] = defineField('fecha')
 const [serie, serieAttrs] = defineField('serie')
 const [numero, numeroAttrs] = defineField('numero')
+const [fechaEmision, fechaEmisionAttrs] = defineField('fechaEmision')
 const [idProveedor, idProveedorAttrs] = defineField('idProveedor')
 const [idRecargaPlanta] = defineField('idRecargaPlanta')
 const [guardarBalonesAlmacen] = defineField('guardarBalonesAlmacen')
@@ -1393,7 +1450,7 @@ const [declararSunat] = defineField('declararSunat')
 const DECLARAR_SUNAT_HELP =
   'Marca la factura para el registro de compras SUNAT (PLE). No la envía por internet; solo la clasifica para declarar.'
 const CONDICION_PAGO_HELP =
-  'Contado: indica con qué pagaste; el pago sale de la caja de la sucursal en la fecha de la compra (no lo registres además como gasto de caja). Crédito o cuotas: verás un preview editable y al guardar se crea la cuenta por pagar; cada pago que registres sobre ella sale de la caja de la sucursal.'
+  'Contado: indica con qué pagaste; el pago sale de la caja de la sucursal en la fecha de gasto (no lo registres además como gasto de caja). Crédito o cuotas: verás un preview editable y al guardar se crea la cuenta por pagar; cada pago que registres sobre ella sale de la caja de la sucursal.'
 
 const lineas = reactive<CompraLineaForm[]>([])
 const lineasExistentes = computed(() => compraData.value?.detalle ?? [])
@@ -1675,6 +1732,12 @@ const tipoComprobanteQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_
 const tipoRegistroQuery = useListaOpcionesQuery(computed(() => ListaIds.TIPO_REGISTRO))
 const categoriaGastoQuery = useListaOpcionesQuery(computed(() => ListaIds.CATEGORIA_GASTO))
 const monedaQuery = useListaOpcionesQuery(computed(() => ListaIds.MONEDA))
+
+/** En edición se puede quitar el tipo (la compra vuelve a pendiente de comprobante). */
+const tipoComprobanteOptionsEdicion = computed(() => [
+  { value: '', label: 'Sin tipo (pendiente)' },
+  ...tipoComprobanteOptions.value,
+])
 
 const tipoComprobanteOptions = computed(() => {
   const items = (tipoComprobanteQuery.data.value ?? []).filter(
@@ -2722,6 +2785,7 @@ function resetCreateForm() {
       fecha: today(),
       serie: '',
       numero: '',
+      fechaEmision: '',
       idProveedor: '',
       idRecargaPlanta: '',
       guardarBalonesAlmacen: false,
@@ -2767,6 +2831,7 @@ async function prefillFromReferencia(data: NonNullable<typeof referenciaQuery.da
       fecha: today(),
       serie: c.serie ?? '',
       numero: '',
+      fechaEmision: '',
       idProveedor: c.id_proveedor ?? '',
       idRecargaPlanta: c.id_recarga_planta ?? '',
       guardarBalonesAlmacen: false,
@@ -2847,9 +2912,10 @@ watch(
     if (!data || !isEdit.value) return
     resetForm({
       values: {
-        fecha: today(),
-        serie: '',
-        numero: '',
+        fecha: data.cabecera.fecha ?? today(),
+        serie: data.cabecera.serie ?? '',
+        numero: data.cabecera.numero ?? '',
+        fechaEmision: data.cabecera.fecha_emision ?? '',
         idProveedor: '',
         idRecargaPlanta: '',
         guardarBalonesAlmacen: false,
@@ -2857,7 +2923,7 @@ watch(
         serieGuiaIngreso: '',
         numeroGuiaIngreso: '',
         idAlmacen: '',
-        idTipoComprobante: '',
+        idTipoComprobante: data.cabecera.id_tipo_comprobante ?? '',
         idTipoRegistro: '',
         idCategoriaGasto: data.cabecera.id_categoria_gasto ?? '',
         idSucursal: '',
@@ -2875,6 +2941,15 @@ watch(
     porcentajeIgvInput.value = porcentajeIgvCargado.value
   },
 )
+
+
+const avisoCambioFechaGasto = computed(() => {
+  const original = cabecera.value?.fecha
+  const nueva = fecha.value as string | undefined
+  if (!isEdit.value || !original || !nueva || nueva === original) return ''
+  const [, mes, dia] = nueva.split('-')
+  return `El gasto se moverá a la caja del ${dia}/${mes}. Si la caja original está cerrada, se recalculará su arqueo.`
+})
 
 const onSubmit = handleSubmit(async (values) => {
   const userId = authStore.user?.id
@@ -2917,6 +2992,7 @@ const onSubmit = handleSubmit(async (values) => {
             : undefined,
         ...payloadPagoContado(),
         porcentajeIgv: igv.valor !== porcentajeIgvCargado.value ? igv.valor : undefined,
+        ...(cabecera.value ? payloadComprobanteEdicion(values, cabecera.value) : {}),
       },
     })
     emit('saved', updated.cabecera.id)
@@ -2994,6 +3070,7 @@ const onSubmit = handleSubmit(async (values) => {
     fecha: values.fecha as string,
     serie: String(values.serie ?? '').trim() || undefined,
     numero: String(values.numero ?? '').trim() || undefined,
+    fechaEmision: values.fechaEmision || undefined,
     idProveedor: toOptionalNumber(values.idProveedor),
     idRecargaPlanta: toOptionalNumber(values.idRecargaPlanta),
     guardarBalonesAlmacen: registrarRetorno || undefined,
