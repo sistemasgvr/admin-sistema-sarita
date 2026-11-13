@@ -36,11 +36,13 @@ import { AppHelpTip } from '@/shared/components'
 import { ICONS } from '@/shared/constants/icons'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createComprasRegistrarTutorial } from '@/modules/soporte/tutorials/compras-registrar.tutorial'
+import { createCasoCompraFechaRealTutorial } from '@/modules/soporte/tutorials/caso-compra-fecha-real.tutorial'
 
 const route = useRoute()
 const router = useRouter()
 
 useTutorialAutoStart('compras-registrar', createComprasRegistrarTutorial)
+useTutorialAutoStart('caso-compra-fecha-real', createCasoCompraFechaRealTutorial)
 
 const isEdit = computed(() => route.name === 'admin-compras-editar')
 const mode = computed<CompraFormMode>(() => (isEdit.value ? 'edit' : 'create'))

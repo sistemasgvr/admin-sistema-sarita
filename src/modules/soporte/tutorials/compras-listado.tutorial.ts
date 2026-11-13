@@ -31,10 +31,10 @@ export function createComprasListadoTutorial(options: TutorialOptions = {}) {
       popover: {
         title: '3. Filtros',
         description: `${bulletList([
-          ['Desde / Hasta', 'rango de fechas de emisión.'],
+          ['Desde / Hasta', 'rango de fechas.'],
           ['Proveedor y almacén', 'compras de un proveedor o que ingresaron a un almacén.'],
           ['Estado', 'activas o anuladas.'],
-          ['Sin comprobante', 'compras informales que no se declaran.'],
+          ['Pendiente de comprobante', 'el gasto ya está registrado pero la factura aún no llega: esta es la lista de lo que hay que completar.'],
           ['Tipo de registro y categoría', 'mercadería, gasto, activo; y su categoría.'],
         ])}`,
         side: 'bottom',
@@ -65,7 +65,7 @@ export function createComprasListadoTutorial(options: TutorialOptions = {}) {
       popover: {
         title: '6. Listado',
         description:
-          'Cada fila muestra comprobante y fecha, proveedor, categoría, total y estado. Las compras sin comprobante llevan una etiqueta de advertencia.',
+          'Cada fila muestra el comprobante, el proveedor, la categoría, el total y el estado. Debajo aparecen las <strong>dos fechas</strong>: «Gasto» (cuándo salió el dinero) y «Emisión» (la del comprobante). Si falta serie, número o fecha de emisión, la fila lleva la etiqueta <strong>Sin comprobante</strong> como recordatorio de completarla.',
         side: 'top',
         align: 'start',
       },

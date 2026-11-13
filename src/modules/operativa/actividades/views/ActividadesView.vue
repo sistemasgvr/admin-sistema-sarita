@@ -317,6 +317,7 @@ import {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createActividadesTutorial } from '@/modules/soporte/tutorials/actividades.tutorial'
+import { createCasoFlujoEntregaCompletoTutorial } from '@/modules/soporte/tutorials/caso-flujo-entrega-completo.tutorial'
 import {
   AppActionMenu,
   AppBadge,
@@ -396,6 +397,7 @@ watch(
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_CREAR))
 
 useTutorialAutoStart('actividades', createActividadesTutorial)
+useTutorialAutoStart('caso-flujo-entrega-completo', createCasoFlujoEntregaCompletoTutorial)
 const canView = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_VER))
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_EDITAR))
 const canDelete = computed(() => authStore.hasPermission(PermisoBanderas.ACTIVIDADES_ELIMINAR))

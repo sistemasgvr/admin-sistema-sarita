@@ -11,8 +11,10 @@ import PosVentaPanel from '@/modules/ventas/comprobantes/components/PosVentaPane
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createVentasPosTutorial } from '@/modules/soporte/tutorials/ventas-pos.tutorial'
+import { createCasoPagoMixtoTutorial } from '@/modules/soporte/tutorials/caso-pago-mixto.tutorial'
 
 useTutorialAutoStart('ventas-pos', createVentasPosTutorial, 600)
+useTutorialAutoStart('caso-pago-mixto', createCasoPagoMixtoTutorial, 600)
 
 const breadcrumbItems = ventasBreadcrumbItems('Punto de venta')
 </script>

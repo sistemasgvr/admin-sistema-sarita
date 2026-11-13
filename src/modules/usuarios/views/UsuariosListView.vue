@@ -197,6 +197,7 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createSistemaUsuariosTutorial } from '@/modules/soporte/tutorials/sistema-usuarios.tutorial'
+import { createCasoPermisosBloqueoTutorial } from '@/modules/soporte/tutorials/caso-permisos-bloqueo.tutorial'
 import {
   AppBadge,
   AppBadgeList,
@@ -258,6 +259,7 @@ const currentUserId = computed(() => authStore.user?.id ?? null)
 const canCreate = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_CREAR))
 
 useTutorialAutoStart('sistema-usuarios', createSistemaUsuariosTutorial)
+useTutorialAutoStart('caso-permisos-bloqueo', createCasoPermisosBloqueoTutorial)
 const canEdit = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_EDITAR))
 const canDeactivate = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_ELIMINAR))
 const canActivate = computed(() => authStore.hasPermission(PermisoBanderas.USUARIOS_ACTIVAR))

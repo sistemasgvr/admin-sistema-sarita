@@ -569,6 +569,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createVentasCajaTutorial } from '@/modules/soporte/tutorials/ventas-caja.tutorial'
+import { createCasoCajaReabrirTutorial } from '@/modules/soporte/tutorials/caso-caja-reabrir.tutorial'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import {
   AppBadge,
@@ -609,6 +610,7 @@ import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 import { toastWarning } from '@/shared/composables/useToast'
 
 useTutorialAutoStart('ventas-caja', createVentasCajaTutorial, 600)
+useTutorialAutoStart('caso-caja-reabrir', createCasoCajaReabrirTutorial, 600)
 
 const breadcrumbItems = ventasBreadcrumbItems('Caja')
 

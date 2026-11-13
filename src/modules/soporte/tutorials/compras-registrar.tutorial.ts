@@ -39,9 +39,12 @@ export function createComprasRegistrarTutorial(options: TutorialOptions = {}) {
     {
       element: '[data-tutorial="compra-documento"]',
       popover: {
-        title: '4. Fecha, tipo, serie y número',
-        description:
-          'Fecha de emisión, tipo de comprobante según el catálogo SUNAT (factura, boleta, recibo por honorarios…), y la serie y número tal como figuran en el documento. El sistema evita duplicar el mismo comprobante del mismo proveedor.',
+        title: '4. Las dos fechas y el documento',
+        description: `Este bloque tiene cinco campos y conviene no confundir las fechas:${bulletList([
+          ['Fecha de gasto', 'el día en que salió el dinero. Define en qué caja entra.'],
+          ['Tipo, serie y número', 'del documento, según el catálogo SUNAT.'],
+          ['Fecha de emisión', 'la del comprobante. <strong>Si aún no llega, déjala vacía</strong> y la compra queda pendiente de comprobante.'],
+        ])}<p class="mt-2">El sistema evita duplicar el mismo comprobante del mismo proveedor, y no acepta una emisión posterior a hoy.</p>`,
         side: 'bottom',
         align: 'start',
       },

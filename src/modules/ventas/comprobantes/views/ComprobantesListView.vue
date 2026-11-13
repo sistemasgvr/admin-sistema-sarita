@@ -260,6 +260,7 @@ import { useCrearDesdeVentaMutation } from '@/modules/documentos-salida/composab
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createVentasComprobantesTutorial } from '@/modules/soporte/tutorials/ventas-comprobantes.tutorial'
+import { createCasoCorregirComprobanteTutorial } from '@/modules/soporte/tutorials/caso-corregir-comprobante.tutorial'
 import { ventasBreadcrumbItems } from '@/modules/ventas/config/ventas-breadcrumb'
 import { toSelectOptions } from '@/modules/catalogos/utils/toSelectOptions'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
@@ -284,6 +285,7 @@ import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interf
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
 useTutorialAutoStart('ventas-comprobantes', createVentasComprobantesTutorial)
+useTutorialAutoStart('caso-corregir-comprobante', createCasoCorregirComprobanteTutorial)
 
 const breadcrumbItems = ventasBreadcrumbItems('Comprobantes')
 

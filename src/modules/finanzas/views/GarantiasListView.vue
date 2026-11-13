@@ -226,12 +226,14 @@ import {
 } from '@/modules/finanzas/utils/garantiaDetalle'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createFinanzasGarantiasTutorial } from '@/modules/soporte/tutorials/finanzas-garantias.tutorial'
+import { createCasoDevolverGarantiaTutorial } from '@/modules/soporte/tutorials/caso-devolver-garantia.tutorial'
 
 const authStore = useAuthStore()
 
 const canCrear = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_CREAR))
 
 useTutorialAutoStart('finanzas-garantias', createFinanzasGarantiasTutorial)
+useTutorialAutoStart('caso-devolver-garantia', createCasoDevolverGarantiaTutorial)
 const canEditar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_EDITAR))
 const canEliminar = computed(() => authStore.hasPermission(PermisoBanderas.FINANZAS_GARANTIAS_ELIMINAR))
 const canReembolsar = computed(() =>

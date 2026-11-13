@@ -55,6 +55,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQueryValue } from 'vue-router'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createBalonesPrestamosTutorial } from '@/modules/soporte/tutorials/balones-prestamos.tutorial'
+import { createCasoCilindroPerdidoTutorial } from '@/modules/soporte/tutorials/caso-cilindro-perdido.tutorial'
 import PrestamosAntiguedadView from '@/modules/balones/prestamos/views/PrestamosAntiguedadView.vue'
 import PrestamosListView from '@/modules/balones/prestamos/views/PrestamosListView.vue'
 import { AppTabs } from '@/shared/components'
@@ -62,6 +63,7 @@ import { ICONS } from '@/shared/constants/icons'
 import type { AppTabItem } from '@/shared/interfaces/tabs.interface'
 
 useTutorialAutoStart('balones-prestamos', createBalonesPrestamosTutorial, 600)
+useTutorialAutoStart('caso-cilindro-perdido', createCasoCilindroPerdidoTutorial, 600)
 
 const route = useRoute()
 const router = useRouter()
