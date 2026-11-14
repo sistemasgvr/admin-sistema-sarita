@@ -71,6 +71,7 @@ export interface CompraCabecera {
   id_recarga_planta: number | null
   numero_recarga_planta: string | null
   tiene_movimientos_inventario: boolean
+  gas_retorno_planta?: 'INGRESADO' | 'PENDIENTE' | null
   puede_modificarse_parcial: boolean
   fecha_creacion: string | null
   fecha_modificacion: string | null

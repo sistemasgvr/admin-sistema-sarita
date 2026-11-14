@@ -126,6 +126,16 @@
           <AppBadge v-if="cabecera.tiene_movimientos_inventario" color="warning" :icon="ICONS.alertTriangle">
             Afectó inventario
           </AppBadge>
+          <AppBadge
+            v-else-if="cabecera.gas_retorno_planta === 'INGRESADO'"
+            color="success"
+            :icon="ICONS.check"
+          >
+            Gas ingresado por retorno de planta
+          </AppBadge>
+          <AppBadge v-else-if="cabecera.gas_retorno_planta === 'PENDIENTE'" color="warning">
+            Gas pendiente: falta registrar retorno
+          </AppBadge>
           <AppBadge v-else color="neutral">
             Sin movimientos de inventario
           </AppBadge>
