@@ -7,7 +7,9 @@
         >
           Se creará {{ esFactura ? 'una Factura (01)' : 'una Boleta (03)' }} a partir de esta venta
           sin documento. La VSD quedará registrada como comprobante origen del nuevo documento
-          electrónico.
+          electrónico. Se emite con la fecha de emisión elegida y la venta conserva su fecha
+          ({{ fechaVentaOrigen ? formatListDate(fechaVentaOrigen) : '—' }}); no hace falta reabrir la
+          caja porque el cobro ya se registró con la venta sin documento.
         </div>
       </DetailSectionCard>
 
@@ -32,7 +34,9 @@
             />
             <AppDatePicker
               v-model="fecha"
-              label="Fecha"
+              label="Fecha de emisión"
+              :min="hoyIsoLima()"
+              :error="fechaEmisionPasada ? 'No puede ser anterior a hoy' : undefined"
               :disabled="saving"
               required
             />
@@ -151,7 +155,6 @@ import {
 import type { ComprobanteListItem } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { type CodigoTipoComprobanteSunat, seriePorDefectoDesdeCodigo, validarSerieParaTipo } from '@/modules/ventas/comprobantes/utils/serieComprobante'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
-import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import DetailCardsLayout from '@/shared/components/detail/DetailCardsLayout.vue'
 import DetailSectionCard from '@/shared/components/detail/DetailSectionCard.vue'
@@ -167,7 +170,7 @@ import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuer
 import { useClienteDetailQuery } from '@/modules/clientes/composables/useClienteDetailQuery'
 import { getClienteOptionLabel } from '@/modules/clientes/utils/clienteNombre'
 import { PermisoBanderas } from '@/shared/constants/permissions'
-import { hoyIsoLima } from '@/shared/utils/date'
+import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 import type { Cliente } from '@/modules/clientes/interfaces/cliente.interface'
 import type { Comprobante } from '@/modules/ventas/comprobantes/interfaces/comprobante.interface'
 import { CLIENTES_VARIOS_DOCUMENTO } from '@/modules/clientes/constants/clientesVarios'
@@ -223,7 +226,16 @@ const idSucursalCaja = computed(() => {
   const alm = almacenesQuery.data.value?.data?.find((a) => a.id === Number(idAlm))
   return alm?.id_sucursal != null ? Number(alm.id_sucursal) : null
 })
-const { assertCajaAbierta } = useCajaAbiertaRequerida(fecha, idSucursalCaja)
+/** Día en que se hizo la venta sin documento: es la fecha de venta del nuevo comprobante. */
+const fechaVentaOrigen = computed(() => {
+  const valor =
+    origenQuery.data.value?.fecha_venta ??
+    origenQuery.data.value?.fecha ??
+    props.comprobante?.fecha_venta ??
+    props.comprobante?.fecha ??
+    ''
+  return String(valor).slice(0, 10)
+})
 const emitirTrasCrear = ref(false)
 const observaciones = ref('')
 const lineas = ref<LineaItem[]>([])
@@ -326,7 +338,7 @@ const sections = computed<DetailSection[]>(() => {
         },
         { label: 'Cliente', value: row.nombre_cliente ?? '—' },
         { label: 'Observaciones', value: origenQuery.data.value?.observaciones ?? '—' },
-        { label: 'Fecha', value: row.fecha ?? '—' },
+        { label: 'Fecha de venta', value: fechaVentaOrigen.value || '—' },
         {
           label: 'Total',
           value: formatMoney(Number(row.total_importe ?? 0)),
@@ -344,8 +356,12 @@ const saving = computed(
   () => createMutation.isPending.value || emitirMutation.isPending.value,
 )
 
+/** Factura/boleta se emite con fecha de hoy; el día de la venta lo conserva la venta sin documento. */
+const fechaEmisionPasada = computed(() => Boolean(fecha.value) && fecha.value < hoyIsoLima())
+
 const canSave = computed(
   () =>
+    !fechaEmisionPasada.value &&
     Boolean(idTipoComprobante.value) &&
     Boolean(serie.value.trim()) &&
     Boolean(fecha.value) &&
@@ -406,8 +422,6 @@ async function confirm() {
 
   if (!row || !origen || !userId || !canSave.value) return
 
-  if (!assertCajaAbierta()) return
-
   const serieError = validarSerieParaTipo(codigoTipo.value, serie.value)
   if (serieError) {
     toastWarning(serieError)
@@ -446,6 +460,10 @@ async function ejecutarCrear(row: ComprobanteListItem, origen: Comprobante, user
       idTipoComprobante: idTipoComprobante.value!,
       serie: serie.value.trim().toUpperCase(),
       fecha: fecha.value,
+      fechaVenta:
+        fechaVentaOrigen.value && fechaVentaOrigen.value < fecha.value
+          ? fechaVentaOrigen.value
+          : undefined,
       idCliente: clienteId,
       idComprobanteOrigen: row.id,
       idMoneda: origen.id_moneda ?? undefined,

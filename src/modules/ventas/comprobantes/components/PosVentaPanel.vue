@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <PosCajaEstadoBanner
-      :mensaje="mensajeBloqueoCaja"
+      :mensaje="mensajeCajaVenta"
       :caja-cerrada="cajaCerrada"
       :pendiente-cierre="hayPendienteCierre || sesionEsPendiente"
       :fecha-pendiente="fechaCajaPendiente"
@@ -34,7 +34,12 @@
           </template>
           <div
             data-tutorial="pos-comprobante"
-            class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+            class="grid grid-cols-1 gap-4 md:grid-cols-2"
+            :class="
+              esFacturaOBoleta
+                ? 'xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.75fr)_minmax(0,0.9fr)_minmax(0,1.15fr)_minmax(0,1.15fr)]'
+                : 'xl:grid-cols-4'
+            "
           >
             <AppSelect
               v-model="idTipoComprobante"
@@ -45,7 +50,19 @@
             />
             <AppInput v-model="serie" label="Serie" placeholder="B002 / F002" disabled />
             <AppInput v-model="numero" label="Número" placeholder="Automático" disabled />
-            <AppDatePicker v-model="fecha" label="Fecha" />
+            <AppDatePicker
+              v-model="fecha"
+              :label="esFacturaOBoleta ? 'Fecha de emisión' : 'Fecha'"
+              :min="esFacturaOBoleta ? hoyIsoLima() : undefined"
+            />
+            <AppDatePicker
+              v-if="esFacturaOBoleta"
+              v-model="fechaVenta"
+              label="Fecha de venta"
+              placeholder="Igual a emisión"
+              :max="fecha"
+              help="Llénala solo si la venta se hizo un día anterior. El comprobante se emite con la fecha de emisión (correlativo y SUNAT) y la venta cuenta en la caja de esta fecha."
+            />
           </div>
 
           <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -462,7 +479,7 @@ import AlmacenSelectField from '@/modules/configuracion/almacenes/components/Alm
 import { useAlmacenesQuery } from '@/modules/configuracion/almacenes/composables/useAlmacenesQuery'
 import PosCajaEstadoBanner from '@/modules/caja/components/PosCajaEstadoBanner.vue'
 import { useCajaAbiertaRequerida } from '@/modules/caja/composables/useCajaAbiertaRequerida'
-import { hoyIsoLima } from '@/shared/utils/date'
+import { formatListDate, hoyIsoLima } from '@/shared/utils/date'
 import { roundMoney } from '@/shared/utils/currency'
 import PosAnadirItemModal, {
   type PosLineaConfirmada,
@@ -513,6 +530,8 @@ const {
   serie,
   numero,
   fecha,
+  fechaVenta,
+  esFacturaOBoleta,
   idCliente,
   idCondicionPago,
   lineasPago,
@@ -631,7 +650,25 @@ const almacenesFilters = ref<{
   limite: number
   idSucursal?: number
 }>({ pagina: 1, limite: 100 })
-const { idSucursal: idSucursalPreferida } = usePosSucursalCajaAbierta(fecha)
+/**
+ * Factura/boleta se emite con fecha de hoy (correlativo y SUNAT). Si se cambia a ese tipo con una
+ * fecha pasada, esa fecha pasa a ser la fecha de venta y la emisión vuelve a hoy.
+ */
+watch(esFacturaOBoleta, (activo) => {
+  if (!activo) return
+  const hoy = hoyIsoLima()
+  if (fecha.value && fecha.value < hoy) {
+    if (!fechaVenta.value) fechaVenta.value = fecha.value
+    fecha.value = hoy
+  }
+})
+
+/** La caja de la venta es la del día en que se hizo (fecha de venta), no la de emisión. */
+const fechaCaja = computed(() =>
+  esFacturaOBoleta.value && fechaVenta.value ? fechaVenta.value : fecha.value,
+)
+
+const { idSucursal: idSucursalPreferida } = usePosSucursalCajaAbierta(fechaCaja)
 watch(
   idSucursalPreferida,
   (suc) => {
@@ -668,10 +705,10 @@ const {
   pendienteCierre,
   mensajeBloqueo: mensajeBloqueoCaja,
   assertCajaAbierta,
-} = useCajaAbiertaRequerida(fecha, idSucursalCaja)
+} = useCajaAbiertaRequerida(fechaCaja, idSucursalCaja)
 
 const fechaCajaPendiente = computed(() => {
-  if (sesionEsPendiente.value) return String(fecha.value).slice(0, 10)
+  if (sesionEsPendiente.value) return String(fechaCaja.value).slice(0, 10)
   return pendienteCierre.value?.fecha ? String(pendienteCierre.value.fecha).slice(0, 10) : null
 })
 
@@ -830,10 +867,44 @@ const efectivoGarantia = computed(() =>
   }, 0),
 )
 
+/**
+ * Solo el efectivo exige la caja abierta del día de la venta: con Yape, Plin, transferencia,
+ * tarjeta o crédito se registra aunque esa caja esté cerrada (el backend recalcula su arqueo).
+ * Una garantía valida su propia caja, por eso también la exige.
+ */
+const requiereCajaAbierta = computed(() => {
+  if (totalGarantia.value > 0) return true
+  if (esVentaCredito.value) return false
+  const lineas = lineasPago.value
+  if (!lineas.length) return true
+  return lineas.some(
+    (linea) => linea.idMedioPago == null || idsEfectivo.value.has(Number(linea.idMedioPago)),
+  )
+})
+
+/** Aviso de caja: solo cuando el cobro la exige, y explicando la salida si la venta es de otro día. */
+const mensajeCajaVenta = computed(() => {
+  if (!requiereCajaAbierta.value) return null
+  const base = mensajeBloqueoCaja.value
+  if (!base) return null
+  const esDeOtroDia =
+    esFacturaOBoleta.value && Boolean(fechaVenta.value) && fechaVenta.value !== fecha.value
+  if (esDeOtroDia && cajaCerrada.value) {
+    return `La caja del ${formatListDate(fechaVenta.value)} está cerrada y la venta se cobra en efectivo. Reabre esa caja, o cobra con Yape, Plin o transferencia (no necesitan reabrirla).`
+  }
+  return base
+})
+
 const motivoNoGuardar = computed(() => {
   if (comprobanteGuardadoId.value) return null
-  if (!puedeOperar.value) {
-    return mensajeBloqueoCaja.value || 'Debes abrir la caja del día para vender'
+  if (requiereCajaAbierta.value && !puedeOperar.value) {
+    return mensajeCajaVenta.value || 'Debes abrir la caja del día para vender'
+  }
+  if (esFacturaOBoleta.value && fecha.value && fecha.value < hoyIsoLima()) {
+    return 'La fecha de emisión no puede ser anterior a hoy. Si la venta fue otro día, usa la fecha de venta.'
+  }
+  if (esFacturaOBoleta.value && fechaVenta.value && fechaVenta.value > fecha.value) {
+    return 'La fecha de venta no puede ser posterior a la fecha de emisión'
   }
   const base = mensajeValidacionComprobante()
   if (base) return base
@@ -1100,7 +1171,7 @@ async function guardarComprobante() {
     return
   }
 
-  if (!assertCajaAbierta()) return
+  if (requiereCajaAbierta.value && !assertCajaAbierta()) return
 
   if (comprobanteGuardadoId.value) {
     toastWarning('Ya hay un comprobante guardado. Emite o limpia para una nueva venta.')
@@ -1541,6 +1612,10 @@ try {
       idTipoComprobante: Number(idTipoComprobante.value),
       serie: serie.value.trim(),
       fecha: fecha.value,
+      fechaVenta:
+        esFacturaOBoleta.value && fechaVenta.value && fechaVenta.value !== fecha.value
+          ? fechaVenta.value
+          : undefined,
       idCliente: Number(idCliente.value),
       idSucursal: idSucursalVenta,
       idAlmacen: idAlmacenNum,

@@ -91,6 +91,8 @@ export interface GarantiaListFilters {
 
 export interface CrearGarantiaPayload {
   fecha: string
+  /** Sucursal de la caja donde entra el cobro (obligatoria en garantías manuales). */
+  idSucursal?: number
   idCliente: number
   importe: number
   idMedioPago?: number

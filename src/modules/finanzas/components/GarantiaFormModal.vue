@@ -30,6 +30,14 @@
         </AppFormField>
       </div>
 
+      <p
+        v-if="!esEdicion && (cargandoCajas || errorCajas)"
+        class="text-theme-sm"
+        :class="errorCajas ? 'text-rose-600 dark:text-rose-400' : 'text-gray-500 dark:text-gray-400'"
+      >
+        {{ cargandoCajas ? 'Verificando la caja abierta del día...' : errorCajas }}
+      </p>
+
       <AppSelectSearch
         v-model="form.idCliente"
         :options="clienteOptions"
@@ -92,6 +100,8 @@ import AppSelectSearch from '@/shared/components/form/AppSelectSearch.vue'
 import { useMoneyField } from '@/shared/composables/useMoneyField'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useClientesQuery } from '@/modules/clientes/composables/useClientesQuery'
+import { cajaService } from '@/modules/caja/services/caja.service'
+import type { CajaSesion } from '@/modules/caja/interfaces/caja.interface'
 import MedioPagoCuentaField from '@/modules/finanzas/components/MedioPagoCuentaField.vue'
 import {
   useActualizarGarantiaMutation,
@@ -101,6 +111,8 @@ import type { Garantia } from '@/modules/finanzas/interfaces/garantia.interface'
 import type { ClienteListFilters } from '@/modules/clientes/interfaces/cliente.interface'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 import { mensajeErrorMontoMoneda, parseMoneyInput, roundMoney } from '@/shared/utils/currency'
+import { hoyIsoLima } from '@/shared/utils/date'
+import { fetchAllPaginated } from '@/shared/utils/pagination'
 import {
   avisoGarantiaLigada,
   cambiosGarantiaEdicion,
@@ -157,10 +169,11 @@ const clienteOptions = computed<SelectOption[]>(() =>
 const pagoValido = ref(true)
 const intentoEnvio = ref(false)
 
-const hoy = () => new Date().toISOString().slice(0, 10)
+const hoy = hoyIsoLima
 
 const form = reactive({
   fecha: hoy(),
+  idSucursal: null as number | null,
   idCliente: null as number | null,
   idMedioPago: null as number | null,
   idCuentaBancaria: null as number | null,
@@ -171,6 +184,10 @@ const form = reactive({
 
 const errores = reactive<Record<string, string | undefined>>({})
 
+const cajasAbiertas = ref<CajaSesion[]>([])
+const cargandoCajas = ref(false)
+const errorCajas = ref('')
+
 const moneyOpts = { min: 0.01 } as const
 const { error: errorImporte, valido: importeValido, onBlur: onBlurImporte } = useMoneyField(
   toRef(form, 'importe'),
@@ -179,12 +196,19 @@ const { error: errorImporte, valido: importeValido, onBlur: onBlurImporte } = us
 const errorImporteDisplay = computed(() => errores.importe || errorImporte.value)
 const formularioValido = computed(
   () =>
-    importeValido.value && pagoValido.value && Boolean(form.fecha) && Boolean(form.idCliente),
+    importeValido.value &&
+    pagoValido.value &&
+    Boolean(form.fecha) &&
+    Boolean(form.idCliente) &&
+    (esEdicion.value || (form.idSucursal != null && !cargandoCajas.value && !errorCajas.value)),
 )
 
 const cargarDesdeProps = () => {
   Object.keys(errores).forEach((k) => (errores[k] = undefined))
   valoresIniciales.value = null
+  cajasAbiertas.value = []
+  errorCajas.value = ''
+  form.idSucursal = null
   if (props.garantia) {
     const v = valoresEdicionGarantia(props.garantia)
     form.fecha = v.fecha
@@ -229,6 +253,45 @@ watch(open, async (isOpen) => {
   valoresIniciales.value = valoresFormulario()
 })
 
+watch(
+  [open, () => form.fecha],
+  async ([isOpen], _previous, onCleanup) => {
+    let vigente = true
+    onCleanup(() => { vigente = false })
+    cajasAbiertas.value = []
+    form.idSucursal = null
+    errorCajas.value = ''
+    cargandoCajas.value = false
+    if (!isOpen || esEdicion.value || !form.fecha) return
+    cargandoCajas.value = true
+    try {
+      const sesiones = await fetchAllPaginated(cajaService.listarSesiones, {
+        fechaDesde: form.fecha,
+        fechaHasta: form.fecha,
+        estadoCaja: 'ABIERTA',
+      }, 100)
+      if (!vigente) return
+      cajasAbiertas.value = sesiones.filter(
+        (s) => s.idSucursal != null && s.estadoCaja === 'ABIERTA',
+      )
+      const unica = cajasAbiertas.value[0]
+      if (unica) {
+        form.idSucursal = unica.idSucursal!
+      } else {
+        errorCajas.value =
+          'No hay cajas abiertas con sucursal para esta fecha. Abre la caja en Ventas → Caja.'
+      }
+    } catch {
+      if (vigente) {
+        errorCajas.value = 'No se pudieron consultar las cajas abiertas. Vuelve a intentarlo.'
+      }
+    } finally {
+      if (vigente) cargandoCajas.value = false
+    }
+  },
+  { immediate: true },
+)
+
 watch(() => form.idCliente, (v) => { if (v) errores.idCliente = undefined })
 watch(() => form.fecha, (v) => { if (v) errores.fecha = undefined })
 watch(() => form.observacion, (v) => {
@@ -240,6 +303,12 @@ const validar = (): boolean => {
   let ok = true
   if (!form.fecha) { errores.fecha = 'La fecha es obligatoria'; ok = false }
   if (!form.idCliente) { errores.idCliente = 'Selecciona un cliente'; ok = false }
+  if (!esEdicion.value && (errorCajas.value || !cajasAbiertas.value.some((s) => s.idSucursal === form.idSucursal))) {
+    if (!errorCajas.value) {
+      errorCajas.value = 'No hay una caja abierta disponible para la fecha seleccionada.'
+    }
+    ok = false
+  }
   const msgImporte = mensajeErrorMontoMoneda(form.importe, moneyOpts)
   if (msgImporte) { errores.importe = msgImporte; ok = false }
   if (form.observacion.length > 500) { errores.observacion = 'Máximo 500 caracteres'; ok = false }
@@ -254,6 +323,7 @@ const submit = async () => {
   const importe = roundMoney(parseMoneyInput(form.importe))
   const payload = {
     fecha: form.fecha,
+    idSucursal: form.idSucursal ?? undefined,
     idCliente: form.idCliente as number,
     idMedioPago: form.idMedioPago ?? undefined,
     idCuentaBancaria: form.idCuentaBancaria ?? undefined,

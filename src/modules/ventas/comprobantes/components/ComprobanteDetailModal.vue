@@ -36,7 +36,7 @@
         </div>
         <div>
           <p class="text-xs text-gray-500 dark:text-gray-400">Fecha de venta</p>
-          <p class="text-gray-700 dark:text-gray-300">{{ comprobante.fecha }}</p>
+          <p class="text-gray-700 dark:text-gray-300">{{ comprobante.fecha_venta ?? comprobante.fecha }}</p>
         </div>
         <div v-if="['01','03','07','08'].includes(String(comprobante.codigo_tipo_comprobante))">
           <p class="text-xs text-gray-500 dark:text-gray-400">Fecha del CPE</p>
@@ -147,8 +147,9 @@
         </div>
 
         <p v-if="editandoCobro" class="mt-2 text-theme-xs text-gray-500 dark:text-gray-400">
-          Si cambias de un medio que entra a caja (efectivo, Yape, Plin) a otro, o al revés, la caja
-          del {{ formatListDate(comprobante.fecha) }} debe seguir abierta.
+          Si el cambio involucra efectivo (de efectivo a otro medio, o al revés), la caja
+          del {{ formatListDate(comprobante.fecha_venta ?? comprobante.fecha) }} debe seguir abierta.
+          Entre medios sin efectivo (Yape, Plin, transferencia...) no hace falta reabrirla.
         </p>
 
         <div v-if="editandoCobro" class="mt-3 flex justify-end gap-2">

@@ -107,6 +107,8 @@ export function usePosComprobanteForm(options?: {
   const serie = ref('B002')
   const numero = ref('')
   const fecha = ref(hoyIsoLima())
+  /** Día de la venta si fue anterior a la emisión (factura/boleta). Vacío = misma fecha de emisión. */
+  const fechaVenta = ref('')
   const idCliente = ref<number | ''>('')
   const clienteDescripcion = ref('')
   const clienteSeleccionadoCache = ref<Cliente | null>(null)
@@ -176,6 +178,7 @@ export function usePosComprobanteForm(options?: {
   })
 
   const esNotaVenta = computed(() => esNotaVentaCodigo(codigoTipoComprobante.value))
+  const esFacturaOBoleta = computed(() => ['01', '03'].includes(codigoTipoComprobante.value))
 
   const clienteOptions = computed(() => {
     const options = (clientesQuery.data.value?.data ?? []).map((cliente) => ({
@@ -468,6 +471,7 @@ export function usePosComprobanteForm(options?: {
     clienteDescripcion.value = ''
     aplicarClientesVariosPorDefecto()
     fecha.value = hoyIsoLima()
+    fechaVenta.value = ''
     // Arranca con el último total conocido; el watch del total lo ajusta al limpiar el carrito.
     lineasPago.value = [nuevaLineaPago(totalPagos.value)]
     efectivoRecibido.value = null
@@ -517,6 +521,8 @@ export function usePosComprobanteForm(options?: {
     serie,
     numero,
     fecha,
+    fechaVenta,
+    esFacturaOBoleta,
     idCliente,
     clienteDescripcion,
     idCondicionPago,
