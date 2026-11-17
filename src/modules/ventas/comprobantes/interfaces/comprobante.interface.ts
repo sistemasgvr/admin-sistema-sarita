@@ -34,6 +34,8 @@ export interface ComprobanteListItem {
   reintento_permitido?: boolean
   estado_cdr_registrado?: string
   advertencia_cdr?: string
+  motivo_rechazo_sunat?: string
+  estado?: number
   nombre_estado_sunat?: string | null
   id_comprobante_origen?: number | null
   serie_comprobante_origen?: string | null

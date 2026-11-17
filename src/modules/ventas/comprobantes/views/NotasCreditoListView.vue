@@ -35,6 +35,9 @@
         <p v-if="row.nombre_motivo_nota || row.codigo_motivo_nota" class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
           {{ formatMotivo(row) }}
         </p>
+        <p v-if="row.nombre_estado_sunat === 'RECHAZADO'" class="mt-1 max-w-xs whitespace-normal break-words text-sm">
+          {{ row.motivo_rechazo_sunat || 'Sin motivo de rechazo registrado.' }}
+        </p>
       </template>
 
       <template #cell-origen="{ row }">
@@ -62,12 +65,15 @@
         <span class="tabular-nums">{{ formatMoney(Number(value ?? 0)) }}</span>
       </template>
 
-      <template #cell-nombre_estado_sunat="{ value }">
+      <template #cell-nombre_estado_sunat="{ value, row }">
         <ListaOpcionBadge :value="String(value ?? 'PENDIENTE')" />
+        <p v-if="row.estado === 0" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Inactiva
+        </p>
       </template>
 
       <template #actions="{ row }">
-        <div class="inline-flex items-center justify-end gap-1.5">
+        <div v-if="row.estado !== 0" class="inline-flex items-center justify-end gap-1.5">
           <button
             v-if="canView"
             type="button"
@@ -209,6 +215,8 @@ const filters = ref<ComprobanteListFilters>({
   buscar: '',
   pagina: 1,
   limite: 10,
+  idTipoComprobante: -1,
+  soloActivos: 2,
 })
 
 const comprobantesQuery = useComprobantesQuery(filters)
@@ -323,6 +331,7 @@ function syncFilters() {
     limite: limite.value,
     // Sin id de NC aún: no listar otros tipos por error
     idTipoComprobante: idTipo ?? -1,
+    soloActivos: 2,
     fechaDesde: active.fechaDesde ? String(active.fechaDesde) : undefined,
     fechaHasta: active.fechaHasta ? String(active.fechaHasta) : undefined,
     idCliente: active.idCliente != null ? Number(active.idCliente) : undefined,
@@ -553,6 +562,7 @@ const exportarListado = () =>
       ['total_importe', 'Total', 'numero'],
       ['nombre_estado', 'Estado'],
       ['nombre_estado_sunat', 'Estado SUNAT'],
+      ['motivo_rechazo_sunat', 'Motivo de rechazo SUNAT'],
     ],
   })
 </script>
