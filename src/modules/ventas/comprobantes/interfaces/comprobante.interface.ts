@@ -20,6 +20,8 @@ export interface ComprobanteListItem {
   serie: string
   numero: string
   fecha: string
+  /** Día de la venta si fue anterior a la emisión (caja y libro diario); null = misma fecha. */
+  fecha_venta?: string | null
   id_cliente: number
   nombre_cliente?: string | null
   documento_cliente?: string | null
@@ -32,6 +34,8 @@ export interface ComprobanteListItem {
   reintento_permitido?: boolean
   estado_cdr_registrado?: string
   advertencia_cdr?: string
+  motivo_rechazo_sunat?: string
+  estado?: number
   nombre_estado_sunat?: string | null
   id_comprobante_origen?: number | null
   serie_comprobante_origen?: string | null
@@ -245,7 +249,10 @@ export interface CreateComprobantePayload {
   idTipoComprobante: number
   serie: string
   numero?: string
+  /** Fecha de emisión (SUNAT, correlativo). */
   fecha: string
+  /** Día de la venta si fue anterior a la emisión: manda en la caja y el libro diario. */
+  fechaVenta?: string
   idCliente: number
   detalles: ComprobanteDetallePayload[]
   idTipoOperacionSunat?: number
@@ -502,6 +509,8 @@ export interface ComprobanteResumenDiarioItem {
   serie: string
   numero: string
   fecha: string
+  /** Día de la venta si fue anterior a la emisión (caja y libro diario); null = misma fecha. */
+  fecha_venta?: string | null
   id_cliente: number
   nombre_cliente?: string | null
   documento_cliente?: string | null
