@@ -680,7 +680,7 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       label: 'Descargar XML',
       icon: ICONS.download,
       disabled: busy,
-      hidden: !(canView.value && ['01', '03'].includes(String(row.codigo_tipo_comprobante)) && ['ACEPTADO', 'BAJA'].includes(row.nombre_estado_sunat ?? '')),
+      hidden: !(canView.value && ['01', '03', '07'].includes(String(row.codigo_tipo_comprobante)) && ['ACEPTADO', 'BAJA'].includes(row.nombre_estado_sunat ?? '')),
     },
     {
       key: 'pdf-a4',
