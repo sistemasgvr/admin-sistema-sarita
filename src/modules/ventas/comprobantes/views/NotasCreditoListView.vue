@@ -431,6 +431,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       hidden: !(canAnular.value && puedeAnular(row)),
     },
     {
+      key: 'xml',
+      label: 'Descargar XML',
+      icon: ICONS.download,
+      disabled: busy,
+      hidden: !(canView.value && puedePdf(row)),
+    },
+    {
       key: 'pdf-a4',
       label: 'Descargar PDF',
       icon: ICONS.download,
@@ -461,11 +468,25 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
     case 'anular':
       openAnularModal(row)
       return
+    case 'xml':
+      return descargarXml(row)
     case 'pdf-a4':
       return descargarPdf(row, 'a4')
     case 'delete':
       openDeleteModal(row)
       return
+  }
+}
+
+async function descargarXml(row: ComprobanteListItem) {
+  pdfBusyId.value = row.id
+  try {
+    const blob = await comprobantesService.obtenerXml(row.id)
+    downloadBlob(blob, `${row.serie}-${row.numero}.xml`)
+  } catch (error) {
+    toastApiError(error, 'No se pudo descargar el XML de la nota de crédito')
+  } finally {
+    pdfBusyId.value = null
   }
 }
 
