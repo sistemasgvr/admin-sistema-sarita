@@ -198,6 +198,8 @@ import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import { formatListaOpcionLabel } from '@/shared/utils/formatListaOpcion'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
+import { estadoAccion } from '@/shared/utils/accionDisponible'
+import { dispNcAnular, dispNcDocumento, dispNcEditar } from '@/modules/ventas/comprobantes/utils/disponibilidadAcciones'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -378,24 +380,8 @@ function puedeEmitir(row: ComprobanteListItem) {
   return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
 }
 
-function puedeEditar(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
-
-function puedeEliminar(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
-
-function puedePdf(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat === 'ACEPTADO' || row.nombre_estado_sunat === 'BAJA'
-}
-
 function puedeConsultarCdr(row: ComprobanteListItem) {
   return row.nombre_estado_sunat === 'PENDIENTE' || row.nombre_estado_sunat === 'ACEPTADO'
-}
-
-function puedeAnular(row: ComprobanteListItem) {
-  return row.nombre_estado_sunat === 'ACEPTADO'
 }
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
@@ -406,8 +392,7 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       key: 'edit',
       label: 'Editar',
       icon: ICONS.pencil,
-      disabled: busy,
-      hidden: !(canEdit.value && puedeEditar(row)),
+      ...estadoAccion(canEdit.value, dispNcEditar(row), busy),
     },
     {
       key: 'emit',
@@ -427,30 +412,26 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       key: 'anular',
       label: 'Anular en SUNAT',
       icon: ICONS.ban,
-      disabled: busy,
-      hidden: !(canAnular.value && puedeAnular(row)),
-    },
-    {
-      key: 'xml',
-      label: 'Descargar XML',
-      icon: ICONS.download,
-      disabled: busy,
-      hidden: !(canView.value && puedePdf(row)),
+      ...estadoAccion(canAnular.value, dispNcAnular(row), busy),
     },
     {
       key: 'pdf-a4',
       label: 'Descargar PDF',
       icon: ICONS.download,
-      disabled: busy,
-      hidden: !(canView.value && puedePdf(row)),
+      ...estadoAccion(canView.value, dispNcDocumento(row), busy),
+    },
+    {
+      key: 'xml',
+      label: 'Descargar XML',
+      icon: ICONS.download,
+      ...estadoAccion(canView.value, dispNcDocumento(row), busy),
     },
     {
       key: 'delete',
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
-      disabled: busy,
-      hidden: !(canDelete.value && puedeEliminar(row)),
+      ...estadoAccion(canDelete.value, dispNcEditar(row), busy),
     },
   ]
 }
@@ -468,10 +449,10 @@ function onActionSelect(key: string, row: ComprobanteListItem) {
     case 'anular':
       openAnularModal(row)
       return
-    case 'xml':
-      return descargarXml(row)
     case 'pdf-a4':
       return descargarPdf(row, 'a4')
+    case 'xml':
+      return descargarXml(row)
     case 'delete':
       openDeleteModal(row)
       return

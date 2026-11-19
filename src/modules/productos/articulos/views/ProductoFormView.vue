@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ProductoForm from '@/modules/productos/articulos/components/ProductoForm.vue'
 import type { Producto } from '@/modules/productos/articulos/interfaces/producto.interface'
@@ -38,6 +39,7 @@ import { createProductosCrearTutorial } from '@/modules/soporte/tutorials/produc
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 
 useTutorialAutoStart('productos-crear', createProductosCrearTutorial)
 
@@ -60,6 +62,7 @@ const goToList = () => {
 }
 
 const onSaved = (producto: Producto) => {
+  marcarGuardado()
   if (producto?.id) {
     void router.push({
       name: 'admin-productos-articulos-detalle',

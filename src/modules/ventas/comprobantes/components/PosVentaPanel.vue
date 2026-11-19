@@ -179,7 +179,7 @@
                       v-else-if="esEntregarPrestamo(linea)"
                       class="rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
                     >
-                      + Préstamo
+                      {{ linea.idPrestamoRenovar ? '+ Renovación' : '+ Préstamo' }}
                     </span>
                     <span
                       v-if="
@@ -221,8 +221,14 @@
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       Gas {{ formatPosMoney(importeGasLinea(linea)) }}
                     </p>
-                    <p class="mt-0.5 text-xs text-violet-600 dark:text-violet-400">
-                      Préstamo: se lleva
+                    <p
+                      v-if="esRenovacionMismoCilindro(linea)"
+                      class="mt-0.5 text-xs text-violet-600 dark:text-violet-400"
+                    >
+                      Renovación: sigue con el mismo cilindro
+                    </p>
+                    <p v-else class="mt-0.5 text-xs text-violet-600 dark:text-violet-400">
+                      {{ linea.idPrestamoRenovar ? 'Renovación: cambia a' : 'Préstamo: se lleva' }}
                       {{ etiquetaCilindro(linea) || 'el cilindro seleccionado' }}
                     </p>
                     <p
@@ -368,8 +374,9 @@
               </div>
               <div class="mt-0.5 flex items-baseline justify-between gap-2 pl-3 text-xs">
                 <span class="min-w-0 truncate text-gray-500 dark:text-gray-400">
-                  + Préstamo cilindro
-                  <template v-if="etiquetaCilindro(linea)">
+                  {{ linea.idPrestamoRenovar ? '+ Renovación préstamo' : '+ Préstamo cilindro' }}
+                  <template v-if="esRenovacionMismoCilindro(linea)">· mismo cilindro</template>
+                  <template v-else-if="etiquetaCilindro(linea)">
                     · {{ etiquetaCilindro(linea) }}
                   </template>
                 </span>
@@ -468,6 +475,11 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
+import {
+  esRenovacionMismoCilindro,
+  prestamoTieneCilindro,
+} from '@/modules/ventas/comprobantes/utils/renovacionPrestamo'
 import { useRoute, useRouter } from 'vue-router'
 import { idTipoPrestamoPermitePos } from '@/modules/balones/prestamos/utils/tipoPrestamoReglas'
 import { usePrestamosQuery } from '@/modules/balones/prestamos/composables/usePrestamosQuery'
@@ -754,6 +766,10 @@ const lineasActivas = computed(() =>
   lineas.value.filter((linea) => linea.idProducto && Number(linea.cantidad) > 0),
 )
 
+// Venta a medio armar: salir por el menú lateral la borraba sin preguntar.
+// Al emitir o limpiar, el carrito queda vacío y ya no se pregunta.
+useAvisoCambiosSinGuardar({ sucio: computed(() => lineasActivas.value.length > 0) })
+
 /**
  * true si la venta entrega un cilindro (préstamo, compra de envase o alquiler
  * con entrega) — casos donde corresponde preguntar si se genera la orden de
@@ -923,7 +939,7 @@ const motivoNoGuardar = computed(() => {
     if (linea.escenarioGas === 'comprar_balon' && !(linea.idBalon && linea.idProductoEnvase)) {
       return `${linea.nombre}: falta cilindro o producto envase`
     }
-    if (esEntregarPrestamo(linea) && !(linea.idBalon && linea.fechaInicioAlquiler)) {
+    if (esEntregarPrestamo(linea) && !(prestamoTieneCilindro(linea) && linea.fechaInicioAlquiler)) {
       return `${linea.nombre}: falta cilindro o fecha de préstamo`
     }
     if (
@@ -1212,7 +1228,9 @@ async function guardarComprobante() {
         esRecargaCliente(linea) ||
         esEntregarPrestamo(linea) ||
         linea.escenarioGas === 'comprar_balon') &&
-      !linea.idBalon
+      !linea.idBalon &&
+      // Renovación con el mismo cilindro: no se elige uno nuevo.
+      !esRenovacionMismoCilindro(linea)
     ) {
       toastWarning(`${linea.nombre}: falta el cilindro`)
       return
@@ -1343,9 +1361,12 @@ async function guardarComprobante() {
       linea.fechaInicioAlquiler,
   )
   // Cilindro siempre es préstamo (nunca alquiler_detalle / estado ALQUILADO).
+  // La renovación con el mismo cilindro va sin idBalon: bal_renovar_prestamo
+  // conserva el cilindro del préstamo anterior. Sin esto la renovación se
+  // descartaba en silencio y solo se vendía el gas.
   const lineasPrestamo = lineasActivas.value.filter(
     (linea) =>
-      Boolean(linea.idBalon) &&
+      prestamoTieneCilindro(linea) &&
       (esEntregarPrestamo(linea) ||
         ((linea.tipoPos === 'alquiler' || linea.esAlquilable) && linea.fechaInicioAlquiler)),
   )

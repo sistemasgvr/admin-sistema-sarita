@@ -280,6 +280,18 @@ import { toastApiError, toastSuccess, toastWarning } from '@/shared/composables/
 import { ICONS } from '@/shared/constants/icons'
 import { PermisoBanderas } from '@/shared/constants/permissions'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
+import { estadoAccion } from '@/shared/utils/accionDisponible'
+import {
+  dispAnular,
+  dispCorregir,
+  dispEliminar,
+  dispEmitir,
+  dispGenerarOrdenSalida,
+  dispNotaCredito,
+  dispPdfA4,
+  dispTicket,
+  dispXml,
+} from '@/modules/ventas/comprobantes/utils/disponibilidadAcciones'
 import type { DynamicFilterFieldDef, DynamicFilterValues } from '@/shared/interfaces/dynamic-filter.interface'
 import type { TableColumn } from '@/shared/interfaces/table.interface'
 
@@ -530,69 +542,16 @@ function plazoVencido(row: ComprobanteListItem) {
   return plazoDe(row)?.vencido === true
 }
 
-function puedeEmitir(row: ComprobanteListItem) {
-  if (row.estado_envio) return false
-  if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
 
-function puedeEditar(row: ComprobanteListItem) {
-  if (row.estado_envio) return false
-  if (['01','03'].includes(row.codigo_tipo_comprobante ?? '') && row.permite_edicion_segura !== true) return false
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
 
-function puedeEliminar(row: ComprobanteListItem) {
-  if (row.estado_envio) return false
-  return row.nombre_estado_sunat !== 'ACEPTADO' && row.nombre_estado_sunat !== 'BAJA'
-}
 
-function puedePdf(row: ComprobanteListItem) {
-  return (
-    row.nombre_estado_sunat === 'ACEPTADO' ||
-    row.nombre_estado_sunat === 'BAJA' ||
-    row.nombre_estado_sunat === 'NO_APLICA' ||
-    esNotaVenta(row)
-  )
-}
-function puedeTicket(row: ComprobanteListItem) {
-  return esNotaVenta(row) || row.nombre_estado_sunat !== 'RECHAZADO'
-}
 
 function puedeConsultarCdr(row: ComprobanteListItem) {
   if (esNotaVenta(row) || row.nombre_estado_sunat === 'NO_APLICA') return false
   return ['01', '03'].includes(String(row.codigo_tipo_comprobante))
 }
 
-function puedeNotaCredito(row: ComprobanteListItem) {
-  if (row.tiene_cambio_fisico) return false
-  if (esNotaVenta(row)) return false
-  if (row.nombre_estado_sunat !== 'ACEPTADO') return false
-  const codigo = String(row.codigo_tipo_comprobante ?? '')
-  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
-  if (codigo === '01' || codigo === '03') return true
-  return (
-    (nombre.includes('FACTURA') || nombre.includes('BOLETA')) &&
-    !nombre.includes('NOTA')
-  )
-}
 
-function puedeAnular(row: ComprobanteListItem) {
-  if (row.tiene_cambio_fisico) return false
-  if (esNotaVenta(row)) return false
-  if (row.nombre_estado_sunat !== 'ACEPTADO') return false
-  const codigo = String(row.codigo_tipo_comprobante ?? '')
-  const nombre = String(row.nombre_tipo_comprobante ?? '').toUpperCase()
-  // Comunicación de baja: facturas y notas (no boletas)
-  if (codigo === '01' || codigo === '07' || codigo === '08') return true
-  return (
-    nombre.includes('FACTURA') ||
-    nombre.includes('NOTA_CREDITO') ||
-    nombre.includes('NOTA_DEBITO') ||
-    nombre.includes('NOTA CREDITO') ||
-    nombre.includes('NOTA DEBITO')
-  ) && !nombre.includes('BOLETA')
-}
 
 function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
   const busy = pdfBusyId.value !== null || verificandoId.value !== null || emitMutation.isPending.value
@@ -602,15 +561,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       key: 'edit',
       label: 'Corregir datos antes de emitir',
       icon: ICONS.pencil,
-      disabled: busy,
-      hidden: !(canEdit.value && puedeEditar(row)),
+      ...estadoAccion(canEdit.value, dispCorregir(row), busy),
     },
     {
       key: 'emit',
       label: 'Emitir SUNAT',
       icon: ICONS.plug,
-      disabled: busy,
-      hidden: !(canEmit.value && puedeEmitir(row)),
+      ...estadoAccion(canEmit.value, dispEmitir(row), busy),
     },
     {
       key: 'ver-orden-salida',
@@ -623,15 +580,13 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       key: 'guia-remision',
       label: 'Generar orden de salida',
       icon: ICONS.fileText,
-      disabled: busy,
-      hidden: !(canCrearGre.value && Boolean(row.id_cliente) && !row.id_doc_salida),
+      ...estadoAccion(canCrearGre.value, dispGenerarOrdenSalida(row), busy),
     },
     {
       key: 'nota-credito',
       label: 'Nota de crédito',
       icon: ICONS.fileText,
-      disabled: busy,
-      hidden: !(canCreate.value && puedeNotaCredito(row)),
+      ...estadoAccion(canCreate.value, dispNotaCredito(row), busy),
     },
     {
       key: 'regularizar',
@@ -672,51 +627,45 @@ function actionItemsForRow(row: ComprobanteListItem): ActionMenuItem[] {
       key: 'anular',
       label: 'Anular en SUNAT',
       icon: ICONS.ban,
-      disabled: busy,
-      hidden: !(canAnular.value && puedeAnular(row)),
+      ...estadoAccion(canAnular.value, dispAnular(row), busy),
     },
     {
       key: 'xml',
       label: 'Descargar XML',
       icon: ICONS.download,
-      disabled: busy,
-      hidden: !(canView.value && ['01', '03', '07'].includes(String(row.codigo_tipo_comprobante)) && ['ACEPTADO', 'BAJA'].includes(row.nombre_estado_sunat ?? '')),
+      // dispXml incluye 01/03/07/08 (el fix del 18/11 agregaba 07) y muestra el motivo si aún no hay XML.
+      ...estadoAccion(canView.value, dispXml(row), busy),
     },
     {
       key: 'pdf-a4',
       label: 'Descargar PDF A4',
       icon: ICONS.download,
-      disabled: busy,
-      hidden: !(canView.value && puedePdf(row)),
+      ...estadoAccion(canView.value, dispPdfA4(row), busy),
     },
     {
       key: 'print-a4',
       label: 'Imprimir A4',
       icon: ICONS.printer,
-      disabled: busy,
-      hidden: !(canView.value && puedePdf(row)),
+      ...estadoAccion(canView.value, dispPdfA4(row), busy),
     },
     {
       key: 'pdf-ticket',
       label: 'Descargar ticket 80mm',
       icon: ICONS.ticket,
-      disabled: busy,
-      hidden: !(canView.value && puedeTicket(row)),
+      ...estadoAccion(canView.value, dispTicket(row), busy),
     },
     {
       key: 'print-ticket',
       label: 'Imprimir ticket 80mm',
       icon: ICONS.printer,
-      disabled: busy,
-      hidden: !(canView.value && puedeTicket(row)),
+      ...estadoAccion(canView.value, dispTicket(row), busy),
     },
     {
       key: 'delete',
       label: 'Eliminar',
       icon: ICONS.trash,
       danger: true,
-      disabled: busy,
-      hidden: !(canDelete.value && puedeEliminar(row)),
+      ...estadoAccion(canDelete.value, dispEliminar(row), busy),
     },
   ]
 }

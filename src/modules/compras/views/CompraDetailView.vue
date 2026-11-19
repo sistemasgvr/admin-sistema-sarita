@@ -425,6 +425,8 @@
             </table>
           </div>
         </DetailSectionCard>
+
+        <CompraAdjuntosCard v-if="compraId" :id-compra="compraId" />
       </template>
     </DetailCardsLayout>
     <CompraBalonesModal v-model="balonesModalOpen" :id-compra="compraId" />
@@ -436,6 +438,7 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import CompraBalonesModal from '@/modules/compras/components/CompraBalonesModal.vue'
+import CompraAdjuntosCard from '@/modules/compras/components/CompraAdjuntosCard.vue'
 import { etiquetaIgv } from '@/modules/compras/utils/porcentajeIgv'
 import { useCompraQuery } from '@/modules/compras/composables/useComprasQuery'
 import RecargaPlantaBalonesCard from '@/modules/compras/components/ResumenRecarga.vue'

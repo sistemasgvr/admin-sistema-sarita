@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import AlquilerForm, {
   type AlquilerFormSavedPayload,
@@ -39,6 +40,7 @@ import { ICONS } from '@/shared/constants/icons'
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 
 const isEdit = computed(() => route.name === 'admin-balones-alquileres-editar')
 const mode = computed<AlquilerFormMode>(() => (isEdit.value ? 'edit' : 'create'))
@@ -61,6 +63,7 @@ const goToList = () => {
 }
 
 const onCreated = (payload: AlquilerFormSavedPayload) => {
+  marcarGuardado()
   router.replace({
     name: 'admin-balones-alquileres-editar',
     params: { id: String(payload.id) },
@@ -69,6 +72,7 @@ const onCreated = (payload: AlquilerFormSavedPayload) => {
 
 /** Stay on page after header/detalle saves so cilindros can still be managed. */
 const onSaved = (_payload?: AlquilerFormSavedPayload) => {
-  // no-op: leave via Cancelar/Cerrar or back link
+  marcarGuardado()
+  // Se queda en la página: los cilindros se siguen gestionando aquí.
 }
 </script>

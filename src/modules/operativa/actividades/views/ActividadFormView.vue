@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -29,7 +29,7 @@
       :default-tipo-origen-recojo="defaultTipoOrigenRecojo"
       :default-id-origen-recojo="defaultIdOrigenRecojo"
       :default-origen-recojo-label="defaultOrigenRecojoLabel"
-      @saved="goToList"
+      @saved="onGuardado"
       @cancel="goToList"
     />
   </div>
@@ -38,6 +38,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ActividadForm from '@/modules/operativa/actividades/components/ActividadForm.vue'
 import type {
@@ -50,6 +51,7 @@ import type { BreadcrumbItem } from '@/shared/interfaces/breadcrumb.interface'
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 
 const mode = computed<ActividadFormMode>(() =>
   route.name === 'admin-operativa-actividades-editar' ? 'edit' : 'create',
@@ -139,5 +141,11 @@ const breadcrumbItems = computed<BreadcrumbItem[]>(() => [
 
 const goToList = () => {
   void router.push({ name: 'admin-operativa-actividades' })
+}
+
+/** Guardado OK: ya no hay cambios pendientes, se puede volver sin preguntar. */
+const onGuardado = () => {
+  marcarGuardado()
+  goToList()
 }
 </script>

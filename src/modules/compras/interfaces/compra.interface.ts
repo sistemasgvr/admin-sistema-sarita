@@ -295,3 +295,17 @@ export interface RegistrarBalonesCompraResult {
   idBalones: number[]
   gasIngresado?: number
 }
+
+/** Archivo adjunto a una compra (factura del proveedor, guía, foto). */
+export interface CompraAdjunto {
+  id: number
+  id_compra: number
+  id_archivo: number
+  descripcion: string | null
+  nombre_original: string
+  ruta: string
+  mime_type: string | null
+  tamanio_bytes: number | null
+  fecha_creacion: string
+  usuario_creacion: string | null
+}

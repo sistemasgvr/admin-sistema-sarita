@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -17,7 +17,7 @@
       :mode="mode"
       :recarga-id="recargaId"
       :active="true"
-      @saved="goToList"
+      @saved="onGuardado"
       @cancel="goToList"
     />
   </div>
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import MovimientoRecargaForm from '@/modules/balones/recargas/components/MovimientoRecargaForm.vue'
 import type { MovimientoRecargaFormMode } from '@/modules/balones/recargas/interfaces/movimiento-recarga.interface'
@@ -36,6 +37,7 @@ import { ICONS } from '@/shared/constants/icons'
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 
 const mode = computed<MovimientoRecargaFormMode>(() =>
   route.name === 'admin-balones-recargas-planta-editar' ? 'edit' : 'create',
@@ -62,5 +64,11 @@ const breadcrumbItems = computed(() =>
 
 const goToList = () => {
   void router.push({ name: 'admin-balones-recargas' })
+}
+
+/** Guardado OK: ya no hay cambios pendientes, se puede volver sin preguntar. */
+const onGuardado = () => {
+  marcarGuardado()
+  goToList()
 }
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
     <p v-if="documento?.id_empresa" class="mb-4 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-800 dark:text-gray-300">
       Empresa del documento: <strong>{{ empresaDocumentoLabel }}</strong>
@@ -908,6 +908,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useEmpresasQuery } from '@/modules/configuracion/empresas/composables/useEmpresasQuery'
 import { useEmpresaSeleccionada } from '@/modules/configuracion/empresas/composables/useEmpresaSeleccionada'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import LoteProtocoloFormModal from '@/modules/balones/lotes-protocolo/components/LoteProtocoloFormModal.vue'
@@ -973,6 +974,12 @@ const breadcrumbItems = [
   { label: documentoId.value ? 'Detalle' : 'Nuevo' },
 ]
 const pageTitle = documentoId.value ? 'Documento de salida' : 'Nuevo documento de salida'
+// En creación la orden se arma entera antes de guardar (cabecera + líneas en
+// borrador): perderla por un clic en el menú es caro. En edición cada línea se
+// guarda al momento, así que no hace falta preguntar.
+const { marcarGuardado } = useAvisoCambiosSinGuardar({
+  habilitado: computed(() => !documentoId.value),
+})
 
 // ---- Catálogos ----
 const sucursalesQuery = useSucursalesQuery(ref({ pagina: 1, limite: 100 }))
@@ -1225,6 +1232,7 @@ async function submitHeader() {
       }
     }
 
+    marcarGuardado()
     // `direccion: '1'` lo recoge el watcher de abajo y abre el modal de dirección
     // de entrega apenas carga el documento: es el dato que más se olvidaba.
     void router.replace({

@@ -29,24 +29,37 @@
           :key="item.key"
           type="button"
           role="menuitem"
-          class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition disabled:cursor-not-allowed disabled:opacity-50"
-          :class="
+          class="flex w-full max-w-[20rem] items-center gap-2 px-3 py-2 text-left text-sm transition disabled:cursor-not-allowed"
+          :class="[
             item.danger
               ? 'text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10'
-              : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/5'
-          "
+              : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-white/5',
+            motivoVisible(item) ? 'disabled:hover:bg-transparent' : 'disabled:opacity-50',
+          ]"
           :disabled="isItemDisabled(item)"
+          :title="motivoVisible(item) ? item.disabledReason : undefined"
+          :aria-describedby="motivoVisible(item) ? motivoId(item) : undefined"
           @click.stop="onSelect(item)"
         >
           <AppIcon
             v-if="isItemLoading(item) || item.icon"
             :name="isItemLoading(item) ? ICONS.loader : (item.icon ?? ICONS.loader)"
             :size="15"
-            class="shrink-0"
-            :class="{ 'animate-spin': isItemLoading(item) }"
+            class="shrink-0 self-start mt-0.5"
+            :class="{ 'animate-spin': isItemLoading(item), 'opacity-50': motivoVisible(item) }"
           />
-          <span class="min-w-0 flex-1 truncate">
-            {{ isItemLoading(item) ? 'Procesando...' : item.label }}
+          <span class="flex min-w-0 flex-1 flex-col">
+            <span class="truncate" :class="{ 'opacity-50': motivoVisible(item) }">
+              {{ isItemLoading(item) ? 'Procesando...' : item.label }}
+            </span>
+            <!-- Por qué no se puede todavía: evita que el usuario crea que la acción no existe. -->
+            <span
+              v-if="motivoVisible(item)"
+              :id="motivoId(item)"
+              class="mt-0.5 whitespace-normal text-xs leading-snug text-gray-500 dark:text-gray-400"
+            >
+              {{ item.disabledReason }}
+            </span>
           </span>
         </button>
       </div>
@@ -55,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue'
 import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import type { ActionMenuItem } from '@/shared/interfaces/action-menu.interface'
@@ -143,6 +156,16 @@ function isItemLoading(item: ActionMenuItem) {
 function isItemDisabled(item: ActionMenuItem) {
   if (pendingKey.value) return true
   return item.disabled === true
+}
+
+/** El motivo solo se muestra si la acción está bloqueada por estado (no mientras otra se procesa). */
+function motivoVisible(item: ActionMenuItem) {
+  return item.disabled === true && Boolean(item.disabledReason) && !isItemLoading(item)
+}
+
+const idMenu = useId()
+function motivoId(item: ActionMenuItem) {
+  return `${idMenu}-motivo-${item.key}`
 }
 
 function isThenable(value: unknown): value is PromiseLike<unknown> {

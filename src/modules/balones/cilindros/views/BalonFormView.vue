@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -18,7 +18,7 @@
       :balon-id="balonId"
       :active="true"
       @cancel="goToList"
-      @saved="goToList"
+      @saved="onGuardado"
     />
   </div>
 </template>
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createBalonesCilindroCrearTutorial } from '@/modules/soporte/tutorials/balones-cilindro-crear.tutorial'
@@ -40,6 +41,7 @@ useTutorialAutoStart('balones-cilindro-crear', createBalonesCilindroCrearTutoria
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 
 const isEdit = computed(() => route.name === 'admin-balones-cilindros-editar')
 const mode = computed<BalonFormMode>(() => (isEdit.value ? 'edit' : 'create'))
@@ -59,5 +61,11 @@ const breadcrumbItems = computed(() => balonesCilindrosBreadcrumbItems(pageTitle
 
 const goToList = () => {
   router.push({ name: 'admin-balones-cilindros' })
+}
+
+/** Guardado OK: ya no hay cambios pendientes, se puede volver sin preguntar. */
+const onGuardado = () => {
+  marcarGuardado()
+  goToList()
 }
 </script>

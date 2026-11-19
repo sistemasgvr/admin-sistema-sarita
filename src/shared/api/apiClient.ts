@@ -2,6 +2,11 @@ import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { ApiError } from '@/shared/api/errors/api.error'
 import type { ApiErrorResponse, ApiResponse, PaginatedResult } from '@/shared/api/interfaces/api.interface'
 import type { PaginationMeta } from '@/shared/interfaces/pagination.interface'
+import {
+  marcarServidorAccesible,
+  marcarServidorInaccesible,
+  navegadorSinInternet,
+} from '@/shared/composables/useEstadoConexion'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
 
@@ -52,10 +57,36 @@ function normalizeApiMessage(message: unknown, fallback: string): string {
   return fallback
 }
 
+/**
+ * Código de estado para una petición que no obtuvo respuesta (sin red, servidor
+ * caído, tiempo agotado). Antes se usaba 500 y el usuario veía «Network Error»
+ * como si fuera un error del servidor.
+ */
+export const SIN_RESPUESTA_STATUS = 0
+
+function mensajeSinRespuesta(code: string | undefined): string {
+  if (navegadorSinInternet()) {
+    return 'Sin conexión a internet. Revisa tu red: los cambios no se guardaron.'
+  }
+  if (code === 'ECONNABORTED' || code === 'ETIMEDOUT') {
+    return 'El servidor tardó demasiado en responder. Revisa si la operación se guardó antes de repetirla.'
+  }
+  return 'No se pudo conectar con el servidor. Revisa tu internet o vuelve a intentar en unos minutos.'
+}
+
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    marcarServidorAccesible()
+    return response
+  },
   async (error: unknown) => {
+    if (axios.isAxiosError<ApiErrorResponse>(error) && !error.response && error.code !== 'ERR_CANCELED') {
+      marcarServidorInaccesible()
+      throw new ApiError(mensajeSinRespuesta(error.code), SIN_RESPUESTA_STATUS)
+    }
+
     if (axios.isAxiosError<ApiErrorResponse>(error)) {
+      if (error.response) marcarServidorAccesible()
       const statusCode = error.response?.status ?? 500
       let payload = error.response?.data
       const body: unknown = payload

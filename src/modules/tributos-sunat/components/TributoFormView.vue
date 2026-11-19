@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="`Nueva ${config.singular.toLowerCase()}`" :items="breadcrumbItems" />
 
     <div class="space-y-5">
@@ -199,6 +199,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteSelectField from '@/modules/clientes/components/ClienteSelectField.vue'
 import { useEmpresaActualQuery } from '@/modules/configuracion/empresas/composables/useEmpresaActualQuery'
@@ -223,6 +224,7 @@ const props = defineProps<{ tipo: TipoTributo }>()
 const config = computed(() => TRIBUTOS_CONFIG[props.tipo])
 
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 const empresaSeleccionada = useEmpresaSeleccionada()
 const idEmpresa = computed(() => empresaSeleccionada.value ?? null)
 const empresaQuery = useEmpresaActualQuery()
@@ -411,6 +413,7 @@ async function onGuardar() {
   }
   try {
     const creado = await crearMutation.mutateAsync(payload)
+    marcarGuardado()
     await router.push({ name: config.value.rutas.detalle, params: { id: creado.id } })
   } catch {
   }

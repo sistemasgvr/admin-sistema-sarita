@@ -55,6 +55,7 @@ import AppIcon from '@/shared/components/AppIcon.vue'
 import { ICONS } from '@/shared/constants/icons'
 import { toastInfo, toastSuccess, toastWarning } from '@/shared/composables/useToast'
 import { ApiError } from '@/shared/api/errors/api.error'
+import { SIN_RESPUESTA_STATUS } from '@/shared/api/apiClient'
 import {
   inferirTipoDocumentoPorNumero,
   maxLengthDocumento,
@@ -137,6 +138,9 @@ const mensajeErrorConsulta = (error: unknown, tipo: string) => {
   const servicio = tipo === 'DNI' ? 'RENIEC' : 'SUNAT'
 
   if (error instanceof ApiError) {
+    if (error.statusCode === SIN_RESPUESTA_STATUS) {
+      return error.message
+    }
     if (error.statusCode === 404) {
       return `No se encontraron datos en ${servicio} para el número ingresado. Verifica que sea correcto.`
     }

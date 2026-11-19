@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import ClienteForm from '@/modules/clientes/components/ClienteForm.vue'
 import { clientesBreadcrumbItems } from '@/modules/clientes/config/clientes-breadcrumb'
@@ -40,6 +41,7 @@ import { useSidebar } from '@/modules/admin/composables/useSidebar'
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 const { setExpanded: setSidebarExpanded } = useSidebar()
 
 const isEdit = computed(() => route.name === 'admin-clientes-editar')
@@ -80,6 +82,7 @@ const goToList = () => {
 }
 
 const onSaved = (cliente: Cliente) => {
+  marcarGuardado()
   if (!isEdit.value) {
     // Tras crear, abrir ficha para gestionar direcciones/contactos y relacionados.
     void router.replace({ name: 'admin-clientes-detalle', params: { id: String(cliente.id) } })

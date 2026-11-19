@@ -11,6 +11,7 @@ import type {
   ActualizarCompraCabeceraPayload,
   ActualizarCompraDetallePayload,
   Compra,
+  CompraAdjunto,
   CompraListItem,
   CompraListFilters,
   CreateCompraDetalleLineaPayload,
@@ -59,5 +60,17 @@ export const comprasService = {
     return apiDelete<EliminarCompraResponse>(`/compras/${id}`, {
       data: { idUsuarioAuditoria },
     })
+  },
+
+  listarAdjuntos(id: number) {
+    return apiGet<CompraAdjunto[]>(`/compras/${id}/adjuntos`)
+  },
+
+  agregarAdjunto(id: number, payload: { idArchivo: number; descripcion?: string }) {
+    return apiPost<CompraAdjunto>(`/compras/${id}/adjuntos`, payload)
+  },
+
+  eliminarAdjunto(id: number, idAdjunto: number) {
+    return apiDelete<{ eliminado: boolean }>(`/compras/${id}/adjuntos/${idAdjunto}`)
   },
 }

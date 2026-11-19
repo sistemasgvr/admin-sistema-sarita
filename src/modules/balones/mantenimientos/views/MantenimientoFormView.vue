@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -17,7 +17,7 @@
       :mode="mode"
       :mantenimiento-id="mantenimientoId"
       :active="true"
-      @saved="goToList"
+      @saved="onGuardado"
       @cancel="goToList"
     />
   </div>
@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import { useTutorialAutoStart } from '@/modules/soporte/composables/useTutorialAutoStart'
 import { createBalonesMantenimientosTutorial } from '@/modules/soporte/tutorials/balones-mantenimientos.tutorial'
@@ -40,6 +41,7 @@ useTutorialAutoStart('balones-mantenimientos', createBalonesMantenimientosTutori
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 
 const mode = computed<MantenimientoFormMode>(() =>
   route.name === 'admin-balones-mantenimientos-editar' ? 'edit' : 'create',
@@ -66,5 +68,11 @@ const breadcrumbItems = computed(() =>
 
 const goToList = () => {
   void router.push({ name: 'admin-balones-mantenimientos' })
+}
+
+/** Guardado OK: ya no hay cambios pendientes, se puede volver sin preguntar. */
+const onGuardado = () => {
+  marcarGuardado()
+  goToList()
 }
 </script>

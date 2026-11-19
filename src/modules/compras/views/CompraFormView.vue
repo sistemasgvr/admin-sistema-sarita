@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="contenedorAvisoCambios">
     <PageBreadcrumb :page-title="pageTitle" :items="breadcrumbItems" />
 
     <div class="mb-5 flex flex-wrap items-center gap-2">
@@ -19,7 +19,7 @@
       :referencia-compra-id="referenciaCompraId"
       :active="true"
       @cancel="goToList"
-      @saved="goToList"
+      @saved="onGuardado"
     />
   </div>
 </template>
@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAvisoCambiosSinGuardar } from '@/shared/composables/useAvisoCambiosSinGuardar'
 import PageBreadcrumb from '@/modules/admin/components/PageBreadcrumb.vue'
 import CompraForm from '@/modules/compras/components/CompraForm.vue'
 import { comprasFormBreadcrumbItems } from '@/modules/compras/config/compras-breadcrumb'
@@ -39,6 +40,7 @@ import { createComprasRegistrarTutorial } from '@/modules/soporte/tutorials/comp
 
 const route = useRoute()
 const router = useRouter()
+const { marcarGuardado } = useAvisoCambiosSinGuardar()
 
 useTutorialAutoStart('compras-registrar', createComprasRegistrarTutorial)
 
@@ -81,5 +83,11 @@ const breadcrumbItems = computed(() => comprasFormBreadcrumbItems(pageTitle.valu
 
 const goToList = () => {
   router.push({ name: 'admin-compras' })
+}
+
+/** Guardado OK: ya no hay cambios pendientes, se puede volver sin preguntar. */
+const onGuardado = () => {
+  marcarGuardado()
+  goToList()
 }
 </script>
