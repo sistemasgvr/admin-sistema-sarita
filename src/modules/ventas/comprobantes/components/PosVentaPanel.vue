@@ -1518,7 +1518,8 @@ try {
                   idProducto: Number(lineaPrestamo.idProducto),
                   cantidadVenta: 1,
                   idUnidadMedida: productoLinea?.id_unidad_medida ?? undefined,
-                  fechaRegistro: fecha.value,
+                  // La garantía entra a la misma caja que la venta (fecha de venta).
+                  fechaRegistro: fechaCaja.value,
                   idMedioPago: lineaPrestamo.idMedioPagoGarantia
                     ? Number(lineaPrestamo.idMedioPagoGarantia)
                     : undefined,
@@ -1582,7 +1583,8 @@ try {
                   monto: montoGarantiaAlq,
                   idProducto: idProductoAlquiler,
                   cantidadVenta: 1,
-                  fechaRegistro: fecha.value,
+                  // La garantía entra a la misma caja que la venta (fecha de venta).
+                  fechaRegistro: fechaCaja.value,
                   idMedioPago: lineaAlquilable.idMedioPagoGarantia
                     ? Number(lineaAlquilable.idMedioPagoGarantia)
                     : undefined,

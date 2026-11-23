@@ -76,6 +76,10 @@
         <span>{{ esNotaVenta(row) ? '—' : (row.fecha_emision_cpe ?? row.fecha).slice(0, 10) }}</span>
       </template>
 
+      <template #cell-fecha_venta="{ row }">
+        <span>{{ (row.fecha_venta ?? row.fecha).slice(0, 10) }}</span>
+      </template>
+
       <template #cell-nombre_estado_sunat="{ row }">
         <div data-tutorial="comprobantes-estado" class="space-y-1">
           <span v-if="row.estado_envio === 'EN_CURSO'" class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
@@ -465,7 +469,7 @@ const columns: TableColumn[] = [
   { key: 'comprobante', label: 'Comprobante', mobile: 'primary' },
   { key: 'nombre_cliente', label: 'Cliente' },
   { key: 'fecha_emision_cpe', label: 'Fecha del CPE' },
-  { key: 'fecha', label: 'Fecha de venta' },
+  { key: 'fecha_venta', label: 'Fecha de venta' },
   { key: 'total_importe', label: 'Total', align: 'right' },
   { key: 'nombre_estado_sunat', label: 'SUNAT', mobile: 'badge' },
 ]
@@ -935,7 +939,13 @@ async function confirmDelete() {
 const exportarListado = () =>
   exportarListadoExcel({
     nombre: 'Comprobantes de venta',
-    listar: comprobantesService.listar,
+    listar: async (filtros: ComprobanteListFilters) => {
+      const pagina = await comprobantesService.listar(filtros)
+      return {
+        ...pagina,
+        data: pagina.data.map((row) => ({ ...row, fecha_venta: row.fecha_venta ?? row.fecha })),
+      }
+    },
     filtros: filters.value,
     seleccionar: (row) =>
       !esVentaSinDocumentoTipo({
@@ -948,6 +958,7 @@ const exportarListado = () =>
       ['serie', 'Serie'],
       ['numero', 'Número'],
       ['fecha', 'Fecha'],
+      ['fecha_venta', 'Fecha de venta'],
       ['fecha_emision_cpe', 'Fecha emisión cpe'],
       ['nombre_cliente', 'Cliente'],
       ['documento_cliente', 'Documento cliente'],
