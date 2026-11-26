@@ -80,13 +80,24 @@ export interface CajaMovimientoDeposito {
 
 export interface CajaSesionEvento {
   id: number
-  tipo: 'ABRIR' | 'CERRAR' | 'REABRIR' | 'AJUSTE_FONDO' | 'AJUSTE_COMPRA'
+  tipo: 'ABRIR' | 'CERRAR' | 'REABRIR' | 'AJUSTE_FONDO' | 'AJUSTE_COMPRA' | 'AJUSTE_SIN_EFECTIVO'
   monto: number | null
   diferencia: number | null
   observacion: string | null
   idUsuario: number | null
   usuario: string | null
   fechaHora: string
+  /** Solo apertura, cierre y reapertura; los ajustes los redacta el sistema. */
+  editable?: boolean
+  /** Texto previo a la primera edición ('' si no tenía comentario). */
+  observacionOriginal?: string | null
+  usuarioEdicion?: string | null
+  fechaEdicion?: string | null
+}
+
+export interface EditarCajaComentarioPayload {
+  observacion: string
+  idUsuarioAuditoria?: number
 }
 
 export interface CajaSesion {

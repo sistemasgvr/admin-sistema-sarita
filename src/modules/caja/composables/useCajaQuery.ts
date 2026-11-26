@@ -133,6 +133,31 @@ export function useActualizarFondoCajaMutation() {
   })
 }
 
+export function useEditarCajaComentarioMutation() {
+  const queryClient = useQueryClient()
+  const auth = useAuthStore()
+  return useMutation({
+    mutationFn: ({
+      idSesion,
+      idEvento,
+      observacion,
+    }: {
+      idSesion: number
+      idEvento: number
+      observacion: string
+    }) =>
+      cajaService.editarComentario(idSesion, idEvento, {
+        observacion,
+        idUsuarioAuditoria: auth.user?.id,
+      }),
+    onSuccess: () => {
+      void invalidateCajaQueries(queryClient)
+      toastSuccess('Comentario actualizado')
+    },
+    onError: (error) => toastApiError(error, 'No se pudo actualizar el comentario'),
+  })
+}
+
 export function useCerrarCajaMutation() {
   const queryClient = useQueryClient()
   const auth = useAuthStore()

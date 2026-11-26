@@ -6,7 +6,12 @@
     <p v-else-if="query.isError.value" class="text-theme-sm text-error-600 dark:text-error-400">
       No se pudo cargar la bitácora.
     </p>
-    <CajaBitacoraEventos v-else :eventos="query.data.value?.eventos ?? []" />
+    <CajaBitacoraEventos
+      v-else-if="idSesion != null"
+      :key="idSesion"
+      :id-sesion="idSesion"
+      :eventos="query.data.value?.eventos ?? []"
+    />
   </AppModal>
 </template>
 

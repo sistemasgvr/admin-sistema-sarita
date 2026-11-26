@@ -280,7 +280,11 @@
           :badge="String((sesion.eventos ?? []).length)"
           :icon="ICONS.messageSquare"
         >
-          <CajaBitacoraEventos :eventos="sesion.eventos ?? []" />
+          <CajaBitacoraEventos
+            :key="sesion.id"
+            :id-sesion="sesion.id"
+            :eventos="sesion.eventos ?? []"
+          />
         </AppCollapsibleSection>
 
         <div

@@ -8,10 +8,12 @@ import type {
   CajaMovimientoGasto,
   CajaPendienteCierre,
   CajaSesion,
+  CajaSesionEvento,
   CerrarCajaPayload,
   CrearCajaDepositoPayload,
   CrearCajaGastoPayload,
   CrearCajaObservacionPayload,
+  EditarCajaComentarioPayload,
   LibroDiario,
   LibroDiarioDeposito,
   LibroDiarioFilters,
@@ -46,6 +48,13 @@ export const cajaService = {
 
   actualizarFondo(id: number, payload: ActualizarFondoCajaPayload) {
     return apiPatch<CajaSesion>(`/caja/sesiones/${id}/fondo`, payload)
+  },
+
+  editarComentario(idSesion: number, idEvento: number, payload: EditarCajaComentarioPayload) {
+    return apiPatch<CajaSesionEvento>(
+      `/caja/sesiones/${idSesion}/comentarios/${idEvento}`,
+      payload,
+    )
   },
 
   cerrar(id: number, payload: CerrarCajaPayload) {

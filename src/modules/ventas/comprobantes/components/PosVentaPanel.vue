@@ -1618,7 +1618,9 @@ try {
         montoVenta: Number(linea.precioBalon || 0),
         observacion: linea.observacionLinea || 'Venta de cilindro desde POS',
         fechaBaja: fecha.value,
-        aprobar: authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR),
+        aprobar:
+          authStore.hasPermission(PermisoBanderas.BAJAS_BALON_APROBAR) ||
+          authStore.hasPermission(PermisoBanderas.COMPROBANTES_VENDER_ENVASE),
       }))
     }
 

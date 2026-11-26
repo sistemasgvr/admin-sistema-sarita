@@ -261,6 +261,7 @@ export const PermisoBanderas = {
   BAJAS_BALON_VER: 'bajas_balon.ver',
   BAJAS_BALON_SOLICITAR: 'bajas_balon.solicitar',
   BAJAS_BALON_APROBAR: 'bajas_balon.aprobar',
+  COMPROBANTES_VENDER_ENVASE: 'comprobantes.vender_envase',
   BAJAS_BALON_RECHAZAR: 'bajas_balon.rechazar',
 
   BAJAS_CLIENTE_LISTAR: 'bajas_cliente.listar',
@@ -323,6 +324,7 @@ export const PermisoBanderas = {
   CAJA_REGISTRAR_GASTO: 'caja.registrar_gasto',
   CAJA_REGISTRAR_DEPOSITO: 'caja.registrar_deposito',
   CAJA_OBSERVACION: 'caja.observacion',
+  CAJA_EDITAR_COMENTARIO: 'caja.editar_comentario',
   CAJA_LIBRO_DIARIO: 'caja.libro_diario',
 
   DOCUMENTOS_VENCIMIENTO_LISTAR: 'documentos_vencimiento.listar',
