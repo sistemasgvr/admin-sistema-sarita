@@ -3,6 +3,10 @@ import type { TipoOrigenRecojo } from '@/modules/operativa/actividades/interface
 export function origenRecojoKey(origen: TipoOrigenRecojo, idOrigen: number) {
   return `${origen}:${idOrigen}`
 }
+export function numeroDesdeEtiquetaOrigen(label: string | null | undefined): string {
+  if (!label) return ''
+  return label.replace(/^\s*(Préstamo|Alquiler)\s+/i, '').trim()
+}
 
 export function parseOrigenRecojoKey(
   value: string | number | '',

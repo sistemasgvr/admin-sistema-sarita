@@ -512,6 +512,7 @@ import type { Trabajador } from '@/modules/trabajadores/interfaces/trabajador.in
 import DocumentoSalidaSelectField from '@/modules/documentos-salida/components/DocumentoSalidaSelectField.vue'
 import OrigenRecojoSelectField from '@/modules/operativa/actividades/components/OrigenRecojoSelectField.vue'
 import {
+  numeroDesdeEtiquetaOrigen,
   origenRecojoKey as buildOrigenRecojoKey,
   parseOrigenRecojoKey,
 } from '@/modules/operativa/actividades/utils/origenRecojoKey'
@@ -744,7 +745,14 @@ const lockOrigenRecojo = computed(
 
 const prefillOrigenRecojoLabel = computed(() => props.defaultOrigenRecojoLabel ?? null)
 
-const vencidosFilters = ref({ incluirNoVencidos: true, buscar: '', pagina: 1, limite: 30 })
+// Con origen prellenado se busca por su número: el listado sin búsqueda solo
+// trae los primeros 30 y puede dejar fuera el préstamo (balones vacíos).
+const vencidosFilters = ref({
+  incluirNoVencidos: true,
+  buscar: numeroDesdeEtiquetaOrigen(props.defaultOrigenRecojoLabel),
+  pagina: 1,
+  limite: 30,
+})
 const vencidosQuery = useVencidosRecojoQuery(
   vencidosFilters,
   computed(() => props.mode === 'create'),

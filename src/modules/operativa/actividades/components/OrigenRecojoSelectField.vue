@@ -21,7 +21,7 @@
 import { computed, ref, watch } from 'vue'
 import { useVencidosRecojoQuery } from '@/modules/operativa/actividades/composables/useVencidosRecojoQuery'
 import type { OrigenVencidoRecojo } from '@/modules/operativa/actividades/interfaces/actividad.interface'
-import { origenRecojoKey } from '@/modules/operativa/actividades/utils/origenRecojoKey'
+import { numeroDesdeEtiquetaOrigen, origenRecojoKey } from '@/modules/operativa/actividades/utils/origenRecojoKey'
 import { AppSelectSearch } from '@/shared/components'
 import type { SelectOption } from '@/shared/interfaces/form.interface'
 
@@ -76,7 +76,7 @@ watch(search, (term) => {
 })
 
 watch(() => props.prefillLabel, label => {
-  if (label && model.value) filters.value.buscar = label
+  if (label && model.value) filters.value.buscar = numeroDesdeEtiquetaOrigen(label)
 }, { immediate: true })
 
 const listQuery = useVencidosRecojoQuery(filters)
